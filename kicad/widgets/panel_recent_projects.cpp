@@ -275,11 +275,12 @@ PANEL_RECENT_PROJECTS::PANEL_RECENT_PROJECTS( KICAD_MANAGER_FRAME* aFrame, wxWin
                        m_frame->GetToolManager()->RunAction( KICAD_MANAGER_ACTIONS::openProject );
                    } );
 
-    header->Add( title, 1, wxALIGN_CENTER_VERTICAL );
-    header->Add( newBtn, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP( 6 ) );
+    // Title on its own line so it never gets squeezed by the buttons in a narrow column.
+    header->Add( newBtn, 0, wxALIGN_CENTER_VERTICAL );
     header->Add( openBtn, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP( 6 ) );
 
-    mainSizer->Add( header, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP( 10 ) );
+    mainSizer->Add( title, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP( 10 ) );
+    mainSizer->Add( header, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP( 8 ) );
 
     // Card list
     m_list = new wxScrolledWindow( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL );
@@ -326,8 +327,7 @@ void PANEL_RECENT_PROJECTS::RebuildList()
     if( count == 0 )
     {
         wxStaticText* empty = new wxStaticText( m_list, wxID_ANY,
-                                                _( "No recent projects.\n"
-                                                   "Create a new project or open an existing one." ) );
+                                                _( "No recent projects." ) );
         empty->SetForegroundColour( mutedColour() );
         m_listSizer->Add( empty, 0, wxALL, FromDIP( 8 ) );
     }

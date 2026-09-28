@@ -245,7 +245,8 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
     m_auimgr.AddPane( m_recentProjectsPane,
                       EDA_PANE().Name( "RecentProjects" ).Left().Layer( 1 ).Position( 0 )
                                 .CaptionVisible( false ).PaneBorder( false )
-                                .MinSize( m_leftWinWidth, -1 ).Floatable( false ).Movable( false ) );
+                                .MinSize( std::max( m_leftWinWidth, FromDIP( 340 ) ), -1 )
+                                .Floatable( false ).Movable( false ) );
 
     m_historyPane = new LOCAL_HISTORY_PANE( this );
     m_auimgr.AddPane( m_historyPane,

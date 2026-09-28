@@ -191,7 +191,7 @@ protected:
         esc_desc = LinkifyHTML( esc_desc );
 
         if( esc_desc.IsEmpty() )
-            m_html.Replace( wxS( "__DESC__" ), wxS( "<br>" ) );
+            m_html.Replace( wxS( "__DESC__" ), wxEmptyString );
         else
             m_html.Replace( wxS( "__DESC__" ), wxString::Format( DescFormat, esc_desc ) );
     }

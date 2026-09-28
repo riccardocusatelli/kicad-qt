@@ -160,7 +160,7 @@ void PANEL_KICAD_LAUNCHER::CreateLaunchers()
                 header->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
                 m_toolsSizer->Add( 0, 0 );
-                m_toolsSizer->Add( header, 0, wxTOP | wxBOTTOM, topGap );
+                m_toolsSizer->Add( header, 0, wxTOP, topGap );
                 m_toolsSizer->Add( 0, 0 );
                 m_toolsSizer->Add( 0, FromDIP( 2 ) );
             };
