@@ -41,6 +41,8 @@ class UPDATE_MANAGER;
 /**
  * The main KiCad project manager frame.  It is not a KIWAY_PLAYER.
  */
+class PANEL_RECENT_PROJECTS;
+
 class KICAD_MANAGER_FRAME : public EDA_BASE_FRAME
 {
 public:
@@ -244,6 +246,9 @@ private:
 
     void updatePcmButtonBadge();
 
+    /// Show the recent projects home when no project is open, the file tree otherwise.
+    void updateProjectPanes();
+
 private:
     bool                  m_openSavedWindows;
     bool                  m_restoredFromHistory;  ///< Set after restore to mark editors dirty
@@ -253,6 +258,7 @@ private:
 
     PROJECT_TREE_PANE*    m_projectTreePane;
     LOCAL_HISTORY_PANE*   m_historyPane;
+    PANEL_RECENT_PROJECTS* m_recentProjectsPane;
     wxAuiNotebook*        m_notebook;
     PANEL_KICAD_LAUNCHER* m_launcher;
     int                   m_lastToolbarIconSize;

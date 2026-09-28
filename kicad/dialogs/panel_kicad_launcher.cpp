@@ -26,6 +26,7 @@
 #include <tools/kicad_manager_actions.h>
 #include <tools/kicad_manager_control.h>
 #include <widgets/bitmap_button.h>
+#include <wx/settings.h>
 #include <wx/stattext.h>
 
 #include "panel_kicad_launcher.h"
@@ -144,29 +145,56 @@ void PANEL_KICAD_LAUNCHER::CreateLaunchers()
                 return btn;
             };
 
+    // Section header spanning the text column (the icon column gets an empty cell).
+    wxFont sectionFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT ).Smaller().Bold();
+    bool   firstSection = true;
+
+    auto addSection =
+            [&]( const wxString& aTitle )
+            {
+                int topGap = firstSection ? 0 : FromDIP( 14 );
+                firstSection = false;
+
+                wxStaticText* header = new wxStaticText( m_scrolledWindow, wxID_ANY, aTitle.Upper() );
+                header->SetFont( sectionFont );
+                header->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+
+                m_toolsSizer->Add( 0, 0 );
+                m_toolsSizer->Add( header, 0, wxTOP | wxBOTTOM, topGap );
+                m_toolsSizer->Add( 0, 0 );
+                m_toolsSizer->Add( 0, FromDIP( 2 ) );
+            };
+
+    // Tools are grouped by design phase instead of by file type.
+    addSection( _( "Design" ) );
+
     addLauncher( KICAD_MANAGER_ACTIONS::editSchematic, BITMAPS::icon_eeschema,
                  _( "Edit the project schematic" ) );
-
-    addLauncher( KICAD_MANAGER_ACTIONS::editSymbols, BITMAPS::icon_libedit,
-                 _( "Edit global and/or project schematic symbol libraries" ) );
 
     addLauncher( KICAD_MANAGER_ACTIONS::editPCB, BITMAPS::icon_pcbnew,
                  _( "Edit the project PCB design" ) );
 
+    addSection( _( "Libraries" ) );
+
+    addLauncher( KICAD_MANAGER_ACTIONS::editSymbols, BITMAPS::icon_libedit,
+                 _( "Edit global and/or project schematic symbol libraries" ) );
+
     addLauncher( KICAD_MANAGER_ACTIONS::editFootprints, BITMAPS::icon_modedit,
                  _( "Edit global and/or project PCB footprint libraries" ) );
+
+    addLauncher( KICAD_MANAGER_ACTIONS::editDrawingSheet, BITMAPS::icon_pagelayout_editor,
+                 _( "Edit drawing sheet borders and title blocks for use in schematics and PCB designs" ) );
+
+    addSection( _( "Manufacturing and Utilities" ) );
 
     addLauncher( KICAD_MANAGER_ACTIONS::viewGerbers, BITMAPS::icon_gerbview,
                  _( "Preview Gerber files" ) );
 
-    addLauncher( KICAD_MANAGER_ACTIONS::convertImage, BITMAPS::icon_bitmap2component,
-                 _( "Convert bitmap images to schematic symbols or PCB footprints" ) );
-
     addLauncher( KICAD_MANAGER_ACTIONS::showCalculator, BITMAPS::icon_pcbcalculator,
                  _( "Show tools for calculating resistance, current capacity, etc." ) );
 
-    addLauncher( KICAD_MANAGER_ACTIONS::editDrawingSheet, BITMAPS::icon_pagelayout_editor,
-                 _( "Edit drawing sheet borders and title blocks for use in schematics and PCB designs" ) );
+    addLauncher( KICAD_MANAGER_ACTIONS::convertImage, BITMAPS::icon_bitmap2component,
+                 _( "Convert bitmap images to schematic symbols or PCB footprints" ) );
 
     BITMAP_BUTTON* bb = addLauncher( KICAD_MANAGER_ACTIONS::showPluginManager, BITMAPS::icon_pcm,
                                      _( "Manage downloadable packages from KiCad and 3rd party repositories" ),

@@ -94,6 +94,7 @@
 #endif
 
 #include "kicad_manager_frame.h"
+#include "widgets/panel_recent_projects.h"
 #include "settings/kicad_settings.h"
 
 #include <project/project_file.h>
@@ -150,6 +151,7 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
         m_showHistoryPanel( false ),
         m_projectTreePane( nullptr ),
         m_historyPane( nullptr ),
+        m_recentProjectsPane( nullptr ),
         m_launcher( nullptr ),
         m_lastToolbarIconSize( 0 ),
         m_pcmButton( nullptr ),
@@ -238,6 +240,13 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
                                 .Caption( PROJECT_FILES_CAPTION ).PaneBorder( false )
                                 .MinSize( m_leftWinWidth, -1 ).Floatable( false ).Movable( false ) );
 
+    // Home column: replaces the file tree while no project is open (see updateProjectPanes()).
+    m_recentProjectsPane = new PANEL_RECENT_PROJECTS( this, this );
+    m_auimgr.AddPane( m_recentProjectsPane,
+                      EDA_PANE().Name( "RecentProjects" ).Left().Layer( 1 ).Position( 0 )
+                                .CaptionVisible( false ).PaneBorder( false )
+                                .MinSize( m_leftWinWidth, -1 ).Floatable( false ).Movable( false ) );
+
     m_historyPane = new LOCAL_HISTORY_PANE( this );
     m_auimgr.AddPane( m_historyPane,
                       EDA_PANE().Palette().Name( "LocalHistory" ).Left().Layer( 1 ).Position( 1 )
@@ -272,6 +281,8 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
 
     // Now the actual m_projectTreePane size is set, give it a reasonable min width
     m_auimgr.GetPane( m_projectTreePane ).MinSize( defaultLeftWinWidth, FromDIP( 80 ) );
+    m_auimgr.GetPane( m_recentProjectsPane ).MinSize( defaultLeftWinWidth, FromDIP( 80 ) );
+    updateProjectPanes();
 
 
     wxSizer* mainSizer = GetSizer();
@@ -336,6 +347,23 @@ KICAD_MANAGER_FRAME::~KICAD_MANAGER_FRAME()
 
     m_auimgr.UnInit();
 }
+
+void KICAD_MANAGER_FRAME::updateProjectPanes()
+{
+    wxAuiPaneInfo& tree = m_auimgr.GetPane( m_projectTreePane );
+    wxAuiPaneInfo& recent = m_auimgr.GetPane( m_recentProjectsPane );
+
+    if( !tree.IsOk() || !recent.IsOk() )
+        return;
+
+    if( !m_active_project )
+        m_recentProjectsPane->RebuildList();
+
+    tree.Show( m_active_project );
+    recent.Show( !m_active_project );
+    m_auimgr.Update();
+}
+
 
 void KICAD_MANAGER_FRAME::HideTabsIfNeeded()
 {
@@ -863,6 +891,10 @@ bool KICAD_MANAGER_FRAME::CloseProject( bool aSave )
     m_projectTreePane->EmptyTreePrj();
     HideTabsIfNeeded();
 
+    // Deferred: CloseProject() is also the first step of LoadProject(), so only swap panes once
+    // the final state is known (avoids flashing the home list while switching projects).
+    CallAfter( [this]() { updateProjectPanes(); } );
+
     return true;
 }
 
@@ -1020,6 +1052,7 @@ bool KICAD_MANAGER_FRAME::LoadProject( const wxFileName& aProjectFileName )
 
     m_projectTreePane->ReCreateTreePrj();
     m_historyPane->RefreshHistory( Prj().GetProjectPath() );
+    updateProjectPanes();
 
     for( const wxString& jobset : Prj().GetLocalSettings().m_OpenJobSets )
     {
