@@ -220,7 +220,7 @@ LIB_TREE::LIB_TREE( wxWindow* aParent, const wxString& aRecentSearchesKey,
 
     if( m_query_ctrl )
     {
-        m_query_ctrl->SetDescriptiveText( _( "Filter" ) );
+        m_query_ctrl->SetDescriptiveText( _( "Search" ) );
         m_query_ctrl->SetFocus();
         m_query_ctrl->ChangeValue( wxEmptyString );
         updateRecentSearchMenu();
@@ -304,7 +304,7 @@ void LIB_TREE::ShutdownPreviews()
 void LIB_TREE::ShowChangedLanguage()
 {
     if( m_query_ctrl )
-        m_query_ctrl->SetDescriptiveText( _( "Filter" ) );
+        m_query_ctrl->SetDescriptiveText( _( "Search" ) );
 
     if( m_adapter )
         m_adapter->ShowChangedLanguage();

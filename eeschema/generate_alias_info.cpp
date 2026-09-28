@@ -25,26 +25,42 @@
 #include <lib_symbol.h>
 #include <libraries/symbol_library_adapter.h>
 #include <wx/log.h>
+#include <wx/settings.h>
 
+// Component-panel style details: title, muted subtitle line, description, then a two column
+// parameter table with alternating row shading.  Colours are derived from the system theme at
+// generation time so the page reads correctly in both light and dark mode.
 static const wxString DescriptionFormat = wxS(
-    "<b>__NAME__</b>"
-    "__ALIASOF__"
+    "<font size=+1><b>__NAME__</b></font>"
+    "__SUBTITLE__"
     "__DESC__"
     "__KEY__"
-    "<hr><table border=0>"
+    "<br><br><font size=-1 color='__MUTED__'><b>__PARAMS_TITLE__</b></font>"
+    "<table width='100%' border=0 cellspacing=0 cellpadding=4>"
     "__FIELDS__"
     "</table>" );
 
-static const wxString AliasOfFormat =   wxS( "<br><i>" ) + _( "Derived from" ) +
-                                        wxS( " %s (%s)</i>" );
-static const wxString DescFormat =      wxS( "<br>%s" );
-static const wxString KeywordsFormat =  wxS( "<br>" ) + _( "Keywords" ) + wxS( ": %s" );
+static const wxString SubtitleFormat =  wxS( "<br><font color='%s'>%s</font>" );
+static const wxString DescFormat =      wxS( "<p>%s</p>" );
+static const wxString KeywordsFormat =  wxS( "<font size=-1 color='%s'>%s:</font> <font size=-1>%s</font>" );
 static const wxString FieldFormat = wxS(
-    "<tr>"
-    "   <td><b>__NAME__</b></td>"
-    "   <td>__VALUE__</td>"
+    "<tr__ROWBG__>"
+    "   <td width='32%' valign=top><font color='__MUTED__'>__NAME__</font></td>"
+    "   <td valign=top>__VALUE__</td>"
     "</tr>" );
 static const wxString LinkFormat = wxS( "<a href=\"__HREF__\">__TEXT__</a>" );
+
+
+static wxColour blendColour( const wxColour& aA, const wxColour& aB, double aAmount )
+{
+    auto mix = [&]( unsigned char a, unsigned char b )
+               {
+                   return (unsigned char) ( a + ( b - a ) * aAmount );
+               };
+
+    return wxColour( mix( aA.Red(), aB.Red() ), mix( aA.Green(), aB.Green() ),
+                     mix( aA.Blue(), aB.Blue() ) );
+}
 
 
 class FOOTPRINT_INFO_GENERATOR
@@ -55,8 +71,15 @@ public:
             m_libs( aLibs ),
             m_lib_id( aLibId ),
             m_symbol( nullptr ),
-            m_unit( aUnit )
-    { }
+            m_unit( aUnit ),
+            m_rowIndex( 0 )
+    {
+        wxColour bg = wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW );
+        wxColour fg = wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOWTEXT );
+
+        m_muted = blendColour( bg, fg, 0.6 ).GetAsString( wxC2S_HTML_SYNTAX );
+        m_stripe = blendColour( bg, fg, 0.05 ).GetAsString( wxC2S_HTML_SYNTAX );
+    }
 
     /**
      * Generate the HTML internally.
@@ -113,29 +136,48 @@ protected:
         m_html.Replace( wxS( "__NAME__" ), EscapeHTML( UnescapeString( m_symbol->GetName() ) ) );
     }
 
+    /// Muted line under the name: library, units, power flag, derivation.
     void SetHtmlAliasOf()
     {
-        if( m_symbol->IsRoot() )
-        {
-            m_html.Replace( "__ALIASOF__", wxEmptyString );
-        }
-        else
-        {
-            wxString root_name = _( "Unknown" );
-            wxString root_desc = wxS( "" );
+        wxArrayString parts;
 
-            std::shared_ptr< LIB_SYMBOL > parent = m_symbol->GetParent().lock();
+        parts.Add( EscapeHTML( UnescapeString( m_lib_id.GetUniStringLibNickname() ) ) );
+
+        if( m_symbol->GetUnitCount() > 1 )
+            parts.Add( wxString::Format( _( "%d units" ), m_symbol->GetUnitCount() ) );
+
+        if( m_symbol->IsPower() )
+            parts.Add( _( "power symbol" ) );
+
+        if( !m_symbol->IsRoot() )
+        {
+            wxString                    root_name = _( "Unknown" );
+            std::shared_ptr<LIB_SYMBOL> parent = m_symbol->GetParent().lock();
 
             if( parent )
-            {
                 root_name = parent->GetName();
-                root_desc = parent->GetDesc();
-            }
 
-            m_html.Replace( wxS( "__ALIASOF__" ), wxString::Format( AliasOfFormat,
-                                                                    EscapeHTML( UnescapeString( root_name ) ),
-                                                                    EscapeHTML( root_desc ) ) );
+            parts.Add( wxString::Format( _( "derived from %s" ),
+                                         EscapeHTML( UnescapeString( root_name ) ) ) );
         }
+
+        m_html.Replace( wxS( "__SUBTITLE__" ),
+                        wxString::Format( SubtitleFormat, m_muted, joinParts( parts ) ) );
+    }
+
+    static wxString joinParts( const wxArrayString& aParts )
+    {
+        wxString out;
+
+        for( size_t i = 0; i < aParts.size(); ++i )
+        {
+            if( i > 0 )
+                out += wxS( " &middot; " );
+
+            out += aParts[i];
+        }
+
+        return out;
     }
 
     void SetHtmlDesc()
@@ -148,7 +190,10 @@ protected:
         // Add links
         esc_desc = LinkifyHTML( esc_desc );
 
-        m_html.Replace( wxS( "__DESC__" ), wxString::Format( DescFormat, esc_desc ) );
+        if( esc_desc.IsEmpty() )
+            m_html.Replace( wxS( "__DESC__" ), wxS( "<br>" ) );
+        else
+            m_html.Replace( wxS( "__DESC__" ), wxString::Format( DescFormat, esc_desc ) );
     }
 
     void SetHtmlKeywords()
@@ -158,7 +203,8 @@ protected:
         if( keywords.empty() )
             m_html.Replace( wxS( "__KEY__" ), wxEmptyString );
         else
-            m_html.Replace( wxS( "__KEY__" ), wxString::Format( KeywordsFormat, EscapeHTML( keywords ) ) );
+            m_html.Replace( wxS( "__KEY__" ), wxString::Format( KeywordsFormat, m_muted, _( "Keywords" ),
+                                                                EscapeHTML( keywords ) ) );
     }
 
     wxString GetHtmlFieldRow( const SCH_FIELD& aField ) const
@@ -168,6 +214,7 @@ protected:
         wxString fieldhtml = FieldFormat;
 
         fieldhtml.Replace( wxS( "__NAME__" ), EscapeHTML( name ) );
+        fieldhtml.Replace( wxS( "__MUTED__" ), m_muted );
 
         switch( aField.GetId() )
         {
@@ -223,6 +270,9 @@ protected:
             }
         }
 
+        fieldhtml.Replace( wxS( "__ROWBG__" ),
+                           ( m_rowIndex++ % 2 == 0 ) ? wxString::Format( wxS( " bgcolor='%s'" ), m_stripe )
+                                                     : wxString() );
         return fieldhtml;
     }
 
@@ -259,15 +309,19 @@ protected:
         }
 
         m_html.Replace( wxS( "__FIELDS__" ), fieldtable );
+        m_html.Replace( wxS( "__PARAMS_TITLE__" ), _( "PARAMETERS" ) );
+        m_html.Replace( wxS( "__MUTED__" ), m_muted );
     }
 
     void ClearPlaceholders()
     {
         m_html.Replace( wxS( "__NAME__" ), wxEmptyString );
-        m_html.Replace( wxS( "__ALIASOF__" ), wxEmptyString );
+        m_html.Replace( wxS( "__SUBTITLE__" ), wxEmptyString );
         m_html.Replace( wxS( "__DESC__" ), wxEmptyString );
         m_html.Replace( wxS( "__KEY__" ), wxEmptyString );
         m_html.Replace( wxS( "__FIELDS__" ), wxEmptyString );
+        m_html.Replace( wxS( "__PARAMS_TITLE__" ), wxEmptyString );
+        m_html.Replace( wxS( "__MUTED__" ), m_muted );
     }
 
 private:
@@ -276,6 +330,9 @@ private:
     LIB_ID const                    m_lib_id;
     LIB_SYMBOL*                     m_symbol;
     int                             m_unit;
+    mutable int                     m_rowIndex;
+    wxString                        m_muted;
+    wxString                        m_stripe;
 };
 
 

@@ -37,6 +37,8 @@
 #include <settings/settings_manager.h>
 #include <project/project_file.h>
 #include <eeschema_settings.h>
+#include <wx/settings.h>
+#include <wx/stattext.h>
 #include <symbol_editor_settings.h>
 #include <symbol_library_common.h>         // For SYMBOL_LIBRARY_FILTER
 #include <algorithm>
@@ -188,45 +190,42 @@ PANEL_SYMBOL_CHOOSER::PANEL_SYMBOL_CHOOSER( SCH_BASE_FRAME* aFrame, wxWindow* aP
 
     wxBoxSizer* sizer = new wxBoxSizer( wxVERTICAL );
 
-    // Use a slightly different layout, with a details pane spanning the entire window,
-    // if we're not showing footprints.
-    if( m_show_footprints )
-    {
-        m_hsplitter = new wxSplitterWindow( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                            wxSP_LIVE_UPDATE | wxSP_NOBORDER | wxSP_3DSASH );
+    // Component-panel layout (same with or without footprints):
+    //
+    //   +---------------------------+---------------+
+    //   | search / results tree     | symbol        |
+    //   |                           | footprint     |
+    //   +---------------------------+---------------+
+    //   | details: name, library, description, parameter table   |
+    //   +-------------------------------------------------------+
+    //
+    // The details pane spans the full width so long parameter values stay readable, and the
+    // results list keeps the whole height of the upper area.
+    m_vsplitter = new wxSplitterWindow( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                        wxSP_LIVE_UPDATE | wxSP_NOBORDER | wxSP_3DSASH );
 
-        //Avoid the splitter window being assigned as the Parent to additional windows
-        m_hsplitter->SetExtraStyle( wxWS_EX_TRANSIENT );
+    m_hsplitter = new wxSplitterWindow( m_vsplitter, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                        wxSP_LIVE_UPDATE | wxSP_NOBORDER | wxSP_3DSASH );
 
-        sizer->Add( m_hsplitter, 1, wxEXPAND, 5 );
-    }
-    else
-    {
-        m_vsplitter = new wxSplitterWindow( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                            wxSP_LIVE_UPDATE | wxSP_NOBORDER | wxSP_3DSASH );
+    // Avoid the splitter window being assigned as the parent to additional windows.
+    m_vsplitter->SetExtraStyle( wxWS_EX_TRANSIENT );
+    m_hsplitter->SetExtraStyle( wxWS_EX_TRANSIENT );
 
-        m_hsplitter = new wxSplitterWindow( m_vsplitter, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                            wxSP_LIVE_UPDATE | wxSP_NOBORDER | wxSP_3DSASH );
+    wxPanel*    detailsPanel = new wxPanel( m_vsplitter );
+    wxBoxSizer* detailsSizer = new wxBoxSizer( wxVERTICAL );
+    detailsPanel->SetSizer( detailsSizer );
 
-        // Avoid the splitter window being assigned as the parent to additional windows.
-        m_vsplitter->SetExtraStyle( wxWS_EX_TRANSIENT );
-        m_hsplitter->SetExtraStyle( wxWS_EX_TRANSIENT );
+    m_details = new HTML_WINDOW( detailsPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize );
+    detailsSizer->Add( m_details, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP( 6 ) );
+    detailsPanel->Layout();
+    detailsSizer->Fit( detailsPanel );
 
-        wxPanel*    detailsPanel = new wxPanel( m_vsplitter );
-        wxBoxSizer* detailsSizer = new wxBoxSizer( wxVERTICAL );
-        detailsPanel->SetSizer( detailsSizer );
+    // Give extra height to the results/preview area when the window grows.
+    m_vsplitter->SetSashGravity( 0.7 );
+    m_vsplitter->SetMinimumPaneSize( FromDIP( 60 ) );
+    m_vsplitter->SplitHorizontally( m_hsplitter, detailsPanel );
 
-        m_details = new HTML_WINDOW( detailsPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize  );
-        detailsSizer->Add( m_details, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5 );
-        detailsPanel->Layout();
-        detailsSizer->Fit( detailsPanel );
-
-        m_vsplitter->SetSashGravity( 0.5 );
-        m_vsplitter->SetMinimumPaneSize( 20 );
-        m_vsplitter->SplitHorizontally( m_hsplitter, detailsPanel );
-
-        sizer->Add( m_vsplitter, 1, wxEXPAND | wxBOTTOM, 5 );
-    }
+    sizer->Add( m_vsplitter, 1, wxEXPAND | wxBOTTOM, 5 );
 
     wxPanel*    treePanel = new wxPanel( m_hsplitter );
     wxBoxSizer* treeSizer = new wxBoxSizer( wxVERTICAL );
@@ -374,15 +373,29 @@ wxPanel* PANEL_SYMBOL_CHOOSER::constructRightPanel( wxWindow* aParent )
     wxPanel*    panel = new wxPanel( aParent );
     wxBoxSizer* sizer = new wxBoxSizer( wxVERTICAL );
 
+    // Small uppercase captions, like the section headers of a components panel.
+    auto addCaption =
+            [&]( const wxString& aText, int aTopGap )
+            {
+                wxStaticText* caption = new wxStaticText( panel, wxID_ANY, aText.Upper() );
+                caption->SetFont( caption->GetFont().Smaller().Bold() );
+                caption->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+                sizer->Add( caption, 0, wxLEFT | wxRIGHT | wxTOP, aTopGap );
+            };
+
     m_symbol_preview = new SYMBOL_PREVIEW_WIDGET( panel, &m_frame->Kiway(), true, backend );
     m_symbol_preview->SetLayoutDirection( wxLayout_LeftToRight );
+
+    addCaption( _( "Symbol" ), FromDIP( 6 ) );
 
     if( m_show_footprints )
     {
         sizer->Add( m_symbol_preview, 11, wxEXPAND | wxALL, 5 );
 
+        addCaption( _( "Footprint" ), FromDIP( 4 ) );
+
         m_fp_sel_ctrl = new FOOTPRINT_SELECT_WIDGET( m_frame, panel );
-        sizer->Add( m_fp_sel_ctrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 5 );
+        sizer->Add( m_fp_sel_ctrl, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 5 );
 
         m_fp_preview = new FOOTPRINT_PREVIEW_WIDGET( panel, m_frame->Kiway() );
         m_fp_preview->SetUserUnits( m_frame->GetUserUnits() );
