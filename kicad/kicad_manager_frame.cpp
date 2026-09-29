@@ -95,6 +95,7 @@
 
 #include "kicad_manager_frame.h"
 #include "widgets/panel_recent_projects.h"
+#include "widgets/home_widgets.h"
 #include "settings/kicad_settings.h"
 
 #include <project/project_file.h>
@@ -245,7 +246,7 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
     m_auimgr.AddPane( m_recentProjectsPane,
                       EDA_PANE().Name( "RecentProjects" ).Left().Layer( 1 ).Position( 0 )
                                 .CaptionVisible( false ).PaneBorder( false )
-                                .MinSize( std::max( m_leftWinWidth, FromDIP( 340 ) ), -1 )
+                                .MinSize( std::max( m_leftWinWidth, FromDIP( 460 ) ), -1 )
                                 .Floatable( false ).Movable( false ) );
 
     m_historyPane = new LOCAL_HISTORY_PANE( this );
@@ -1488,7 +1489,7 @@ void KICAD_MANAGER_FRAME::OnIdle( wxIdleEvent& aEvent )
 }
 
 
-void KICAD_MANAGER_FRAME::SetPcmButton( BITMAP_BUTTON* aButton )
+void KICAD_MANAGER_FRAME::SetPcmButton( LAUNCHER_CARD* aButton )
 {
     m_pcmButton = aButton;
 

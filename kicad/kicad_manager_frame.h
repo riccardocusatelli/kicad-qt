@@ -29,6 +29,7 @@
 
 class ACTION_TOOLBAR;
 class BITMAP_BUTTON;
+class LAUNCHER_CARD;
 class EDA_BASE_FRAME;
 class KICAD_SETTINGS;
 class PANEL_KICAD_LAUNCHER;
@@ -210,7 +211,7 @@ public:
 
     std::shared_ptr<PLUGIN_CONTENT_MANAGER> GetPcm() { return m_pcm; };
 
-    void SetPcmButton( BITMAP_BUTTON* aButton );
+    void SetPcmButton( LAUNCHER_CARD* aButton );
 
     void CreatePCM();   // creates the PLUGIN_CONTENT_MANAGER
 
@@ -264,7 +265,7 @@ private:
     int                   m_lastToolbarIconSize;
 
     std::shared_ptr<PLUGIN_CONTENT_MANAGER> m_pcm;
-    BITMAP_BUTTON*                          m_pcmButton;
+    LAUNCHER_CARD*                          m_pcmButton;
     int                                     m_pcmUpdateCount;
     std::unique_ptr<UPDATE_MANAGER>         m_updateManager;
 };

@@ -51,6 +51,13 @@ public:
 
     int ShowDropDown( wxWindow* wnd, const wxAuiToolBarItemArray& items ) override;
 
+    /// Flat, theme-coloured background instead of the default gradient.
+    void DrawBackground( wxDC& aDc, wxWindow* aWindow, const wxRect& aRect ) override;
+    void DrawPlainBackground( wxDC& aDc, wxWindow* aWindow, const wxRect& aRect ) override;
+
+    /// Hairline separator in the theme border colour.
+    void DrawSeparator( wxDC& aDc, wxWindow* aWindow, const wxRect& aRect ) override;
+
 private:
     void saturateHighlightColor();
 };
@@ -60,6 +67,13 @@ class WX_AUI_DOCK_ART : public wxAuiDefaultDockArt
 {
 public:
     WX_AUI_DOCK_ART();
+
+    /// Re-read the UI_THEME palette (called on construction and on system theme changes).
+    void ApplyTheme();
+
+    /// Flat caption: theme background, small bold muted label, hairline underneath.
+    void DrawCaption( wxDC& aDc, wxWindow* aWindow, const wxString& aText, const wxRect& aRect,
+                      wxAuiPaneInfo& aPane ) override;
 };
 
 #if wxCHECK_VERSION( 3, 3, 0 )

@@ -18,6 +18,9 @@
  */
 
 #include "panel_recent_projects.h"
+#include "home_widgets.h"
+
+#include <ui_theme.h>
 
 #include <kicad_manager_frame.h>
 #include <file_history.h>
@@ -25,7 +28,6 @@
 #include <tools/kicad_manager_actions.h>
 #include <wildcards_and_files_ext.h>
 
-#include <wx/button.h>
 #include <wx/control.h>
 #include <wx/dcbuffer.h>
 #include <wx/filename.h>
@@ -38,25 +40,13 @@
 namespace
 {
 
-/// Linear blend of two colours; aAmount = 0 gives aA, 1 gives aB.
-wxColour blend( const wxColour& aA, const wxColour& aB, double aAmount )
-{
-    auto mix = [&]( unsigned char a, unsigned char b )
-               {
-                   return (unsigned char) ( a + ( b - a ) * aAmount );
-               };
-
-    return wxColour( mix( aA.Red(), aB.Red() ), mix( aA.Green(), aB.Green() ),
-                     mix( aA.Blue(), aB.Blue() ) );
-}
-
-
-wxColour bgColour()      { return wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ); }
-wxColour fgColour()      { return wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOWTEXT ); }
-wxColour mutedColour()   { return blend( bgColour(), fgColour(), 0.55 ); }
-wxColour borderColour()  { return blend( bgColour(), fgColour(), 0.14 ); }
-wxColour hoverColour()   { return blend( bgColour(), fgColour(), 0.05 ); }
-wxColour accentColour()  { return wxSystemSettings::GetColour( wxSYS_COLOUR_HIGHLIGHT ); }
+wxColour bgColour()      { return UI_THEME::Get().bg; }
+wxColour fgColour()      { return UI_THEME::Get().text; }
+wxColour mutedColour()   { return UI_THEME::Get().muted; }
+wxColour borderColour()  { return UI_THEME::Get().border; }
+wxColour hoverColour()   { return UI_THEME::Get().surfaceHover; }
+wxColour accentColour()  { return UI_THEME::Get().accent; }
+wxColour cardColour()    { return UI_THEME::Get().surface; }
 
 } // namespace
 
@@ -110,7 +100,7 @@ RECENT_PROJECT_ITEM::RECENT_PROJECT_ITEM( wxWindow* aParent, KICAD_MANAGER_FRAME
 
     // Three text lines plus padding.
     int lineH = GetCharHeight();
-    SetMinSize( wxSize( FromDIP( 180 ), lineH * 3 + FromDIP( 26 ) ) );
+    SetMinSize( wxSize( FromDIP( 180 ), lineH * 3 + FromDIP( 34 ) ) );
 
     SetToolTip( m_exists ? m_projectFile
                          : wxString::Format( _( "Project not found: %s" ), m_projectFile ) );
@@ -130,7 +120,7 @@ void RECENT_PROJECT_ITEM::onPaint( wxPaintEvent& aEvent )
     wxAutoBufferedPaintDC dc( this );
 
     const wxSize size = GetClientSize();
-    const int    pad = FromDIP( 10 );
+    const int    pad = FromDIP( 13 );
     const int    radius = FromDIP( 6 );
 
     dc.SetBackground( wxBrush( GetParent()->GetBackgroundColour() ) );
@@ -139,7 +129,7 @@ void RECENT_PROJECT_ITEM::onPaint( wxPaintEvent& aEvent )
     // Card
     wxRect card( FromDIP( 2 ), FromDIP( 2 ), size.x - FromDIP( 4 ), size.y - FromDIP( 4 ) );
     dc.SetPen( wxPen( m_hover ? accentColour() : borderColour(), 1 ) );
-    dc.SetBrush( wxBrush( m_hover ? hoverColour() : bgColour() ) );
+    dc.SetBrush( wxBrush( m_hover ? hoverColour() : cardColour() ) );
     dc.DrawRoundedRectangle( card, radius );
 
     const int textLeft = card.x + pad;
@@ -255,13 +245,11 @@ PANEL_RECENT_PROJECTS::PANEL_RECENT_PROJECTS( KICAD_MANAGER_FRAME* aFrame, wxWin
 
     // Header: title on the left, primary actions on the right
     wxBoxSizer*   header = new wxBoxSizer( wxHORIZONTAL );
-    wxStaticText* title = new wxStaticText( this, wxID_ANY, _( "Recent Projects" ) );
-    wxFont        titleFont = title->GetFont().Bold();
-    titleFont.SetFractionalPointSize( titleFont.GetFractionalPointSize() * 1.25 );
-    title->SetFont( titleFont );
+    wxStaticText* section = CreateSectionLabel( this, _( "Recent Projects" ) );
+    wxStaticText* title = CreateHomeTitle( this, _( "Pick up where you left off" ) );
 
-    wxButton* newBtn = new wxButton( this, wxID_ANY, _( "New Project..." ) );
-    wxButton* openBtn = new wxButton( this, wxID_ANY, _( "Open..." ) );
+    FLAT_BUTTON* newBtn = new FLAT_BUTTON( this, _( "New Project..." ), true );
+    FLAT_BUTTON* openBtn = new FLAT_BUTTON( this, _( "Open..." ) );
 
     newBtn->Bind( wxEVT_BUTTON,
                   [this]( wxCommandEvent& )
@@ -279,8 +267,9 @@ PANEL_RECENT_PROJECTS::PANEL_RECENT_PROJECTS( KICAD_MANAGER_FRAME* aFrame, wxWin
     header->Add( newBtn, 0, wxALIGN_CENTER_VERTICAL );
     header->Add( openBtn, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP( 6 ) );
 
-    mainSizer->Add( title, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP( 10 ) );
-    mainSizer->Add( header, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP( 8 ) );
+    mainSizer->Add( section, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP( 14 ) );
+    mainSizer->Add( title, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP( 14 ) );
+    mainSizer->Add( header, 0, wxLEFT | wxRIGHT | wxTOP, FromDIP( 14 ) );
 
     // Card list
     m_list = new wxScrolledWindow( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL );
@@ -289,12 +278,12 @@ PANEL_RECENT_PROJECTS::PANEL_RECENT_PROJECTS( KICAD_MANAGER_FRAME* aFrame, wxWin
     m_listSizer = new wxBoxSizer( wxVERTICAL );
     m_list->SetSizer( m_listSizer );
 
-    mainSizer->Add( m_list, 1, wxEXPAND | wxALL, FromDIP( 6 ) );
+    mainSizer->Add( m_list, 1, wxEXPAND | wxALL, FromDIP( 10 ) );
 
     // Footer
     m_footer = new wxStaticText( this, wxID_ANY, wxEmptyString );
     m_footer->SetForegroundColour( mutedColour() );
-    mainSizer->Add( m_footer, 0, wxLEFT | wxRIGHT | wxBOTTOM, FromDIP( 10 ) );
+    mainSizer->Add( m_footer, 0, wxLEFT | wxRIGHT | wxBOTTOM, FromDIP( 14 ) );
 
     SetSizer( mainSizer );
 
@@ -320,7 +309,7 @@ void PANEL_RECENT_PROJECTS::RebuildList()
             continue;
 
         RECENT_PROJECT_ITEM* item = new RECENT_PROJECT_ITEM( m_list, m_frame, file );
-        m_listSizer->Add( item, 0, wxEXPAND | wxBOTTOM, FromDIP( 2 ) );
+        m_listSizer->Add( item, 0, wxEXPAND | wxBOTTOM, FromDIP( 6 ) );
         count++;
     }
 

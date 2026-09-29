@@ -29,6 +29,7 @@
 #include <settings/common_settings.h>
 #include <widgets/panel_notebook_base.h>
 #include <widgets/wx_aui_art_providers.h>
+#include <ui_theme.h>
 #include <gal/color4d.h>
 
 #if wxCHECK_VERSION( 3, 3, 0 )
@@ -181,6 +182,43 @@ void WX_AUI_TOOLBAR_ART::DrawButton( wxDC& aDc, wxWindow* aWindow, const wxAuiTo
 }
 
 
+void WX_AUI_TOOLBAR_ART::DrawBackground( wxDC& aDc, wxWindow* aWindow, const wxRect& aRect )
+{
+    DrawPlainBackground( aDc, aWindow, aRect );
+}
+
+
+void WX_AUI_TOOLBAR_ART::DrawPlainBackground( wxDC& aDc, wxWindow* aWindow, const wxRect& aRect )
+{
+    const UI_THEME::PALETTE& theme = UI_THEME::Get();
+
+    aDc.SetPen( *wxTRANSPARENT_PEN );
+    aDc.SetBrush( wxBrush( theme.bg ) );
+    aDc.DrawRectangle( aRect.x - 1, aRect.y - 1, aRect.width + 2, aRect.height + 2 );
+}
+
+
+void WX_AUI_TOOLBAR_ART::DrawSeparator( wxDC& aDc, wxWindow* aWindow, const wxRect& aRect )
+{
+    const UI_THEME::PALETTE& theme = UI_THEME::Get();
+    bool horizontal = aRect.width > aRect.height;   // separator in a vertical toolbar
+    int  inset = aWindow->FromDIP( 4 );
+
+    aDc.SetPen( wxPen( theme.border, 1 ) );
+
+    if( horizontal )
+    {
+        int y = aRect.y + aRect.height / 2;
+        aDc.DrawLine( aRect.x + inset, y, aRect.GetRight() - inset, y );
+    }
+    else
+    {
+        int x = aRect.x + aRect.width / 2;
+        aDc.DrawLine( x, aRect.y + inset, x, aRect.GetBottom() - inset );
+    }
+}
+
+
 void WX_AUI_TOOLBAR_ART::saturateHighlightColor()
 {
 #ifdef __WXOSX__
@@ -307,21 +345,77 @@ int WX_AUI_TOOLBAR_ART::ShowDropDown( wxWindow* wnd, const wxAuiToolBarItemArray
 WX_AUI_DOCK_ART::WX_AUI_DOCK_ART() :
         wxAuiDefaultDockArt()
 {
-#if defined( _WIN32 )
-    // Use normal control font, wx likes to use "small"
-    m_captionFont = *wxNORMAL_FONT;
-
-    // Increase the box the caption rests in size a bit
-    m_captionSize = ( wxNORMAL_FONT->GetPointSize() * 7 ) / 4 + 6;
-#endif
-
-    SetColour( wxAUI_DOCKART_ACTIVE_CAPTION_TEXT_COLOUR,
-               wxSystemSettings::GetColour( wxSYS_COLOUR_BTNTEXT ) );
-    SetColour( wxAUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR,
-               wxSystemSettings::GetColour( wxSYS_COLOUR_BTNTEXT ) );
+    // Small, bold caption labels like the section headers of the Home screen.
+    m_captionFont = wxNORMAL_FONT->Smaller().Bold();
+    m_captionSize = ( wxNORMAL_FONT->GetPointSize() * 7 ) / 4 + 8;
 
     // Turn off the ridiculous looking gradient
     m_gradientType = wxAUI_GRADIENT_NONE;
+
+    ApplyTheme();
+}
+
+
+void WX_AUI_DOCK_ART::ApplyTheme()
+{
+    const UI_THEME::PALETTE& theme = UI_THEME::Get();
+
+    SetColour( wxAUI_DOCKART_BACKGROUND_COLOUR, theme.bg );
+    SetColour( wxAUI_DOCKART_SASH_COLOUR, theme.bg );
+    SetColour( wxAUI_DOCKART_BORDER_COLOUR, theme.border );
+    SetColour( wxAUI_DOCKART_GRIPPER_COLOUR, theme.border );
+    SetColour( wxAUI_DOCKART_ACTIVE_CAPTION_COLOUR, theme.bg );
+    SetColour( wxAUI_DOCKART_ACTIVE_CAPTION_GRADIENT_COLOUR, theme.bg );
+    SetColour( wxAUI_DOCKART_INACTIVE_CAPTION_COLOUR, theme.bg );
+    SetColour( wxAUI_DOCKART_INACTIVE_CAPTION_GRADIENT_COLOUR, theme.bg );
+    SetColour( wxAUI_DOCKART_ACTIVE_CAPTION_TEXT_COLOUR, theme.text );
+    SetColour( wxAUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR, theme.muted );
+
+    // Thin sashes: the separation comes from the colour change, not from a thick bar.
+    SetMetric( wxAUI_DOCKART_SASH_SIZE, 4 );
+    SetMetric( wxAUI_DOCKART_PANE_BORDER_SIZE, 1 );
+}
+
+
+void WX_AUI_DOCK_ART::DrawCaption( wxDC& aDc, wxWindow* aWindow, const wxString& aText,
+                                   const wxRect& aRect, wxAuiPaneInfo& aPane )
+{
+    const UI_THEME::PALETTE& theme = UI_THEME::Get();
+
+    aDc.SetPen( *wxTRANSPARENT_PEN );
+    aDc.SetBrush( wxBrush( theme.bg ) );
+    aDc.DrawRectangle( aRect );
+
+    // Hairline under the caption
+    aDc.SetPen( wxPen( theme.border, 1 ) );
+    aDc.DrawLine( aRect.x, aRect.GetBottom(), aRect.GetRight() + 1, aRect.GetBottom() );
+
+    aDc.SetFont( m_captionFont );
+    aDc.SetTextForeground( theme.muted );
+
+    wxCoord w, h;
+    aDc.GetTextExtent( wxS( "ABCDEFHXfgkj" ), &w, &h );
+
+    // Leave room for the pane buttons (close, maximize, pin) on the right.
+    int buttons = 0;
+
+    if( aPane.HasCloseButton() )
+        buttons++;
+
+    if( aPane.HasMaximizeButton() )
+        buttons++;
+
+    if( aPane.HasPinButton() )
+        buttons++;
+
+    int      pad = aWindow->FromDIP( 6 );
+    wxRect   clip( aRect.x + pad, aRect.y, aRect.width - pad * 2 - buttons * m_buttonSize,
+                   aRect.height );
+    wxString label = aText.Upper();
+
+    aDc.SetClippingRegion( clip );
+    aDc.DrawText( label, clip.x, aRect.y + ( aRect.height - h ) / 2 );
+    aDc.DestroyClippingRegion();
 }
 
 #if wxCHECK_VERSION( 3, 3, 0 )

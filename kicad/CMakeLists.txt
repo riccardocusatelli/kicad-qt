@@ -46,6 +46,7 @@ set( KICAD_SRCS
     project_tree_traverser.cpp
     update_manager.cpp
     widgets/panel_recent_projects.cpp
+    widgets/home_widgets.cpp
     toolbars_kicad_manager.cpp
     tools/kicad_manager_actions.cpp
     tools/kicad_manager_control.cpp

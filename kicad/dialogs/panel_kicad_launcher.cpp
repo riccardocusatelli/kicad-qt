@@ -30,6 +30,9 @@
 #include <wx/stattext.h>
 
 #include "panel_kicad_launcher.h"
+#include "../widgets/home_widgets.h"
+
+#include <ui_theme.h>
 
 
 PANEL_KICAD_LAUNCHER::PANEL_KICAD_LAUNCHER( wxWindow* aParent ) :
@@ -93,116 +96,102 @@ void PANEL_KICAD_LAUNCHER::CreateLaunchers()
         m_toolsSizer->SetRows( 0 );
     }
 
-    wxFont titleFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
-#ifndef __WXGTK__
-    titleFont.SetPointSize( titleFont.GetPointSize() + 2 );
-#endif
-    titleFont.SetWeight( wxFONTWEIGHT_BOLD );
+    const UI_THEME::PALETTE& theme = UI_THEME::Get();
 
-    wxFont helpFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
-    helpFont.SetStyle( wxFONTSTYLE_ITALIC );
+    SetBackgroundColour( theme.bg );
+    m_scrolledWindow->SetBackgroundColour( theme.bg );
 
-    auto addLauncher =
-            [&]( const TOOL_ACTION& aAction, BITMAPS aBitmaps, const wxString& aHelpText, bool enabled = true )
+    // Comfortable outer margin around the whole column.
+    if( wxSizerItem* item = m_scrolledWindow->GetSizer()->GetItem( m_toolsSizer ) )
+        item->SetBorder( FromDIP( 16 ) );
+
+    // One column of full-width rows (section labels, cards, the utilities grid).
+    m_toolsSizer->SetCols( 1 );
+
+    if( !m_toolsSizer->IsColGrowable( 0 ) )
+        m_toolsSizer->AddGrowableCol( 0 );
+
+    auto runAction =
+            [this]( const TOOL_ACTION* aAction )
             {
-                BITMAP_BUTTON* btn = new BITMAP_BUTTON( m_scrolledWindow, wxID_ANY );
-                btn->SetBitmap( KiBitmapBundle( aBitmaps ) );
-                btn->SetDisabledBitmap( KiDisabledBitmapBundle( aBitmaps ) );
-                btn->SetPadding( 4 );
-                btn->SetToolTip( aAction.GetTooltip() );
+                // Don't accept clicks processed during wxProgressReporter updating.
+                if( m_frame->GetToolManager()->GetTool<KICAD_MANAGER_CONTROL>()->InShowPlayer() )
+                    return;
 
-                m_scrolledWindow->SetFont( titleFont ); // Use font inheritance to avoid extra SetFont call.
-                wxStaticText* label = new wxStaticText( m_scrolledWindow, wxID_ANY, aAction.GetFriendlyName() );
-                label->SetToolTip( aAction.GetTooltip() );
+                m_frame->SetFocus();
 
-                m_scrolledWindow->SetFont( helpFont ); // Use font inheritance to avoid extra SetFont call.
-                wxStaticText* help = new wxStaticText( m_scrolledWindow, wxID_ANY, aHelpText );
-
-                btn->Bind( wxEVT_BUTTON, &PANEL_KICAD_LAUNCHER::onLauncherButtonClick, this );
-                btn->SetClientData( (void*) &aAction );
-
-                // The bug fix below makes this handler active for the entire window width.  Without any visual
-                // feedback that's a bit odd.  Disabling for now.
-                // label->Bind( wxEVT_LEFT_UP, handler );
-
-                m_toolsSizer->Add( btn, 1, wxALIGN_CENTER_VERTICAL );
-
-                wxBoxSizer* textSizer = new wxBoxSizer( wxVERTICAL );
-
-                textSizer->Add( label );
-                textSizer->Add( help );
-
-                m_toolsSizer->Add( textSizer, 1, wxEXPAND | wxALIGN_CENTER_VERTICAL );
-
-                btn->Enable( enabled );
-
-                if( !enabled )
-                {
-                    help->Disable();
-                    label->Disable();
-                }
-
-                return btn;
+                OPT_TOOL_EVENT evt = aAction->MakeEvent();
+                evt->SetHasPosition( false );
+                m_frame->GetToolManager()->ProcessEvent( *evt );
             };
 
-    // Section header spanning the text column (the icon column gets an empty cell).
-    wxFont sectionFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT ).Smaller().Bold();
-    bool   firstSection = true;
+    auto makeCard =
+            [&]( wxWindow* aParent, const TOOL_ACTION& aAction, const wxString& aMonogram,
+                 const wxString& aHelp, bool aCompact, bool aEnabled = true ) -> LAUNCHER_CARD*
+            {
+                const TOOL_ACTION* action = &aAction;
+                LAUNCHER_CARD*     card = new LAUNCHER_CARD( aParent, aMonogram, aAction.GetFriendlyName(),
+                                                             aHelp, [runAction, action]() { runAction( action ); },
+                                                             aCompact );
+                card->Enable( aEnabled );
+                return card;
+            };
+
+    const int gap = FromDIP( 8 );
+
+    // Column header, same grammar as the recent projects column.
+    m_toolsSizer->Add( CreateSectionLabel( m_scrolledWindow, _( "Tools" ) ), 0, wxTOP, FromDIP( 4 ) );
+    m_toolsSizer->Add( CreateHomeTitle( m_scrolledWindow, _( "Open an Editor" ) ), 0, wxTOP, FromDIP( 14 ) );
 
     auto addSection =
             [&]( const wxString& aTitle )
             {
-                int topGap = firstSection ? 0 : FromDIP( 14 );
-                firstSection = false;
-
-                wxStaticText* header = new wxStaticText( m_scrolledWindow, wxID_ANY, aTitle.Upper() );
-                header->SetFont( sectionFont );
-                header->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
-
-                m_toolsSizer->Add( 0, 0 );
-                m_toolsSizer->Add( header, 0, wxTOP, topGap );
-                m_toolsSizer->Add( 0, 0 );
-                m_toolsSizer->Add( 0, FromDIP( 2 ) );
+                m_toolsSizer->Add( CreateSectionLabel( m_scrolledWindow, aTitle ), 0,
+                                   wxTOP | wxBOTTOM, FromDIP( 16 ) );
             };
 
-    // Tools are grouped by design phase instead of by file type.
+    auto addRow =
+            [&]( const TOOL_ACTION& aAction, const wxString& aMonogram, const wxString& aHelp )
+            {
+                m_toolsSizer->Add( makeCard( m_scrolledWindow, aAction, aMonogram, aHelp, false ), 0,
+                                   wxEXPAND | wxBOTTOM, gap );
+            };
+
     addSection( _( "Design" ) );
-
-    addLauncher( KICAD_MANAGER_ACTIONS::editSchematic, BITMAPS::icon_eeschema,
-                 _( "Edit the project schematic" ) );
-
-    addLauncher( KICAD_MANAGER_ACTIONS::editPCB, BITMAPS::icon_pcbnew,
-                 _( "Edit the project PCB design" ) );
+    addRow( KICAD_MANAGER_ACTIONS::editSchematic, _( "SC" ), _( "Edit the project schematic" ) );
+    addRow( KICAD_MANAGER_ACTIONS::editPCB, _( "PC" ), _( "Edit the project PCB design" ) );
 
     addSection( _( "Libraries" ) );
-
-    addLauncher( KICAD_MANAGER_ACTIONS::editSymbols, BITMAPS::icon_libedit,
-                 _( "Edit global and/or project schematic symbol libraries" ) );
-
-    addLauncher( KICAD_MANAGER_ACTIONS::editFootprints, BITMAPS::icon_modedit,
-                 _( "Edit global and/or project PCB footprint libraries" ) );
-
-    addLauncher( KICAD_MANAGER_ACTIONS::editDrawingSheet, BITMAPS::icon_pagelayout_editor,
-                 _( "Edit drawing sheet borders and title blocks for use in schematics and PCB designs" ) );
+    addRow( KICAD_MANAGER_ACTIONS::editSymbols, _( "SY" ),
+            _( "Edit global and/or project schematic symbol libraries" ) );
+    addRow( KICAD_MANAGER_ACTIONS::editFootprints, _( "FP" ),
+            _( "Edit global and/or project PCB footprint libraries" ) );
+    addRow( KICAD_MANAGER_ACTIONS::editDrawingSheet, _( "DS" ),
+            _( "Edit drawing sheet borders and title blocks" ) );
 
     addSection( _( "Manufacturing and Utilities" ) );
 
-    addLauncher( KICAD_MANAGER_ACTIONS::viewGerbers, BITMAPS::icon_gerbview,
-                 _( "Preview Gerber files" ) );
+    // Utilities: two-column grid of compact cards
+    wxGridSizer* grid = new wxGridSizer( 2, gap, gap );
 
-    addLauncher( KICAD_MANAGER_ACTIONS::showCalculator, BITMAPS::icon_pcbcalculator,
-                 _( "Show tools for calculating resistance, current capacity, etc." ) );
+    grid->Add( makeCard( m_scrolledWindow, KICAD_MANAGER_ACTIONS::viewGerbers, _( "GB" ),
+                         _( "Preview Gerber files" ), true ), 1, wxEXPAND );
+    grid->Add( makeCard( m_scrolledWindow, KICAD_MANAGER_ACTIONS::showCalculator, _( "CA" ),
+                         _( "Resistance, current capacity, etc." ), true ), 1, wxEXPAND );
+    grid->Add( makeCard( m_scrolledWindow, KICAD_MANAGER_ACTIONS::convertImage, _( "IM" ),
+                         _( "Bitmaps to symbols or footprints" ), true ), 1, wxEXPAND );
 
-    addLauncher( KICAD_MANAGER_ACTIONS::convertImage, BITMAPS::icon_bitmap2component,
-                 _( "Convert bitmap images to schematic symbols or PCB footprints" ) );
+    LAUNCHER_CARD* pcm = makeCard( m_scrolledWindow, KICAD_MANAGER_ACTIONS::showPluginManager, _( "PM" ),
+                                   _( "KiCad and third-party packages" ), true,
+                                   KIPLATFORM::POLICY::GetPolicyBool( POLICY_KEY_PCM )
+                                           != KIPLATFORM::POLICY::PBOOL::DISABLED );
+    grid->Add( pcm, 1, wxEXPAND );
 
-    BITMAP_BUTTON* bb = addLauncher( KICAD_MANAGER_ACTIONS::showPluginManager, BITMAPS::icon_pcm,
-                                     _( "Manage downloadable packages from KiCad and 3rd party repositories" ),
-                                     KIPLATFORM::POLICY::GetPolicyBool( POLICY_KEY_PCM )
-                                            != KIPLATFORM::POLICY::PBOOL::DISABLED );
+    m_toolsSizer->Add( grid, 0, wxEXPAND | wxBOTTOM, gap );
 
-    m_frame->SetPcmButton( bb );
+    m_frame->SetPcmButton( pcm );
 
+    m_scrolledWindow->FitInside();
     Layout();
 }
 

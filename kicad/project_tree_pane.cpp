@@ -90,6 +90,7 @@
 #include "kicad_manager_frame.h"
 
 #include "project_tree_pane.h"
+#include <ui_theme.h>
 #include <widgets/kistatusbar.h>
 
 #include <kiplatform/io.h>
@@ -678,7 +679,14 @@ void PROJECT_TREE_PANE::ReCreateTreePrj()
     wxString pro_dir = m_Parent->GetProjectFileName();
 
     if( !m_TreeProject )
+    {
         m_TreeProject = new PROJECT_TREE( this );
+
+        // Match the Home / frame palette instead of the stark native list background.
+        m_TreeProject->SetBackgroundColour( UI_THEME::Get().bg );
+        m_TreeProject->SetForegroundColour( UI_THEME::Get().text );
+        SetBackgroundColour( UI_THEME::Get().bg );
+    }
     else
         m_TreeProject->DeleteAllItems();
 
