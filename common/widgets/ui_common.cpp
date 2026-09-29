@@ -32,6 +32,7 @@
 #include <wx/scrolbar.h>
 #include <wx/grid.h>
 #include <widgets/ui_common.h>
+#include <ui_theme.h>
 
 #include <algorithm>
 #include <dialog_shim.h>
@@ -92,9 +93,7 @@ wxSize KIUI::GetTextSize( const wxString& aSingleLine, wxWindow* aWindow )
 
 wxFont KIUI::GetMonospacedUIFont()
 {
-    static int guiFontSize = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT ).GetPointSize();
-
-    wxFont font( guiFontSize, wxFONTFAMILY_MODERN, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL );
+    wxFont font = UI_THEME::GetMonoFont();
 
 #ifdef __WXMAC__
     // https://trac.wxwidgets.org/ticket/19210

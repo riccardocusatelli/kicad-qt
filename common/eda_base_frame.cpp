@@ -27,6 +27,7 @@
 #include "dialogs/panel_maintenance.h"
 #include "kicad_manager_frame.h"
 #include <eda_base_frame.h>
+#include <ui_theme.h>
 #include <nlohmann/json.hpp>
 
 #include <advanced_config.h>
@@ -142,6 +143,9 @@ BEGIN_EVENT_TABLE( EDA_BASE_FRAME, wxFrame )
 
 void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
 {
+    // Children created after this inherit the bundled UI font.
+    SetFont( UI_THEME::GetUiFont() );
+
     m_ident             = aFrameType;
     m_maximizeByDefault = false;
     m_infoBar           = nullptr;

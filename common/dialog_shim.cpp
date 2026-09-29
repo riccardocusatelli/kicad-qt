@@ -25,6 +25,7 @@
 
 #include <app_monitor.h>
 #include <dialog_shim.h>
+#include <ui_theme.h>
 #include <settings/common_settings.h>
 #include <settings/common_settings_internals.h>
 #include <core/ignore.h>
@@ -144,6 +145,10 @@ DIALOG_SHIM::DIALOG_SHIM( wxWindow* aParent, wxWindowID id, const wxString& titl
         m_handlingUndoRedo( false ),
         m_childReleased( false )
 {
+    // Children created after this (i.e. everything in the generated *_base classes) inherit
+    // the bundled UI font.
+    SetFont( UI_THEME::GetUiFont() );
+
     KIWAY_HOLDER* kiwayHolder = nullptr;
     m_initialSize = size;
 

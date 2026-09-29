@@ -220,8 +220,7 @@ void LAUNCHER_CARD::onPaint( wxPaintEvent& aEvent )
     dc.SetBrush( wxBrush( theme.badge ) );
     dc.DrawRoundedRectangle( badge, FromDIP( 5 ) );
 
-    wxFont mono( GetFont().GetPointSize() - 1, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL,
-                 wxFONTWEIGHT_BOLD );
+    wxFont mono = UI_THEME::GetMonoFont( -1, true );
     dc.SetFont( mono );
     dc.SetTextForeground( enabled ? theme.accent : theme.muted );
     wxSize ms = dc.GetTextExtent( m_monogram );
@@ -291,8 +290,7 @@ void LAUNCHER_CARD::onMouse( wxMouseEvent& aEvent )
 wxStaticText* CreateSectionLabel( wxWindow* aParent, const wxString& aText )
 {
     wxStaticText* label = new wxStaticText( aParent, wxID_ANY, aText.Upper() );
-    wxFont        font( aParent->GetFont().GetPointSize() - 2, wxFONTFAMILY_TELETYPE,
-                        wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD );
+    wxFont        font = UI_THEME::GetMonoFont( -2, true );
 
     label->SetFont( font );
     label->SetForegroundColour( UI_THEME::Get().accent );

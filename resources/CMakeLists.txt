@@ -177,3 +177,10 @@ endif()
 
 add_subdirectory(bitmaps_png)
 add_subdirectory(project_template)
+# Bundled UI fonts (Inter, JetBrains Mono), loaded as private fonts at startup by UI_THEME.
+# Copied next to the build too, so KICAD_RUN_FROM_BUILD_DIR finds them.
+file( COPY ${PROJECT_SOURCE_DIR}/resources/fonts/ui
+      DESTINATION ${PROJECT_BINARY_DIR}/resources/fonts )
+
+install( DIRECTORY ${PROJECT_SOURCE_DIR}/resources/fonts/ui
+         DESTINATION ${KICAD_DATA}/resources/fonts )

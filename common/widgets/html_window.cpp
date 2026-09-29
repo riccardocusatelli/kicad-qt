@@ -27,6 +27,7 @@
 #include <wx/log.h>
 #include <wx/settings.h>
 #include <widgets/html_window.h>
+#include <ui_theme.h>
 
 
 HTML_WINDOW::HTML_WINDOW( wxWindow* aParent, wxWindowID aId, const wxPoint& aPos,
@@ -53,6 +54,10 @@ HTML_WINDOW::~HTML_WINDOW()
 
 bool HTML_WINDOW::SetPage( const wxString& aSource )
 {
+    // Same typefaces as the rest of the UI (no-op if the bundled fonts are unavailable).
+    if( UI_THEME::LoadUiFonts() )
+        SetStandardFonts( UI_THEME::BaseFontSize(), UI_THEME::UI_FACE, UI_THEME::MONO_FACE );
+
     m_pageSource = aSource;
 
     wxColour fgColor   = wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOWTEXT );

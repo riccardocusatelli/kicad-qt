@@ -59,6 +59,7 @@
 #include <notifications_manager.h>
 #include <paths.h>
 #include <pgm_base.h>
+#include <ui_theme.h>
 #include <design_block_library_adapter.h>
 #include <policy_keys.h>
 #include <python_scripting.h>
@@ -356,6 +357,9 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
     APP_MONITOR::SENTRY::Instance()->AddTag( "kicad.app", pgm_name );
 
     wxInitAllImageHandlers();
+
+    // Register the bundled UI fonts before any window (and any wxFont) is created.
+    UI_THEME::LoadUiFonts();
 
 #if !wxCHECK_VERSION( 3, 3, 0 )
     // Without this the wxPropertyGridManager segfaults on Windows.

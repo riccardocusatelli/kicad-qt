@@ -20,7 +20,12 @@
 #pragma once
 
 #include <kiplatform/ui.h>
+#include <paths.h>
 #include <wx/colour.h>
+#include <wx/dir.h>
+#include <wx/filename.h>
+#include <wx/font.h>
+#include <wx/settings.h>
 #include <wx/utils.h>
 
 /**
@@ -92,6 +97,94 @@ inline const PALETTE& Get()
     };
 
     return IsDark() ? dark : light;
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Fonts
+//
+// Inter (UI text) and JetBrains Mono (labels, badges, code-like values) ship in
+// <stock data>/resources/fonts/ui and are registered as private fonts, so nothing is installed
+// system-wide.  If loading fails everything falls back to the system fonts.
+// ---------------------------------------------------------------------------------------------
+
+inline const wxString UI_FACE = wxS( "Inter" );
+inline const wxString MONO_FACE = wxS( "JetBrains Mono" );
+
+
+/// Register the bundled fonts.  Call once, early, before windows are created.
+inline bool LoadUiFonts()
+{
+    static int loaded = -1;
+
+    if( loaded >= 0 )
+        return loaded > 0;
+
+    loaded = 0;
+
+#if wxUSE_PRIVATE_FONTS
+    wxString disable;
+
+    if( wxGetEnv( wxS( "KICAD_UI_FONT" ), &disable ) && disable.CmpNoCase( wxS( "system" ) ) == 0 )
+        return false;
+
+    wxFileName dir( PATHS::GetStockDataPath(), wxEmptyString );
+    dir.AppendDir( wxS( "resources" ) );
+    dir.AppendDir( wxS( "fonts" ) );
+    dir.AppendDir( wxS( "ui" ) );
+
+    wxArrayString files;
+
+    if( dir.DirExists() )
+    {
+        wxDir::GetAllFiles( dir.GetPath(), &files, wxS( "*.otf" ), wxDIR_FILES );
+        wxDir::GetAllFiles( dir.GetPath(), &files, wxS( "*.ttf" ), wxDIR_FILES );
+    }
+
+    for( const wxString& file : files )
+    {
+        if( wxFont::AddPrivateFont( file ) )
+            loaded = 1;
+    }
+#endif
+
+    return loaded > 0;
+}
+
+
+/// Point size of the platform GUI font; the bundled font is used at the same size.
+inline int BaseFontSize()
+{
+    return wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT ).GetPointSize();
+}
+
+
+/// Main UI font (Inter), or the system GUI font if the bundled fonts are not available.
+inline wxFont GetUiFont( int aRelativeSize = 0 )
+{
+    wxFont sys = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
+
+    if( !LoadUiFonts() )
+    {
+        sys.SetPointSize( sys.GetPointSize() + aRelativeSize );
+        return sys;
+    }
+
+    wxFont font( BaseFontSize() + aRelativeSize, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL,
+                 wxFONTWEIGHT_NORMAL, false, UI_FACE );
+
+    return font.IsOk() ? font : sys;
+}
+
+
+/// Monospaced font for labels and badges (JetBrains Mono), or the system monospace font.
+inline wxFont GetMonoFont( int aRelativeSize = 0, bool aBold = false )
+{
+    wxFont font( BaseFontSize() + aRelativeSize, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL,
+                 aBold ? wxFONTWEIGHT_BOLD : wxFONTWEIGHT_NORMAL, false,
+                 LoadUiFonts() ? MONO_FACE : wxString() );
+
+    return font;
 }
 
 } // namespace UI_THEME

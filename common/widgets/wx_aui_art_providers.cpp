@@ -346,7 +346,7 @@ WX_AUI_DOCK_ART::WX_AUI_DOCK_ART() :
         wxAuiDefaultDockArt()
 {
     // Small, bold caption labels like the section headers of the Home screen.
-    m_captionFont = wxNORMAL_FONT->Smaller().Bold();
+    m_captionFont = UI_THEME::GetUiFont( -1 ).Bold();
     m_captionSize = ( wxNORMAL_FONT->GetPointSize() * 7 ) / 4 + 8;
 
     // Turn off the ridiculous looking gradient
