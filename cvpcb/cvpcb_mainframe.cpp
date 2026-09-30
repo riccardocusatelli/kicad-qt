@@ -67,6 +67,8 @@
 #include <wx/button.h>
 #include <wx/msgdlg.h>
 #include <wx/ffile.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
@@ -292,7 +294,7 @@ void CVPCB_MAINFRAME::setupUIConditions()
     ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
     EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )
@@ -803,7 +805,7 @@ void CVPCB_MAINFRAME::DisplayStatus()
         if( symbol )
         {
             int pc = symbol->GetPinCount();
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "DisplayStatus: selected '%s' pinCount=%d" ),
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "DisplayStatus: selected '%s' pinCount=%d" ),
                         symbol->GetReference(), pc );
             msg = wxString::Format( wxT( "%i" ), pc );
         }
@@ -969,7 +971,7 @@ int CVPCB_MAINFRAME::readSchematicNetlist( const std::string& aNetlist )
     m_netlist.Clear();
 
     // Trace basic payload characteristics to verify libparts are present and visible here
-    wxLogTrace( "CVPCB_PINCOUNT",
+    KI_LOG_TRACE( "CVPCB_PINCOUNT",
                 wxT( "readSchematicNetlist: payload size=%zu has_libparts=%d has_libpart=%d" ),
                 aNetlist.size(), aNetlist.find( "(libparts" ) != std::string::npos,
                 aNetlist.find( "(libpart" ) != std::string::npos );
@@ -1143,7 +1145,7 @@ CVPCB_MAINFRAME::GetComponentIndices( CVPCB_MAINFRAME::CRITERIA aCriteria )
         break;
 
     default:
-        wxASSERT_MSG( false, "Invalid symbol selection criteria" );
+        KI_ASSERT_MSG( false, "Invalid symbol selection criteria" );
     }
 
     return idx;
@@ -1200,7 +1202,7 @@ void CVPCB_MAINFRAME::SetStatusText( const wxString& aText, int aNumber )
     case 0:  m_statusLine1->SetLabel( aText );                 break;
     case 1:  m_statusLine2->SetLabel( aText );                 break;
     case 2:  m_statusLine3->SetLabel( aText );                 break;
-    default: wxFAIL_MSG( wxT( "Invalid status row number" ) ); break;
+    default: KI_FAIL_MSG( wxT( "Invalid status row number" ) ); break;
     }
 }
 

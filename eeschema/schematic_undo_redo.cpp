@@ -37,6 +37,8 @@
 #include <drawing_sheet/ds_proxy_undo_item.h>
 #include <tool/actions.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /* Functions to undo and redo edit commands.
@@ -86,7 +88,7 @@ void SCH_EDIT_FRAME::SaveCopyInUndoList( SCH_SCREEN* aScreen, SCH_ITEM* aItem, U
 {
     PICKED_ITEMS_LIST* commandToUndo = nullptr;
 
-    wxCHECK( aItem, /* void */ );
+    KI_CHECK( aItem, /* void */ );
 
     PICKED_ITEMS_LIST* lastUndo = PopCommandFromUndoList();
 
@@ -120,7 +122,7 @@ void SCH_EDIT_FRAME::SaveCopyInUndoList( SCH_SCREEN* aScreen, SCH_ITEM* aItem, U
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "SaveCopyInUndoList() error (unknown code %X)" ), aCommandType ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "SaveCopyInUndoList() error (unknown code %X)" ), aCommandType ) );
         break;
     }
 
@@ -213,7 +215,7 @@ void SCH_EDIT_FRAME::SaveCopyInUndoList( const PICKED_ITEMS_LIST& aItemsList, UN
             if( commandToUndo->GetPickedItemLink( ii ) == nullptr )
                 commandToUndo->SetPickedItemLink( sch_item->Duplicate( IGNORE_PARENT_GROUP, nullptr, true ), ii );
 
-            wxASSERT( commandToUndo->GetPickedItemLink( ii ) );
+            KI_ASSERT( commandToUndo->GetPickedItemLink( ii ) );
             break;
 
         case UNDO_REDO::NEWITEM:
@@ -223,7 +225,7 @@ void SCH_EDIT_FRAME::SaveCopyInUndoList( const PICKED_ITEMS_LIST& aItemsList, UN
             break;
 
         default:
-            wxFAIL_MSG( wxString::Format( wxT( "Unknown undo/redo command %d" ), command ) );
+            KI_FAIL_MSG( wxString::Format( wxT( "Unknown undo/redo command %d" ), command ) );
             break;
         }
     }
@@ -388,7 +390,7 @@ void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList )
         {
             SCH_ITEM* itemCopy = dynamic_cast<SCH_ITEM*>( aList->GetPickedItemLink( ii ) );
 
-            wxCHECK2( itemCopy, continue );
+            KI_CHECK2( itemCopy, continue );
 
             if( schItem->HasConnectivityChanges( itemCopy, &GetCurrentSheet() ) )
                 propagateConnectivityDamage( schItem );
@@ -406,7 +408,7 @@ void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList )
                     const SCH_SHEET* origSheet = static_cast<const SCH_SHEET*>( schItem );
                     const SCH_SHEET* copySheet = static_cast<const SCH_SHEET*>( itemCopy );
 
-                    wxCHECK2( origSheet && copySheet, continue );
+                    KI_CHECK2( origSheet && copySheet, continue );
 
                     if( origSheet->GetName() != copySheet->GetName()
                             || origSheet->GetFileName() != copySheet->GetFileName()
@@ -455,7 +457,7 @@ void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList )
                 break;
 
             default:
-                wxFAIL_MSG( wxString::Format( wxT( "Unknown undo/redo command %d" ), status ) );
+                KI_FAIL_MSG( wxString::Format( wxT( "Unknown undo/redo command %d" ), status ) );
                 break;
             }
 
@@ -528,7 +530,7 @@ void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList )
 
     if( dirtyConnectivity )
     {
-        wxLogTrace( wxS( "CONN_PROFILE" ), wxS( "Undo/redo %s clean up connectivity rebuild." ),
+        KI_LOG_TRACE( wxS( "CONN_PROFILE" ), wxS( "Undo/redo %s clean up connectivity rebuild." ),
                     connectivityCleanUp == LOCAL_CLEANUP ? wxS( "local" ) : wxS( "global" ) );
 
         SCH_COMMIT localCommit( m_toolManager );

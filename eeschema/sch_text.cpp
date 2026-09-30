@@ -50,6 +50,7 @@
 #include <markup_parser.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 SCH_TEXT::SCH_TEXT( const VECTOR2I& aPos, const wxString& aText, SCH_LAYER_ID aLayer, KICAD_T aType ) :
@@ -713,7 +714,7 @@ double SCH_TEXT::Similarity( const SCH_ITEM& aOther ) const
 
 int SCH_TEXT::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 {
-    wxASSERT( aOther.Type() == SCH_TEXT_T );
+    KI_ASSERT( aOther.Type() == SCH_TEXT_T );
 
     int retv = SCH_ITEM::compare( aOther, aCompareFlags );
 

@@ -79,6 +79,7 @@
 #include <project/tuning_profiles.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 TUNING_STATUS_VIEW_ITEM::TUNING_STATUS_VIEW_ITEM( PCB_BASE_EDIT_FRAME* aFrame ) :
         EDA_ITEM( NOT_USED ), // Never added to anything - just a preview
@@ -263,7 +264,7 @@ static LENGTH_TUNING_MODE tuningFromString( const std::string& aStr )
         return LENGTH_TUNING_MODE::DIFF_PAIR_SKEW;
     else
     {
-        wxFAIL_MSG( wxS( "Unknown length tuning token" ) );
+        KI_FAIL_MSG( wxS( "Unknown length tuning token" ) );
         return LENGTH_TUNING_MODE::SINGLE;
     }
 }
@@ -276,7 +277,7 @@ static std::string tuningToString( const LENGTH_TUNING_MODE aTuning )
     case LENGTH_TUNING_MODE::SINGLE:         return "single";
     case LENGTH_TUNING_MODE::DIFF_PAIR:      return "diff_pair";
     case LENGTH_TUNING_MODE::DIFF_PAIR_SKEW: return "diff_pair_skew";
-    default:            wxFAIL;              return "";
+    default:            KI_FAIL();              return "";
     }
 }
 
@@ -303,7 +304,7 @@ static PNS::MEANDER_SIDE sideFromString( const std::string& aStr )
         return PNS::MEANDER_SIDE_RIGHT;
     else
     {
-        wxFAIL_MSG( wxS( "Unknown length-tuning side token" ) );
+        KI_FAIL_MSG( wxS( "Unknown length-tuning side token" ) );
         return PNS::MEANDER_SIDE_DEFAULT;
     }
 }
@@ -316,7 +317,7 @@ static std::string statusToString( const PNS::MEANDER_PLACER_BASE::TUNING_STATUS
     case PNS::MEANDER_PLACER_BASE::TOO_LONG:  return "too_long";
     case PNS::MEANDER_PLACER_BASE::TOO_SHORT: return "too_short";
     case PNS::MEANDER_PLACER_BASE::TUNED:     return "tuned";
-    default:           wxFAIL;                return "";
+    default:           KI_FAIL();                return "";
     }
 }
 
@@ -331,7 +332,7 @@ static PNS::MEANDER_PLACER_BASE::TUNING_STATUS statusFromString( const std::stri
         return PNS::MEANDER_PLACER_BASE::TUNED;
     else
     {
-        wxFAIL_MSG( wxS( "Unknown tuning status token" ) );
+        KI_FAIL_MSG( wxS( "Unknown tuning status token" ) );
         return PNS::MEANDER_PLACER_BASE::TUNED;
     }
 }
@@ -344,7 +345,7 @@ static std::string sideToString( const PNS::MEANDER_SIDE aValue )
     case PNS::MEANDER_SIDE_DEFAULT: return "default";
     case PNS::MEANDER_SIDE_LEFT:    return "left";
     case PNS::MEANDER_SIDE_RIGHT:   return "right";
-    default:        wxFAIL;         return "";
+    default:        KI_FAIL();         return "";
     }
 }
 
@@ -556,7 +557,7 @@ void PCB_TUNING_PATTERN::EditStart( GENERATOR_TOOL* aTool, BOARD* aBoard, BOARD_
 
     PCB_TRACK* track = nullptr;
     m_origin = snapToNearestTrack( m_origin, aBoard, nullptr, &track );
-    wxCHECK( track, /* void */ );
+    KI_CHECK( track, /* void */ );
 
     m_settings.m_netClass = track->GetEffectiveNetClass();
 
@@ -823,8 +824,8 @@ bool PCB_TUNING_PATTERN::initBaseLine( PNS::ROUTER* aRouter, int aPNSLayer, BOAR
     PNS::LINKED_ITEM* startItem = pickSegment( aRouter, aStart, aPNSLayer, startSnapPoint );
     PNS::LINKED_ITEM* endItem = pickSegment( aRouter, aEnd, aPNSLayer, endSnapPoint );
 
-    wxASSERT( startItem );
-    wxASSERT( endItem );
+    KI_ASSERT( startItem );
+    KI_ASSERT( endItem );
 
     if( !startItem || !endItem )
         return false;
@@ -832,10 +833,10 @@ bool PCB_TUNING_PATTERN::initBaseLine( PNS::ROUTER* aRouter, int aPNSLayer, BOAR
     PNS::LINE               line = world->AssembleLine( startItem );
     const SHAPE_LINE_CHAIN& chain = line.CLine();
 
-    wxASSERT( line.ContainsLink( endItem ) );
+    KI_ASSERT( line.ContainsLink( endItem ) );
 
-    wxASSERT( chain.PointOnEdge( startSnapPoint, 40000 ) );
-    wxASSERT( chain.PointOnEdge( endSnapPoint, 40000 ) );
+    KI_ASSERT( chain.PointOnEdge( startSnapPoint, 40000 ) );
+    KI_ASSERT( chain.PointOnEdge( endSnapPoint, 40000 ) );
 
     SHAPE_LINE_CHAIN pre;
     SHAPE_LINE_CHAIN mid;
@@ -856,7 +857,7 @@ bool PCB_TUNING_PATTERN::initBaseLines( PNS::ROUTER* aRouter, int aPNSLayer, BOA
     PCB_TRACK* track = nullptr;
 
     m_origin = snapToNearestTrack( m_origin, aBoard, nullptr, &track );
-    wxCHECK( track, false );
+    KI_CHECK( track, false );
 
     NETINFO_ITEM* net = track->GetNet();
 
@@ -912,7 +913,7 @@ bool PCB_TUNING_PATTERN::removeToBaseline( PNS::ROUTER* aRouter, int aPNSLayer, 
     std::optional<PNS::LINE> pnsLine = getPNSLine( aBaseLine.CPoint( 0 ), aBaseLine.CLastPoint(), aRouter,
                                                    aPNSLayer, startSnapPoint, endSnapPoint );
 
-    wxCHECK( pnsLine, false );
+    KI_CHECK( pnsLine, false );
 
     SHAPE_LINE_CHAIN pre;
     SHAPE_LINE_CHAIN mid;
@@ -1224,13 +1225,13 @@ bool PCB_TUNING_PATTERN::Update( GENERATOR_TOOL* aTool, BOARD* aBoard, BOARD_COM
     // Snap points
     VECTOR2I startSnapPoint, endSnapPoint;
 
-    wxCHECK( m_baseLine, false );
+    KI_CHECK( m_baseLine, false );
 
     PNS::LINKED_ITEM* startItem = pickSegment( router, m_origin, pnslayer, startSnapPoint, *m_baseLine);
     PNS::LINKED_ITEM* endItem = pickSegment( router, m_end, pnslayer, endSnapPoint, *m_baseLine );
 
-    wxASSERT( startItem );
-    wxASSERT( endItem );
+    KI_ASSERT( startItem );
+    KI_ASSERT( endItem );
 
     if( !startItem || !endItem )
         return false;

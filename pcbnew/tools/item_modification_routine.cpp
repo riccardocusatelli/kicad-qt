@@ -35,6 +35,7 @@
 #include <pcb_track.h>
 #include <tools/pcb_tool_utils.h>
 #include <confirm.h>
+#include <core/ki_assert.h>
 
 namespace
 {
@@ -77,7 +78,7 @@ std::pair<VECTOR2I*, VECTOR2I*> GetSharedEndpoints( SEG& aSegA, SEG& aSegB )
 
 bool ITEM_MODIFICATION_ROUTINE::ModifyLineOrDeleteIfZeroLength( PCB_SHAPE& aLine, const std::optional<SEG>& aSeg )
 {
-    wxASSERT_MSG( aLine.GetShape() == SHAPE_T::SEGMENT, "Can only modify segments" );
+    KI_ASSERT_MSG( aLine.GetShape() == SHAPE_T::SEGMENT, "Can only modify segments" );
 
     const bool removed = !aSeg.has_value() || aSeg->Length() == 0;
 
@@ -529,7 +530,7 @@ void POLYGON_BOOLEAN_ROUTINE::Finalize()
     {
         // If we handled any polygons to get any outline,
         // there must be a layer set by now.
-        wxASSERT( m_layer >= 0 );
+        KI_ASSERT( m_layer >= 0 );
 
         std::unique_ptr<PCB_SHAPE> new_poly_shape = std::make_unique<PCB_SHAPE>( GetBoard(), SHAPE_T::POLY );
 

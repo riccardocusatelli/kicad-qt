@@ -34,6 +34,7 @@
 #include <wx/msgdlg.h>
 #include <wx/menu.h>
 #include <wx/textdlg.h>
+#include <core/ki_assert.h>
 
 // Button ID starting point
 constexpr int FIRST_BUTTON_ID = 1800;
@@ -292,7 +293,7 @@ void PANEL_COLOR_SETTINGS::ShowColorContextMenu( wxMouseEvent& aEvent, int aLaye
     {
         COLOR_SETTINGS* selected = static_cast<COLOR_SETTINGS*>( m_cbTheme->GetClientData( themeSel ) );
 
-        wxCHECK_RET( selected, wxT( "Invalid color theme selected" ) );
+        KI_CHECK_RET( selected, wxT( "Invalid color theme selected" ) );
 
         COLOR4D current  = m_currentSettings->GetColor( aLayer );
         COLOR4D saved    = selected->GetColor( aLayer );

@@ -40,6 +40,7 @@
 #include <wx/stattext.h>
 #include <wx/treelist.h>
 #include <wx/wupdlock.h>
+#include <core/ki_assert.h>
 
 /**
  * Menu IDs for the hotkey context menu
@@ -474,7 +475,7 @@ void WIDGET_HOTKEY_LIST::onMenu( wxCommandEvent& aEvent )
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unknown ID in context menu event" ) );
+        KI_FAIL_MSG( wxT( "Unknown ID in context menu event" ) );
     }
 }
 

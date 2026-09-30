@@ -33,6 +33,8 @@
 #include <geometry/circle.h>
 #include <pad.h>
 #include <pcb_track.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 bool LENGTH_DELAY_CALCULATION::findArcPadIntersection( const SHAPE_ARC&                       aArc,
@@ -78,7 +80,7 @@ bool LENGTH_DELAY_CALCULATION::findArcPadIntersection( const SHAPE_ARC&         
 void LENGTH_DELAY_CALCULATION::clipLineToPad( SHAPE_LINE_CHAIN& aLine, const PAD* aPad, PCB_LAYER_ID aLayer,
                                               bool aForward )
 {
-    wxASSERT( aLine.PointCount() >= 2 );
+    KI_ASSERT( aLine.PointCount() >= 2 );
 
     const int start = aForward ? 0 : aLine.PointCount() - 1;
     const int delta = aForward ? 1 : -1;
@@ -160,10 +162,10 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
 
     if( doTrace )
     {
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "" ) );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "========== CalculateLengthDetails START ==========" ) );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: input has %zu items" ), aItems.size() );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: optimisations - OptimiseVias=%d, MergeTracks=%d, OptimiseTracesInPads=%d, InferViaInPad=%d" ),
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "========== CalculateLengthDetails START ==========" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: input has %zu items" ), aItems.size() );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: optimisations - OptimiseVias=%d, MergeTracks=%d, OptimiseTracesInPads=%d, InferViaInPad=%d" ),
                     aOptimisations.OptimiseVias, aOptimisations.MergeTracks,
                     aOptimisations.OptimiseTracesInPads, aOptimisations.InferViaInPad );
 
@@ -181,7 +183,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
             }
         }
 
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: initial items - PADs=%d, VIAs=%d, LINEs=%d, UNKNOWN=%d" ),
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: initial items - PADs=%d, VIAs=%d, LINEs=%d, UNKNOWN=%d" ),
                     initialPads, initialVias, initialLines, initialUnknown );
     }
 
@@ -189,7 +191,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
     if( aOptimisations.OptimiseVias || aOptimisations.MergeTracks || aOptimisations.MergeTracks )
     {
         if( doTrace )
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: performing optimisations..." ) );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: performing optimisations..." ) );
 
         std::vector<LENGTH_DELAY_CALCULATION_ITEM*> pads;
         std::vector<LENGTH_DELAY_CALCULATION_ITEM*> lines;
@@ -223,7 +225,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
         if( aOptimisations.OptimiseVias )
         {
             if( doTrace )
-                wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: optimising via layers (%zu vias)" ), vias.size() );
+                KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: optimising via layers (%zu vias)" ), vias.size() );
 
             optimiseVias( vias, lines, linesPositionMap, padsPositionMap );
         }
@@ -231,7 +233,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
         if( aOptimisations.MergeTracks )
         {
             if( doTrace )
-                wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: merging tracks (%zu lines)" ), lines.size() );
+                KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: merging tracks (%zu lines)" ), lines.size() );
 
             mergeLines( lines, linesPositionMap );
         }
@@ -258,7 +260,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
         if( aOptimisations.OptimiseTracesInPads )
         {
             if( doTrace )
-                wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: optimising traces in pads" ) );
+                KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: optimising traces in pads" ) );
 
             optimiseTracesInPads( pads, lines );
         }
@@ -270,7 +272,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
     if( aLayerOpt == LENGTH_DELAY_LAYER_OPT::WITH_LAYER_DETAIL )
     {
         if( doTrace )
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: creating layer detail maps" ) );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: creating layer detail maps" ) );
 
         details.LayerLengths = std::make_unique<std::map<PCB_LAYER_ID, int64_t>>();
 
@@ -281,7 +283,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
     const bool useHeight = m_board->GetDesignSettings().m_UseHeightForLengthCalcs;
 
     if( doTrace )
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: useHeight=%d" ), useHeight );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: useHeight=%d" ), useHeight );
 
     // If this is a contiguous set of items, check if we have an inferred fanout via at either end. Note that this
     // condition only arises as a result of how PNS assembles tuning paths - for DRC / net inspector calculations these
@@ -289,7 +291,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
     if( aOptimisations.InferViaInPad && useHeight )
     {
         if( doTrace )
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: inferring vias in pads" ) );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: inferring vias in pads" ) );
 
         const bool withDelayDetail = aDomain == LENGTH_DELAY_DOMAIN_OPT::WITH_DELAY_DETAIL;
         inferViaInPad( aStartPad, aItems.front(), details, withDelayDetail );
@@ -301,7 +303,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
     int mergedRetired = 0, unknownType = 0;
 
     if( doTrace )
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: processing %zu items..." ), aItems.size() );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: processing %zu items..." ), aItems.size() );
 
     for( const LENGTH_DELAY_CALCULATION_ITEM& item : aItems )
     {
@@ -336,7 +338,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
             processedVias++;
 
             if( doTrace )
-                wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: via from layer %d to %d, height=%lld" ),
+                KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: via from layer %d to %d, height=%lld" ),
                             layerStart, layerEnd, viaHeight );
         }
         else if( item.Type() == LENGTH_DELAY_CALCULATION_ITEM::TYPE::PAD )
@@ -347,15 +349,15 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
             processedPads++;
 
             if( doTrace && padToDie > 0 )
-                wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: pad with pad-to-die length=%lld" ), padToDie );
+                KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: pad with pad-to-die length=%lld" ), padToDie );
         }
     }
 
     if( doTrace )
     {
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: processed items - PADs=%d, VIAs=%d, LINEs=%d" ),
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: processed items - PADs=%d, VIAs=%d, LINEs=%d" ),
                     processedPads, processedVias, processedLines );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: skipped items - merged/retired=%d, unknown=%d" ),
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: skipped items - merged/retired=%d, unknown=%d" ),
                     mergedRetired, unknownType );
     }
 
@@ -363,7 +365,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
     if( aDomain == LENGTH_DELAY_DOMAIN_OPT::WITH_DELAY_DETAIL && !aItems.empty() )
     {
         if( doTrace )
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: calculating time domain statistics" ) );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: calculating time domain statistics" ) );
 
         // TODO(JJ): Populate this
         TUNING_PROFILE_GEOMETRY_CONTEXT ctx;
@@ -371,7 +373,7 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
 
         const std::vector<int64_t> itemDelays = m_tuningProfileParameters->GetPropagationDelays( aItems, ctx );
 
-        wxASSERT( itemDelays.size() == aItems.size() );
+        KI_ASSERT( itemDelays.size() == aItems.size() );
 
         for( size_t i = 0; i < aItems.size(); ++i )
         {
@@ -401,19 +403,19 @@ LENGTH_DELAY_STATS LENGTH_DELAY_CALCULATION::CalculateLengthDetails( std::vector
         }
 
         if( doTrace )
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: total delays - Track=%lld, Via=%lld, PadToDie=%lld" ),
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: total delays - Track=%lld, Via=%lld, PadToDie=%lld" ),
                         details.TrackDelay, details.ViaDelay, details.PadToDieDelay );
     }
 
     if( doTrace )
     {
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: RESULTS:" ) );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "  Track length: %lld" ), details.TrackLength );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "  Via length: %d (from %d vias)" ), details.ViaLength, details.NumVias );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "  Pad-to-die length: %d (from %d pads)" ), details.PadToDieLength, details.NumPads );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "  TOTAL LENGTH: %lld" ), details.TotalLength() );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "========== CalculateLengthDetails END ==========" ) );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "CalculateLengthDetails: RESULTS:" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "  Track length: %lld" ), details.TrackLength );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "  Via length: %d (from %d vias)" ), details.ViaLength, details.NumVias );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "  Pad-to-die length: %d (from %d pads)" ), details.PadToDieLength, details.NumPads );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "  TOTAL LENGTH: %lld" ), details.TotalLength() );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "========== CalculateLengthDetails END ==========" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "" ) );
     }
 
     return details;
@@ -573,7 +575,7 @@ void LENGTH_DELAY_CALCULATION::mergeShapeLineChains( SHAPE_LINE_CHAIN& aPrimary,
         SHAPE_LINE_CHAIN merged =
                 ( aSecondary.GetPoint( 0 ) == aPrimary.GetPoint( 0 ) ) ? aSecondary.Reverse() : aSecondary;
 
-        wxASSERT( merged.CLastPoint() == aPrimary.GetPoint( 0 ) );
+        KI_ASSERT( merged.CLastPoint() == aPrimary.GetPoint( 0 ) );
 
         merged.Append( aPrimary );
         aPrimary = merged;
@@ -586,7 +588,7 @@ void LENGTH_DELAY_CALCULATION::mergeShapeLineChains( SHAPE_LINE_CHAIN& aPrimary,
         }
         else
         {
-            wxASSERT( aSecondary.CLastPoint() == aPrimary.CLastPoint() );
+            KI_ASSERT( aSecondary.CLastPoint() == aPrimary.CLastPoint() );
             aPrimary.Append( aSecondary.Reverse() );
         }
     }
@@ -690,7 +692,7 @@ void LENGTH_DELAY_CALCULATION::optimiseVias(
             spanLayers.set( padSideLayer );
         }
 
-        wxLogTrace( wxT( "PNS_TUNE" ),
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ),
                     wxT( "optimiseVias: via@(%d,%d) connectedLines=%zu coincidentPad=%d "
                          "spanLayerCount=%d" ),
                     viaPos.x, viaPos.y, connectedLines.size(), coincidentPad ? 1 : 0,
@@ -739,7 +741,7 @@ void LENGTH_DELAY_CALCULATION::OptimiseTraceInPad( SHAPE_LINE_CHAIN& aLine, cons
 void LENGTH_DELAY_CALCULATION::clipLineToVia( SHAPE_LINE_CHAIN& aLine, const PCB_VIA* aVia, PCB_LAYER_ID aLayer,
                                               bool aForward )
 {
-    wxASSERT( aLine.PointCount() >= 2 );
+    KI_ASSERT( aLine.PointCount() >= 2 );
 
     const int start = aForward ? 0 : aLine.PointCount() - 1;
     const int delta = aForward ? 1 : -1;

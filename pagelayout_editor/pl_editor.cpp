@@ -40,6 +40,7 @@
 
 #include "pl_editor_frame.h"
 #include "pl_editor_settings.h"
+#include <core/ki_assert.h>
 
 
 namespace PGE {
@@ -187,7 +188,7 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aSrcPr
     }
     else
     {
-        wxFAIL_MSG( "Unexpected filetype for Pcbnew::SaveFileAs()" );
+        KI_FAIL_MSG( "Unexpected filetype for Pcbnew::SaveFileAs()" );
     }
 }
 

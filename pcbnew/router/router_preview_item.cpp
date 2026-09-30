@@ -41,6 +41,7 @@
 #include <pcb_painter.h>
 #include <netinfo.h>
 #include <layer_ids.h>
+#include <core/ki_assert.h>
 
 using namespace KIGFX;
 
@@ -250,7 +251,7 @@ const BOX2I ROUTER_PREVIEW_ITEM::ViewBBox() const
 
 void ROUTER_PREVIEW_ITEM::drawLineChain( const SHAPE_LINE_CHAIN_BASE* aL, KIGFX::GAL* gal ) const
 {
-    wxCHECK( aL, /* void */ );
+    KI_CHECK( aL, /* void */ );
 
     gal->SetIsFill( false );
 
@@ -472,11 +473,11 @@ void ROUTER_PREVIEW_ITEM::drawShape( const SHAPE* aShape, KIGFX::GAL* gal ) cons
     }
 
     case SH_COMPOUND:
-        wxFAIL_MSG( wxT( "Router preview item: nested compound shapes not supported" ) );
+        KI_FAIL_MSG( wxT( "Router preview item: nested compound shapes not supported" ) );
         break;
 
     case SH_POLY_SET:
-        wxFAIL_MSG( wxT( "Router preview item: SHAPE_POLY_SET not supported" ) );
+        KI_FAIL_MSG( wxT( "Router preview item: SHAPE_POLY_SET not supported" ) );
         break;
 
     case SH_NULL:

@@ -64,6 +64,7 @@
 #include <tools/footprint_wizard_tools.h>
 #include <toolbars_footprint_wizard.h>
 #include <python/scripting/pcb_scripting_tool.h>
+#include <core/ki_assert.h>
 
 
 BEGIN_EVENT_TABLE( FOOTPRINT_WIZARD_FRAME, PCB_BASE_EDIT_FRAME )
@@ -94,7 +95,7 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, wxWindow* aParent
                              FOOTPRINT_WIZARD_FRAME_NAME ),
         m_wizardListShown( false )
 {
-    wxASSERT( aFrameType == FRAME_FOOTPRINT_WIZARD );
+    KI_ASSERT( aFrameType == FRAME_FOOTPRINT_WIZARD );
 
     // This frame is always show modal:
     SetModal( true );
@@ -514,7 +515,7 @@ void FOOTPRINT_WIZARD_FRAME::ClickOnPageList( wxCommandEvent& event )
 void FOOTPRINT_WIZARD_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 {
     PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg );
-    wxCHECK( cfg, /*void*/ );
+    KI_CHECK( cfg, /*void*/ );
 
     PCB_BASE_FRAME::LoadSettings( cfg );
 
@@ -526,7 +527,7 @@ void FOOTPRINT_WIZARD_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 void FOOTPRINT_WIZARD_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 {
     PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg );
-    wxCHECK( cfg, /*void*/ );
+    KI_CHECK( cfg, /*void*/ );
 
     PCB_BASE_FRAME::SaveSettings( cfg );
 
@@ -554,7 +555,7 @@ WINDOW_SETTINGS* FOOTPRINT_WIZARD_FRAME::GetWindowSettings( APP_SETTINGS_BASE* a
     if( PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg ) )
         return &cfg->m_FootprintWizard;
 
-    wxFAIL_MSG( wxT( "FOOTPRINT_CHOOSER not running with PCBNEW_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "FOOTPRINT_CHOOSER not running with PCBNEW_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 

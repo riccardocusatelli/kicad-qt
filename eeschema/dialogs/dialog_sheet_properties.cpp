@@ -52,6 +52,8 @@
 #include "panel_eeschema_color_settings.h"
 #include "wx/dcclient.h"
 #include "string_utils.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 DIALOG_SHEET_PROPERTIES::DIALOG_SHEET_PROPERTIES( SCH_EDIT_FRAME* aParent, SCH_SHEET* aSheet,
                                                   bool* aIsUndoable, bool* aClearAnnotationNewItems,
@@ -262,7 +264,7 @@ static bool positioningChanged( FIELDS_GRID_TABLE* a, SCH_SHEET* b )
 
 bool DIALOG_SHEET_PROPERTIES::TransferDataFromWindow()
 {
-    wxCHECK( m_sheet && m_frame, false );
+    KI_CHECK( m_sheet && m_frame, false );
 
     if( !wxDialog::TransferDataFromWindow() )  // Calls our Validate() method.
         return false;
@@ -308,7 +310,7 @@ bool DIALOG_SHEET_PROPERTIES::TransferDataFromWindow()
     {
         SCH_SCREEN* currentScreen = m_frame->GetCurrentSheet().LastScreen();
 
-        wxCHECK( currentScreen, false );
+        KI_CHECK( currentScreen, false );
 
         bool clearFileName = false;
 
@@ -336,7 +338,7 @@ bool DIALOG_SHEET_PROPERTIES::TransferDataFromWindow()
 
             if( makeRelDlg.ShowModal() == wxID_YES )
             {
-                wxLogTrace( tracePathsAndFiles, "\n    Converted absolute path: '%s'"
+                KI_LOG_TRACE( tracePathsAndFiles, "\n    Converted absolute path: '%s'"
                                                 "\n    to relative path: '%s'",
                                                 tmp.GetPath(),
                                                 fn.GetPath() );

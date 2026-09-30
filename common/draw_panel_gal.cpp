@@ -56,6 +56,8 @@
 
 #include <pgm_base.h>
 #include <confirm.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -175,7 +177,7 @@ EDA_DRAW_PANEL_GAL::~EDA_DRAW_PANEL_GAL()
     Disconnect( wxEVT_SHOW, wxShowEventHandler( EDA_DRAW_PANEL_GAL::onShowEvent ) );
     StopDrawing();
 
-    wxASSERT( !m_drawing );
+    KI_ASSERT( !m_drawing );
 
     delete m_viewControls;
     delete m_view;
@@ -279,7 +281,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 
     ( *m_PaintEventCounter )++;
 
-    wxASSERT( m_painter );
+    KI_ASSERT( m_painter );
 
     KIGFX::RENDER_SETTINGS* settings =
             static_cast<KIGFX::RENDER_SETTINGS*>( m_painter->GetSettings() );
@@ -322,14 +324,14 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
             {
                 // Don't do anything here but don't fail
                 // This can happen when we don't catch `at()` calls
-                wxLogTrace( traceDrawPanel, wxS( "Out of Range error: %s" ), err.what() );
+                KI_LOG_TRACE( traceDrawPanel, wxS( "Out of Range error: %s" ), err.what() );
             }
             catch( std::runtime_error& err )
             {
                 // Handle GL errors (e.g. glMapBuffer failure) that surface during UpdateItems().
                 // These can occur on macOS under memory pressure when embedding large 3D models.
                 // Log and continue so the outer handler can decide whether to switch backends.
-                wxLogTrace( traceDrawPanel, wxS( "Runtime error during UpdateItems: %s" ),
+                KI_LOG_TRACE( traceDrawPanel, wxS( "Runtime error during UpdateItems: %s" ),
                             err.what() );
                 throw;
             }
@@ -404,7 +406,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
     }
     catch( std::exception& err )
     {
-        wxLogTrace( traceDrawPanel, wxS( "DoRePaint exception: %s" ), err.what() );
+        KI_LOG_TRACE( traceDrawPanel, wxS( "DoRePaint exception: %s" ), err.what() );
 
         if( recoverFromGalError( err ) )
             return true;
@@ -659,7 +661,7 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
             break;
 
         default:
-            wxASSERT( false );
+            KI_ASSERT( false );
             KI_FALLTHROUGH;
             // warn about unhandled GAL canvas type, but continue with the fallback option
 

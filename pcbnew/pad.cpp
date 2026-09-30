@@ -71,6 +71,7 @@
 #include <pcb_group.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <pin_type.h>
+#include <core/ki_assert.h>
 
 using KIGFX::PCB_PAINTER;
 using KIGFX::PCB_RENDER_SETTINGS;
@@ -147,7 +148,7 @@ PAD& PAD::operator=( const PAD &aOther )
 
 void PAD::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_PAD_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_PAD_T, /* void */ );
     *this = *static_cast<const PAD*>( aOther );
 }
 
@@ -913,7 +914,7 @@ void PAD::SetRoundRectRadiusRatio( PCB_LAYER_ID aLayer, double aRadiusScale )
 
 void PAD::SetFrontRoundRectRadiusRatio( double aRadiusScale )
 {
-    wxASSERT_MSG( m_padStack.Mode() == PADSTACK::MODE::NORMAL,
+    KI_ASSERT_MSG( m_padStack.Mode() == PADSTACK::MODE::NORMAL,
                   "Set front radius only meaningful for normal padstacks" );
 
     m_padStack.SetRoundRectRadiusRatio( std::clamp( aRadiusScale, 0.0, 0.5 ), F_Cu );
@@ -1056,10 +1057,10 @@ std::shared_ptr<SHAPE> PAD::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING fla
 
     const PAD_DRAW_CACHE_DATA& drawCache = getDrawCache();
 
-    wxCHECK_MSG( drawCache.m_effectiveShapes.contains( aLayer ), nullptr,
+    KI_CHECK_MSG( drawCache.m_effectiveShapes.contains( aLayer ), nullptr,
                  wxString::Format( wxT( "Missing shape in PAD::GetEffectiveShape for layer %s." ),
                                    magic_enum::enum_name( aLayer ) ) );
-    wxCHECK_MSG( drawCache.m_effectiveShapes.at( aLayer ), nullptr,
+    KI_CHECK_MSG( drawCache.m_effectiveShapes.at( aLayer ), nullptr,
                  wxString::Format( wxT( "Null shape in PAD::GetEffectiveShape for layer %s." ),
                                    magic_enum::enum_name( aLayer ) ) );
 
@@ -1274,7 +1275,7 @@ const SHAPE_COMPOUND& PAD::buildEffectiveShape( PCB_LAYER_ID aLayer ) const
         break;
 
     default:
-        wxFAIL_MSG( wxT( "PAD::buildEffectiveShapes: Unsupported pad shape: PAD_SHAPE::" )
+        KI_FAIL_MSG( wxT( "PAD::buildEffectiveShapes: Unsupported pad shape: PAD_SHAPE::" )
                     + wxString( std::string( magic_enum::enum_name( effectiveShape ) ) ) );
         break;
     }
@@ -1576,7 +1577,7 @@ VECTOR2I PAD::ShapePos( PCB_LAYER_ID aLayer ) const
 
 void PAD::SwapShapePositions( PAD* aLhs, PAD* aRhs )
 {
-    wxCHECK( aLhs && aRhs, /* void */ );
+    KI_CHECK( aLhs && aRhs, /* void */ );
 
     VECTOR2I lhsShapePos = aLhs->ShapePos( PADSTACK::ALL_LAYERS );
     VECTOR2I rhsShapePos = aRhs->ShapePos( PADSTACK::ALL_LAYERS );
@@ -2613,7 +2614,7 @@ bool PAD::TransformHoleToPolygon( SHAPE_POLY_SET& aBuffer, int aClearance, int a
 void PAD::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
                                    int aMaxError, ERROR_LOC aErrorLoc, bool ignoreLineWidth ) const
 {
-    wxASSERT_MSG( aLayer != UNDEFINED_LAYER,
+    KI_ASSERT_MSG( aLayer != UNDEFINED_LAYER,
                   wxT( "UNDEFINED_LAYER is no longer allowed for PAD::TransformShapeToPolygon" ) );
 
     // minimal segment count to approximate a circle to create the polygonal pad shape
@@ -2709,7 +2710,7 @@ void PAD::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer,
     }
 
     default:
-        wxFAIL_MSG( wxT( "PAD::TransformShapeToPolygon no implementation for " )
+        KI_FAIL_MSG( wxT( "PAD::TransformShapeToPolygon no implementation for " )
                     + wxString( std::string( magic_enum::enum_name( shape ) ) ) );
         break;
     }

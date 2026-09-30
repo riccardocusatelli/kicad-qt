@@ -54,6 +54,8 @@
 #include <widgets/bitmap_button.h>
 #include <3d_viewer/eda_3d_viewer_frame.h>
 #include <tools/pcb_editor_conditions.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 static wxArrayString s_FootprintHistoryList;
@@ -495,7 +497,7 @@ WINDOW_SETTINGS* FOOTPRINT_CHOOSER_FRAME::GetWindowSettings( APP_SETTINGS_BASE* 
     else if( CVPCB_SETTINGS* cvpcb_cfg = dynamic_cast<CVPCB_SETTINGS*>( aCfg ) )
         return &cvpcb_cfg->m_FootprintViewer;
 
-    wxFAIL_MSG( wxT( "FOOTPRINT_CHOOSER not running with PCBNEW_SETTINGS or CVPCB_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "FOOTPRINT_CHOOSER not running with PCBNEW_SETTINGS or CVPCB_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 
@@ -518,7 +520,7 @@ void FOOTPRINT_CHOOSER_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
     {
     case MAIL_SYMBOL_NETLIST:
     {
-        wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "MAIL_SYMBOL_NETLIST received: size=%zu" ), payload.size() );
+        KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "MAIL_SYMBOL_NETLIST received: size=%zu" ), payload.size() );
         wxSizer*  filtersSizer = m_chooserPanel->GetFiltersSizer();
         wxWindow* filtersWindow = filtersSizer->GetContainingWindow();
         wxString  msg;
@@ -538,7 +540,7 @@ void FOOTPRINT_CHOOSER_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         {
             wxArrayString tokens = wxSplit( strings[0], '\t' );
 
-            wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "First line entries=%u" ), (unsigned) tokens.size() );
+            KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "First line entries=%u" ), (unsigned) tokens.size() );
 
             for( const wxString& pin : tokens )
                 pinNames[ pin.BeforeFirst( ' ' ) ] = pin.AfterFirst( ' ' );
@@ -555,7 +557,7 @@ void FOOTPRINT_CHOOSER_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
                 pinList << kv.first;
             }
 
-            wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "Parsed pins=%d -> [%s]" ), m_pinCount, pinList );
+            KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "Parsed pins=%d -> [%s]" ), m_pinCount, pinList );
         }
 
         if( strings.size() >= 2 && !strings[1].empty() )
@@ -601,7 +603,7 @@ void FOOTPRINT_CHOOSER_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         if( m_pinCount > 0 )
         {
             msg.Printf( _( "Filter by pin count (%d)" ), m_pinCount );
-            wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "Pin-count label: %s" ), msg );
+            KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "Pin-count label: %s" ), msg );
 
             if( !m_filterByPinCount )
             {
@@ -635,7 +637,7 @@ void FOOTPRINT_CHOOSER_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             m_chooserPanel->Regenerate();
 
         m_chooserPanel->GetViewerPanel()->SetPinFunctions( pinNames );
-        wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "SetPinFunctions called with %zu entries" ), pinNames.size() );
+        KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "SetPinFunctions called with %zu entries" ), pinNames.size() );
 
         // Save the wxFormBuilder size of the dialog...
         if( s_dialogRect.GetSize().x == 0 || s_dialogRect.GetSize().y == 0 )
@@ -936,7 +938,7 @@ void FOOTPRINT_CHOOSER_FRAME::setupUIConditions()
     ACTION_MANAGER*       mgr = m_toolManager->GetActionManager();
     PCB_EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
     // clang-format off
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )

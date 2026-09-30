@@ -38,6 +38,7 @@
 #include <widgets/wx_grid.h>
 #include <widgets/grid_text_button_helpers.h>
 #include <confirm.h>
+#include <core/ki_assert.h>
 
 
 extern KICOMMON_API
@@ -51,7 +52,7 @@ DIALOG_DESTINATION::DIALOG_DESTINATION( wxWindow* aParent, JOBSET* aJobsFile,
         m_destination( aDestination )
 {
     // prevent someone from failing to add the type info in the future
-    wxASSERT( JobsetDestinationTypeInfos.contains( m_destination->m_type ) );
+    KI_ASSERT( JobsetDestinationTypeInfos.contains( m_destination->m_type ) );
 
     SetTitle( wxString::Format( _( "%s Destination" ),
                                 m_destination->m_outputHandler->GetDefaultDescription() ) );

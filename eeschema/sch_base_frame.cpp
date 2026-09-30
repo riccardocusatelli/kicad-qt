@@ -71,6 +71,8 @@
 #include <wx/log.h>
 #include <wx/msgdlg.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #if defined(__linux__) || defined(__FreeBSD__)
 #include <spacenav/spnav_2d_plugin.h>
@@ -83,7 +85,7 @@
 LIB_SYMBOL* SchGetLibSymbol( const LIB_ID& aLibId, SYMBOL_LIBRARY_ADAPTER* aLibMgr,
                              LEGACY_SYMBOL_LIB* aCacheLib, wxWindow* aParent, bool aShowErrorMsg )
 {
-    wxCHECK_MSG( aLibMgr, nullptr, wxS( "Invalid symbol library manager adapter." ) );
+    KI_CHECK_MSG( aLibMgr, nullptr, wxS( "Invalid symbol library manager adapter." ) );
 
     LIB_SYMBOL* symbol = nullptr;
 
@@ -93,7 +95,7 @@ LIB_SYMBOL* SchGetLibSymbol( const LIB_ID& aLibId, SYMBOL_LIBRARY_ADAPTER* aLibM
 
         if( !symbol && aCacheLib )
         {
-            wxCHECK_MSG( aCacheLib->IsCache(), nullptr, wxS( "Invalid cache library." ) );
+            KI_CHECK_MSG( aCacheLib->IsCache(), nullptr, wxS( "Invalid cache library." ) );
 
             wxString cacheName = aLibId.GetLibNickname().wx_str();
             cacheName << "_" << aLibId.GetLibItemName();
@@ -237,14 +239,14 @@ const VECTOR2I SCH_BASE_FRAME::GetPageSizeIU() const
 
 const TITLE_BLOCK& SCH_BASE_FRAME::GetTitleBlock() const
 {
-    wxASSERT( GetScreen() );
+    KI_ASSERT( GetScreen() );
     return GetScreen()->GetTitleBlock();
 }
 
 
 void SCH_BASE_FRAME::SetTitleBlock( const TITLE_BLOCK& aTitleBlock )
 {
-    wxASSERT( GetScreen() );
+    KI_ASSERT( GetScreen() );
     GetScreen()->SetTitleBlock( aTitleBlock );
 }
 
@@ -359,11 +361,11 @@ void SCH_BASE_FRAME::ActivateGalCanvas()
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
     }
     catch( ... )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "Unknown exception during SpaceMouse initialization" ) );
     }
 }
@@ -467,7 +469,7 @@ void SCH_BASE_FRAME::AddToScreen( EDA_ITEM* aItem, SCH_SCREEN* aScreen )
     // Null pointers will cause boost::ptr_vector to raise a boost::bad_pointer exception which
     // will be unhandled.  There is no valid reason to pass an invalid EDA_ITEM pointer to the
     // screen append function.
-    wxCHECK( aItem, /* void */ );
+    KI_CHECK( aItem, /* void */ );
 
     SCH_SCREEN* screen = aScreen;
 
@@ -804,7 +806,7 @@ void SCH_BASE_FRAME::setSymWatcher( const LIB_ID* aID )
 
     if( m_watcher )
     {
-        wxLogTrace( traceLibWatch, "Remove watch" );
+        KI_LOG_TRACE( traceLibWatch, "Remove watch" );
         m_watcher->RemoveAll();
         m_watcher->SetOwner( nullptr );
         m_watcher.reset();
@@ -819,14 +821,14 @@ void SCH_BASE_FRAME::setSymWatcher( const LIB_ID* aID )
 
     if( !uri )
     {
-        wxLogTrace( traceLibWatch, "Could not get URI for library %s",
+        KI_LOG_TRACE( traceLibWatch, "Could not get URI for library %s",
                     wxString( aID->GetLibNickname().c_str() ) );
         return;
     }
 
     wxString tmp = ExpandEnvVarSubstitutions( *uri, &Prj() );
 
-    wxLogTrace( traceLibWatch, "Setting up watcher for %s", tmp );
+    KI_LOG_TRACE( traceLibWatch, "Setting up watcher for %s", tmp );
 
     if( wxFileName::DirExists( tmp ) )
     {
@@ -871,7 +873,7 @@ void SCH_BASE_FRAME::setSymWatcher( const LIB_ID* aID )
 
 void SCH_BASE_FRAME::OnSymChange( wxFileSystemWatcherEvent& aEvent )
 {
-    wxLogTrace( traceLibWatch, "OnSymChange: %s, watcher file: %s",
+    KI_LOG_TRACE( traceLibWatch, "OnSymChange: %s, watcher file: %s",
                 aEvent.GetPath().GetFullPath(), m_watcherFileName.GetFullPath() );
 
     if( !m_watcher || !m_watcher.get() || m_watcherFileName.GetPath().IsEmpty() )
@@ -895,7 +897,7 @@ void SCH_BASE_FRAME::OnSymChange( wxFileSystemWatcherEvent& aEvent )
     // Start the debounce timer (set to 1 second)
     if( !m_watcherDebounceTimer.StartOnce( 1000 ) )
     {
-        wxLogTrace( traceLibWatch, "Failed to start the debounce timer" );
+        KI_LOG_TRACE( traceLibWatch, "Failed to start the debounce timer" );
         return;
     }
 }
@@ -911,7 +913,7 @@ void SCH_BASE_FRAME::OnSymChangeDebounceTimer( wxTimerEvent& aEvent )
 
     if( m_inSymChangeTimerEvent )
     {
-        wxLogTrace( traceLibWatch, "Restarting debounce timer" );
+        KI_LOG_TRACE( traceLibWatch, "Restarting debounce timer" );
         m_watcherDebounceTimer.StartOnce( 3000 );
         return;
     }
@@ -922,7 +924,7 @@ void SCH_BASE_FRAME::OnSymChangeDebounceTimer( wxTimerEvent& aEvent )
     // reload until the dialog is dismissed.
     if( !IsEnabled() )
     {
-        wxLogTrace( traceLibWatch, "Frame disabled (dialog open); restarting debounce timer" );
+        KI_LOG_TRACE( traceLibWatch, "Frame disabled (dialog open); restarting debounce timer" );
         m_watcherDebounceTimer.StartOnce( 1000 );
         return;
     }
@@ -933,12 +935,12 @@ void SCH_BASE_FRAME::OnSymChangeDebounceTimer( wxTimerEvent& aEvent )
     // once the tool finishes rather than silently dropped.
     if( !ToolStackIsEmpty() )
     {
-        wxLogTrace( traceLibWatch, "Interactive tool active; restarting debounce timer" );
+        KI_LOG_TRACE( traceLibWatch, "Interactive tool active; restarting debounce timer" );
         m_watcherDebounceTimer.StartOnce( 1000 );
         return;
     }
 
-    wxLogTrace( traceLibWatch, "OnSymChangeDebounceTimer" );
+    KI_LOG_TRACE( traceLibWatch, "OnSymChangeDebounceTimer" );
 
     long long currentTimestamp = 0;
 
@@ -970,7 +972,7 @@ void SCH_BASE_FRAME::OnSymChangeDebounceTimer( wxTimerEvent& aEvent )
       || IsOK( this, _( "The library containing the current symbol has changed.\n"
                         "Do you want to reload the library?" ) ) )
     {
-        wxLogTrace( traceLibWatch, "Sending refresh symbol mail" );
+        KI_LOG_TRACE( traceLibWatch, "Sending refresh symbol mail" );
 
         // For directory libraries, GetFullPath() appends a trailing separator which
         // won't match the library table URI. Use GetPath() for directories instead.

@@ -34,6 +34,7 @@
 #include <pcb_shape.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 IMPLEMENT_ENUM_TO_WXANY( PAD_DRILL_POST_MACHINING_MODE );
@@ -1209,7 +1210,7 @@ const PADSTACK::COPPER_LAYER_PROPS& PADSTACK::CopperLayer( PCB_LAYER_ID aLayer )
         if( m_copperProps.count( ALL_LAYERS ) )
             return m_copperProps.at( ALL_LAYERS );
 
-        wxASSERT( !m_copperProps.empty() );
+        KI_ASSERT( !m_copperProps.empty() );
         return m_copperProps.begin()->second;
     }
 
@@ -1281,7 +1282,7 @@ PCB_LAYER_ID PADSTACK::EffectiveLayerFor( PCB_LAYER_ID aLayer ) const
     if( m_copperProps.count( ALL_LAYERS ) )
         return ALL_LAYERS;
 
-    wxASSERT( !m_copperProps.empty() );
+    KI_ASSERT( !m_copperProps.empty() );
     return m_copperProps.begin()->first;
 }
 

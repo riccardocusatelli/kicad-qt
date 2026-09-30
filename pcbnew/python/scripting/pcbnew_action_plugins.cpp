@@ -44,6 +44,7 @@
 #include <wx/app.h>
 #include <kiplatform/app.h>
 #include "../../scripting/python_scripting.h"
+#include <core/ki_assert.h>
 
 PYTHON_ACTION_PLUGIN::PYTHON_ACTION_PLUGIN( PyObject* aAction )
 {
@@ -320,7 +321,7 @@ void PCB_EDIT_FRAME::RunActionPlugin( ACTION_PLUGIN* aActionPlugin )
     else
     {
         oldBuffer = PopCommandFromUndoList();
-        wxASSERT( oldBuffer );
+        KI_ASSERT( oldBuffer );
     }
 
     // Try do discover what was modified
@@ -335,7 +336,7 @@ void PCB_EDIT_FRAME::RunActionPlugin( ACTION_PLUGIN* aActionPlugin )
         BOARD_ITEM* item = (BOARD_ITEM*) oldBuffer->GetPickedItem( i );
         ITEM_PICKER picker( nullptr, item, UNDO_REDO::DELETED );
 
-        wxASSERT( item );
+        KI_ASSERT( item );
 
         if( currItemList.find( item ) == currItemList.end() )
         {

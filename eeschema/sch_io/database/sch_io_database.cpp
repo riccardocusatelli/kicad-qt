@@ -39,6 +39,8 @@
 #include "sch_io_database.h"
 
 #include <dialog_database_lib_settings.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SCH_IO_DATABASE::SCH_IO_DATABASE() :
@@ -74,7 +76,7 @@ void SCH_IO_DATABASE::EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList,
                                           const wxString&           aLibraryPath,
                                           const std::map<std::string, UTF8>*         aProperties )
 {
-    wxCHECK_RET( m_adapter, "Database plugin missing library manager adapter handle!" );
+    KI_CHECK_RET( m_adapter, "Database plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
     ensureConnection();
     cacheLib();
@@ -98,7 +100,7 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
                                          const wxString&   aAliasName,
                                          const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_MSG( m_adapter, nullptr, "Database plugin missing library manager adapter handle!" );
+    KI_CHECK_MSG( m_adapter, nullptr, "Database plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
     ensureConnection();
 
@@ -148,7 +150,7 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
 
     if( tablesToTry.empty() )
     {
-        wxLogTrace( traceDatabase, wxT( "LoadSymbol: table '%s' not found in config" ), tableName );
+        KI_LOG_TRACE( traceDatabase, wxT( "LoadSymbol: table '%s' not found in config" ), tableName );
         return nullptr;
     }
 
@@ -161,12 +163,12 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
                                result ) )
         {
             foundTable = table;
-            wxLogTrace( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) found in %s" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) found in %s" ),
                         table->key_col, symbolName, table->table );
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) failed for table %s" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) failed for table %s" ),
                         table->key_col, symbolName, table->table );
         }
     }
@@ -387,19 +389,19 @@ void SCH_IO_DATABASE::ensureSettings( const wxString& aSettingsPath )
     }
     else if( m_conn && m_settings && !aSettingsPath.IsEmpty() )
     {
-        wxASSERT_MSG( aSettingsPath == m_settings->GetFilename(),
+        KI_ASSERT_MSG( aSettingsPath == m_settings->GetFilename(),
                       "Path changed for database library without re-initializing plugin!" );
     }
     else if( !m_settings )
     {
-        wxLogTrace( traceDatabase, wxT( "ensureSettings: no settings but no valid path!" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "ensureSettings: no settings but no valid path!" ) );
     }
 }
 
 
 void SCH_IO_DATABASE::ensureConnection()
 {
-    wxCHECK_RET( m_settings, "Call ensureSettings before ensureConnection!" );
+    KI_CHECK_RET( m_settings, "Call ensureSettings before ensureConnection!" );
 
     connect();
 
@@ -416,7 +418,7 @@ void SCH_IO_DATABASE::ensureConnection()
 
 void SCH_IO_DATABASE::connect()
 {
-    wxCHECK_RET( m_settings, "Call ensureSettings before connect()!" );
+    KI_CHECK_RET( m_settings, "Call ensureSettings before connect()!" );
 
     if( m_conn && !m_conn->IsConnected() )
         m_conn.reset();
@@ -566,7 +568,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
 
             if( cycle )
             {
-                wxLogTrace( traceDatabase,
+                KI_LOG_TRACE( traceDatabase,
                             wxT( "loadSymbolFromRow: cycle detected resolving '%s' "
                                  "(row '%s' in table '%s'); skipping recursive load" ),
                             symbolIdStr, aSymbolName, aTable.name );
@@ -579,25 +581,25 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
 
         if( originalSymbol )
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: found original symbol '%s'" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: found original symbol '%s'" ),
                         symbolIdStr );
             symbol.reset( originalSymbol->Duplicate() );
             symbol->SetSourceLibId( symbolId );
         }
         else if( cycle )
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: source symbol '%s' is a "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: source symbol '%s' is a "
                                             "self-reference, will create empty symbol" ),
                         symbolIdStr );
         }
         else if( !symbolId.IsValid() )
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymboFromRow: source symbol id '%s' is invalid, "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymboFromRow: source symbol id '%s' is invalid, "
                                             "will create empty symbol" ), symbolIdStr );
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymboFromRow: source symbol '%s' not found, "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymboFromRow: source symbol '%s' not found, "
                                             "will create empty symbol" ), symbolIdStr );
         }
     }
@@ -633,7 +635,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
     }
     else
     {
-        wxLogTrace( traceDatabase, wxT( "loadSymboFromRow: footprint field %s not found." ),
+        KI_LOG_TRACE( traceDatabase, wxT( "loadSymboFromRow: footprint field %s not found." ),
                     aTable.footprints_col );
     }
 
@@ -674,7 +676,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_sim value for %s "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_sim value for %s "
                                             "could not be cast to a boolean" ), aSymbolName );
         }
     }
@@ -690,7 +692,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_board value for %s "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_board value for %s "
                                             "could not be cast to a boolean" ), aSymbolName );
         }
     }
@@ -706,7 +708,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_bom value for %s "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_bom value for %s "
                                             "could not be cast to a boolean" ), aSymbolName );
         }
     }
@@ -733,7 +735,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
     {
         if( !aRow.count( mapping.column ) )
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: field %s not found in result" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: field %s not found in result" ),
                         mapping.column );
             continue;
         }

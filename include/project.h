@@ -36,6 +36,7 @@
 #include <wx_filename.h>
 #include <wx/string.h>
 #include <core/typeinfo.h>
+#include <core/ki_assert.h>
 
 /// A variable name whose value holds the current project directory.
 /// Currently an environment variable, eventually a project variable.
@@ -204,13 +205,13 @@ public:
 
     virtual PROJECT_FILE& GetProjectFile() const
     {
-        wxASSERT( m_projectFile );
+        KI_ASSERT( m_projectFile );
         return *m_projectFile;
     }
 
     virtual PROJECT_LOCAL_SETTINGS& GetLocalSettings() const
     {
-        wxASSERT( m_localSettings );
+        KI_ASSERT( m_localSettings );
         return *m_localSettings;
     }
 

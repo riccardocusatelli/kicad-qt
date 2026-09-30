@@ -22,6 +22,7 @@
  */
 
 #include "kigit_orphan_registry.h"
+#include <core/ki_log.h>
 
 
 KIGIT_ORPHAN_REGISTRY::KIGIT_ORPHAN_REGISTRY() = default;
@@ -101,7 +102,7 @@ size_t KIGIT_ORPHAN_REGISTRY::JoinAll( std::chrono::milliseconds aTimeout )
         }
         else
         {
-            wxLogTrace( traceGit,
+            KI_LOG_TRACE( traceGit,
                         "Orphan git thread [%s] did not finish in time; detaching",
                         entry.m_label.c_str() );
 

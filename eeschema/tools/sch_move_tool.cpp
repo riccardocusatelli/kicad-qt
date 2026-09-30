@@ -61,6 +61,8 @@
 #include <sch_screen.h>
 #include <sch_item_alignment.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 // For adding to or removing from selections
@@ -491,7 +493,7 @@ int SCH_MOVE_TOOL::Main( const TOOL_EVENT& aEvent )
 
     if( SCH_COMMIT* commit = dynamic_cast<SCH_COMMIT*>( aEvent.Commit() ) )
     {
-        wxCHECK( aEvent.SynchronousState(), 0 );
+        KI_CHECK( aEvent.SynchronousState(), 0 );
         aEvent.SynchronousState()->store( STS_RUNNING );
 
         if( doMoveSelection( aEvent, commit ) )
@@ -706,7 +708,7 @@ bool SCH_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COMMIT* aComm
     // Main loop: keep receiving events
     do
     {
-        wxLogTrace( traceSchMove, "doMoveSelection: event loop iteration, evt=%s, action=%s",
+        KI_LOG_TRACE( traceSchMove, "doMoveSelection: event loop iteration, evt=%s, action=%s",
                     evt->Category() == TC_MOUSE ? "MOUSE" :
                     evt->Category() == TC_KEYBOARD ? "KEYBOARD" :
                     evt->Category() == TC_COMMAND ? "COMMAND" : "OTHER",
@@ -935,7 +937,7 @@ bool SCH_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COMMIT* aComm
         //
         else if( !handleMoveToolActions( evt, aCommit, selection ) )
         {
-            wxLogTrace( traceSchMove, "doMoveSelection: handleMoveToolActions returned false, exiting" );
+            KI_LOG_TRACE( traceSchMove, "doMoveSelection: handleMoveToolActions returned false, exiting" );
             break;  // Exit if told to by handler
         }
         //------------------------------------------------------------------------
@@ -993,7 +995,7 @@ bool SCH_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COMMIT* aComm
                  || evt->IsAction( &ACTIONS::redo ) )
         {
             // Event was already handled by handleMoveToolActions, don't pass it on
-            wxLogTrace( traceSchMove, "doMoveSelection: event handled, not passing" );
+            KI_LOG_TRACE( traceSchMove, "doMoveSelection: event handled, not passing" );
         }
         else
         {
@@ -1331,7 +1333,7 @@ void SCH_MOVE_TOOL::initializeMoveOperation( const TOOL_EVENT& aEvent, SCH_SELEC
 
     if( aEvent.IsAction( &SCH_ACTIONS::restartMove ) )
     {
-        wxASSERT_MSG( m_anchorPos, "Should be already set from previous cmd" );
+        KI_ASSERT_MSG( m_anchorPos, "Should be already set from previous cmd" );
     }
     else if( placingNewItems )
     {
@@ -1518,7 +1520,7 @@ void SCH_MOVE_TOOL::performItemMove( SCH_SELECTION& aSelection, const VECTOR2I& 
                                      SCH_COMMIT* aCommit, int& aXBendCount, int& aYBendCount,
                                      const EE_GRID_HELPER& aGrid )
 {
-    wxLogTrace( traceSchMove, "performItemMove: delta=(%d,%d), moveOffset=(%d,%d), selection size=%u",
+    KI_LOG_TRACE( traceSchMove, "performItemMove: delta=(%d,%d), moveOffset=(%d,%d), selection size=%u",
                 aDelta.x, aDelta.y, m_moveOffset.x, m_moveOffset.y, aSelection.GetSize() );
 
     // We need to check if the movement will change the net offset direction on the X and Y
@@ -1675,12 +1677,12 @@ void SCH_MOVE_TOOL::performItemMove( SCH_SELECTION& aSelection, const VECTOR2I& 
 bool SCH_MOVE_TOOL::handleMoveToolActions( const TOOL_EVENT* aEvent, SCH_COMMIT* aCommit,
                                             const SCH_SELECTION& aSelection )
 {
-    wxLogTrace( traceSchMove, "handleMoveToolActions: received event, action=%s",
+    KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: received event, action=%s",
                 aEvent->Format().c_str() );
 
     if( aEvent->IsAction( &ACTIONS::doDelete ) )
     {
-        wxLogTrace( traceSchMove, "handleMoveToolActions: doDelete, exiting move" );
+        KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: doDelete, exiting move" );
         const_cast<TOOL_EVENT*>( aEvent )->SetPassEvent();
         return false;  // Exit on delete; there will no longer be anything to drag
     }
@@ -1692,22 +1694,22 @@ bool SCH_MOVE_TOOL::handleMoveToolActions( const TOOL_EVENT* aEvent, SCH_COMMIT*
     }
     else if( aEvent->IsAction( &SCH_ACTIONS::rotateCW ) )
     {
-        wxLogTrace( traceSchMove, "handleMoveToolActions: rotateCW event received, selection size=%u",
+        KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: rotateCW event received, selection size=%u",
                     aSelection.GetSize() );
         m_toolMgr->RunSynchronousAction( SCH_ACTIONS::rotateCW, aCommit );
-        wxLogTrace( traceSchMove, "handleMoveToolActions: rotateCW RunSynchronousAction completed" );
+        KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: rotateCW RunSynchronousAction completed" );
         updateStoredPositions( aSelection );
-        wxLogTrace( traceSchMove, "handleMoveToolActions: rotateCW updateStoredPositions completed" );
+        KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: rotateCW updateStoredPositions completed" );
         // Note: SCH_EDIT_TOOL::Rotate already posts refreshPreview when moving
     }
     else if( aEvent->IsAction( &SCH_ACTIONS::rotateCCW ) )
     {
-        wxLogTrace( traceSchMove, "handleMoveToolActions: rotateCCW event received, selection size=%u",
+        KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: rotateCCW event received, selection size=%u",
                     aSelection.GetSize() );
         m_toolMgr->RunSynchronousAction( SCH_ACTIONS::rotateCCW, aCommit );
-        wxLogTrace( traceSchMove, "handleMoveToolActions: rotateCCW RunSynchronousAction completed" );
+        KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: rotateCCW RunSynchronousAction completed" );
         updateStoredPositions( aSelection );
-        wxLogTrace( traceSchMove, "handleMoveToolActions: rotateCCW updateStoredPositions completed" );
+        KI_LOG_TRACE( traceSchMove, "handleMoveToolActions: rotateCCW updateStoredPositions completed" );
         // Note: SCH_EDIT_TOOL::Rotate already posts refreshPreview when moving
     }
     else if( aEvent->IsAction( &ACTIONS::increment ) )
@@ -1799,7 +1801,7 @@ bool SCH_MOVE_TOOL::handleMoveToolActions( const TOOL_EVENT* aEvent, SCH_COMMIT*
 
 void SCH_MOVE_TOOL::updateStoredPositions( const SCH_SELECTION& aSelection )
 {
-    wxLogTrace( traceSchMove, "updateStoredPositions: start, selection size=%u",
+    KI_LOG_TRACE( traceSchMove, "updateStoredPositions: start, selection size=%u",
                 aSelection.GetSize() );
 
     // After transformations like rotation during a move, we need to update the stored
@@ -1818,7 +1820,7 @@ void SCH_MOVE_TOOL::updateStoredPositions( const SCH_SELECTION& aSelection )
         VECTOR2I newPos = schItem->GetPosition();
         schItem->SetStoredPos( newPos );
 
-        wxLogTrace( traceSchMove, "  item[%d] type=%d: stored pos updated (%d,%d) -> (%d,%d)",
+        KI_LOG_TRACE( traceSchMove, "  item[%d] type=%d: stored pos updated (%d,%d) -> (%d,%d)",
                     itemCount++, (int) schItem->Type(), oldPos.x, oldPos.y, newPos.x, newPos.y );
 
         // Also update stored positions for sheet pins
@@ -1830,13 +1832,13 @@ void SCH_MOVE_TOOL::updateStoredPositions( const SCH_SELECTION& aSelection )
                 VECTOR2I pinOldPos = pin->GetStoredPos();
                 VECTOR2I pinNewPos = pin->GetPosition();
                 pin->SetStoredPos( pinNewPos );
-                wxLogTrace( traceSchMove, "    sheet pin: stored pos updated (%d,%d) -> (%d,%d)",
+                KI_LOG_TRACE( traceSchMove, "    sheet pin: stored pos updated (%d,%d) -> (%d,%d)",
                             pinOldPos.x, pinOldPos.y, pinNewPos.x, pinNewPos.y );
             }
         }
     }
 
-    wxLogTrace( traceSchMove, "updateStoredPositions: complete, updated %d items", itemCount );
+    KI_LOG_TRACE( traceSchMove, "updateStoredPositions: complete, updated %d items", itemCount );
 }
 
 
@@ -2691,7 +2693,7 @@ void SCH_MOVE_TOOL::getConnectedDragItems( SCH_COMMIT* aCommit, SCH_ITEM* aSelec
 void SCH_MOVE_TOOL::moveItem( EDA_ITEM* aItem, const VECTOR2I& aDelta )
 {
     static int moveCallCount = 0;
-    wxLogTrace( traceSchMove, "moveItem[%d]: type=%d, delta=(%d,%d)",
+    KI_LOG_TRACE( traceSchMove, "moveItem[%d]: type=%d, delta=(%d,%d)",
                 ++moveCallCount, aItem->Type(), aDelta.x, aDelta.y );
 
     switch( aItem->Type() )

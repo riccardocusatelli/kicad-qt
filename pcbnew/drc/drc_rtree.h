@@ -38,6 +38,7 @@
 #include <math/vector2d.h>
 #include "geometry/shape_null.h"
 #include "board.h"
+#include <core/ki_assert.h>
 
 #define ATOMIC_TABLES true
 
@@ -110,7 +111,7 @@ public:
     void Insert( BOARD_ITEM* aItem, PCB_LAYER_ID aRefLayer, PCB_LAYER_ID aTargetLayer,
                  int aWorstClearance, bool aAtomicTables = false )
     {
-        wxCHECK( aTargetLayer != UNDEFINED_LAYER, /* void */ );
+        KI_CHECK( aTargetLayer != UNDEFINED_LAYER, /* void */ );
 
         if( aItem->Type() == PCB_FIELD_T && !static_cast<PCB_FIELD*>( aItem )->IsVisible() )
             return;
@@ -123,7 +124,7 @@ public:
         std::vector<const SHAPE*> subshapes;
         std::shared_ptr<SHAPE> shape = aItem->GetEffectiveShape( aRefLayer );
 
-        wxCHECK2_MSG( shape, return, wxT( "Item does not have a valid shape for this layer" ) );
+        KI_CHECK2_MSG( shape, return, wxT( "Item does not have a valid shape for this layer" ) );
 
         if( shape->HasIndexableSubshapes() )
             shape->GetIndexableSubshapes( subshapes );
@@ -267,7 +268,7 @@ public:
                     if( filtered )
                         return true;
 
-                    wxCHECK( aItem->shape, false );
+                    KI_CHECK( aItem->shape, false );
 
                     if( refShape->Collide( aItem->shape, aClearance ) )
                     {

@@ -27,6 +27,8 @@
 #include <trace_helpers.h>
 #include <wx/tokenzr.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 #if defined(_WIN32)
@@ -58,7 +60,7 @@ static wxString base_dir( const wxString& aRelativePath, const wxString& aBaseDi
 
     if( !fn.IsAbsolute() && !!aBaseDir )
     {
-        wxASSERT_MSG( wxFileName( aBaseDir ).IsAbsolute(),
+        KI_ASSERT_MSG( wxFileName( aBaseDir ).IsAbsolute(),
                       wxT( "Must pass absolute path in aBaseDir" ) );
         fn.MakeRelativeTo( aBaseDir );
     }
@@ -203,11 +205,11 @@ const wxString SEARCH_STACK::LastVisitedPath( const wxString& aSubPathToSearch )
 #if defined( DEBUG )
 void SEARCH_STACK::Show( const wxString& aPrefix ) const
 {
-    wxLogTrace( tracePathsAndFiles, "%s SEARCH_STACK:", aPrefix );
+    KI_LOG_TRACE( tracePathsAndFiles, "%s SEARCH_STACK:", aPrefix );
 
     for( unsigned i = 0; i < GetCount(); ++i )
     {
-        wxLogTrace( tracePathsAndFiles, "  [%2u]:%s", i, TO_UTF8( ( *this )[i] ) );
+        KI_LOG_TRACE( tracePathsAndFiles, "  [%2u]:%s", i, TO_UTF8( ( *this )[i] ) );
     }
 }
 #endif

@@ -33,6 +33,7 @@
 #include <stroke_params.h>
 #include <widgets/color_swatch.h>
 #include <sch_commit.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_WIRE_BUS_PROPERTIES::DIALOG_WIRE_BUS_PROPERTIES( SCH_EDIT_FRAME* aParent,
@@ -80,7 +81,7 @@ bool DIALOG_WIRE_BUS_PROPERTIES::TransferDataToWindow()
         }
         else
         {
-            wxASSERT( item->Type() == SCH_JUNCTION_T );
+            KI_ASSERT( item->Type() == SCH_JUNCTION_T );
             SCH_JUNCTION* junction = static_cast<SCH_JUNCTION*>( item );
             color = junction->GetColor();
             dotSize = junction->GetDiameter();
@@ -130,7 +131,7 @@ bool DIALOG_WIRE_BUS_PROPERTIES::TransferDataToWindow()
         else if( style < (int) lineTypeNames.size() )
             m_typeCombo->SetSelection( style );
         else
-            wxFAIL_MSG( "Line type not found in the type lookup map" );
+            KI_FAIL_MSG( "Line type not found in the type lookup map" );
     }
     else
     {

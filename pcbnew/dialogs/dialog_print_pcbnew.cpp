@@ -35,6 +35,7 @@
 #include <dialogs/dialog_print_generic.h>
 #include <pcbnew_printout.h>
 #include <wx/checklst.h>
+#include <core/ki_assert.h>
 
 
 class DIALOG_PRINT_PCBNEW : public DIALOG_PRINT_GENERIC
@@ -57,7 +58,7 @@ private:
 
     PCBNEW_PRINTOUT_SETTINGS* settings() const
     {
-        wxASSERT( dynamic_cast<PCBNEW_PRINTOUT_SETTINGS*>( m_settings ) );
+        KI_ASSERT( dynamic_cast<PCBNEW_PRINTOUT_SETTINGS*>( m_settings ) );
         return static_cast<PCBNEW_PRINTOUT_SETTINGS*>( m_settings );
     }
 

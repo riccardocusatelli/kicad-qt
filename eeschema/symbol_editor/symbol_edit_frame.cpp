@@ -90,6 +90,8 @@
 #include <wx/combobox.h>
 #include <wx/log.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 bool SYMBOL_EDIT_FRAME::m_showDeMorgan = false;
@@ -326,7 +328,7 @@ SYMBOL_EDIT_FRAME::~SYMBOL_EDIT_FRAME()
 
 void SYMBOL_EDIT_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 {
-    wxCHECK_RET( m_settings, "Call to SYMBOL_EDIT_FRAME::LoadSettings with null m_settings" );
+    KI_CHECK_RET( m_settings, "Call to SYMBOL_EDIT_FRAME::LoadSettings with null m_settings" );
 
     SCH_BASE_FRAME::LoadSettings( GetSettings() );
 
@@ -340,7 +342,7 @@ void SYMBOL_EDIT_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 
 void SYMBOL_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 {
-    wxCHECK_RET( m_settings, "Call to SYMBOL_EDIT_FRAME:SaveSettings with null m_settings" );
+    KI_CHECK_RET( m_settings, "Call to SYMBOL_EDIT_FRAME:SaveSettings with null m_settings" );
 
     GetGalDisplayOptions().m_axesEnabled = true;
 
@@ -452,7 +454,7 @@ void SYMBOL_EDIT_FRAME::setupUIConditions()
     ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
     EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )
@@ -938,7 +940,7 @@ wxString SYMBOL_EDIT_FRAME::SetCurLib( const wxString& aLibNickname )
 
 void SYMBOL_EDIT_FRAME::SetCurSymbol( LIB_SYMBOL* aSymbol, bool aUpdateZoom )
 {
-    wxCHECK( m_toolManager, /* void */ );
+    KI_CHECK( m_toolManager, /* void */ );
 
     m_toolManager->RunAction( ACTIONS::selectionClear );
     GetCanvas()->GetView()->Clear();
@@ -1104,7 +1106,7 @@ void SYMBOL_EDIT_FRAME::SetCurSymbol( LIB_SYMBOL* aSymbol, bool aUpdateZoom )
 
 LIB_SYMBOL_LIBRARY_MANAGER& SYMBOL_EDIT_FRAME::GetLibManager()
 {
-    wxASSERT( m_libMgr );
+    KI_ASSERT( m_libMgr );
     return *m_libMgr;
 }
 
@@ -1130,7 +1132,7 @@ void SYMBOL_EDIT_FRAME::OnModify()
 
 void SYMBOL_EDIT_FRAME::SetUnit( int aUnit )
 {
-    wxCHECK( aUnit > 0 && aUnit <= GetCurSymbol()->GetUnitCount(), /* void*/ );
+    KI_CHECK( aUnit > 0 && aUnit <= GetCurSymbol()->GetUnitCount(), /* void*/ );
 
     if( m_unit == aUnit )
         return;
@@ -1151,7 +1153,7 @@ void SYMBOL_EDIT_FRAME::SetUnit( int aUnit )
 
 void SYMBOL_EDIT_FRAME::SetBodyStyle( int aBodyStyle )
 {
-    wxCHECK( aBodyStyle > 0 && aBodyStyle <= GetCurSymbol()->GetBodyStyleCount(), /* void */ );
+    KI_CHECK( aBodyStyle > 0 && aBodyStyle <= GetCurSymbol()->GetBodyStyleCount(), /* void */ );
 
     if( m_bodyStyle == aBodyStyle )
         return;
@@ -1197,7 +1199,7 @@ wxString SYMBOL_EDIT_FRAME::AddLibraryFile( bool aCreateNew )
     LIBRARY_MANAGER&              manager = Pgm().GetLibraryManager();
     std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, scope );
 
-    wxCHECK( optTable.has_value(), wxEmptyString );
+    KI_CHECK( optTable.has_value(), wxEmptyString );
     LIBRARY_TABLE* table = optTable.value();
 
     wxString libName = fn.GetName();
@@ -1246,7 +1248,7 @@ wxString SYMBOL_EDIT_FRAME::AddLibraryFile( bool aCreateNew )
 
     // Tables are reinitialized by m_libMgr->AddLibrary(). So reinit table reference.
     optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, scope );
-    wxCHECK( optTable.has_value(), wxEmptyString );
+    KI_CHECK( optTable.has_value(), wxEmptyString );
     table = optTable.value();
 
     table->Save().map_error(
@@ -1301,7 +1303,7 @@ void SYMBOL_EDIT_FRAME::DdAddLibrary( wxString aLibFile )
     }
 
     std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, LIBRARY_TABLE_SCOPE::PROJECT );
-    wxCHECK( optTable.has_value(), /* void */ );
+    KI_CHECK( optTable.has_value(), /* void */ );
     LIBRARY_TABLE* table = optTable.value();
     bool           success = true;
 
@@ -1825,7 +1827,7 @@ void SYMBOL_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &Prj() );
         LIB_SYMBOL* symbol = GetCurSymbol();
 
-        wxLogTrace( traceLibWatch, "Received refresh symbol request for %s", payload );
+        KI_LOG_TRACE( traceLibWatch, "Received refresh symbol request for %s", payload );
 
         if( !symbol )
             break;
@@ -1836,7 +1838,7 @@ void SYMBOL_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         // watcher timer will retry the reload once the dialog has closed.
         if( !IsEnabled() )
         {
-            wxLogTrace( traceLibWatch, "Deferring symbol refresh; dialog is open on the symbol editor." );
+            KI_LOG_TRACE( traceLibWatch, "Deferring symbol refresh; dialog is open on the symbol editor." );
             break;
         }
         // Defensive backstop for refresh mail that did not originate from this frame's debounce
@@ -1845,7 +1847,7 @@ void SYMBOL_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         // and let the originating watcher retry.
         else if( !ToolStackIsEmpty() )
         {
-            wxLogTrace( traceLibWatch, "Deferring symbol refresh; an interactive tool is active." );
+            KI_LOG_TRACE( traceLibWatch, "Deferring symbol refresh; an interactive tool is active." );
             break;
         }
 
@@ -1859,12 +1861,12 @@ void SYMBOL_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
         wxFileName changedLib( mail.GetPayload() );
 
-        wxLogTrace( traceLibWatch, "Received refresh symbol request for %s, current symbols is %s",
+        KI_LOG_TRACE( traceLibWatch, "Received refresh symbol request for %s, current symbols is %s",
                     changedLib.GetFullPath(), libfullname.GetFullPath() );
 
         if( changedLib == libfullname )
         {
-            wxLogTrace( traceLibWatch, "Refreshing symbol %s", symbol->GetName() );
+            KI_LOG_TRACE( traceLibWatch, "Refreshing symbol %s", symbol->GetName() );
 
             SetScreen( m_dummyScreen );  // UpdateLibraryBuffer will destroy the old screen
             m_libMgr->UpdateLibraryBuffer( libName );
@@ -1911,7 +1913,7 @@ void SYMBOL_EDIT_FRAME::SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType )
 
 bool SYMBOL_EDIT_FRAME::HasLibModifications() const
 {
-    wxCHECK( m_libMgr, false );
+    KI_CHECK( m_libMgr, false );
 
     return m_libMgr->HasModifications();
 }
@@ -1919,7 +1921,7 @@ bool SYMBOL_EDIT_FRAME::HasLibModifications() const
 
 bool SYMBOL_EDIT_FRAME::IsContentModified() const
 {
-    wxCHECK( m_libMgr, false );
+    KI_CHECK( m_libMgr, false );
 
     // Test if the currently edited symbol is modified
     if( GetScreen() && GetScreen()->IsContentModified() && GetCurSymbol() )
@@ -1989,7 +1991,7 @@ bool SYMBOL_EDIT_FRAME::libTreeAutoHiddenForSchematicEdit( bool aWasFromSchemati
 void SYMBOL_EDIT_FRAME::LoadSymbolFromSchematic( SCH_SYMBOL* aSymbol )
 {
     std::unique_ptr<LIB_SYMBOL> symbol = aSymbol->GetLibSymbolRef()->Flatten();
-    wxCHECK( symbol, /* void */ );
+    KI_CHECK( symbol, /* void */ );
 
     symbol->SetLibId( aSymbol->GetLibId() );
 
@@ -2115,7 +2117,7 @@ bool SYMBOL_EDIT_FRAME::addLibTableEntry( const wxString& aLibFile, LIBRARY_TABL
     }
 
     std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, aScope );
-    wxCHECK( optTable.has_value(), false );
+    KI_CHECK( optTable.has_value(), false );
     LIBRARY_TABLE* table = optTable.value();
 
     LIBRARY_TABLE_ROW* row = &table->InsertRow();
@@ -2165,7 +2167,7 @@ bool SYMBOL_EDIT_FRAME::replaceLibTableEntry( const wxString& aLibNickname, cons
     if( adapter->GetRow( aLibNickname, scope ) )
     {
         std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, scope );
-        wxCHECK( optTable.has_value(), false );
+        KI_CHECK( optTable.has_value(), false );
         table = optTable.value();
     }
     else
@@ -2181,10 +2183,10 @@ bool SYMBOL_EDIT_FRAME::replaceLibTableEntry( const wxString& aLibNickname, cons
         }
     }
 
-    wxCHECK( table, false );
+    KI_CHECK( table, false );
 
     std::optional<LIBRARY_TABLE_ROW*> optRow = adapter->GetRow( aLibNickname, scope );
-    wxCHECK( optRow.has_value(), false );
+    KI_CHECK( optRow.has_value(), false );
     LIBRARY_TABLE_ROW* row = optRow.value();
 
     const ENV_VAR_MAP& envVars = Pgm().GetLocalEnvVariables();

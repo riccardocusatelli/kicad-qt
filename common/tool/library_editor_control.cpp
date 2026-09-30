@@ -23,6 +23,7 @@
 #include <kiway.h>
 #include "wx/generic/textdlgg.h"
 #include "library_editor_control.h"
+#include <core/ki_assert.h>
 
 
 LIBRARY_EDITOR_CONTROL::LIBRARY_EDITOR_CONTROL() :
@@ -127,7 +128,7 @@ void LIBRARY_EDITOR_CONTROL::changeSelectedPinStatus( const bool aPin )
                 }
                 else
                 {
-                    wxFAIL_MSG( wxT( "Unsupported frame type for library pinning." ) );
+                    KI_FAIL_MSG( wxT( "Unsupported frame type for library pinning." ) );
                 }
             }
         }

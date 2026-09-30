@@ -33,11 +33,12 @@
 #include <tool/tool_manager.h>
 #include <tool/common_control.h>
 #include <widgets/wx_menubar.h>
+#include <core/ki_log.h>
 
 
 void EDA_3D_VIEWER_FRAME::doReCreateMenuBar()
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::CreateMenuBar" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::CreateMenuBar" ) );
 
     COMMON_CONTROL* tool    = m_toolManager->GetTool<COMMON_CONTROL>();
     wxMenuBar*      oldMenuBar = GetMenuBar();

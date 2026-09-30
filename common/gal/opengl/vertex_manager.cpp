@@ -37,6 +37,7 @@
 #include <gal/opengl/vertex_item.h>
 #include <confirm.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 /**
@@ -189,7 +190,7 @@ void VERTEX_MANAGER::SetItem( VERTEX_ITEM& aItem ) const
 void VERTEX_MANAGER::FinishItem() const
 {
     if( m_reservedSpace != 0 || m_reserved )
-        wxLogTrace( traceVertexManager, wxS( "Did not use all previous vertices allocated" ) );
+        KI_LOG_TRACE( traceVertexManager, wxS( "Did not use all previous vertices allocated" ) );
 
     m_container->FinishItem();
 }

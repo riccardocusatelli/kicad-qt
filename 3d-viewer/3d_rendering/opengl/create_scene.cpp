@@ -37,6 +37,7 @@
 #include <footprint_library_adapter.h>
 #include <eda_3d_viewer_frame.h>
 #include <project_pcb.h>
+#include <core/ki_assert.h>
 
 
 void RENDER_3D_OPENGL::addObjectTriangles( const FILLED_CIRCLE_2D* aCircle,
@@ -113,7 +114,7 @@ void RENDER_3D_OPENGL::generateRing( const SFVEC2F& aCenter, float aInnerRadius,
     aInnerContourResult.push_back( aInnerContourResult[0] );
     aOuterContourResult.push_back( aOuterContourResult[0] );
 
-    wxASSERT( aInnerContourResult.size() == aOuterContourResult.size() );
+    KI_ASSERT( aInnerContourResult.size() == aOuterContourResult.size() );
 }
 
 
@@ -271,7 +272,7 @@ OPENGL_RENDER_LIST* RENDER_3D_OPENGL::generateHoles( const LIST_OBJECT2D& aListH
             break;
 
         default:
-            wxFAIL_MSG( wxT( "RENDER_3D_OPENGL::generateHoles: Object type not implemented" ) );
+            KI_FAIL_MSG( wxT( "RENDER_3D_OPENGL::generateHoles: Object type not implemented" ) );
             break;
         }
     }
@@ -343,7 +344,7 @@ OPENGL_RENDER_LIST* RENDER_3D_OPENGL::generateLayerList( const BVH_CONTAINER_2D*
             break;
 
         default:
-            wxFAIL_MSG( wxT( "RENDER_3D_OPENGL: Object type is not implemented" ) );
+            KI_FAIL_MSG( wxT( "RENDER_3D_OPENGL: Object type is not implemented" ) );
             break;
         }
     }
@@ -401,7 +402,7 @@ OPENGL_RENDER_LIST* RENDER_3D_OPENGL::createBoard( const SHAPE_POLY_SET& aBoardP
         {
             const OBJECT_2D* object2d_A = itemOnLayer;
 
-            wxASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
+            KI_ASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
 
             const TRIANGLE_2D* tri = static_cast<const TRIANGLE_2D*>( object2d_A );
 
@@ -777,7 +778,7 @@ void RENDER_3D_OPENGL::reload( REPORTER* aStatusReporter, REPORTER* aWarningRepo
     const MAP_POLY& innerMapHoles = m_boardAdapter.GetHoleIdPolysMap();
     const MAP_POLY& outerMapHoles = m_boardAdapter.GetHoleOdPolysMap();
 
-    wxASSERT( innerMapHoles.size() == outerMapHoles.size() );
+    KI_ASSERT( innerMapHoles.size() == outerMapHoles.size() );
 
     const MAP_CONTAINER_2D_BASE& map_holes = m_boardAdapter.GetLayerHoleMap();
 
@@ -1268,7 +1269,7 @@ void RENDER_3D_OPENGL::generateViaBarrels( float aPlatingThickness3d, float aUni
         getLayerZPos( top_layer, ztop, dummy );
         getLayerZPos( bottom_layer, dummy, zbot );
 
-        wxASSERT( zbot < ztop );
+        KI_ASSERT( zbot < ztop );
 
         float ztop_plated = ztop;
         float zbot_plated = zbot;
@@ -1473,7 +1474,7 @@ void RENDER_3D_OPENGL::generatePlatedHoleShells( int aPlatingThickness, float aU
         {
             const OBJECT_2D* object2d_A = itemOnLayer;
 
-            wxASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
+            KI_ASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
 
             const TRIANGLE_2D* tri = static_cast<const TRIANGLE_2D*>( object2d_A );
 
@@ -1484,7 +1485,7 @@ void RENDER_3D_OPENGL::generatePlatedHoleShells( int aPlatingThickness, float aU
             addTopAndBottomTriangles( layerTriangles, v1, v2, v3, layer_z_top, layer_z_bot );
         }
 
-        wxASSERT( tht_outer_holes_poly.OutlineCount() > 0 );
+        KI_ASSERT( tht_outer_holes_poly.OutlineCount() > 0 );
 
         if( tht_outer_holes_poly.OutlineCount() > 0 )
         {

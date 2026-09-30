@@ -46,6 +46,7 @@
 #include <widgets/std_bitmap_button.h>
 #include <project/net_settings.h>
 #include <confirm.h>
+#include <core/ki_assert.h>
 
 
 // columns of netclasses grid
@@ -127,7 +128,7 @@ PANEL_SETUP_NETCLASSES::PANEL_SETUP_NETCLASSES( wxWindow* aParentWindow, EDA_DRA
 
     m_splitter->SetMinimumPaneSize( FromDIP( m_splitter->GetMinimumPaneSize() ) );
 
-    wxASSERT( m_netclassGrid->GetNumberCols() == GRID_END );
+    KI_ASSERT( m_netclassGrid->GetNumberCols() == GRID_END );
 
     // Calculate a min best size to handle longest usual numeric values:
     int const min_best_width = m_netclassGrid->GetTextExtent( "555,555555 mils" ).x;
@@ -488,7 +489,7 @@ bool PANEL_SETUP_NETCLASSES::TransferDataFromWindow()
                 else
                     nc->SetLineStyle( lineIdx - 1 );
 
-                wxASSERT_MSG( lineIdx >= 0, "Line style name not found." );
+                KI_ASSERT_MSG( lineIdx >= 0, "Line style name not found." );
 
                 // clang-format off
                 nc->SetClearance( m_netclassGrid->GetOptionalUnitValue( aRow, GRID_CLEARANCE ) );

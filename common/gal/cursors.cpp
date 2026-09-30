@@ -48,6 +48,7 @@
 #include <cursors/cursor-xor.xpm>
 #include <cursors/cursor-zoom-in.xpm>
 #include <cursors/cursor-zoom-out.xpm>
+#include <core/ki_assert.h>
 // Under MSW, the standard cursor is white on black.  Elsewhere it is black on white
 #ifdef __WINDOWS__
 #include <cursors/cursor_tune.xpm>
@@ -329,7 +330,7 @@ CURSOR_STORE::CURSOR_STORE()
 {
     for( const auto& [cursorId, defs] : cursors_defs )
     {
-        wxCHECK2( !defs.empty(), continue );
+        KI_CHECK2( !defs.empty(), continue );
 
 #if wxCHECK_VERSION( 3, 3, 0 )
         // For wx 3.3+, create cursor bundles from the cursor definitions
@@ -337,7 +338,7 @@ CURSOR_STORE::CURSOR_STORE()
 
         for( const auto& [xpm, hotspot_def] : defs )
         {
-            wxCHECK2( xpm, continue );
+            KI_CHECK2( xpm, continue );
             bitmaps.push_back( wxBitmap( xpm ) );
         }
 
@@ -348,7 +349,7 @@ CURSOR_STORE::CURSOR_STORE()
 #else
         auto constructCursor = []( const CURSOR_STORE::CURSOR_DEF& aDef ) -> wxCursor
         {
-            wxCHECK( aDef.m_xpm, wxNullCursor );
+            KI_CHECK( aDef.m_xpm, wxNullCursor );
             wxImage xpmImage = wxImage( aDef.m_xpm );
 
             xpmImage.SetOption( wxIMAGE_OPTION_CUR_HOTSPOT_X, aDef.m_hotspot.x );
@@ -377,7 +378,7 @@ const wxCursorBundle& CURSOR_STORE::storeGetBundle( KICURSOR aIdKey ) const
     if( find_iter != m_bundleMap.end() )
         return find_iter->second;
 
-    wxASSERT_MSG( false, wxString::Format( "Could not find cursor bundle with ID %d",
+    KI_ASSERT_MSG( false, wxString::Format( "Could not find cursor bundle with ID %d",
                                            static_cast<int>( aIdKey ) ) );
 
     static const wxCursorBundle invalid;
@@ -393,7 +394,7 @@ const wxCursor& CURSOR_STORE::storeGetCursor( KICURSOR aIdKey, bool aHiDPI ) con
     if( find_iter != store.end() )
         return find_iter->second;
 
-    wxASSERT_MSG( false, wxString::Format( "Could not find cursor with ID %d", static_cast<int>( aIdKey ) ) );
+    KI_ASSERT_MSG( false, wxString::Format( "Could not find cursor with ID %d", static_cast<int>( aIdKey ) ) );
 
     return wxNullCursor;
 }

@@ -43,6 +43,7 @@
 #include <wx/debug.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 PCB_GROUP::PCB_GROUP( BOARD_ITEM* aParent ) :
         BOARD_ITEM( aParent, PCB_GROUP_T )
@@ -460,7 +461,7 @@ void PCB_GROUP::RunOnChildren( const std::function<void( BOARD_ITEM* )>& aFuncti
     }
     catch( std::bad_function_call& )
     {
-        wxFAIL_MSG( wxT( "Error calling function in PCB_GROUP::RunOnChildren" ) );
+        KI_FAIL_MSG( wxT( "Error calling function in PCB_GROUP::RunOnChildren" ) );
     }
 }
 

@@ -49,6 +49,7 @@
 #include <confirm.h>
 #include <kiplatform/ui.h>
 #include <env_vars.h>
+#include <core/ki_assert.h>
 
 #define MAX_PAGE_EXAMPLE_SIZE 200
 
@@ -499,7 +500,7 @@ bool DIALOG_PAGES_SETTINGS::SavePageSettings()
 
     if( !success )
     {
-        wxFAIL_MSG( "The translation for paper size must preserve original spellings" );
+        KI_FAIL_MSG( "The translation for paper size must preserve original spellings" );
         m_pageInfo.SetType( PAGE_SIZE_TYPE::A4 );
     }
 

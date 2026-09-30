@@ -28,6 +28,7 @@
 #include <footprint.h>
 #include <project/component_class_settings.h>
 #include <tools/drc_tool.h>
+#include <core/ki_assert.h>
 
 
 COMPONENT_CLASS_MANAGER::COMPONENT_CLASS_MANAGER( BOARD* board ) :
@@ -152,7 +153,7 @@ void COMPONENT_CLASS_MANAGER::FinishNetlistUpdate()
         else
         {
             // Set the component class to dynamic-only scope
-            wxASSERT( staticClass->GetUsageContext()
+            KI_ASSERT( staticClass->GetUsageContext()
                       == COMPONENT_CLASS::USAGE::STATIC_AND_DYNAMIC );
             staticClass->SetUsageContext( COMPONENT_CLASS::USAGE::DYNAMIC );
         }
@@ -290,7 +291,7 @@ bool COMPONENT_CLASS_MANAGER::SyncDynamicComponentClassAssignments(
         else
         {
             // Set the component class to dynamic-only scope
-            wxASSERT( dynamicClass->GetUsageContext()
+            KI_ASSERT( dynamicClass->GetUsageContext()
                       == COMPONENT_CLASS::USAGE::STATIC_AND_DYNAMIC );
             dynamicClass->SetUsageContext( COMPONENT_CLASS::USAGE::STATIC );
         }
@@ -356,7 +357,7 @@ COMPONENT_CLASS_MANAGER::GetCombinedComponentClass( const COMPONENT_CLASS* stati
 
     if( classNames.size() == 1 )
     {
-        wxASSERT( m_constituentClasses.contains( *classNames.begin() ) );
+        KI_ASSERT( m_constituentClasses.contains( *classNames.begin() ) );
         return m_constituentClasses[*classNames.begin()].get();
     }
 
@@ -371,7 +372,7 @@ COMPONENT_CLASS_MANAGER::GetCombinedComponentClass( const COMPONENT_CLASS* stati
 
         for( const wxString& className : sortedClassNames )
         {
-            wxASSERT( m_constituentClasses.contains( className ) );
+            KI_ASSERT( m_constituentClasses.contains( className ) );
             combinedClass->AddConstituentClass( m_constituentClasses[className].get() );
         }
 
@@ -448,7 +449,7 @@ COMPONENT_CLASS_MANAGER::getOrCreateConstituentClass( const wxString&        aCl
     if( aContext == COMPONENT_CLASS::USAGE::STATIC_AND_DYNAMIC
         || aContext == COMPONENT_CLASS::USAGE::EFFECTIVE )
     {
-        wxFAIL_MSG( "Can't create a STATIC_AND_DYNAMIC or EFFECTIVE constituent component class" );
+        KI_FAIL_MSG( "Can't create a STATIC_AND_DYNAMIC or EFFECTIVE constituent component class" );
         return m_noneClass.get();
     }
 

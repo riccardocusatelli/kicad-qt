@@ -25,6 +25,7 @@
 #include <kiplatform/io.h>
 #include <lib_symbol.h>
 #include <wx_filename.h>
+#include <core/ki_assert.h>
 
 
 SCH_IO_LIB_CACHE::SCH_IO_LIB_CACHE( const wxString& aFullPathAndFileName ) :
@@ -59,7 +60,7 @@ SCH_IO_LIB_CACHE::~SCH_IO_LIB_CACHE()
 
 void SCH_IO_LIB_CACHE::Save( const std::optional<bool>& aOpt )
 {
-    wxCHECK( false, /* void */ );
+    KI_CHECK( false, /* void */ );
 }
 
 
@@ -146,7 +147,7 @@ bool SCH_IO_LIB_CACHE::IsFileChanged() const
 
 LIB_SYMBOL* SCH_IO_LIB_CACHE::removeSymbol( LIB_SYMBOL* aSymbol )
 {
-    wxCHECK_MSG( aSymbol != nullptr, nullptr, "NULL pointer cannot be removed from library." );
+    KI_CHECK_MSG( aSymbol != nullptr, nullptr, "NULL pointer cannot be removed from library." );
 
     LIB_SYMBOL* firstChild = nullptr;
     LIB_SYMBOL_MAP::iterator it = m_symbols.find( aSymbol->GetName() );
@@ -156,7 +157,7 @@ LIB_SYMBOL* SCH_IO_LIB_CACHE::removeSymbol( LIB_SYMBOL* aSymbol )
 
     // If the entry pointer doesn't match the name it is mapped to in the library, we
     // have done something terribly wrong.
-    wxCHECK_MSG( &*it->second == aSymbol, nullptr,
+    KI_CHECK_MSG( &*it->second == aSymbol, nullptr,
                  "Pointer mismatch while attempting to remove alias entry <" + aSymbol->GetName() +
                  "> from library cache <" + m_libFileName.GetName() + ">." );
 

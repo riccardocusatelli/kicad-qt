@@ -65,6 +65,8 @@
 #include <wx/msgdlg.h>
 #include <wx/log.h>
 #include <kiplatform/ui.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #if defined(__linux__) || defined(__FreeBSD__)
 #include <spacenav/spnav_2d_plugin.h>
@@ -254,11 +256,11 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
     }
     catch( ... )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "Unknown exception during SpaceMouse initialization" ) );
     }
 }
@@ -310,7 +312,7 @@ void PL_EDITOR_FRAME::setupUIConditions()
     ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
     EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )
@@ -533,7 +535,7 @@ void PL_EDITOR_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
     EDA_DRAW_FRAME::LoadSettings( aCfg );
 
     PL_EDITOR_SETTINGS* cfg = dynamic_cast<PL_EDITOR_SETTINGS*>( aCfg );
-    wxCHECK( cfg, /*void*/ );
+    KI_CHECK( cfg, /*void*/ );
 
     m_propertiesFrameWidth = cfg->m_PropertiesFrameWidth;
     m_originSelectChoice = cfg->m_CornerOrigin;
@@ -777,7 +779,7 @@ void PL_EDITOR_FRAME::UpdateStatusBar()
     case EDA_UNITS::MILS:     SetStatusText( _( "mils" ), 6 );   break;
     case EDA_UNITS::MM:       SetStatusText( _( "mm" ), 6 );     break;
     case EDA_UNITS::UNSCALED: SetStatusText( wxEmptyString, 6 ); break;
-    default:                  wxASSERT( false );                 break;
+    default:                  KI_ASSERT( false );                 break;
     }
 
     wxString line;

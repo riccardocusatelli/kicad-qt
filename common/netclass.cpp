@@ -30,6 +30,7 @@
 #include <api/api_enums.h>
 #include <api/api_utils.h>
 #include <api/common/types/project_settings.pb.h>
+#include <core/ki_assert.h>
 
 // This will get mapped to "kicad_default" in the specctra_export.
 const char NETCLASS::Default[] = "Default";
@@ -296,7 +297,7 @@ const wxString NETCLASS::GetHumanReadableName() const
     if( m_constituents.size() == 1 )
         return m_Name;
 
-    wxASSERT( m_constituents.size() >= 2 );
+    KI_ASSERT( m_constituents.size() >= 2 );
 
     wxString name;
 
@@ -330,7 +331,7 @@ const wxString NETCLASS::GetName() const
     if( m_constituents.size() == 1 )
         return m_Name;
 
-    wxASSERT( m_constituents.size() >= 2 );
+    KI_ASSERT( m_constituents.size() >= 2 );
 
     size_t strLen = m_constituents.size() - 1; // Count commas
 

@@ -31,6 +31,7 @@
 #include <wx/crt.h>
 #include <wx/log.h>
 #include <wx/translation.h>
+#include <core/ki_log.h>
 
 
 int32_t ALTIUM_PROPS_UTILS::ConvertToKicadUnit( const double aValue )
@@ -93,7 +94,7 @@ int32_t ALTIUM_PROPS_UTILS::ReadKicadUnit( const std::map<wxString, wxString>& a
 
     if( !value.EndsWith( "mil", &prefix ) )
     {
-        wxLogTrace( "ALTIUM", wxT( "Unit '%s' does not end with 'mil'." ), value );
+        KI_LOG_TRACE( "ALTIUM", wxT( "Unit '%s' does not end with 'mil'." ), value );
         return 0;
     }
 
@@ -103,7 +104,7 @@ int32_t ALTIUM_PROPS_UTILS::ReadKicadUnit( const std::map<wxString, wxString>& a
 
     if( !prefix.ToCDouble( &mils ) )
     {
-        wxLogTrace( "ALTIUM", wxT( "Cannot convert '%s' to double." ), prefix );
+        KI_LOG_TRACE( "ALTIUM", wxT( "Cannot convert '%s' to double." ), prefix );
         return 0;
     }
 

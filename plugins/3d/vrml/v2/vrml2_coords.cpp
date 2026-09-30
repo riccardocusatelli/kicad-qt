@@ -29,6 +29,8 @@
 
 #include "vrml2_base.h"
 #include "vrml2_coords.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL2COORDS::WRL2COORDS() : WRL2NODE()
@@ -49,7 +51,7 @@ WRL2COORDS::WRL2COORDS( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2COORDS::~WRL2COORDS()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying Coordinate node." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying Coordinate node." ) );
 }
 
 
@@ -67,14 +69,14 @@ bool WRL2COORDS::isDangling( void )
 bool WRL2COORDS::AddRefNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL2COORDS::AddChildNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
@@ -84,7 +86,7 @@ bool WRL2COORDS::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -93,7 +95,7 @@ bool WRL2COORDS::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -112,7 +114,7 @@ bool WRL2COORDS::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( !proc.ReadName( glob ) )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           "%s" ),
                     __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -124,7 +126,7 @@ bool WRL2COORDS::Read( WRLPROC& proc, WRL2BASE* aTopNode )
     {
         if( !proc.ReadMFVec3f( points ) )
         {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                                   " * [INFO] invalid Coordinate point set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -136,7 +138,7 @@ bool WRL2COORDS::Read( WRLPROC& proc, WRL2BASE* aTopNode )
     }
     else
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                           " * [INFO] invalid Coordinate %s\n"
                                           " * [INFO] file: '%s'\n" ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(), proc.GetFileName() );
@@ -166,7 +168,7 @@ bool WRL2COORDS::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         return true;
     }
 
-    wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                       " * [INFO] invalid Coordinate %s (no closing brace)\n"
                                       " * [INFO] file: '%s'\n" ),
                 __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(), proc.GetFileName() );

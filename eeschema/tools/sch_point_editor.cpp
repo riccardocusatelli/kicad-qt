@@ -45,6 +45,7 @@
 #include <sch_sheet_pin.h>
 #include <symbol_editor/symbol_editor_settings.h>
 #include <sch_no_connect.h>
+#include <core/ki_assert.h>
 
 
 static const std::vector<KICAD_T> pointEditorTypes = { SCH_SHAPE_T,
@@ -641,7 +642,7 @@ private:
     void dragPinsOnEdge( const std::vector<SEG>& aOldEdges, const std::vector<VECTOR2I>& aMoveVecs,
                          int aEdgeUnit, COMMIT& aCommit, std::vector<EDA_ITEM*>& aUpdatedItems ) const
     {
-        wxCHECK( aOldEdges.size() == aMoveVecs.size(), /* void */ );
+        KI_CHECK( aOldEdges.size() == aMoveVecs.size(), /* void */ );
 
         // This only make sense in the symbol editor
         if( !m_frame.IsType( FRAME_SCH_SYMBOL_EDITOR ) )
@@ -655,7 +656,7 @@ private:
 
         // Adjuting pins on a different unit to a unit-limited shape
         // seems suspect.
-        wxCHECK( aEdgeUnit == 0 || aEdgeUnit == editor.GetUnit(), /* void */ );
+        KI_CHECK( aEdgeUnit == 0 || aEdgeUnit == editor.GetUnit(), /* void */ );
 
         /*
         * Get a list of pins on a line segment
@@ -1022,7 +1023,7 @@ void SCH_POINT_EDITOR::makePointsAndBehavior( EDA_ITEM* aItem )
     // If we got a behavior, generate the points
     if( m_editBehavior )
     {
-        wxCHECK( m_editPoints, /* void */ );
+        KI_CHECK( m_editPoints, /* void */ );
         m_editBehavior->MakePoints( *m_editPoints );
     }
 }
@@ -1188,7 +1189,7 @@ int SCH_POINT_EDITOR::Main( const TOOL_EVENT& aEvent )
         {
             // This check is based on the assumption that the grid object must be valid.
             // If this assumption is wrong, please fix the code above.
-            wxCHECK( false, 0 );
+            KI_CHECK( false, 0 );
         }
 
         if( !m_editPoints || evt->IsSelectionEvent() )

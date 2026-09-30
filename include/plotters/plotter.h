@@ -34,6 +34,7 @@
 #include <stroke_params.h>
 #include <render_settings.h>
 #include <font/font.h>
+#include <core/ki_assert.h>
 
 
 class COLOR_SETTINGS;
@@ -106,7 +107,7 @@ enum class PLOT_TEXT_MODE
 class PLOT_PARAMS
 {
 public:
-    virtual DXF_OUTLINE_MODE GetDXFPlotMode() const { wxFAIL; return DXF_OUTLINE_MODE::FILLED; }
+    virtual DXF_OUTLINE_MODE GetDXFPlotMode() const { KI_FAIL(); return DXF_OUTLINE_MODE::FILLED; }
     virtual PLOT_TEXT_MODE GetTextMode() const { return PLOT_TEXT_MODE::DEFAULT; }
 };
 

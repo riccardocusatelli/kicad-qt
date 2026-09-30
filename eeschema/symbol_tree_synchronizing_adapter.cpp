@@ -38,6 +38,7 @@
 #include <libraries/symbol_library_adapter.h>
 #include <widgets/wx_panel.h>
 #include <kiplatform/ui.h>
+#include <core/ki_assert.h>
 
 
 wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER>
@@ -145,7 +146,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( const wxString& aForceRefresh,
                 aProgressCallback( i++, max, libName );
 
             auto optRow = adapter->GetRow( libName );
-            wxCHECK2( optRow.has_value(), continue );
+            KI_CHECK2( optRow.has_value(), continue );
 
             bool pinned = alg::contains( cfg->m_Session.pinned_symbol_libs, libName )
                             || alg::contains( project.m_PinnedSymbolLibs, libName );
@@ -256,7 +257,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::GetValue( wxVariant& aVariant, wxDataVie
     }
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxASSERT( node );
+    KI_ASSERT( node );
 
     switch( aCol )
     {
@@ -340,7 +341,7 @@ bool SYMBOL_TREE_SYNCHRONIZING_ADAPTER::GetAttr( wxDataViewItem const& aItem, un
         return false;
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     // Mark both columns of unloaded libraries using grey text color (to look disabled)
     if( node->m_Type == LIB_TREE_NODE::TYPE::LIBRARY && !m_libMgr->IsLibraryLoaded( node->m_Name ) )
@@ -400,7 +401,7 @@ bool SYMBOL_TREE_SYNCHRONIZING_ADAPTER::GetAttr( wxDataViewItem const& aItem, un
 bool SYMBOL_TREE_SYNCHRONIZING_ADAPTER::HasPreview( const wxDataViewItem& aItem )
 {
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     return node->m_Type == LIB_TREE_NODE::TYPE::ITEM && node->m_LibId != m_frame->GetTargetLibId();
 }
@@ -413,7 +414,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::ShowPreview( wxWindow*             aPare
                                                      const wxDataViewItem& aItem )
 {
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, /* void */ );
+    KI_CHECK( node, /* void */ );
 
     SYMBOL_PREVIEW_WIDGET* preview = dynamic_cast<SYMBOL_PREVIEW_WIDGET*>(
             wxWindow::FindWindowByName( c_previewName, aParent ) );

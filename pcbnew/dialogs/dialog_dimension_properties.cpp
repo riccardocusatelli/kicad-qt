@@ -29,6 +29,7 @@
 #include <wx/msgdlg.h>
 
 #include "dialog_dimension_properties.h"
+#include <core/ki_assert.h>
 
 
 
@@ -49,7 +50,7 @@ DIALOG_DIMENSION_PROPERTIES::DIALOG_DIMENSION_PROPERTIES( PCB_BASE_EDIT_FRAME* a
         m_extensionOffset( aParent, m_lblExtensionOffset, m_txtExtensionOffset, m_lblExtensionOffsetUnits ),
         m_extensionOvershoot( aParent, m_lblExtensionOvershoot, m_txtExtensionOvershoot, m_lblExtensionOvershootUnits )
 {
-    wxASSERT( BaseType( aItem->Type() ) == PCB_DIMENSION_T );
+    KI_ASSERT( BaseType( aItem->Type() ) == PCB_DIMENSION_T );
     m_dimension = static_cast<PCB_DIMENSION_BASE*>( aItem );
     m_previewDimension = static_cast<PCB_DIMENSION_BASE*>( m_dimension->Clone() );
     m_previewDimension->SetParent( m_frame->GetBoard() );

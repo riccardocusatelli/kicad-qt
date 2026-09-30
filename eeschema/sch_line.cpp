@@ -45,6 +45,7 @@
 #include <properties/property_mgr.h>
 #include <origin_transforms.h>
 #include <math/util.h>
+#include <core/ki_assert.h>
 
 
 SCH_LINE::SCH_LINE( const VECTOR2I& pos, int layer ) :
@@ -443,7 +444,7 @@ int SCH_LINE::GetReverseAngleFrom( const VECTOR2I& aPoint ) const
 
 bool SCH_LINE::IsParallel( const SCH_LINE* aLine ) const
 {
-    wxCHECK_MSG( aLine != nullptr && aLine->Type() == SCH_LINE_T, false,
+    KI_CHECK_MSG( aLine != nullptr && aLine->Type() == SCH_LINE_T, false,
                  wxT( "Cannot test line segment for overlap." ) );
 
     VECTOR2I firstSeg = m_end - m_start;
@@ -465,7 +466,7 @@ SCH_LINE* SCH_LINE::MergeOverlap( SCH_SCREEN* aScreen, SCH_LINE* aLine, bool aCh
                 return lhs.x < rhs.x;
             };
 
-    wxCHECK_MSG( aLine != nullptr && aLine->Type() == SCH_LINE_T, nullptr,
+    KI_CHECK_MSG( aLine != nullptr && aLine->Type() == SCH_LINE_T, nullptr,
                  wxT( "Cannot test line segment for overlap." ) );
 
     if( this == aLine || GetLayer() != aLine->GetLayer() )
@@ -705,7 +706,7 @@ bool SCH_LINE::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_LINE* line = dynamic_cast<const SCH_LINE*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( line, false );
+    KI_CHECK( line, false );
 
     if( GetStartPoint() != line->GetStartPoint() )
         return true;

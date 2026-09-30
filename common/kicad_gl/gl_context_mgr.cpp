@@ -25,12 +25,13 @@
 
 #include <kicad_gl/gl_context_mgr.h>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 wxGLContext* GL_CONTEXT_MANAGER::CreateCtx( wxGLCanvas* aCanvas, const wxGLContext* aOther )
 {
     wxGLContext* context = new wxGLContext( aCanvas, aOther );
-    wxCHECK( context, nullptr );
+    KI_CHECK( context, nullptr );
 
     if( !context->IsOK() )
     {
@@ -54,7 +55,7 @@ void GL_CONTEXT_MANAGER::DestroyCtx( wxGLContext* aContext )
     else
     {
         // Do not delete unknown GL contexts
-        wxFAIL;
+        KI_FAIL();
     }
 
     if( m_glCtx == aContext )
@@ -77,7 +78,7 @@ void GL_CONTEXT_MANAGER::DeleteAll()
 
 void GL_CONTEXT_MANAGER::LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas )
 {
-    wxCHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
+    KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
 
     m_glCtxMutex.lock();
     wxGLCanvas* canvas = aCanvas ? aCanvas : m_glContexts.at( aContext );
@@ -96,7 +97,7 @@ void GL_CONTEXT_MANAGER::LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas )
 
 void GL_CONTEXT_MANAGER::UnlockCtx( wxGLContext* aContext )
 {
-    wxCHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
+    KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
 
     if( m_glCtx == aContext )
     {
@@ -105,7 +106,7 @@ void GL_CONTEXT_MANAGER::UnlockCtx( wxGLContext* aContext )
     }
     else
     {
-        wxFAIL_MSG( wxString::Format( wxS( "Trying to unlock GL context mutex from "
+        KI_FAIL_MSG( wxString::Format( wxS( "Trying to unlock GL context mutex from "
                     "a wrong context: aContext %p m_glCtx %p" ), aContext, m_glCtx ) );
     }
 }

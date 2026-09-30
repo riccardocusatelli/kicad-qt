@@ -38,6 +38,7 @@
 #include <core/mirror.h>
 #include <trigo.h>
 #include <gr_basic.h>
+#include <core/ki_assert.h>
 
 
 SCH_NO_CONNECT::SCH_NO_CONNECT( const VECTOR2I& pos ) :
@@ -58,7 +59,7 @@ EDA_ITEM* SCH_NO_CONNECT::Clone() const
 
 void SCH_NO_CONNECT::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_NO_CONNECT_T ),
+    KI_CHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_NO_CONNECT_T ),
                  wxT( "Cannot swap no connect data with invalid item." ) );
 
     SCH_NO_CONNECT* item = (SCH_NO_CONNECT*)aItem;
@@ -128,7 +129,7 @@ bool SCH_NO_CONNECT::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_NO_CONNECT* noConnect = dynamic_cast<const SCH_NO_CONNECT*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( noConnect, false );
+    KI_CHECK( noConnect, false );
 
     return GetPosition() != noConnect->GetPosition();
 }

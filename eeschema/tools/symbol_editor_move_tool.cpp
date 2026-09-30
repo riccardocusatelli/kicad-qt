@@ -35,6 +35,7 @@
 #include <view/view_controls.h>
 #include "symbol_editor_move_tool.h"
 #include "symbol_editor_pin_tool.h"
+#include <core/ki_assert.h>
 
 
 SYMBOL_EDITOR_MOVE_TOOL::SYMBOL_EDITOR_MOVE_TOOL() :
@@ -57,7 +58,7 @@ bool SYMBOL_EDITOR_MOVE_TOOL::Init()
             [&]( const SELECTION& sel )
             {
                 SYMBOL_EDIT_FRAME* editor = static_cast<SYMBOL_EDIT_FRAME*>( m_frame );
-                wxCHECK( editor, false );
+                KI_CHECK( editor, false );
 
                 if( !editor->IsSymbolEditable() )
                     return false;
@@ -94,7 +95,7 @@ int SYMBOL_EDITOR_MOVE_TOOL::Main( const TOOL_EVENT& aEvent )
 {
     if( SCH_COMMIT* commit = dynamic_cast<SCH_COMMIT*>( aEvent.Commit() ) )
     {
-        wxCHECK( aEvent.SynchronousState(), 0 );
+        KI_CHECK( aEvent.SynchronousState(), 0 );
         aEvent.SynchronousState()->store( STS_RUNNING );
 
         if( doMoveSelection( aEvent, commit ) )
@@ -420,7 +421,7 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
                 catch( const boost::bad_pointer& e )
                 {
                     restore_state = true;
-                    wxFAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ),
+                    KI_FAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ),
                                                   e.what() ) );
                 }
             }

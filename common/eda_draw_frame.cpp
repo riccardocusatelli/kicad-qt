@@ -82,6 +82,7 @@
 #include <wx/snglinst.h>
 #include <wx/fdrepdlg.h>
 #include <tool/editor_conditions.h>
+#include <core/ki_assert.h>
 
 #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
 
@@ -453,7 +454,7 @@ void EDA_DRAW_FRAME::UpdateGridSelectBox()
     m_gridSelectBox->Clear();
     wxArrayString gridsList;
 
-    wxCHECK( config(), /* void */ );
+    KI_CHECK( config(), /* void */ );
 
     GRID_MENU::BuildChoiceList( &gridsList, GetWindowSettings( config() ), this );
 
@@ -474,7 +475,7 @@ void EDA_DRAW_FRAME::OnUpdateSelectGrid( wxUpdateUIEvent& aEvent )
     if( m_gridSelectBox == nullptr )
         return;
 
-    wxCHECK( config(), /* void */ );
+    KI_CHECK( config(), /* void */ );
 
     int idx = GetWindowSettings( config() )->grid.last_size_idx;
     idx = std::clamp( idx, 0, (int) m_gridSelectBox->GetCount() - 1 );
@@ -492,7 +493,7 @@ void EDA_DRAW_FRAME::OnUpdateSelectZoom( wxUpdateUIEvent& aEvent )
 
     double zoom = GetCanvas()->GetGAL()->GetZoomFactor();
 
-    wxCHECK( config(), /* void */ );
+    KI_CHECK( config(), /* void */ );
 
     const std::vector<double>& zoomList = GetWindowSettings( config() )->zoom_factors;
     int                        preset = wxNOT_FOUND;
@@ -536,7 +537,7 @@ void EDA_DRAW_FRAME::OnUpdateSelectZoom( wxUpdateUIEvent& aEvent )
 
 void EDA_DRAW_FRAME::OnSelectGrid( wxCommandEvent& event )
 {
-    wxCHECK_RET( m_gridSelectBox, wxS( "m_gridSelectBox uninitialized" ) );
+    KI_CHECK_RET( m_gridSelectBox, wxS( "m_gridSelectBox uninitialized" ) );
 
     int idx = m_gridSelectBox->GetCurrentSelection();
 
@@ -585,7 +586,7 @@ bool EDA_DRAW_FRAME::GetOverrideLocks() const
 
 bool EDA_DRAW_FRAME::IsGridVisible()
 {
-    wxCHECK( config(), true );
+    KI_CHECK( config(), true );
 
     return GetWindowSettings( config() )->grid.show;
 }
@@ -593,7 +594,7 @@ bool EDA_DRAW_FRAME::IsGridVisible()
 
 void EDA_DRAW_FRAME::SetGridVisibility( bool aVisible )
 {
-    wxCHECK( config(), /* void */ );
+    KI_CHECK( config(), /* void */ );
 
     GetWindowSettings( config() )->grid.show = aVisible;
 
@@ -615,7 +616,7 @@ void EDA_DRAW_FRAME::SetGridVisibility( bool aVisible )
 
 bool EDA_DRAW_FRAME::IsGridOverridden()
 {
-    wxCHECK( config(), false );
+    KI_CHECK( config(), false );
 
     return GetWindowSettings( config() )->grid.overrides_enabled;
 }
@@ -623,7 +624,7 @@ bool EDA_DRAW_FRAME::IsGridOverridden()
 
 void EDA_DRAW_FRAME::SetGridOverrides( bool aOverride )
 {
-    wxCHECK( config(), /* void */ );
+    KI_CHECK( config(), /* void */ );
 
     GetWindowSettings( config() )->grid.overrides_enabled = aOverride;
 }
@@ -647,7 +648,7 @@ void EDA_DRAW_FRAME::UpdateZoomSelectBox()
     m_zoomSelectBox->SetSelection( 0 );
     m_zoomCustomEntry = wxNOT_FOUND;
 
-    wxCHECK( config(), /* void */ );
+    KI_CHECK( config(), /* void */ );
 
     for( unsigned ii = 0;  ii < GetWindowSettings( config() )->zoom_factors.size();  ++ii )
     {
@@ -663,7 +664,7 @@ void EDA_DRAW_FRAME::UpdateZoomSelectBox()
 
 void EDA_DRAW_FRAME::OnSelectZoom( wxCommandEvent& event )
 {
-    wxCHECK_RET( m_zoomSelectBox, wxS( "m_zoomSelectBox uninitialized" ) );
+    KI_CHECK_RET( m_zoomSelectBox, wxS( "m_zoomSelectBox uninitialized" ) );
 
     int id = m_zoomSelectBox->GetCurrentSelection();
 
@@ -972,7 +973,7 @@ void EDA_DRAW_FRAME::SetMsgPanel( const wxString& aTextUpper, const wxString& aT
 
 void EDA_DRAW_FRAME::SetMsgPanel( EDA_ITEM* aItem )
 {
-    wxCHECK_RET( aItem, wxT( "Invalid EDA_ITEM pointer.  Bad programmer." ) );
+    KI_CHECK_RET( aItem, wxT( "Invalid EDA_ITEM pointer.  Bad programmer." ) );
 
     std::vector<MSG_PANEL_ITEM> items;
     aItem->GetMsgPanelInfo( this, items );
@@ -1018,7 +1019,7 @@ EDA_DRAW_PANEL_GAL::GAL_TYPE EDA_DRAW_FRAME::loadCanvasTypeSetting()
     if( canvasType < EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE
             || canvasType >= EDA_DRAW_PANEL_GAL::GAL_TYPE_LAST )
     {
-        wxASSERT( false );
+        KI_ASSERT( false );
         canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
     }
 
@@ -1066,7 +1067,7 @@ bool EDA_DRAW_FRAME::saveCanvasTypeSetting( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvas
 
     if( aCanvasType < EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE || aCanvasType >= EDA_DRAW_PANEL_GAL::GAL_TYPE_LAST )
     {
-        wxASSERT( false );
+        KI_ASSERT( false );
         return false;
     }
 
@@ -1176,7 +1177,7 @@ void EDA_DRAW_FRAME::FocusOnLocation( const VECTOR2I& aPos, bool aAllowScroll )
         }
         catch( const Clipper2Lib::Clipper2Exception& e )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Clipper2 exception occurred centering object: %s" ), e.what() ) );
+            KI_FAIL_MSG( wxString::Format( wxT( "Clipper2 exception occurred centering object: %s" ), e.what() ) );
         }
     }
 
@@ -1363,7 +1364,7 @@ void EDA_DRAW_FRAME::setupUIConditions()
     ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
     EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
     mgr->SetConditions( ACTIONS::millimetersUnits, ACTION_CONDITIONS().Check( cond.Units( EDA_UNITS::MM ) ) );
     mgr->SetConditions( ACTIONS::inchesUnits,      ACTION_CONDITIONS().Check( cond.Units( EDA_UNITS::INCH ) ) );
@@ -1482,7 +1483,7 @@ bool EDA_DRAW_FRAME::SaveCanvasImageToFile( const wxString& aFileName, BITMAP_TY
 
 bool EDA_DRAW_FRAME::IsPluginActionButtonVisible( const PLUGIN_ACTION& aAction, APP_SETTINGS_BASE* aCfg )
 {
-    wxCHECK( aCfg, aAction.show_button );
+    KI_CHECK( aCfg, aAction.show_button );
 
     for( const auto& [identifier, visible] : aCfg->m_Plugins.actions )
     {
@@ -1498,7 +1499,7 @@ std::vector<const PLUGIN_ACTION*> EDA_DRAW_FRAME::GetOrderedPluginActions( PLUGI
                                                                            APP_SETTINGS_BASE* aCfg )
 {
     std::vector<const PLUGIN_ACTION*> actions;
-    wxCHECK( aCfg, actions );
+    KI_CHECK( aCfg, actions );
 
 #ifdef KICAD_IPC_API
 

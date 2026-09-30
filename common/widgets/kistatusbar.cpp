@@ -42,6 +42,8 @@
 #include <dialog_HTML_reporter_base.h>
 #include <trace_helpers.h>
 #include <wx/dcclient.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 class STATUSBAR_WARNING_REPORTER_DIALOG : public DIALOG_HTML_REPORTER
@@ -181,7 +183,7 @@ KISTATUSBAR::~KISTATUSBAR()
 
 void KISTATUSBAR::onNotificationsIconClick( wxCommandEvent& aEvent )
 {
-    wxCHECK( m_notificationsButton, /* void */ );
+    KI_CHECK( m_notificationsButton, /* void */ );
     wxPoint pos = m_notificationsButton->GetScreenPosition();
 
     wxRect r;
@@ -433,7 +435,7 @@ void KISTATUSBAR::updateBackgroundText()
 
 void KISTATUSBAR::SetNotificationCount( int aCount )
 {
-    wxCHECK( m_notificationsButton, /* void */ );
+    KI_CHECK( m_notificationsButton, /* void */ );
     wxString cnt = "";
 
     if( aCount > 0 )
@@ -468,7 +470,7 @@ void KISTATUSBAR::AddWarningMessages( const wxString& aSource, const wxString& a
 
 void KISTATUSBAR::AddWarningMessages( const wxString& aSource, const std::vector<LOAD_MESSAGE>& aMessages )
 {
-    wxLogTrace( traceLibraries, "KISTATUSBAR::AddWarningMessages: this=%p, count=%zu",
+    KI_LOG_TRACE( traceLibraries, "KISTATUSBAR::AddWarningMessages: this=%p, count=%zu",
                 this, aMessages.size() );
 
     if( aMessages.empty() )
@@ -484,10 +486,10 @@ void KISTATUSBAR::AddWarningMessages( const wxString& aSource, const std::vector
             totalMessageCount += messages.size();
     }
 
-    wxLogTrace( traceLibraries, "  -> total messages now=%zu", totalMessageCount );
+    KI_LOG_TRACE( traceLibraries, "  -> total messages now=%zu", totalMessageCount );
 
     // Update UI on main thread
-    wxLogTrace( traceLibraries, "  -> calling CallAfter for updateWarningUI" );
+    KI_LOG_TRACE( traceLibraries, "  -> calling CallAfter for updateWarningUI" );
     CallAfter( [this]() { updateWarningUI(); } );
 }
 
@@ -507,12 +509,12 @@ size_t KISTATUSBAR::GetLoadWarningCount() const
 
 void KISTATUSBAR::updateWarningUI()
 {
-    wxLogTrace( traceLibraries, "KISTATUSBAR::updateWarningUI: this=%p, m_warningButton=%p",
+    KI_LOG_TRACE( traceLibraries, "KISTATUSBAR::updateWarningUI: this=%p, m_warningButton=%p",
                 this, m_warningButton );
 
     if( !m_warningButton )
     {
-        wxLogTrace( traceLibraries, "  -> no warning button, returning early" );
+        KI_LOG_TRACE( traceLibraries, "  -> no warning button, returning early" );
         return;
     }
 
@@ -526,7 +528,7 @@ void KISTATUSBAR::updateWarningUI()
             messageCount += messages.size();
     }
 
-    wxLogTrace( traceLibraries, "  -> message count=%zu, showing button=%s",
+    KI_LOG_TRACE( traceLibraries, "  -> message count=%zu, showing button=%s",
                 messageCount, messageCount > 0 ? "true" : "false" );
 
     m_warningButton->Show( messageCount > 0 );
@@ -543,7 +545,7 @@ void KISTATUSBAR::updateWarningUI()
                 : wxString::Format( wxS( "%zu" ), messageCount );
         m_warningButton->SetBadgeText( badgeText );
 
-        wxLogTrace( traceLibraries, "  -> badge set to '%s'", badgeText );
+        KI_LOG_TRACE( traceLibraries, "  -> badge set to '%s'", badgeText );
     }
     else
     {

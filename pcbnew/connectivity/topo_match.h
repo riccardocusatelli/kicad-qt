@@ -32,6 +32,7 @@
 #include <optional>
 
 #include <wx/string.h>
+#include <core/ki_assert.h>
 
 class FOOTPRINT;
 
@@ -127,7 +128,7 @@ public:
 
     bool IsTopologicallySimilar( const PIN& b ) const
     {
-        wxASSERT( m_parent != b.m_parent );
+        KI_ASSERT( m_parent != b.m_parent );
 
         if( !m_parent->IsSameKind( *b.m_parent ) )
             return false;

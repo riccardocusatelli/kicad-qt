@@ -44,6 +44,7 @@
 #include <algorithm>
 #include <dialogs/rule_editor_dialog_base.h>
 #include <widgets/std_bitmap_button.h>
+#include <core/ki_log.h>
 
 
 static wxSearchCtrl* CreateTextFilterBox( wxWindow* aParent, const wxString& aDescriptiveText )
@@ -243,7 +244,7 @@ void RULE_EDITOR_DIALOG_BASE::finishInitialization()
     SetMinSize( wxSize( 400, 500 ) );
     SetSize( m_initialSize );
 
-    wxLogTrace( "debug_dlg_size", "finishInitialization: size=%dx%d minSize=%dx%d bestSize=%dx%d",
+    KI_LOG_TRACE( "debug_dlg_size", "finishInitialization: size=%dx%d minSize=%dx%d bestSize=%dx%d",
                 GetSize().x, GetSize().y, GetMinSize().x, GetMinSize().y, GetBestSize().x,
                 GetBestSize().y );
 }
@@ -263,7 +264,7 @@ bool RULE_EDITOR_DIALOG_BASE::Show( bool show )
         if( minSize.GetHeight() > 500 )
             SetMinSize( wxSize( minSize.GetWidth(), 500 ) );
 
-        wxLogTrace( "debug_dlg_size", "Show: size=%dx%d minSize=%dx%d",
+        KI_LOG_TRACE( "debug_dlg_size", "Show: size=%dx%d minSize=%dx%d",
                     GetSize().x, GetSize().y, GetMinSize().x, GetMinSize().y );
     }
 

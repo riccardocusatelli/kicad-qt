@@ -32,6 +32,8 @@
 #include <sch_reference_list.h>
 #include <sch_screen.h>
 #include <schematic.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 // a "less than" test on two LIB_SYMBOLs (.m_name wxStrings)
@@ -82,7 +84,7 @@ wxString NETLIST_EXPORTER_BASE::MakeCommandLine( const wxString& aFormatString,
 SCH_SYMBOL* NETLIST_EXPORTER_BASE::findNextSymbol( EDA_ITEM* aItem,
                                                    const SCH_SHEET_PATH& aSheetPath )
 {
-    wxCHECK( aItem, nullptr );
+    KI_CHECK( aItem, nullptr );
 
     wxString ref;
 
@@ -101,7 +103,7 @@ SCH_SYMBOL* NETLIST_EXPORTER_BASE::findNextSymbol( EDA_ITEM* aItem,
 
     SCH_SCREEN* screen = aSheetPath.LastScreen();
 
-    wxCHECK( screen, nullptr );
+    KI_CHECK( screen, nullptr );
 
     auto it = screen->GetLibSymbols().find( symbol->GetSchSymbolLibraryName() );
 
@@ -155,7 +157,7 @@ std::vector<PIN_INFO> NETLIST_EXPORTER_BASE::CreatePinList( SCH_SYMBOL* aSymbol,
         // Collect all pins for this reference designator by searching the entire design for
         // other parts with the same reference designator.
         findAllUnitsOfSymbol( aSymbol, aSheetPath, pins, aKeepUnconnectedPins );
-        wxLogTrace( traceStackedPins, "CreatePinList(multi): ref='%s' pins=%zu", aSymbol->GetRef( &aSheetPath ), pins.size() );
+        KI_LOG_TRACE( traceStackedPins, "CreatePinList(multi): ref='%s' pins=%zu", aSymbol->GetRef( &aSheetPath ), pins.size() );
     }
 
     else // GetUnitCount() <= 1 means one part per package
@@ -179,7 +181,7 @@ std::vector<PIN_INFO> NETLIST_EXPORTER_BASE::CreatePinList( SCH_SYMBOL* aSymbol,
                 bool                  valid;
                 std::vector<wxString> numbers = pin->GetStackedPinNumbers( &valid );
                 wxString              baseName = pin->GetShownName();
-                wxLogTrace( traceStackedPins,
+                KI_LOG_TRACE( traceStackedPins,
                             wxString::Format( "CreatePinList(single): ref='%s' pinNameBase='%s' shownNum='%s' net='%s' "
                                               "valid=%d expand=%zu",
                                               ref, baseName, pin->GetShownNumber(), netName, valid, numbers.size() ) );
@@ -187,7 +189,7 @@ std::vector<PIN_INFO> NETLIST_EXPORTER_BASE::CreatePinList( SCH_SYMBOL* aSymbol,
                 for( const wxString& num : numbers )
                 {
                     wxString pinName = baseName.IsEmpty() ? num : baseName + wxT( "_" ) + num;
-                    wxLogTrace( traceStackedPins,
+                    KI_LOG_TRACE( traceStackedPins,
                                 wxString::Format( " -> emit pin num='%s' name='%s' net='%s'", num, pinName, netName ) );
                     pins.emplace_back( num, netName, pinName );
                 }
@@ -301,14 +303,14 @@ void NETLIST_EXPORTER_BASE::findAllUnitsOfSymbol( SCH_SYMBOL* aSchSymbol,
                     bool                        valid;
                     std::vector<wxString> numbers = pin->GetStackedPinNumbers( &valid );
                     wxString                     baseName = pin->GetShownName();
-                    wxLogTrace( traceStackedPins,
+                    KI_LOG_TRACE( traceStackedPins,
                                wxString::Format( "CreatePinList(multi): ref='%s' pinNameBase='%s' shownNum='%s' net='%s' valid=%d expand=%zu",
                                                  ref2, baseName, pin->GetShownNumber(), netName, valid, numbers.size() ) );
 
                     for( const wxString& num : numbers )
                     {
                         wxString pinName = baseName.IsEmpty() ? num : baseName + wxT( "_" ) + num;
-                        wxLogTrace( traceStackedPins,
+                        KI_LOG_TRACE( traceStackedPins,
                                     wxString::Format( " -> emit pin num='%s' name='%s' net='%s'", num, pinName, netName ) );
                         aPins.emplace_back( num, netName, pinName );
                     }

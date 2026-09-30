@@ -48,6 +48,7 @@
 #include <api/board/board_types.pb.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 PCB_TEXT::PCB_TEXT( BOARD_ITEM* parent, KICAD_T idtype ) :
@@ -106,7 +107,7 @@ PCB_TEXT::~PCB_TEXT()
 
 void PCB_TEXT::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_TEXT_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_TEXT_T, /* void */ );
     *this = *static_cast<const PCB_TEXT*>( aOther );
 }
 

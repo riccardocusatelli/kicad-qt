@@ -27,6 +27,7 @@
 
 #include <wx/checkbox.h>
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 
 wxString DIALOG_MAP_LAYERS::WrapRequired( const wxString& aLayerName )
@@ -75,7 +76,7 @@ PCB_LAYER_ID DIALOG_MAP_LAYERS::GetSelectedLayerID()
     }
 
     // There should only be one selected (or none) as the list is set with wxLC_SINGLE_SEL style
-    wxASSERT_MSG( ( m_kicad_layers_list->GetNextItem( itemIndex, wxLIST_NEXT_ALL,
+    KI_ASSERT_MSG( ( m_kicad_layers_list->GetNextItem( itemIndex, wxLIST_NEXT_ALL,
                                                       wxLIST_STATE_SELECTED ) ) == wxNOT_FOUND,
                   wxT( "There are more than one KiCad layer selected (unexpected)" ) );
 
@@ -162,7 +163,7 @@ void DIALOG_MAP_LAYERS::RemoveMappings( int aStatus )
         wxString selectedLayerName     = m_matched_layers_list->GetItemText( itemIndex, 0 );
         wxString pureSelectedLayerName = UnwrapRequired( selectedLayerName );
 
-        wxCHECK( m_matched_layers_map.find( pureSelectedLayerName ) != m_matched_layers_map.end(),
+        KI_CHECK( m_matched_layers_map.find( pureSelectedLayerName ) != m_matched_layers_map.end(),
                 /*void*/ );
 
         m_matched_layers_map.erase( pureSelectedLayerName );
@@ -313,7 +314,7 @@ std::vector<wxString> DIALOG_MAP_LAYERS::GetUnmappedRequiredLayers() const
     for( const wxString& layerName : m_unmatched_layer_names )
     {
         const INPUT_LAYER_DESC* layerDesc = GetLayerDescription( layerName );
-        wxASSERT_MSG( layerDesc != nullptr, wxT( "Expected to find layer description" ) );
+        KI_ASSERT_MSG( layerDesc != nullptr, wxT( "Expected to find layer description" ) );
 
         if( layerDesc->Required )
             unmappedLayers.push_back( layerDesc->Name );

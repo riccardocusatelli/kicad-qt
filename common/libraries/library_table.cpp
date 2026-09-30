@@ -29,6 +29,7 @@
 #include <xnode.h>
 #include <ki_exception.h>
 #include <libraries/library_manager.h>
+#include <core/ki_log.h>
 
 
 const wxString LIBRARY_TABLE_ROW::TABLE_TYPE_NAME = wxT( "Table" );
@@ -302,7 +303,7 @@ LIBRARY_RESULT<void> LIBRARY_TABLE::Save()
                 wxString::Format( _( "Library table '%s' is read-only" ), Path() ) ) );
     }
 
-    wxLogTrace( traceLibraries, "Saving %s", Path() );
+    KI_LOG_TRACE( traceLibraries, "Saving %s", Path() );
     wxFileName fn( Path() );
     // This should already be normalized, but just in case...
     fn.Normalize( FN_NORMALIZE_FLAGS | wxPATH_NORM_ENV_VARS );
@@ -314,7 +315,7 @@ LIBRARY_RESULT<void> LIBRARY_TABLE::Save()
     }
     catch( IO_ERROR& e )
     {
-        wxLogTrace( traceLibraries, "Exception while saving: %s", e.What() );
+        KI_LOG_TRACE( traceLibraries, "Exception while saving: %s", e.What() );
         return tl::unexpected( LIBRARY_ERROR( e.What() ) );
     }
 

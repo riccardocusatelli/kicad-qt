@@ -38,6 +38,7 @@
 #include <gal/color4d.h>
 #include <stack>
 #include <memory>
+#include <core/ki_assert.h>
 
 namespace KIGFX
 {
@@ -251,7 +252,7 @@ public:
      */
     void PopMatrix()
     {
-        wxASSERT( !m_transformStack.empty() );
+        KI_ASSERT( !m_transformStack.empty() );
 
         m_transform = m_transformStack.top();
         m_transformStack.pop();

@@ -25,6 +25,7 @@
 
 #include <set>
 #include <vector>
+#include <core/ki_assert.h>
 
 
 bool EDA_GROUP::ContainsItem( const EDA_ITEM* aItem ) const
@@ -61,12 +62,12 @@ bool EDA_GROUP::ContainsItem( const EDA_ITEM* aItem ) const
 
 void EDA_GROUP::AddItem( EDA_ITEM* aItem )
 {
-    wxCHECK_RET( aItem, wxT( "Nullptr added to group." ) );
-    wxCHECK_RET( aItem != AsEdaItem(), wxT( "Group added to itself." ) );
+    KI_CHECK_RET( aItem, wxT( "Nullptr added to group." ) );
+    KI_CHECK_RET( aItem != AsEdaItem(), wxT( "Group added to itself." ) );
 
     if( EDA_GROUP* group = dynamic_cast<EDA_GROUP*>( aItem ) )
     {
-        wxCHECK_RET( !group->ContainsItem( AsEdaItem() ), wxT( "Ancestor group added to group." ) );
+        KI_CHECK_RET( !group->ContainsItem( AsEdaItem() ), wxT( "Ancestor group added to group." ) );
     }
 
     // Items can only be in one group at a time
@@ -80,7 +81,7 @@ void EDA_GROUP::AddItem( EDA_ITEM* aItem )
 
 void EDA_GROUP::RemoveItem( EDA_ITEM* aItem )
 {
-    wxCHECK_RET( aItem, wxT( "Nullptr removed from group." ) );
+    KI_CHECK_RET( aItem, wxT( "Nullptr removed from group." ) );
 
     if( m_items.erase( aItem ) == 1 )
         aItem->SetParentGroup( nullptr );

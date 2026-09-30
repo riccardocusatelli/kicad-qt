@@ -30,6 +30,7 @@
 #include <board_item.h>
 #include "../hitinfo.h"
 #include <map>
+#include <core/ki_log.h>
 
 
 OBJECT_3D_STATS* OBJECT_3D_STATS::s_instance = 0;
@@ -65,11 +66,11 @@ const std::map<OBJECT_3D_TYPE, const char*> objectTypeNames
 
 // void OBJECT_3D_STATS::PrintStats()
 // {
-//     wxLogDebug( "OBJECT_3D_STATS:\n" );
+//     KI_LOG_DEBUG( "OBJECT_3D_STATS:\n" );
 
 //     for( auto& objectType : objectTypeNames )
 //     {
-//         wxLogDebug( "  %20s  %u\n", objectType.second,
+//         KI_LOG_DEBUG( "  %20s  %u\n", objectType.second,
 //                     m_counter[static_cast<int>( objectType.first )] );
 //     }
 // }

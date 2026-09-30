@@ -41,6 +41,7 @@
 #include <xnode.h>
 
 #include <wx/string.h>
+#include <core/ki_assert.h>
 
 namespace PCAD2KICAD {
 
@@ -573,7 +574,7 @@ void PCAD_FOOTPRINT::Parse( XNODE* aNode, wxStatusBar* aStatusBar,
 void PCAD_FOOTPRINT::AddToBoard( FOOTPRINT* aFootprint )
 {
     // No nested footprints....
-    wxCHECK( aFootprint == nullptr, /* void */ );
+    KI_CHECK( aFootprint == nullptr, /* void */ );
 
     EDA_ANGLE r;
 

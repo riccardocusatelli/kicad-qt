@@ -28,6 +28,7 @@
 #include <sch_sheet.h>
 #include <sch_screen.h>
 #include <kiplatform/environment.h>
+#include <core/ki_assert.h>
 
 /**
  * @brief schematic PLUGIN for LTspice (*.asc) and (.asy) format.
@@ -43,13 +44,13 @@ SCH_SHEET* SCH_IO_LTSPICE::LoadSchematicFile( const wxString& aFileName, SCHEMAT
                                               SCH_SHEET*             aAppendToMe,
                                               const std::map<std::string, UTF8>* aProperties )
 {
-    wxASSERT( !aFileName || aSchematic );
+    KI_ASSERT( !aFileName || aSchematic );
 
     SCH_SHEET* rootSheet = nullptr;
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         rootSheet = aAppendToMe;
     }
     else

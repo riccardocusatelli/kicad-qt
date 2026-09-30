@@ -29,6 +29,7 @@
 #include <tool/selection.h>
 #include <kiface_base.h>
 #include <widgets/ui_common.h>
+#include <core/ki_assert.h>
 
 
 CONDITIONAL_MENU::CONDITIONAL_MENU( TOOL_INTERACTIVE* aTool ) :
@@ -48,7 +49,7 @@ ACTION_MENU* CONDITIONAL_MENU::create() const
 void CONDITIONAL_MENU::AddItem( const TOOL_ACTION& aAction, const SELECTION_CONDITION& aCondition,
                                 int aOrder )
 {
-    wxASSERT( aAction.GetId() > 0 ); // Check if action was previously registered in ACTION_MANAGER
+    KI_ASSERT( aAction.GetId() > 0 ); // Check if action was previously registered in ACTION_MANAGER
     addEntry( ENTRY( &aAction, aCondition, aOrder, false ) );
 }
 
@@ -56,7 +57,7 @@ void CONDITIONAL_MENU::AddItem( const TOOL_ACTION& aAction, const SELECTION_COND
 void CONDITIONAL_MENU::AddCheckItem( const TOOL_ACTION& aAction,
                                      const SELECTION_CONDITION& aCondition, int aOrder )
 {
-    wxASSERT( aAction.GetId() > 0 ); // Check if action was previously registered in ACTION_MANAGER
+    KI_ASSERT( aAction.GetId() > 0 ); // Check if action was previously registered in ACTION_MANAGER
     addEntry( ENTRY( &aAction, aCondition, aOrder, true ) );
 }
 
@@ -187,7 +188,7 @@ void CONDITIONAL_MENU::Evaluate( const SELECTION& aSelection )
             break;
 
         default:
-            wxASSERT( false );
+            KI_ASSERT( false );
             break;
         }
     }

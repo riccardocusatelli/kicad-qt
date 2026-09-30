@@ -39,6 +39,7 @@
 
 #include <sch_sheet.h>
 #include <pgm_base.h>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 
@@ -107,7 +108,7 @@ void SCH_PREVIEW_PANEL::setDefaultLayerOrder()
     for( int i = 0; (unsigned) i < sizeof( SCH_LAYER_ORDER ) / sizeof( int ); ++i )
     {
         int layer = SCH_LAYER_ORDER[i];
-        wxASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
+        KI_ASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
 
         m_view->SetLayerOrder( layer, i );
     }

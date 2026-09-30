@@ -103,6 +103,8 @@
 #include <wx/mstream.h>
 #include <wx/clipbrd.h>
 #include <wx/imagpng.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #ifdef KICAD_IPC_API
 #include <api/api_plugin_manager.h>
@@ -681,7 +683,7 @@ int SCH_EDITOR_CONTROL::ExportSymbolsToLibrary( const TOOL_EVENT& aEvent )
 
         if( libSymbols.count( id ) )
         {
-            wxASSERT_MSG( libSymbols[id]->Compare( *libSymbol, SCH_ITEM::COMPARE_FLAGS::ERC ) == 0,
+            KI_ASSERT_MSG( libSymbols[id]->Compare( *libSymbol, SCH_ITEM::COMPARE_FLAGS::ERC ) == 0,
                           "Two symbols have the same LIB_ID but are different!" );
         }
         else
@@ -697,7 +699,7 @@ int SCH_EDITOR_CONTROL::ExportSymbolsToLibrary( const TOOL_EVENT& aEvent )
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_frame->Prj() );
 
     auto optRow = adapter->GetRow( targetLib );
-    wxCHECK( optRow, 0 );
+    KI_CHECK( optRow, 0 );
     const LIBRARY_TABLE_ROW* row = *optRow;
 
     SCH_IO_MGR::SCH_FILE_T type = SCH_IO_MGR::EnumFromStr( row->Type() );
@@ -732,7 +734,7 @@ int SCH_EDITOR_CONTROL::ExportSymbolsToLibrary( const TOOL_EVENT& aEvent )
             {
                 SCH_SCREEN* parentScreen = static_cast<SCH_SCREEN*>( symbol->GetParent() );
 
-                wxCHECK2( parentScreen, continue );
+                KI_CHECK2( parentScreen, continue );
 
                 commit.Modify( symbol, parentScreen, RECURSE_MODE::NO_RECURSE );
                 symbol->SetLibId( id );
@@ -1219,7 +1221,7 @@ int SCH_EDITOR_CONTROL::AssignNetclass( const TOOL_EVENT& aEvent )
         netNames.insert( *netNamePattern );
     }
 
-    wxCHECK( !netNames.empty(), 0 );
+    KI_CHECK( !netNames.empty(), 0 );
 
     DIALOG_ASSIGN_NETCLASS dlg( m_frame, netNames, schematic.GetNetClassAssignmentCandidates(),
             [&]( const std::vector<wxString>& aNetNames )
@@ -1375,7 +1377,7 @@ int SCH_EDITOR_CONTROL::FindNetInInspector( const TOOL_EVENT& aEvent )
 
 int SCH_EDITOR_CONTROL::UpdateNetHighlighting( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     const SCH_SHEET_PATH& sheetPath = m_frame->GetCurrentSheet();
     SCH_SCREEN*           screen = m_frame->GetCurrentSheet().LastScreen();
@@ -1385,7 +1387,7 @@ int SCH_EDITOR_CONTROL::UpdateNetHighlighting( const TOOL_EVENT& aEvent )
     std::set<wxString>     connNames;
     std::vector<EDA_ITEM*> itemsToRedraw;
 
-    wxCHECK( screen && connectionGraph, 0 );
+    KI_CHECK( screen && connectionGraph, 0 );
 
     if( !selectedName.IsEmpty() )
     {
@@ -1397,7 +1399,7 @@ int SCH_EDITOR_CONTROL::UpdateNetHighlighting( const TOOL_EVENT& aEvent )
             {
                 for( const SCH_ITEM* item : sg->GetItems() )
                 {
-                    wxCHECK2( item, continue );
+                    KI_CHECK2( item, continue );
 
                     if( SCH_CONNECTION* connection = item->Connection() )
                     {
@@ -1497,7 +1499,7 @@ int SCH_EDITOR_CONTROL::UpdateNetHighlighting( const TOOL_EVENT& aEvent )
 
             for( SCH_SHEET_PIN* pin : sheet->GetPins() )
             {
-                wxCHECK2( pin, continue );
+                KI_CHECK2( pin, continue );
 
                 SCH_CONNECTION* pin_conn = pin->Connection();
 
@@ -1589,7 +1591,7 @@ int SCH_EDITOR_CONTROL::HighlightNetCursor( const TOOL_EVENT& aEvent )
 
 int SCH_EDITOR_CONTROL::Undo( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     if( m_frame->GetUndoCommandCount() <= 0 )
         return 0;
@@ -1600,7 +1602,7 @@ int SCH_EDITOR_CONTROL::Undo( const TOOL_EVENT& aEvent )
     // Get the old list
     PICKED_ITEMS_LIST* undo_list = m_frame->PopCommandFromUndoList();
 
-    wxCHECK( undo_list, 0 );
+    KI_CHECK( undo_list, 0 );
 
     m_frame->PutDataInPreviousState( undo_list );
 
@@ -1619,7 +1621,7 @@ int SCH_EDITOR_CONTROL::Undo( const TOOL_EVENT& aEvent )
 
 int SCH_EDITOR_CONTROL::Redo( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     if( m_frame->GetRedoCommandCount() == 0 )
         return 0;
@@ -1630,7 +1632,7 @@ int SCH_EDITOR_CONTROL::Redo( const TOOL_EVENT& aEvent )
     /* Get the old list */
     PICKED_ITEMS_LIST* list = m_frame->PopCommandFromRedoList();
 
-    wxCHECK( list, 0 );
+    KI_CHECK( list, 0 );
 
     /* Redo the command: */
     m_frame->PutDataInPreviousState( list );
@@ -1742,7 +1744,7 @@ bool SCH_EDITOR_CONTROL::doCopy( bool aUseDuplicateClipboard )
                 }
                 else
                 {
-                    wxLogDebug( wxS( "Failed to generate bitmap for clipboard" ) );
+                    KI_LOG_DEBUG( wxS( "Failed to generate bitmap for clipboard" ) );
                 }
 
                 // Add SVG data
@@ -1756,7 +1758,7 @@ bool SCH_EDITOR_CONTROL::doCopy( bool aUseDuplicateClipboard )
                 }
                 else
                 {
-                    wxLogDebug( wxS( "Failed to generate SVG for clipboard" ) );
+                    KI_LOG_DEBUG( wxS( "Failed to generate SVG for clipboard" ) );
                 }
             }
 
@@ -1856,7 +1858,7 @@ int SCH_EDITOR_CONTROL::CopyAsText( const TOOL_EVENT& aEvent )
 void SCH_EDITOR_CONTROL::updatePastedSymbol( SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aPastePath,
                                              const KIID_PATH& aClipPath, bool aForceKeepAnnotations )
 {
-    wxCHECK( m_frame && aSymbol, /* void */ );
+    KI_CHECK( m_frame && aSymbol, /* void */ );
 
     SCH_SYMBOL_INSTANCE newInstance;
     bool                instanceFound = false;
@@ -1871,7 +1873,7 @@ void SCH_EDITOR_CONTROL::updatePastedSymbol( SCH_SYMBOL* aSymbol, const SCH_SHEE
             newInstance = tmp;
             instanceFound = true;
 
-            wxLogTrace( traceSchPaste, wxS( "Pasting found symbol instance with reference %s, unit %d:\n"
+            KI_LOG_TRACE( traceSchPaste, wxS( "Pasting found symbol instance with reference %s, unit %d:\n"
                                             "\tClipboard path: %s\n"
                                             "\tSymbol UUID: %s." ),
                         tmp.m_Reference,
@@ -1888,7 +1890,7 @@ void SCH_EDITOR_CONTROL::updatePastedSymbol( SCH_SYMBOL* aSymbol, const SCH_SHEE
 
     if( !instanceFound )
     {
-        wxLogTrace( traceSchPaste, wxS( "Clipboard symbol instance **not** found:\n\tClipboard path: %s\n"
+        KI_LOG_TRACE( traceSchPaste, wxS( "Clipboard symbol instance **not** found:\n\tClipboard path: %s\n"
                                         "\tSymbol UUID: %s." ),
                     aClipPath.AsString(),
                     aSymbol->m_Uuid.AsString() );
@@ -1922,7 +1924,7 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
                                                       SCH_SHEET_LIST* aPastedSheets, std::map<SCH_SHEET_PATH,
                                                       SCH_REFERENCE_LIST>& aPastedSymbols )
 {
-    wxCHECK( aSheet && aPastedSheets, aPastePath );
+    KI_CHECK( aSheet && aPastedSheets, aPastePath );
 
     SCH_SHEET_PATH sheetPath = aPastePath;
     sheetPath.push_back( aSheet );
@@ -1941,7 +1943,7 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
         {
             SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             // Only do this once if the symbol is shared across multiple sheets.
             if( !m_pastedSymbols.count( symbol ) )
@@ -1959,7 +1961,7 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
         {
             SCH_SHEET* subsheet = static_cast<SCH_SHEET*>( item );
 
-            wxCHECK2( subsheet, continue );
+            KI_CHECK2( subsheet, continue );
 
             // Make sure pins get a new UUID and set the dirty connectivity flag.
             if( !aPastedSheets->ContainsSheet( subsheet ) )
@@ -1986,7 +1988,7 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
 
 void SCH_EDITOR_CONTROL::setPastedSymbolInstances( const SCH_SCREEN* aScreen )
 {
-    wxCHECK( aScreen, /* void */ );
+    KI_CHECK( aScreen, /* void */ );
 
     for( const SCH_ITEM* item : aScreen->Items() )
     {
@@ -1994,7 +1996,7 @@ void SCH_EDITOR_CONTROL::setPastedSymbolInstances( const SCH_SCREEN* aScreen )
         {
             const SCH_SYMBOL* symbol = static_cast<const SCH_SYMBOL*>( item );
 
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             for( const SCH_SYMBOL_INSTANCE& symbolInstance : symbol->GetInstances() )
             {
@@ -2011,11 +2013,11 @@ void SCH_EDITOR_CONTROL::setPastedSymbolInstances( const SCH_SCREEN* aScreen )
 
 void SCH_EDITOR_CONTROL::prunePastedSymbolInstances()
 {
-    wxCHECK( m_frame, /* void */ );
+    KI_CHECK( m_frame, /* void */ );
 
     for( SCH_SYMBOL* symbol : m_pastedSymbols )
     {
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         std::vector<KIID_PATH> instancePathsToRemove;
 
@@ -2316,7 +2318,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
 
         SCH_ITEM* schItem = static_cast<SCH_ITEM*>( item );
 
-        wxCHECK2( schItem, continue );
+        KI_CHECK2( schItem, continue );
 
         if( schItem->IsConnectable() )
             schItem->SetConnectivityDirty();
@@ -2327,7 +2329,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
 
             SCH_SCREEN* currentScreen = m_frame->GetScreen();
 
-            wxCHECK2( currentScreen, continue );
+            KI_CHECK2( currentScreen, continue );
 
             const LIB_SYMBOL* source = ChoosePasteLibSymbol( tempScreen, currentScreen,
                                                              symbol->GetSchSymbolLibraryName() );
@@ -2549,7 +2551,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
 
                 SCH_SHEET* sheet = pastedSheet.Last();
 
-                wxCHECK2( sheet, continue );
+                KI_CHECK2( sheet, continue );
 
                 sheet->AddInstance( sheetInstance );
                 hierarchy.push_back( pastedSheet );
@@ -2988,7 +2990,7 @@ int SCH_EDITOR_CONTROL::EditSymbolFields( const TOOL_EVENT& aEvent )
 {
     DIALOG_SYMBOL_FIELDS_TABLE* dlg = m_frame->GetSymbolFieldsTableDialog();
 
-    wxCHECK( dlg, 0 );
+    KI_CHECK( dlg, 0 );
 
     // Needed at least on Windows. Raise() is not enough
     dlg->Show( true );
@@ -3049,7 +3051,7 @@ int SCH_EDITOR_CONTROL::GenerateBOM( const TOOL_EVENT& aEvent )
 {
     DIALOG_SYMBOL_FIELDS_TABLE* dlg = m_frame->GetSymbolFieldsTableDialog();
 
-    wxCHECK( dlg, 0 );
+    KI_CHECK( dlg, 0 );
 
     // Needed at least on Windows. Raise() is not enough
     dlg->Show( true );

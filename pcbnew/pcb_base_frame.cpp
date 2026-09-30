@@ -28,6 +28,8 @@
 /// @todo The Boost entropy exception does not exist prior to 1.67. Once the minimum Boost
 ///       version is raise to 1.67 or greater, this version check can be removed.
 #include <boost/version.hpp>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #if BOOST_VERSION >= 106700
 #include <boost/uuid/entropy_error.hpp>
@@ -287,7 +289,7 @@ void PCB_BASE_FRAME::FocusOnItems( std::vector<BOARD_ITEM*> aItems, PCB_LAYER_ID
         }
         catch( const std::exception& e )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
+            KI_FAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
         }
     }
 
@@ -327,7 +329,7 @@ void PCB_BASE_FRAME::FocusOnItems( std::vector<BOARD_ITEM*> aItems, PCB_LAYER_ID
                 }
                 catch( const std::exception& e )
                 {
-                    wxFAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
+                    KI_FAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
                 }
 
                 break;
@@ -395,7 +397,7 @@ void PCB_BASE_FRAME::FocusOnItems( std::vector<BOARD_ITEM*> aItems, PCB_LAYER_ID
             }
             catch( const std::exception& e )
             {
-                wxFAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
+                KI_FAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
             }
 
             if( !clippedPoly.IsEmpty() )
@@ -435,7 +437,7 @@ void PCB_BASE_FRAME::FocusOnItems( std::vector<BOARD_ITEM*> aItems, PCB_LAYER_ID
         }
         catch( const std::exception& e )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
+            KI_FAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
         }
     }
 
@@ -519,7 +521,7 @@ const VECTOR2I PCB_BASE_FRAME::GetUserOrigin() const
     case PCB_DISPLAY_ORIGIN::PCB_ORIGIN_PAGE:                           break;
     case PCB_DISPLAY_ORIGIN::PCB_ORIGIN_AUX:  origin = GetAuxOrigin();  break;
     case PCB_DISPLAY_ORIGIN::PCB_ORIGIN_GRID: origin = GetGridOrigin(); break;
-    default:                                  wxASSERT( false );        break;
+    default:                                  KI_ASSERT( false );        break;
     }
 
     return origin;
@@ -843,7 +845,7 @@ void PCB_BASE_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
     if( PCBNEW_SETTINGS* pcbnew_cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg ) )
         m_polarCoords = pcbnew_cfg->m_PolarCoords;
 
-    wxASSERT( GetCanvas() );
+    KI_ASSERT( GetCanvas() );
 
     if( GetCanvas() )
     {
@@ -1054,11 +1056,11 @@ void PCB_BASE_FRAME::ActivateGalCanvas()
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
     }
     catch( ... )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "Unknown exception during SpaceMouse initialization" ) );
     }
 }
@@ -1099,13 +1101,13 @@ void PCB_BASE_FRAME::SetDisplayOptions( const PCB_DISPLAY_OPTIONS& aOptions, boo
 
 void PCB_BASE_FRAME::setFPWatcher( FOOTPRINT* aFootprint )
 {
-    wxLogTrace( traceLibWatch, "setFPWatcher" );
+    KI_LOG_TRACE( traceLibWatch, "setFPWatcher" );
 
     Unbind( wxEVT_FSWATCHER, &PCB_BASE_FRAME::OnFPChange, this );
 
     if( m_watcher )
     {
-    wxLogTrace( traceLibWatch, "Remove watch" );
+    KI_LOG_TRACE( traceLibWatch, "Remove watch" );
         m_watcher->RemoveAll();
         m_watcher->SetOwner( nullptr );
         m_watcher.reset();
@@ -1128,7 +1130,7 @@ void PCB_BASE_FRAME::setFPWatcher( FOOTPRINT* aFootprint )
     }
     catch( const IO_ERROR& error )
     {
-        wxLogTrace( traceLibWatch, "Error: %s", error.What() );
+        KI_LOG_TRACE( traceLibWatch, "Error: %s", error.What() );
         return;
     }
     catch( const std::exception& e )
@@ -1153,7 +1155,7 @@ void PCB_BASE_FRAME::setFPWatcher( FOOTPRINT* aFootprint )
     fn.AssignDir( m_watcherFileName.GetPath() );
     fn.DontFollowLink();
 
-    wxLogTrace( traceLibWatch, "Add watch: %s", fn.GetPath() );
+    KI_LOG_TRACE( traceLibWatch, "Add watch: %s", fn.GetPath() );
 
     {
         // Silence OS errors that come from the watcher
@@ -1171,7 +1173,7 @@ void PCB_BASE_FRAME::OnFPChange( wxFileSystemWatcherEvent& aEvent )
     // Start the debounce timer (set to 1 second)
     if( !m_watcherDebounceTimer.StartOnce( 1000 ) )
     {
-    wxLogTrace( traceLibWatch, "Failed to start the debounce timer" );
+    KI_LOG_TRACE( traceLibWatch, "Failed to start the debounce timer" );
         return;
     }
 }
@@ -1187,7 +1189,7 @@ void PCB_BASE_FRAME::OnFpChangeDebounceTimer( wxTimerEvent& aEvent )
 
     if( m_inFpChangeTimerEvent )
     {
-        wxLogTrace( traceLibWatch, "Restarting debounce timer" );
+        KI_LOG_TRACE( traceLibWatch, "Restarting debounce timer" );
         m_watcherDebounceTimer.StartOnce( 3000 );
         return;
     }
@@ -1197,7 +1199,7 @@ void PCB_BASE_FRAME::OnFpChangeDebounceTimer( wxTimerEvent& aEvent )
     // the dialog is editing and crash on dialog close.  Defer the reload until the dialog is gone.
     if( !IsEnabled() )
     {
-        wxLogTrace( traceLibWatch, "Frame disabled (dialog open); restarting debounce timer" );
+        KI_LOG_TRACE( traceLibWatch, "Frame disabled (dialog open); restarting debounce timer" );
         m_watcherDebounceTimer.StartOnce( 1000 );
         return;
     }
@@ -1208,12 +1210,12 @@ void PCB_BASE_FRAME::OnFpChangeDebounceTimer( wxTimerEvent& aEvent )
     // finishes rather than silently dropped.
     if( !ToolStackIsEmpty() )
     {
-        wxLogTrace( traceLibWatch, "Interactive tool active; restarting debounce timer" );
+        KI_LOG_TRACE( traceLibWatch, "Interactive tool active; restarting debounce timer" );
         m_watcherDebounceTimer.StartOnce( 1000 );
         return;
     }
 
-    wxLogTrace( traceLibWatch, "OnFpChangeDebounceTimer" );
+    KI_LOG_TRACE( traceLibWatch, "OnFpChangeDebounceTimer" );
 
     wxDateTime lastModified;
 

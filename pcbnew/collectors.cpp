@@ -36,6 +36,7 @@
 #include <pcb_group.h>
 #include <macros.h>
 #include <math/util.h>      // for KiROUND
+#include <core/ki_assert.h>
 
 
 const std::vector<KICAD_T> GENERAL_COLLECTOR::AllBoardItems = {
@@ -482,7 +483,7 @@ INSPECT_RESULT GENERAL_COLLECTOR::Inspect( EDA_ITEM* aTestItem, void* aTestData 
         else if( aTestItem->Type() == PCB_FOOTPRINT_T )
         {
             // Already tested above, but Coverity can't figure that out
-            wxCHECK( footprint, INSPECT_RESULT::CONTINUE );
+            KI_CHECK( footprint, INSPECT_RESULT::CONTINUE );
 
             if( footprint->HitTest( m_refPos, accuracy ) && footprint->HitTestAccurate( m_refPos, accuracy ) )
             {
@@ -534,7 +535,7 @@ void GENERAL_COLLECTOR::Collect( BOARD_ITEM* aItem, const std::vector<KICAD_T>& 
     // the Inspect() function.
     SetRefPos( aRefPos );
 
-    wxCHECK_RET( aItem, "" );
+    KI_CHECK_RET( aItem, "" );
     aItem->Visit( m_inspector, nullptr, m_scanTypes );
 
     // append 2nd list onto end of the first list

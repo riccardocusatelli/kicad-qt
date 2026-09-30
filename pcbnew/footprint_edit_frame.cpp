@@ -81,6 +81,7 @@
 
 #include <wx/filedlg.h>
 #include <wx/hyperlink.h>
+#include <core/ki_assert.h>
 
 BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_MENU( wxID_CLOSE, FOOTPRINT_EDIT_FRAME::CloseFootprintEditor )
@@ -744,7 +745,7 @@ BOARD_DESIGN_SETTINGS& FOOTPRINT_EDIT_FRAME::GetDesignSettings() const
 
 const PCB_PLOT_PARAMS& FOOTPRINT_EDIT_FRAME::GetPlotSettings() const
 {
-    wxFAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
+    KI_FAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
 
     return PCB_BASE_FRAME::GetPlotSettings();
 }
@@ -752,7 +753,7 @@ const PCB_PLOT_PARAMS& FOOTPRINT_EDIT_FRAME::GetPlotSettings() const
 
 void FOOTPRINT_EDIT_FRAME::SetPlotSettings( const PCB_PLOT_PARAMS& aSettings )
 {
-    wxFAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
+    KI_FAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
 }
 
 
@@ -1283,7 +1284,7 @@ void FOOTPRINT_EDIT_FRAME::setupUIConditions()
     ACTION_MANAGER*       mgr = m_toolManager->GetActionManager();
     PCB_EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )

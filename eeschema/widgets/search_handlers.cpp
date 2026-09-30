@@ -29,6 +29,7 @@
 #include <string_utils.h>
 #include <tool/tool_manager.h>
 #include "search_handlers.h"
+#include <core/ki_assert.h>
 
 
 void SCH_SEARCH_HANDLER::ActivateItem( long aItemRow )
@@ -449,7 +450,7 @@ int LABEL_SEARCH_HANDLER::Search( const wxString& aQuery )
                 {
                     SCH_LABEL_BASE* lbl = dynamic_cast<SCH_LABEL_BASE*>( item );
 
-                    wxCHECK( lbl, false );
+                    KI_CHECK( lbl, false );
 
                     if( frp.findString.IsEmpty() || lbl->Matches( frp, sheet ) )
                         return true;

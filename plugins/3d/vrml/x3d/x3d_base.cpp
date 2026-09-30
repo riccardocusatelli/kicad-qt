@@ -30,6 +30,7 @@
 #include <wx/log.h>
 #include "x3d_base.h"
 #include "wrltypes.h"
+#include <core/ki_log.h>
 
 
 bool X3D_DICT::AddName( const wxString& aName, X3DNODE* aNode )
@@ -173,7 +174,7 @@ void X3DNODE::delNodeRef( X3DNODE* aNode )
         return;
     }
 
-    wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                       " * [BUG] delNodeRef() did not find its target." ),
                 __FILE__, __FUNCTION__, __LINE__ );
 

@@ -26,6 +26,7 @@
 #include <project.h>
 #include <env_vars.h>
 #include <wx/regex.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_EXECUTECOMMAND_JOB_SETTINGS::DIALOG_EXECUTECOMMAND_JOB_SETTINGS( wxWindow* aParent,
@@ -112,7 +113,7 @@ void DIALOG_EXECUTECOMMAND_JOB_SETTINGS::OnRecordOutputClicked( wxCommandEvent& 
 void DIALOG_EXECUTECOMMAND_JOB_SETTINGS::populateEnvironReadOnlyTable()
 {
     wxRegEx re( ".*?(\\$\\{(.+?)\\})|(\\$\\((.+?)\\)).*?", wxRE_ADVANCED );
-    wxASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
+    KI_ASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
 
     std::set<wxString> unique;
     wxString           src = m_textCtrlCommand->GetValue();

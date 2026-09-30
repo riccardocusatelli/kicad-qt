@@ -30,6 +30,8 @@
 #include "vrml1_base.h"
 #include "vrml1_switch.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL1SWITCH::WRL1SWITCH( NAMEREGISTER* aDictionary ) : WRL1NODE( aDictionary )
@@ -53,7 +55,7 @@ WRL1SWITCH::WRL1SWITCH( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1SWITCH::~WRL1SWITCH()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Switch node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -71,13 +73,13 @@ bool WRL1SWITCH::Read( WRLPROC& proc, WRL1BASE* aTopNode )
      * }
      */
 
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -86,7 +88,7 @@ bool WRL1SWITCH::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s.\n"
                          "%s" ),
@@ -112,7 +114,7 @@ bool WRL1SWITCH::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadName( glob ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   "%s" ),
                             __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -123,7 +125,7 @@ bool WRL1SWITCH::Read( WRLPROC& proc, WRL1BASE* aTopNode )
             {
                 if( !proc.ReadSFInt( whichChild ) )
                 {
-                    wxLogTrace( traceVrmlPlugin,
+                    KI_LOG_TRACE( traceVrmlPlugin,
                                 wxT( "%s:%s:%d"
                                      " * [INFO] invalid whichChild %s (invalid value '%s')\n"
                                      " * [INFO] file: '%s'\n"
@@ -137,7 +139,7 @@ bool WRL1SWITCH::Read( WRLPROC& proc, WRL1BASE* aTopNode )
                 continue;
             }
 
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] invalid Switch %s (unexpected 'whichChild')\n"
                              " * [INFO] file: '%s'" ),
@@ -149,7 +151,7 @@ bool WRL1SWITCH::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !aTopNode->ReadNode( proc, this, nullptr ) )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; unexpected eof %s."),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
@@ -168,7 +170,7 @@ bool WRL1SWITCH::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
 SGNODE* WRL1SWITCH::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Switch node with %zu children, %zu"
                      "references, and %zu back pointers (%zu total items)." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size(), m_Items.size() );

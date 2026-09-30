@@ -45,6 +45,7 @@
 #include <wx/stattext.h>
 #include <dialog_shim.h>
 #include <project_pcb.h>
+#include <core/ki_assert.h>
 
 
 FOOTPRINT_PREVIEW_PANEL::FOOTPRINT_PREVIEW_PANEL( KIWAY* aKiway, wxWindow* aParent,
@@ -231,7 +232,7 @@ void FOOTPRINT_PREVIEW_PANEL::DisplayFootprints( std::shared_ptr<FOOTPRINT> aFoo
 
     if( m_currentFootprint )
     {
-        wxCHECK( m_otherFootprint, /* void */ );
+        KI_CHECK( m_otherFootprint, /* void */ );
 
         renderFootprint( m_currentFootprint );
         renderFootprint( m_otherFootprint );

@@ -36,6 +36,7 @@
 #include <wx/filename.h>
 #include <json_common.h>
 #include <wildcards_and_files_ext.h>
+#include <core/ki_log.h>
 
 #define LCK "KICAD_LOCKING"
 
@@ -49,14 +50,14 @@ public:
         if( filename.IsEmpty() )
             return;
 
-        wxLogTrace( LCK, "Trying to lock %s", filename );
+        KI_LOG_TRACE( LCK, "Trying to lock %s", filename );
         wxFileName fn( filename );
         fn.SetName( FILEEXT::LockFilePrefix + fn.GetName() );
         fn.SetExt( fn.GetExt() + '.' + FILEEXT::LockFileExtension );
 
         if( !fn.IsDirWritable() )
         {
-            wxLogTrace( LCK, "File is not writable: %s", filename );
+            KI_LOG_TRACE( LCK, "File is not writable: %s", filename );
             m_status = true;
             m_removeOnRelease = false;
             return;
@@ -91,7 +92,7 @@ public:
                 std::string lock_info = j.dump();
                 file.Write( lock_info );
                 file.Close();
-                wxLogTrace( LCK, "Locked %s", filename );
+                KI_LOG_TRACE( LCK, "Locked %s", filename );
             }
             else if( rw_success )
             {
@@ -111,12 +112,12 @@ public:
                 {
                     m_username = wxEmptyString;
                     m_hostname = wxEmptyString;
-                    wxLogTrace( LCK, "Unreadable lock contents for %s: %s", filename,
+                    KI_LOG_TRACE( LCK, "Unreadable lock contents for %s: %s", filename,
                                 parseError.what() );
                 }
 
                 m_errorMsg = _( "Lock file already exists" );
-                wxLogTrace( LCK, "Existing Lock for %s", filename );
+                KI_LOG_TRACE( LCK, "Existing Lock for %s", filename );
             }
             else
             {
@@ -162,7 +163,7 @@ public:
      */
     void UnlockFile()
     {
-        wxLogTrace( LCK, "Unlocking %s", m_lockFilename );
+        KI_LOG_TRACE( LCK, "Unlocking %s", m_lockFilename );
 
         if( m_fileCreated && checkUserAndHost() )
         {
@@ -182,7 +183,7 @@ public:
      */
     bool OverrideLock( bool aRemoveOnRelease = true )
     {
-        wxLogTrace( LCK, "Overriding lock on %s", m_lockFilename );
+        KI_LOG_TRACE( LCK, "Overriding lock on %s", m_lockFilename );
 
         if( !m_fileCreated )
         {
@@ -210,7 +211,7 @@ public:
                     m_status = true;
                     m_removeOnRelease = aRemoveOnRelease;
                     m_errorMsg = wxEmptyString;
-                    wxLogTrace( LCK, "Successfully overrode lock on %s", m_lockFilename );
+                    KI_LOG_TRACE( LCK, "Successfully overrode lock on %s", m_lockFilename );
                     return true;
                 }
 
@@ -226,7 +227,7 @@ public:
         }
         else
         {
-            wxLogTrace( LCK, "Upgraded lock on %s to delete on release", m_lockFilename );
+            KI_LOG_TRACE( LCK, "Upgraded lock on %s to delete on release", m_lockFilename );
             m_removeOnRelease = aRemoveOnRelease;
         }
 
@@ -291,7 +292,7 @@ private:
 
         if( !fileName.FileExists() )
         {
-            wxLogTrace( LCK, "File does not exist: %s", m_lockFilename );
+            KI_LOG_TRACE( LCK, "File does not exist: %s", m_lockFilename );
             return false;
         }
 
@@ -308,7 +309,7 @@ private:
                 if( m_username == wxString( j["username"].get<std::string>() )
                         && m_hostname == wxString( j["hostname"].get<std::string>() ) )
                 {
-                    wxLogTrace( LCK, "User and host match for lock %s", m_lockFilename );
+                    KI_LOG_TRACE( LCK, "User and host match for lock %s", m_lockFilename );
                     return true;
                 }
             }
@@ -320,7 +321,7 @@ private:
                         e.what() );
         }
 
-        wxLogTrace( LCK, "User and host DID NOT match for lock %s", m_lockFilename );
+        KI_LOG_TRACE( LCK, "User and host DID NOT match for lock %s", m_lockFilename );
         return false;
     }
 };

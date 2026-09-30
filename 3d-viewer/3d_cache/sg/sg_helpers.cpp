@@ -32,6 +32,7 @@
 
 #include "3d_cache/sg/sg_helpers.h"
 #include "3d_cache/sg/sg_node.h"
+#include <core/ki_log.h>
 
 
 void S3D::FormatFloat( std::string& result, double value )
@@ -199,7 +200,7 @@ S3D::SGTYPES S3D::ReadTag( std::istream& aFile, std::string& aName )
 
     if( '[' != schar )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; missing left bracket at "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; missing left bracket at "
                                      "position %d" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     static_cast<int>( aFile.tellg() ) );
@@ -218,7 +219,7 @@ S3D::SGTYPES S3D::ReadTag( std::istream& aFile, std::string& aName )
 
     if( schar != ']' )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; could not find right "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; could not find right "
                                      "bracket" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
@@ -230,7 +231,7 @@ S3D::SGTYPES S3D::ReadTag( std::istream& aFile, std::string& aName )
 
     if( std::string::npos == upos )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; no underscore in name '%s'" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; no underscore in name '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     name );
 
@@ -256,7 +257,7 @@ S3D::SGTYPES S3D::ReadTag( std::istream& aFile, std::string& aName )
             return types[i];
     }
 
-    wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; no node type matching '%s'" ),
+    KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; no node type matching '%s'" ),
                 __FILE__, __FUNCTION__, __LINE__,
                 name );
 
@@ -357,7 +358,7 @@ bool S3D::CalcTriangleNormals( std::vector< SGPOINT > coords, std::vector< int >
 
     if( vsize < 3 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] invalid vertex set (fewer than 3 "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] invalid vertex set (fewer than 3 "
                                      "vertices)" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
@@ -368,7 +369,7 @@ bool S3D::CalcTriangleNormals( std::vector< SGPOINT > coords, std::vector< int >
 
     if( 0 != isize % 3 || index.empty() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] invalid index set (not multiple of 3)" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] invalid index set (not multiple of 3)" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -376,7 +377,7 @@ bool S3D::CalcTriangleNormals( std::vector< SGPOINT > coords, std::vector< int >
 
     if( !norms.empty() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] normals set is not empty" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] normals set is not empty" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -399,7 +400,7 @@ bool S3D::CalcTriangleNormals( std::vector< SGPOINT > coords, std::vector< int >
             std::ostringstream ostr;
             ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
             ostr << " * [INFO] invalid index set; index out of bounds";
-            wxLogTrace( MASK_3D_SG, wxT( "%s\n" ), ostr.str().c_str() );
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s\n" ), ostr.str().c_str() );
 #endif
 
             return false;
@@ -479,7 +480,7 @@ bool S3D::CalcTriangleNormals( std::vector< SGPOINT > coords, std::vector< int >
 
     if( norms.size() != coords.size() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] number of normals does not equal number "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] number of normals does not equal number "
                                      "of vertices" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 

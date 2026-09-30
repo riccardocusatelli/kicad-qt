@@ -60,6 +60,8 @@
 #include <wx/log.h>
 #include <wx/tokenzr.h>
 #include <core/profile.h>        // To use GetRunningMicroSecs or another profiling utility
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #define OCC_VERSION_MIN 0x070500
 
@@ -337,9 +339,9 @@ bool EXPORTER_STEP::buildFootprint3DShapes( FOOTPRINT* aFootprint, const VECTOR2
             const PADSTACK::POST_MACHINING_PROPS& frontPM = padstack.FrontPostMachining();
             const PADSTACK::POST_MACHINING_PROPS& backPM = padstack.BackPostMachining();
 
-            wxLogTrace( traceKiCad2Step, wxT( "PAD post-machining check: frontPM.mode.has_value=%d frontPM.size=%d frontPM.depth=%d frontPM.angle=%d" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "PAD post-machining check: frontPM.mode.has_value=%d frontPM.size=%d frontPM.depth=%d frontPM.angle=%d" ),
                         frontPM.mode.has_value() ? 1 : 0, frontPM.size, frontPM.depth, frontPM.angle );
-            wxLogTrace( traceKiCad2Step, wxT( "PAD post-machining check: backPM.mode.has_value=%d backPM.size=%d backPM.depth=%d backPM.angle=%d" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "PAD post-machining check: backPM.mode.has_value=%d backPM.size=%d backPM.depth=%d backPM.angle=%d" ),
                         backPM.mode.has_value() ? 1 : 0, backPM.size, backPM.depth, backPM.angle );
 
             // For counterbore, depth must be > 0. For countersink, depth can be 0 (calculated from diameter/angle)
@@ -349,7 +351,7 @@ bool EXPORTER_STEP::buildFootprint3DShapes( FOOTPRINT* aFootprint, const VECTOR2
 
             if( frontPMValid )
             {
-                wxLogTrace( traceKiCad2Step, wxT( "PAD front post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
+                KI_LOG_TRACE( traceKiCad2Step, wxT( "PAD front post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
                             static_cast<int>( *frontPM.mode ) );
 
                 int pmAngle = ( *frontPM.mode == PAD_DRILL_POST_MACHINING_MODE::COUNTERSINK ) ? frontPM.angle : 0;
@@ -391,7 +393,7 @@ bool EXPORTER_STEP::buildFootprint3DShapes( FOOTPRINT* aFootprint, const VECTOR2
 
             if( backPMValid )
             {
-                wxLogTrace( traceKiCad2Step, wxT( "PAD back post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
+                KI_LOG_TRACE( traceKiCad2Step, wxT( "PAD back post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
                             static_cast<int>( *backPM.mode ) );
 
                 int pmAngle = ( *backPM.mode == PAD_DRILL_POST_MACHINING_MODE::COUNTERSINK ) ? backPM.angle : 0;
@@ -807,9 +809,9 @@ bool EXPORTER_STEP::buildTrack3DShape( PCB_TRACK* aTrack, const VECTOR2D& aOrigi
         const PADSTACK::POST_MACHINING_PROPS& frontPM = padstack.FrontPostMachining();
         const PADSTACK::POST_MACHINING_PROPS& backPM = padstack.BackPostMachining();
 
-        wxLogTrace( traceKiCad2Step, wxT( "VIA post-machining check: frontPM.mode.has_value=%d frontPM.size=%d frontPM.depth=%d frontPM.angle=%d" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "VIA post-machining check: frontPM.mode.has_value=%d frontPM.size=%d frontPM.depth=%d frontPM.angle=%d" ),
                     frontPM.mode.has_value() ? 1 : 0, frontPM.size, frontPM.depth, frontPM.angle );
-        wxLogTrace( traceKiCad2Step, wxT( "VIA post-machining check: backPM.mode.has_value=%d backPM.size=%d backPM.depth=%d backPM.angle=%d" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "VIA post-machining check: backPM.mode.has_value=%d backPM.size=%d backPM.depth=%d backPM.angle=%d" ),
                     backPM.mode.has_value() ? 1 : 0, backPM.size, backPM.depth, backPM.angle );
 
         // For counterbore, depth must be > 0. For countersink, depth can be 0 (calculated from diameter/angle)
@@ -819,7 +821,7 @@ bool EXPORTER_STEP::buildTrack3DShape( PCB_TRACK* aTrack, const VECTOR2D& aOrigi
 
         if( frontPMValid )
         {
-            wxLogTrace( traceKiCad2Step, wxT( "VIA front post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "VIA front post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
                         static_cast<int>( *frontPM.mode ) );
 
             int pmAngle = ( *frontPM.mode == PAD_DRILL_POST_MACHINING_MODE::COUNTERSINK ) ? frontPM.angle : 0;
@@ -861,7 +863,7 @@ bool EXPORTER_STEP::buildTrack3DShape( PCB_TRACK* aTrack, const VECTOR2D& aOrigi
 
         if( backPMValid )
         {
-            wxLogTrace( traceKiCad2Step, wxT( "VIA back post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "VIA back post-machining: mode=%d (COUNTERBORE=2, COUNTERSINK=3)" ),
                         static_cast<int>( *backPM.mode ) );
 
             int pmAngle = ( *backPM.mode == PAD_DRILL_POST_MACHINING_MODE::COUNTERSINK ) ? backPM.angle : 0;
@@ -1074,7 +1076,7 @@ bool EXPORTER_STEP::buildGraphic3DShape( BOARD_ITEM* aItem, const VECTOR2D& aOri
         break;
     }
 
-    default: wxFAIL_MSG( "buildGraphic3DShape: unhandled item type" );
+    default: KI_FAIL_MSG( "buildGraphic3DShape: unhandled item type" );
     }
 
     return true;

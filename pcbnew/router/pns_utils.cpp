@@ -31,6 +31,7 @@
 #include <math/box2.h>
 
 #include <cmath>
+#include <core/ki_assert.h>
 
 namespace PNS {
 
@@ -518,7 +519,7 @@ const SHAPE_LINE_CHAIN BuildHullForPrimitiveShape( const SHAPE* aShape, int aCle
     }
     default:
     {
-        wxFAIL_MSG( wxString::Format( wxT( "Unsupported hull shape: %d (%s)." ),
+        KI_FAIL_MSG( wxString::Format( wxT( "Unsupported hull shape: %d (%s)." ),
                                       aShape->Type(),
                                       SHAPE_TYPE_asString( aShape->Type() ) ) );
         break;

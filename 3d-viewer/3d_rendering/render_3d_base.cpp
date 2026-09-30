@@ -30,6 +30,7 @@
 
 #include "render_3d_base.h"
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 /**
@@ -48,7 +49,7 @@ RENDER_3D_BASE::RENDER_3D_BASE( BOARD_ADAPTER& aBoardAdapter, CAMERA& aCamera ) 
         m_boardAdapter( aBoardAdapter ),
         m_camera( aCamera )
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_BASE::RENDER_3D_BASE" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_BASE::RENDER_3D_BASE" ) );
     m_canvasInitialized     = false;
     m_windowSize            = wxSize( -1, -1 );
     m_reloadRequested       = true;

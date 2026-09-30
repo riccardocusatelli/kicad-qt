@@ -32,6 +32,7 @@
 #include <wx/timer.h>
 #include <wx/dcclient.h>
 #include <eda_base_frame.h>
+#include <core/ki_assert.h>
 
 #ifdef __WXMSW__
 #include <dpi_scaling_common.h>
@@ -306,7 +307,7 @@ void WX_INFOBAR::onSize( wxSizeEvent& aEvent )
 
 void WX_INFOBAR::updateAuiLayout( bool aShow )
 {
-    wxASSERT( m_auiManager );
+    KI_ASSERT( m_auiManager );
 
     wxAuiPaneInfo& pane = m_auiManager->GetPane( this );
 
@@ -336,7 +337,7 @@ void WX_INFOBAR::AddButton( wxButton* aButton )
 {
     wxSizer* sizer = GetSizer();
 
-    wxASSERT( aButton );
+    KI_ASSERT( aButton );
 
 #ifdef __WXMAC__
     // Based on the code in the original class:
@@ -360,7 +361,7 @@ void WX_INFOBAR::AddButton( wxHyperlinkCtrl* aHypertextButton )
 {
     wxSizer* sizer = GetSizer();
 
-    wxASSERT( aHypertextButton );
+    KI_ASSERT( aHypertextButton );
 
     sizer->Add( aHypertextButton, wxSizerFlags().Centre().Border( wxRIGHT ).Shaped() );
 
@@ -479,7 +480,7 @@ EDA_INFOBAR_PANEL::EDA_INFOBAR_PANEL( wxWindow* aParent, wxWindowID aId, const w
 
 void EDA_INFOBAR_PANEL::AddInfoBar( WX_INFOBAR* aInfoBar )
 {
-    wxASSERT( aInfoBar );
+    KI_ASSERT( aInfoBar );
 
     aInfoBar->Reparent( this );
     m_mainSizer->Add( aInfoBar, 1, wxEXPAND, 0 );
@@ -489,7 +490,7 @@ void EDA_INFOBAR_PANEL::AddInfoBar( WX_INFOBAR* aInfoBar )
 
 void EDA_INFOBAR_PANEL::AddOtherItem( wxWindow* aOtherItem )
 {
-    wxASSERT( aOtherItem );
+    KI_ASSERT( aOtherItem );
 
     aOtherItem->Reparent( this );
     m_mainSizer->Add( aOtherItem, 1, wxEXPAND, 0 );

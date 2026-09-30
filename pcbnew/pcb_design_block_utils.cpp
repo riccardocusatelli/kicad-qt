@@ -50,6 +50,7 @@
 #include <tools/pcb_selection_tool.h>
 #include <dialogs/dialog_design_block_properties.h>
 #include <json_common.h>
+#include <core/ki_assert.h>
 
 bool checkOverwriteDb( wxWindow* aFrame, wxString& libname, wxString& newName )
 {
@@ -102,7 +103,7 @@ bool PCB_EDIT_FRAME::saveBoardAsFile( BOARD* aBoard, const wxString& aFileName, 
     {
         IO_RELEASER<PCB_IO> pi( PCB_IO_MGR::FindPlugin( PCB_IO_MGR::KICAD_SEXP ) );
 
-        wxASSERT( pcbFileName.IsAbsolute() );
+        KI_ASSERT( pcbFileName.IsAbsolute() );
 
         pi->SaveBoard( pcbFileName.GetFullPath(), aBoard, nullptr );
     }

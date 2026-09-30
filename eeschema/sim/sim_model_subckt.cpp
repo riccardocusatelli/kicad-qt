@@ -29,6 +29,7 @@
 #include <pegtl.hpp>
 #include <pegtl/contrib/parse_tree.hpp>
 #include <sim/spice_grammar.h>
+#include <core/ki_assert.h>
 
 
 namespace SIM_MODEL_SUBCKT_SPICE_PARSER
@@ -122,12 +123,12 @@ void SPICE_MODEL_PARSER_SUBCKT::ReadModel( const SIM_LIBRARY_SPICE& aLibrary,
                         }
                         else if( subsubnode->is_type<SIM_MODEL_SUBCKT_SPICE_PARSER::paramValue>() )
                         {
-                            wxASSERT( model.m_paramInfos.size() > 0 );
+                            KI_ASSERT( model.m_paramInfos.size() > 0 );
                             model.m_paramInfos.back()->defaultValue = subsubnode->string();
                         }
                         else
                         {
-                            wxFAIL_MSG( "Unhandled parse tree subsubnode" );
+                            KI_FAIL_MSG( "Unhandled parse tree subsubnode" );
                         }
                     }
                 }
@@ -135,7 +136,7 @@ void SPICE_MODEL_PARSER_SUBCKT::ReadModel( const SIM_LIBRARY_SPICE& aLibrary,
         }
         else
         {
-            wxFAIL_MSG( "Unhandled parse tree node" );
+            KI_FAIL_MSG( "Unhandled parse tree node" );
         }
     }
 

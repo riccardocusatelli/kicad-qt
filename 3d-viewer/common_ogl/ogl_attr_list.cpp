@@ -30,12 +30,13 @@
 #include "ogl_attr_list.h"
 #include <wx/debug.h>
 #include <core/arraydim.h>
+#include <core/ki_assert.h>
 
 
 const wxGLAttributes OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasingMode,
                                                       bool              aAlpha )
 {
-    wxASSERT( aAntiAliasingMode <= ANTIALIASING_MODE::AA_8X );
+    KI_ASSERT( aAntiAliasingMode <= ANTIALIASING_MODE::AA_8X );
 
     auto makeAttribs = [aAlpha]( int aSamplers )
     {

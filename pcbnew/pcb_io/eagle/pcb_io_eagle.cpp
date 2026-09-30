@@ -82,6 +82,7 @@ Load() TODO's
 
 #include <pcb_io/pcb_io.h>
 #include <pcb_io/eagle/pcb_io_eagle.h>
+#include <core/ki_assert.h>
 
 using namespace std;
 
@@ -439,7 +440,7 @@ BOARD* PCB_IO_EAGLE::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
         }
 
         // should be empty, else missing m_xpath->pop()
-        wxASSERT( m_xpath->Contents().size() == 0 );
+        KI_ASSERT( m_xpath->Contents().size() == 0 );
     }
     catch( const XML_PARSER_ERROR &exc )
     {
@@ -2537,7 +2538,7 @@ void PCB_IO_EAGLE::transferPad( const EPAD_COMMON& aEaglePad, PAD* aPad ) const
         aPad->SetLocalZoneConnection( ZONE_CONNECTION::FULL );
 
     FOOTPRINT* footprint = aPad->GetParentFootprint();
-    wxCHECK( footprint, /* void */ );
+    KI_CHECK( footprint, /* void */ );
     RotatePoint( padPos, footprint->GetOrientation() );
     aPad->SetPosition( padPos + footprint->GetPosition() );
 }

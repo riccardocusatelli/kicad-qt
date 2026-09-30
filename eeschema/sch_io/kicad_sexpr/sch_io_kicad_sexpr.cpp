@@ -65,6 +65,8 @@
 #include <string_utils.h>
 #include <trace_helpers.h>
 #include <reporter.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 using namespace TSCHEMATIC_T;
 
@@ -105,7 +107,7 @@ SCH_SHEET* SCH_IO_KICAD_SEXPR::LoadSchematicFile( const wxString& aFileName, SCH
                                                   SCH_SHEET* aAppendToMe,
                                                   const std::map<std::string, UTF8>* aProperties )
 {
-    wxASSERT( !aFileName || aSchematic != nullptr );
+    KI_ASSERT( !aFileName || aSchematic != nullptr );
 
     SCH_SHEET*  sheet;
 
@@ -117,12 +119,12 @@ SCH_SHEET* SCH_IO_KICAD_SEXPR::LoadSchematicFile( const wxString& aFileName, SCH
     // Unfortunately child sheet file names the legacy schematic file format are not fully
     // qualified and are always appended to the project path.  The aFileName attribute must
     // always be an absolute path so the project path can be used for load child sheet files.
-    wxASSERT( fn.IsAbsolute() );
+    KI_ASSERT( fn.IsAbsolute() );
 
     if( aAppendToMe )
     {
         m_appending = true;
-        wxLogTrace( traceSchPlugin, "Append \"%s\" to sheet \"%s\".",
+        KI_LOG_TRACE( traceSchPlugin, "Append \"%s\" to sheet \"%s\".",
                     aFileName, aAppendToMe->GetFileName() );
 
         wxFileName normedFn = aAppendToMe->GetFileName();
@@ -136,7 +138,7 @@ SCH_SHEET* SCH_IO_KICAD_SEXPR::LoadSchematicFile( const wxString& aFileName, SCH
         if( m_path.IsEmpty() )
             m_path = aSchematic->Project().GetProjectPath();
 
-        wxLogTrace( traceSchPlugin, "Normalized append path \"%s\".", m_path );
+        KI_LOG_TRACE( traceSchPlugin, "Normalized append path \"%s\".", m_path );
     }
     else
     {
@@ -168,13 +170,13 @@ SCH_SHEET* SCH_IO_KICAD_SEXPR::LoadSchematicFile( const wxString& aFileName, SCH
     }
     else
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         m_rootSheet = &aSchematic->Root();
         sheet = aAppendToMe;
         loadHierarchy( SCH_SHEET_PATH(), sheet );
     }
 
-    wxASSERT( m_currentPath.size() == 1 );  // only the project path should remain
+    KI_ASSERT( m_currentPath.size() == 1 );  // only the project path should remain
 
     m_currentPath.pop(); // Clear the path stack for next call to Load
 
@@ -205,10 +207,10 @@ void SCH_IO_KICAD_SEXPR::loadHierarchy( const SCH_SHEET_PATH& aParentSheetPath, 
         // Save the current path so that it gets restored when descending and ascending the
         // sheet hierarchy which allows for sheet schematic files to be nested in folders
         // relative to the last path a schematic was loaded from.
-        wxLogTrace( traceSchPlugin, "Saving path    '%s'", m_currentPath.top() );
+        KI_LOG_TRACE( traceSchPlugin, "Saving path    '%s'", m_currentPath.top() );
         m_currentPath.push( fileName.GetPath() );
-        wxLogTrace( traceSchPlugin, "Current path   '%s'", m_currentPath.top() );
-        wxLogTrace( traceSchPlugin, "Loading        '%s'", fileName.GetFullPath() );
+        KI_LOG_TRACE( traceSchPlugin, "Current path   '%s'", m_currentPath.top() );
+        KI_LOG_TRACE( traceSchPlugin, "Loading        '%s'", fileName.GetFullPath() );
 
         SCH_SHEET_PATH ancestorSheetPath = aParentSheetPath;
 
@@ -297,7 +299,7 @@ void SCH_IO_KICAD_SEXPR::loadHierarchy( const SCH_SHEET_PATH& aParentSheetPath, 
             // the plugin fully parsed before the exception was raised will be loaded.
             for( SCH_ITEM* aItem : aSheet->GetScreen()->Items().OfType( SCH_SHEET_T ) )
             {
-                wxCHECK2( aItem->Type() == SCH_SHEET_T, /* do nothing */ );
+                KI_CHECK2( aItem->Type() == SCH_SHEET_T, /* do nothing */ );
                 SCH_SHEET* sheet = static_cast<SCH_SHEET*>( aItem );
 
                 // Recursion starts here.
@@ -306,7 +308,7 @@ void SCH_IO_KICAD_SEXPR::loadHierarchy( const SCH_SHEET_PATH& aParentSheetPath, 
         }
 
         m_currentPath.pop();
-        wxLogTrace( traceSchPlugin, "Restoring path \"%s\"", m_currentPath.top() );
+        KI_LOG_TRACE( traceSchPlugin, "Restoring path \"%s\"", m_currentPath.top() );
     }
 
     m_currentSheetPath.pop_back();
@@ -341,7 +343,7 @@ void SCH_IO_KICAD_SEXPR::loadFile( const wxString& aFileName, SCH_SHEET* aSheet 
 
 void SCH_IO_KICAD_SEXPR::LoadContent( LINE_READER& aReader, SCH_SHEET* aSheet, int aFileVersion )
 {
-    wxCHECK( aSheet, /* void */ );
+    KI_CHECK( aSheet, /* void */ );
 
     SCH_IO_KICAD_SEXPR_PARSER parser( &aReader );
 
@@ -353,8 +355,8 @@ void SCH_IO_KICAD_SEXPR::SaveSchematicFile( const wxString& aFileName, SCH_SHEET
                                             SCHEMATIC*             aSchematic,
                                             const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_RET( aSheet != nullptr, "NULL SCH_SHEET object." );
-    wxCHECK_RET( !aFileName.IsEmpty(), "No schematic file name defined." );
+    KI_CHECK_RET( aSheet != nullptr, "NULL SCH_SHEET object." );
+    KI_CHECK_RET( !aFileName.IsEmpty(), "No schematic file name defined." );
 
     wxString sanityResult = aSheet->GetScreen()->GroupsSanityCheck();
 
@@ -374,7 +376,7 @@ void SCH_IO_KICAD_SEXPR::SaveSchematicFile( const wxString& aFileName, SCH_SHEET
 
     // File names should be absolute.  Don't assume everything relative to the project path
     // works properly.
-    wxASSERT( fn.IsAbsolute() );
+    KI_ASSERT( fn.IsAbsolute() );
 
     PRETTIFIED_FILE_OUTPUTFORMATTER formatter( fn.GetFullPath() );
     FormatSchematicToFormatter( &formatter, aSheet, aSchematic, aProperties );
@@ -388,7 +390,7 @@ void SCH_IO_KICAD_SEXPR::FormatSchematicToFormatter( OUTPUTFORMATTER* aOut, SCH_
                                                       SCHEMATIC* aSchematic,
                                                       const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_RET( aSheet != nullptr, "NULL SCH_SHEET object." );
+    KI_CHECK_RET( aSheet != nullptr, "NULL SCH_SHEET object." );
 
     init( aSchematic, aProperties );
 
@@ -402,13 +404,13 @@ void SCH_IO_KICAD_SEXPR::FormatSchematicToFormatter( OUTPUTFORMATTER* aOut, SCH_
 
 void SCH_IO_KICAD_SEXPR::Format( SCH_SHEET* aSheet )
 {
-    wxCHECK_RET( aSheet != nullptr, "NULL SCH_SHEET* object." );
-    wxCHECK_RET( m_schematic != nullptr, "NULL SCHEMATIC* object." );
+    KI_CHECK_RET( aSheet != nullptr, "NULL SCH_SHEET* object." );
+    KI_CHECK_RET( m_schematic != nullptr, "NULL SCHEMATIC* object." );
 
     SCH_SHEET_LIST sheets = m_schematic->Hierarchy();
     SCH_SCREEN* screen = aSheet->GetScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     // If we've requested to embed the fonts in the schematic, do so.
     // Otherwise, clear the embedded fonts from the schematic.  Embedded
@@ -516,7 +518,7 @@ void SCH_IO_KICAD_SEXPR::Format( SCH_SHEET* aSheet )
             break;
 
         default:
-            wxASSERT( "Unexpected schematic object type in SCH_IO_KICAD_SEXPR::Format()" );
+            KI_ASSERT( "Unexpected schematic object type in SCH_IO_KICAD_SEXPR::Format()" );
         }
     }
 
@@ -548,7 +550,7 @@ void SCH_IO_KICAD_SEXPR::Format( SCH_SELECTION* aSelection, SCH_SHEET_PATH* aSel
                                  SCHEMATIC& aSchematic, OUTPUTFORMATTER* aFormatter,
                                  bool aForClipboard )
 {
-    wxCHECK( aSelection && aSelectionPath && aFormatter, /* void */ );
+    KI_CHECK( aSelection && aSelectionPath && aFormatter, /* void */ );
 
     SCH_SHEET_LIST sheets = aSchematic.Hierarchy();
 
@@ -669,7 +671,7 @@ void SCH_IO_KICAD_SEXPR::Format( SCH_SELECTION* aSelection, SCH_SHEET_PATH* aSel
             break;
 
         default:
-            wxASSERT( "Unexpected schematic object type in SCH_IO_KICAD_SEXPR::Format()" );
+            KI_ASSERT( "Unexpected schematic object type in SCH_IO_KICAD_SEXPR::Format()" );
         }
     }
 }
@@ -679,7 +681,7 @@ void SCH_IO_KICAD_SEXPR::saveSymbol( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSche
                                      const SCH_SHEET_LIST& aSheetList, bool aForClipboard,
                                      const SCH_SHEET_PATH* aRelativePath )
 {
-    wxCHECK_RET( aSymbol != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aSymbol != nullptr && m_out != nullptr, "" );
 
     std::string     libName;
 
@@ -740,7 +742,7 @@ void SCH_IO_KICAD_SEXPR::saveSymbol( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSche
 
     const SCH_SCREEN* parentScreen = static_cast<const SCH_SCREEN*>( aSymbol->GetParent() );
 
-    wxASSERT( parentScreen );
+    KI_ASSERT( parentScreen );
 
     if( parentScreen && m_schematic )
     {
@@ -749,7 +751,7 @@ void SCH_IO_KICAD_SEXPR::saveSymbol( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSche
 
         // Design blocks are saved from a temporary sheet & screen which will not be found in
         // the schematic, and will therefore have no ordinal path.
-        // wxASSERT( ordinalPath );
+        // KI_ASSERT( ordinalPath );
 
         if( ordinalPath )
             aSymbol->GetInstance( ordinalInstance, ordinalPath->Path() );
@@ -870,7 +872,7 @@ void SCH_IO_KICAD_SEXPR::saveSymbol( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSche
         for( const SCH_SYMBOL_INSTANCE& inst : aSymbol->GetInstances() )
         {
             // Zero length KIID_PATH objects are not valid and will cause a crash below.
-            wxCHECK2( inst.m_Path.size(), continue );
+            KI_CHECK2( inst.m_Path.size(), continue );
 
             // If the instance data is part of this design but no longer has an associated sheet
             // path, don't save it.  This prevents large amounts of orphaned instance data for the
@@ -924,7 +926,7 @@ void SCH_IO_KICAD_SEXPR::saveSymbol( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSche
 
         for( auto& [uuid, instances] : projectInstances )
         {
-            wxCHECK2( instances.size(), continue );
+            KI_CHECK2( instances.size(), continue );
 
             // Sort project instances by KIID_PATH.
             std::sort( instances.begin(), instances.end(),
@@ -1006,7 +1008,7 @@ void SCH_IO_KICAD_SEXPR::saveSymbol( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSche
 
 void SCH_IO_KICAD_SEXPR::saveField( SCH_FIELD* aField )
 {
-    wxCHECK_RET( aField != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aField != nullptr && m_out != nullptr, "" );
 
     // Always write the canonical, language-neutral name. SCH_FIELD::GetCanonicalName() returns
     // the mandatory-field token, the well-known directive-label token ("Netclass"), or the raw
@@ -1043,14 +1045,14 @@ void SCH_IO_KICAD_SEXPR::saveField( SCH_FIELD* aField )
 
 void SCH_IO_KICAD_SEXPR::saveBitmap( const SCH_BITMAP& aBitmap )
 {
-    wxCHECK_RET( m_out != nullptr, "" );
+    KI_CHECK_RET( m_out != nullptr, "" );
 
     const REFERENCE_IMAGE& refImage = aBitmap.GetReferenceImage();
     const BITMAP_BASE&     bitmapBase = refImage.GetImage();
 
     const wxImage* image = bitmapBase.GetImageData();
 
-    wxCHECK_RET( image != nullptr, "wxImage* is NULL" );
+    KI_CHECK_RET( image != nullptr, "wxImage* is NULL" );
 
     m_out->Print( "(image (at %s %s)",
                   EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
@@ -1081,7 +1083,7 @@ void SCH_IO_KICAD_SEXPR::saveBitmap( const SCH_BITMAP& aBitmap )
 
 void SCH_IO_KICAD_SEXPR::saveSheet( SCH_SHEET* aSheet, const SCH_SHEET_LIST& aSheetList )
 {
-    wxCHECK_RET( aSheet != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aSheet != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(sheet (at %s %s) (size %s %s)",
                   EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
@@ -1261,7 +1263,7 @@ void SCH_IO_KICAD_SEXPR::saveSheet( SCH_SHEET* aSheet, const SCH_SHEET_LIST& aSh
 
 void SCH_IO_KICAD_SEXPR::saveJunction( SCH_JUNCTION* aJunction )
 {
-    wxCHECK_RET( aJunction != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aJunction != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(junction (at %s %s) (diameter %s) (color %d %d %d %s)",
                   EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
@@ -1282,7 +1284,7 @@ void SCH_IO_KICAD_SEXPR::saveJunction( SCH_JUNCTION* aJunction )
 
 void SCH_IO_KICAD_SEXPR::saveNoConnect( SCH_NO_CONNECT* aNoConnect )
 {
-    wxCHECK_RET( aNoConnect != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aNoConnect != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(no_connect (at %s %s)",
                   EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
@@ -1297,7 +1299,7 @@ void SCH_IO_KICAD_SEXPR::saveNoConnect( SCH_NO_CONNECT* aNoConnect )
 
 void SCH_IO_KICAD_SEXPR::saveBusEntry( SCH_BUS_ENTRY_BASE* aBusEntry )
 {
-    wxCHECK_RET( aBusEntry != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aBusEntry != nullptr && m_out != nullptr, "" );
 
     // Bus to bus entries are converted to bus line segments.
     if( aBusEntry->GetClass() == "SCH_BUS_BUS_ENTRY" )
@@ -1327,7 +1329,7 @@ void SCH_IO_KICAD_SEXPR::saveBusEntry( SCH_BUS_ENTRY_BASE* aBusEntry )
 
 void SCH_IO_KICAD_SEXPR::saveShape( SCH_SHAPE* aShape )
 {
-    wxCHECK_RET( aShape != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aShape != nullptr && m_out != nullptr, "" );
 
     switch( aShape->GetShape() )
     {
@@ -1364,7 +1366,7 @@ void SCH_IO_KICAD_SEXPR::saveShape( SCH_SHAPE* aShape )
 
 void SCH_IO_KICAD_SEXPR::saveRuleArea( SCH_RULE_AREA* aRuleArea )
 {
-    wxCHECK_RET( aRuleArea != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aRuleArea != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(rule_area " );
 
@@ -1381,7 +1383,7 @@ void SCH_IO_KICAD_SEXPR::saveRuleArea( SCH_RULE_AREA* aRuleArea )
 
 void SCH_IO_KICAD_SEXPR::saveLine( SCH_LINE* aLine )
 {
-    wxCHECK_RET( aLine != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aLine != nullptr && m_out != nullptr, "" );
 
     wxString lineType;
 
@@ -1415,7 +1417,7 @@ void SCH_IO_KICAD_SEXPR::saveLine( SCH_LINE* aLine )
 
 void SCH_IO_KICAD_SEXPR::saveText( SCH_TEXT* aText )
 {
-    wxCHECK_RET( aText != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aText != nullptr && m_out != nullptr, "" );
 
     // Note: label is nullptr SCH_TEXT, but not for SCH_LABEL_XXX,
     SCH_LABEL_BASE* label = dynamic_cast<SCH_LABEL_BASE*>( aText );
@@ -1489,7 +1491,7 @@ void SCH_IO_KICAD_SEXPR::saveText( SCH_TEXT* aText )
 
 void SCH_IO_KICAD_SEXPR::saveTextBox( SCH_TEXTBOX* aTextBox )
 {
-    wxCHECK_RET( aTextBox != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aTextBox != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(%s %s",
                   aTextBox->Type() == SCH_TABLECELL_T ? "table_cell" : "text_box",
@@ -1555,7 +1557,7 @@ void SCH_IO_KICAD_SEXPR::saveTable( SCH_TABLE* aTable )
             }
         }
 
-        wxCHECK_MSG( maxCol >= minCol && maxRow >= minRow, /*void*/, wxT( "No selected cells!" ) );
+        KI_CHECK_MSG( maxCol >= minCol && maxRow >= minRow, /*void*/, wxT( "No selected cells!" ) );
 
         int destRow = 0;
 
@@ -1571,7 +1573,7 @@ void SCH_IO_KICAD_SEXPR::saveTable( SCH_TABLE* aTable )
         aTable->SetColCount( ( maxCol - minCol ) + 1 );
     }
 
-    wxCHECK_RET( aTable != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aTable != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(table (column_count %d)", aTable->GetColCount() );
 

@@ -32,6 +32,7 @@
 #include <sim/spice_value.h>
 
 #include <wx/valnum.h>
+#include <core/ki_assert.h>
 
 class SPICE_CIRCUIT_MODEL;
 class SPICE_SETTINGS;
@@ -158,7 +159,7 @@ private:
         case DECADE: return wxString( "dec" );
         case OCTAVE: return wxString( "oct" );
         case LINEAR: return wxString( "lin" );
-        default:     wxFAIL_MSG( "Unhandled scale type" ); return wxEmptyString;
+        default:     KI_FAIL_MSG( "Unhandled scale type" ); return wxEmptyString;
         }
     }
 

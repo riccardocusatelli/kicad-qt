@@ -36,6 +36,7 @@
 #include <kiplatform/ui.h>
 #include <kiway_holder.h>
 #include <project.h>
+#include <core/ki_assert.h>
 
 WX_HTML_REPORT_PANEL::WX_HTML_REPORT_PANEL( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
                                             long style ) :
@@ -388,7 +389,7 @@ REPORTER& WX_HTML_PANEL_REPORTER::Report( const wxString& aText, SEVERITY aSever
 {
     REPORTER::Report( aText, aSeverity );
 
-    wxCHECK_MSG( m_panel != nullptr, *this,
+    KI_CHECK_MSG( m_panel != nullptr, *this,
                  wxT( "No WX_HTML_REPORT_PANEL object defined in WX_HTML_PANEL_REPORTER." ) );
 
     m_panel->Report( aText, aSeverity );
@@ -400,7 +401,7 @@ REPORTER& WX_HTML_PANEL_REPORTER::ReportTail( const wxString& aText, SEVERITY aS
 {
     REPORTER::Report( aText, aSeverity );
 
-    wxCHECK_MSG( m_panel != nullptr, *this,
+    KI_CHECK_MSG( m_panel != nullptr, *this,
                  wxT( "No WX_HTML_REPORT_PANEL object defined in WX_HTML_PANEL_REPORTER." ) );
 
     m_panel->Report( aText, aSeverity, LOC_TAIL );
@@ -412,7 +413,7 @@ REPORTER& WX_HTML_PANEL_REPORTER::ReportHead( const wxString& aText, SEVERITY aS
 {
     REPORTER::Report( aText, aSeverity );
 
-    wxCHECK_MSG( m_panel != nullptr, *this,
+    KI_CHECK_MSG( m_panel != nullptr, *this,
                  wxT( "No WX_HTML_REPORT_PANEL object defined in WX_HTML_PANEL_REPORTER." ) );
 
     m_panel->Report( aText, aSeverity, LOC_HEAD );

@@ -28,6 +28,8 @@
 
 #include "plugins/3dapi/ifsg_coords.h"
 #include "3d_cache/sg/sg_coords.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 extern char BadParent[];
@@ -56,7 +58,7 @@ IFSG_COORDS::IFSG_COORDS( SGNODE* aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -73,7 +75,7 @@ IFSG_COORDS::IFSG_COORDS( IFSG_NODE& aParent )
 #ifdef DEBUG
     if( !pp )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     BadParent );
     }
 #endif
@@ -85,7 +87,7 @@ IFSG_COORDS::IFSG_COORDS( IFSG_NODE& aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -126,7 +128,7 @@ bool IFSG_COORDS::NewNode( SGNODE* aParent )
 
     if( aParent != m_node->GetParent() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid SGNODE parent (%s) to SGCOORDS" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid SGNODE parent (%s) to SGCOORDS" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeTypeName( aParent->GetNodeType() ) );
 
@@ -145,7 +147,7 @@ bool IFSG_COORDS::NewNode( IFSG_NODE& aParent )
 {
     SGNODE* np = aParent.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return NewNode( np );
 }
@@ -153,7 +155,7 @@ bool IFSG_COORDS::NewNode( IFSG_NODE& aParent )
 
 bool IFSG_COORDS::GetCoordsList( size_t& aListSize, SGPOINT*& aCoordsList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGCOORDS*) m_node )->GetCoordsList( aListSize, aCoordsList );
 }
@@ -161,7 +163,7 @@ bool IFSG_COORDS::GetCoordsList( size_t& aListSize, SGPOINT*& aCoordsList )
 
 bool IFSG_COORDS::SetCoordsList( size_t aListSize, const SGPOINT* aCoordsList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGCOORDS*) m_node )->SetCoordsList( aListSize, aCoordsList );
 
@@ -171,7 +173,7 @@ bool IFSG_COORDS::SetCoordsList( size_t aListSize, const SGPOINT* aCoordsList )
 
 bool IFSG_COORDS::AddCoord( double aXValue, double aYValue, double aZValue )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGCOORDS*) m_node )->AddCoord( aXValue, aYValue, aZValue );
 
@@ -181,7 +183,7 @@ bool IFSG_COORDS::AddCoord( double aXValue, double aYValue, double aZValue )
 
 bool IFSG_COORDS::AddCoord( const SGPOINT& aPoint )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGCOORDS*) m_node )->AddCoord( aPoint );
 

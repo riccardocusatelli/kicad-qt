@@ -40,6 +40,7 @@
 #include <string_utils.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 SCH_JUNCTION::SCH_JUNCTION( const VECTOR2I& aPosition, int aDiameter, SCH_LAYER_ID aLayer ) :
@@ -63,7 +64,7 @@ EDA_ITEM* SCH_JUNCTION::Clone() const
 
 void SCH_JUNCTION::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_JUNCTION_T ),
+    KI_CHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_JUNCTION_T ),
                  wxT( "Cannot swap junction data with invalid item." ) );
 
     SCH_JUNCTION* item = (SCH_JUNCTION*) aItem;
@@ -235,7 +236,7 @@ bool SCH_JUNCTION::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_JUNCTION* junction = dynamic_cast<const SCH_JUNCTION*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( junction, false );
+    KI_CHECK( junction, false );
 
     return GetPosition() != junction->GetPosition();
 }

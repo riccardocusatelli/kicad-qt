@@ -38,6 +38,8 @@
 #include <wx/log.h>
 #include <chrono>
 #include <memory>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /*
@@ -89,7 +91,7 @@ void MODEL_3D::MakeBbox( const BBOX_3D& aBox, unsigned int aIdxOffset, VERTEX* a
 
 MODEL_3D::MODEL_3D( const S3DMODEL& a3DModel, MATERIAL_MODE aMaterialMode )
 {
-    wxLogTrace( m_logTrace, wxT( "MODEL_3D::MODEL_3D %u meshes %u materials" ),
+    KI_LOG_TRACE( m_logTrace, wxT( "MODEL_3D::MODEL_3D %u meshes %u materials" ),
                 static_cast<unsigned int>( a3DModel.m_MeshesSize ),
                 static_cast<unsigned int>( a3DModel.m_MaterialsSize ) );
 
@@ -110,10 +112,10 @@ MODEL_3D::MODEL_3D( const S3DMODEL& a3DModel, MATERIAL_MODE aMaterialMode )
     m_index_buffer = buffers[5];
 
     // Validate a3DModel pointers
-    wxASSERT( a3DModel.m_Materials != nullptr );
-    wxASSERT( a3DModel.m_Meshes != nullptr );
-    wxASSERT( a3DModel.m_MaterialsSize > 0 );
-    wxASSERT( a3DModel.m_MeshesSize > 0 );
+    KI_ASSERT( a3DModel.m_Materials != nullptr );
+    KI_ASSERT( a3DModel.m_Meshes != nullptr );
+    KI_ASSERT( a3DModel.m_MaterialsSize > 0 );
+    KI_ASSERT( a3DModel.m_MeshesSize > 0 );
 
     m_materialMode = aMaterialMode;
 
@@ -245,7 +247,7 @@ MODEL_3D::MODEL_3D( const S3DMODEL& a3DModel, MATERIAL_MODE aMaterialMode )
 
         if( use_idx_count % 3 != 0 )
         {
-            wxLogTrace( m_logTrace, wxT( "  index count %u not multiple of 3, truncating" ),
+            KI_LOG_TRACE( m_logTrace, wxT( "  index count %u not multiple of 3, truncating" ),
                         static_cast<unsigned int>( use_idx_count ) );
             use_idx_count = ( use_idx_count / 3 ) * 3;
         }
@@ -256,7 +258,7 @@ MODEL_3D::MODEL_3D( const S3DMODEL& a3DModel, MATERIAL_MODE aMaterialMode )
         {
             if( !IsTriangleInRange( mesh.m_FaceIdx, idx_i, mesh.m_VertexSize ) )
             {
-                wxLogTrace( m_logTrace, wxT( " triangle at index %u out of range (%u), skipping" ),
+                KI_LOG_TRACE( m_logTrace, wxT( " triangle at index %u out of range (%u), skipping" ),
                             static_cast<unsigned int>( idx_i ),
                             static_cast<unsigned int>( mesh.m_VertexSize ) );
 
@@ -311,7 +313,7 @@ MODEL_3D::MODEL_3D( const S3DMODEL& a3DModel, MATERIAL_MODE aMaterialMode )
         total_index_count += mg.m_indices.size();
     }
 
-    wxLogTrace( m_logTrace, wxT( "  total %u vertices, %u indices" ),
+    KI_LOG_TRACE( m_logTrace, wxT( "  total %u vertices, %u indices" ),
                 total_vertex_count, total_index_count );
 
     glBindBuffer( GL_ARRAY_BUFFER, m_vertex_buffer );
@@ -381,7 +383,7 @@ MODEL_3D::MODEL_3D( const S3DMODEL& a3DModel, MATERIAL_MODE aMaterialMode )
 
     auto end_time = std::chrono::high_resolution_clock::now();
 
-    wxLogTrace( m_logTrace, wxT( "  loaded in %u ms\n" ),
+    KI_LOG_TRACE( m_logTrace, wxT( "  loaded in %u ms\n" ),
                (unsigned int)std::chrono::duration_cast<std::chrono::milliseconds> (
                    end_time - start_time).count() );
 }

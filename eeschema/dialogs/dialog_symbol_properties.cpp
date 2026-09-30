@@ -50,6 +50,7 @@
 
 #include <dialog_sim_model.h>
 #include <panel_embedded_files.h>
+#include <core/ki_assert.h>
 
 
 wxDEFINE_EVENT( SYMBOL_DELAY_FOCUS, wxCommandEvent );
@@ -154,7 +155,7 @@ public:
         case COL_ALT_NAME:  return _( "Alternate Assignment" );
         case COL_TYPE:      return _( "Electrical Type" );
         case COL_SHAPE:     return _( "Graphic Style" );
-        default:   wxFAIL;  return wxEmptyString;
+        default:   KI_FAIL();  return wxEmptyString;
         }
     }
 
@@ -192,7 +193,7 @@ public:
         case COL_BASE_NAME: return aPin.GetBaseName();
         case COL_TYPE:      return PinTypeNames()[static_cast<int>( aPin.GetType() )];
         case COL_SHAPE:     return PinShapeNames()[static_cast<int>( aPin.GetShape() )];
-        default:   wxFAIL;  return wxEmptyString;
+        default:   KI_FAIL();  return wxEmptyString;
         }
     }
 
@@ -218,7 +219,7 @@ public:
             return enhanceAttr( m_shapeAttr, aRow, aCol, aKind );
 
         default:
-            wxFAIL;
+            KI_FAIL();
             return nullptr;
         }
     }
@@ -244,7 +245,7 @@ public:
             break;
 
         default:
-            wxFAIL;
+            KI_FAIL();
             break;
         }
     }
@@ -326,7 +327,7 @@ DIALOG_SYMBOL_PROPERTIES::DIALOG_SYMBOL_PROPERTIES( SCH_EDIT_FRAME* aParent, SCH
     // GetLibSymbolRef() now points to the cached part in the schematic, which should always be
     // there for usual cases, but can be null when opening old schematics not storing the part
     // so we need to handle m_part == nullptr
-    // wxASSERT( m_part );
+    // KI_ASSERT( m_part );
 
     m_fields = new FIELDS_GRID_TABLE( this, aParent, m_fieldsGrid, m_symbol );
 
@@ -514,7 +515,7 @@ bool DIALOG_SYMBOL_PROPERTIES::TransferDataToWindow()
         }
         else
         {
-            wxASSERT( (int)m_part->GetBodyStyleNames().size() == m_part->GetBodyStyleCount() );
+            KI_ASSERT( (int)m_part->GetBodyStyleNames().size() == m_part->GetBodyStyleCount() );
 
             for( int ii = 0; ii < m_part->GetBodyStyleCount(); ii++ )
             {
@@ -715,7 +716,7 @@ bool DIALOG_SYMBOL_PROPERTIES::TransferDataFromWindow()
     wxString       currentVariant = GetParent()->Schematic().GetCurrentVariant();
     bool           replaceOnCurrentScreen;
 
-    wxCHECK( currentScreen, false );
+    KI_CHECK( currentScreen, false );
 
     // This needs to be done before the LIB_ID is changed to prevent stale library symbols in
     // the schematic file.
@@ -1103,7 +1104,7 @@ void DIALOG_SYMBOL_PROPERTIES::HandleDelayedFocus( wxCommandEvent& event )
 {
     VECTOR2I *loc = static_cast<VECTOR2I*>( event.GetClientData() );
 
-    wxCHECK_RET( loc, wxT( "Missing focus cell location" ) );
+    KI_CHECK_RET( loc, wxT( "Missing focus cell location" ) );
 
     // Run the AutoColumnSizer before setting focus (as it will clear any shown cell edit control
     // if it has to resize that column).
@@ -1129,7 +1130,7 @@ void DIALOG_SYMBOL_PROPERTIES::HandleDelayedSelection( wxCommandEvent& event )
 {
     VECTOR2I *loc = static_cast<VECTOR2I*>( event.GetClientData() );
 
-    wxCHECK_RET( loc, wxT( "Missing focus cell location" ) );
+    KI_CHECK_RET( loc, wxT( "Missing focus cell location" ) );
 
     // Handle a delayed selection
     wxGridCellEditor* cellEditor = m_fieldsGrid->GetCellEditor( loc->x, loc->y );

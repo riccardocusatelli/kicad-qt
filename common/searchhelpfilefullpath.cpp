@@ -27,6 +27,7 @@
 
 #include <wx/arrstr.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 wxString SearchHelpFileFullPath( const wxString& aBaseName )
@@ -92,7 +93,7 @@ wxString SearchHelpFileFullPath( const wxString& aBaseName )
 #endif
 
         // search HTML first, as it is the preferred format for help files
-        wxLogTrace( tracePathsAndFiles, wxS( "Checking SEARCH_STACK for file %s.html" ),
+        KI_LOG_TRACE( tracePathsAndFiles, wxS( "Checking SEARCH_STACK for file %s.html" ),
                     aBaseName );
         helpFile = docPaths.FindValidPath( aBaseName + wxS( ".html" ) );
 
@@ -104,7 +105,7 @@ wxString SearchHelpFileFullPath( const wxString& aBaseName )
         }
 
         // search PDF only when no corresponding HTML file was found
-        wxLogTrace( tracePathsAndFiles, wxS( "Checking SEARCH_STACK for file %s.pdf" ), aBaseName );
+        KI_LOG_TRACE( tracePathsAndFiles, wxS( "Checking SEARCH_STACK for file %s.pdf" ), aBaseName );
         helpFile = docPaths.FindValidPath( aBaseName + wxS( ".pdf" ) );
 
         if( !helpFile.IsEmpty() )

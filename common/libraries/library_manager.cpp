@@ -35,6 +35,8 @@
 #include <wildcards_and_files_ext.h>
 
 #include <libraries/library_manager.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 using namespace std::chrono_literals;
 #include <settings/common_settings.h>
@@ -95,7 +97,7 @@ void LIBRARY_MANAGER::loadTables( const wxString& aTablePath, LIBRARY_TABLE_SCOP
                     return m_projectTables;
 
                 default:
-                    wxCHECK_MSG( false, m_tables, "Invalid scope passed to loadTables" );
+                    KI_CHECK_MSG( false, m_tables, "Invalid scope passed to loadTables" );
                 }
             };
 
@@ -130,7 +132,7 @@ void LIBRARY_MANAGER::loadTables( const wxString& aTablePath, LIBRARY_TABLE_SCOP
         }
         else
         {
-            wxLogTrace( traceLibraries, "No library table found at %s", fn.GetFullPath() );
+            KI_LOG_TRACE( traceLibraries, "No library table found at %s", fn.GetFullPath() );
         }
     }
 }
@@ -162,7 +164,7 @@ void LIBRARY_MANAGER::loadNestedTables( LIBRARY_TABLE& aRootTable )
 
                         if( seenTables.contains( src ) )
                         {
-                            wxLogTrace( traceLibraries, "Library table %s has already been loaded!", src );
+                            KI_LOG_TRACE( traceLibraries, "Library table %s has already been loaded!", src );
                             row.SetOk( false );
                             row.SetErrorDescription( _( "A reference to this library table already exists" ) );
                             continue;
@@ -234,7 +236,7 @@ void LIBRARY_MANAGER::SetLibOverride( const wxString& aTablePath, const wxString
     SETTINGS_MANAGER& mgr = Pgm().GetSettingsManager();
     KICAD_SETTINGS*   settings = mgr.GetAppSettings<KICAD_SETTINGS>( "kicad" );
 
-    wxCHECK( settings, /* void */ );
+    KI_CHECK( settings, /* void */ );
 
     if( !aDisabled && !aHidden )
     {
@@ -251,7 +253,7 @@ void LIBRARY_MANAGER::ClearLibOverride( const wxString& aTablePath, const wxStri
     SETTINGS_MANAGER& mgr = Pgm().GetSettingsManager();
     KICAD_SETTINGS*   settings = mgr.GetAppSettings<KICAD_SETTINGS>( "kicad" );
 
-    wxCHECK( settings, /* void */ );
+    KI_CHECK( settings, /* void */ );
 
     auto tableIt = settings->m_LibOverrides.find( aTablePath );
 
@@ -272,7 +274,7 @@ wxString LIBRARY_MANAGER::tableFileName( LIBRARY_TABLE_TYPE aType )
     case LIBRARY_TABLE_TYPE::SYMBOL:        return FILEEXT::SymbolLibraryTableFileName;
     case LIBRARY_TABLE_TYPE::FOOTPRINT:     return FILEEXT::FootprintLibraryTableFileName;
     case LIBRARY_TABLE_TYPE::DESIGN_BLOCK:  return FILEEXT::DesignBlockLibraryTableFileName;
-    default:                                wxCHECK( false, wxEmptyString );
+    default:                                KI_CHECK( false, wxEmptyString );
     }
 }
 
@@ -281,7 +283,7 @@ void LIBRARY_MANAGER::createEmptyTable( LIBRARY_TABLE_TYPE aType, LIBRARY_TABLE_
 {
     if( aScope == LIBRARY_TABLE_SCOPE::GLOBAL )
     {
-        wxCHECK( !m_tables.contains( aType ), /* void */ );
+        KI_CHECK( !m_tables.contains( aType ), /* void */ );
         wxFileName fn( PATHS::GetUserSettingsPath(), tableFileName( aType ) );
 
         m_tables[aType] = std::make_unique<LIBRARY_TABLE>( fn, LIBRARY_TABLE_SCOPE::GLOBAL );
@@ -289,7 +291,7 @@ void LIBRARY_MANAGER::createEmptyTable( LIBRARY_TABLE_TYPE aType, LIBRARY_TABLE_
     }
     else if( aScope == LIBRARY_TABLE_SCOPE::PROJECT )
     {
-        wxCHECK( !m_projectTables.contains( aType ), /* void */ );
+        KI_CHECK( !m_projectTables.contains( aType ), /* void */ );
         wxFileName fn( Pgm().GetSettingsManager().Prj().GetProjectDirectory(), tableFileName( aType ) );
 
         m_projectTables[aType] = std::make_unique<LIBRARY_TABLE>( fn, LIBRARY_TABLE_SCOPE::PROJECT );
@@ -404,7 +406,7 @@ private:
 
             ensureUnique( aTable, name, nickname );
 
-            wxLogTrace( traceLibraries, "Manager: Adding PCM lib '%s' as '%s'", libPath, nickname );
+            KI_LOG_TRACE( traceLibraries, "Manager: Adding PCM lib '%s' as '%s'", libPath, nickname );
 
             LIBRARY_TABLE_ROW& row = aTable->InsertRow();
 
@@ -416,7 +418,7 @@ private:
         }
         else
         {
-            wxLogTrace( traceLibraries, "Manager: Not adding existing PCM lib '%s'", libPath );
+            KI_LOG_TRACE( traceLibraries, "Manager: Not adding existing PCM lib '%s'", libPath );
         }
     }
 
@@ -535,7 +537,7 @@ bool LIBRARY_MANAGER::CreateGlobalTable( LIBRARY_TABLE_TYPE aType, bool aPopulat
 
     if( !defaultLib.IsFileReadable() )
     {
-        wxLogTrace( traceLibraries, "Warning: couldn't read default library table for %s at '%s'",
+        KI_LOG_TRACE( traceLibraries, "Warning: couldn't read default library table for %s at '%s'",
                     magic_enum::enum_name( aType ), defaultLib.GetFullPath() );
     }
 
@@ -555,7 +557,7 @@ bool LIBRARY_MANAGER::CreateGlobalTable( LIBRARY_TABLE_TYPE aType, bool aPopulat
     }
     catch( IO_ERROR& e )
     {
-        wxLogTrace( traceLibraries, "Exception while saving: %s", e.What() );
+        KI_LOG_TRACE( traceLibraries, "Exception while saving: %s", e.What() );
         return false;
     }
 
@@ -578,7 +580,7 @@ void LIBRARY_MANAGER::LoadGlobalTables( std::initializer_list<LIBRARY_TABLE_TYPE
     SETTINGS_MANAGER& mgr = Pgm().GetSettingsManager();
     KICAD_SETTINGS*   settings = mgr.GetAppSettings<KICAD_SETTINGS>( "kicad" );
 
-    wxCHECK( settings, /* void */ );
+    KI_CHECK( settings, /* void */ );
 
     const ENV_VAR_MAP& vars = Pgm().GetLocalEnvVariables();
     std::optional<wxString> packagesPath = ENV_VAR::GetVersionedEnvVarValue( vars, wxT( "3RD_PARTY" ) );
@@ -600,7 +602,7 @@ void LIBRARY_MANAGER::LoadGlobalTables( std::initializer_list<LIBRARY_TABLE_TYPE
                 table->Save().map_error(
                         []( const LIBRARY_ERROR& aError )
                         {
-                            wxLogTrace( traceLibraries, wxT( "Warning: save failed after PCM auto-add: %s" ),
+                            KI_LOG_TRACE( traceLibraries, wxT( "Warning: save failed after PCM auto-add: %s" ),
                                         aError.message );
                         } );
             }
@@ -611,7 +613,7 @@ void LIBRARY_MANAGER::LoadGlobalTables( std::initializer_list<LIBRARY_TABLE_TYPE
             [&]( LIBRARY_TABLE_TYPE aType )
             {
                 LIBRARY_TABLE* table = Table( aType, LIBRARY_TABLE_SCOPE::GLOBAL ).value_or( nullptr );
-                wxCHECK( table, /* void */ );
+                KI_CHECK( table, /* void */ );
 
                 auto toErase = std::ranges::remove_if( table->Rows(),
                         [&]( const LIBRARY_TABLE_ROW& aRow )
@@ -631,7 +633,7 @@ void LIBRARY_MANAGER::LoadGlobalTables( std::initializer_list<LIBRARY_TABLE_TYPE
                     table->Save().map_error(
                             []( const LIBRARY_ERROR& aError )
                             {
-                                wxLogTrace( traceLibraries, wxT( "Warning: save failed after PCM auto-remove: %s" ),
+                                KI_LOG_TRACE( traceLibraries, wxT( "Warning: save failed after PCM auto-remove: %s" ),
                                             aError.message );
                             } );
                 }
@@ -682,7 +684,7 @@ void LIBRARY_MANAGER::RegisterAdapter( LIBRARY_TABLE_TYPE aType,
 {
     std::scoped_lock lock( m_adaptersMutex );
 
-    wxCHECK_MSG( !m_adapters.contains( aType ), /**/, "You should only register an adapter once!" );
+    KI_CHECK_MSG( !m_adapters.contains( aType ), /**/, "You should only register an adapter once!" );
 
     m_adapters[aType] = std::move( aAdapter );
 }
@@ -720,13 +722,13 @@ std::optional<LIBRARY_TABLE*> LIBRARY_MANAGER::Table( LIBRARY_TABLE_TYPE aType,
     {
     case LIBRARY_TABLE_SCOPE::BOTH:
     case LIBRARY_TABLE_SCOPE::UNINITIALIZED:
-        wxCHECK_MSG( false, std::nullopt, "Table() requires a single scope" );
+        KI_CHECK_MSG( false, std::nullopt, "Table() requires a single scope" );
 
     case LIBRARY_TABLE_SCOPE::GLOBAL:
     {
         if( !m_tables.contains( aType ) )
         {
-            wxLogTrace( traceLibraries, "WARNING: missing global table (%s)",
+            KI_LOG_TRACE( traceLibraries, "WARNING: missing global table (%s)",
                         magic_enum::enum_name( aType ) );
             return std::nullopt;
         }
@@ -776,7 +778,7 @@ std::vector<LIBRARY_TABLE_ROW*> LIBRARY_MANAGER::Rows( LIBRARY_TABLE_TYPE aType,
         break;
 
     case LIBRARY_TABLE_SCOPE::UNINITIALIZED:
-        wxFAIL;
+        KI_FAIL();
     }
 
     std::function<void(const std::unique_ptr<LIBRARY_TABLE>&, bool parentHidden)> processTable =
@@ -919,7 +921,7 @@ void LIBRARY_MANAGER::LoadProjectTables( const wxString& aProjectPath,
         }
 
         m_projectTables.clear();
-        wxLogTrace( traceLibraries, "New project path %s is not readable, not loading project tables", aProjectPath );
+        KI_LOG_TRACE( traceLibraries, "New project path %s is not readable, not loading project tables", aProjectPath );
     }
 
     // Phase 2: let adapters reconcile their cache against the rebuilt project
@@ -1268,7 +1270,7 @@ void LIBRARY_MANAGER_ADAPTER::CheckTableRow( LIBRARY_TABLE_ROW& aRow )
 
 LIBRARY_TABLE* LIBRARY_MANAGER_ADAPTER::GlobalTable() const
 {
-    wxCHECK( m_manager.Table( Type(), LIBRARY_TABLE_SCOPE::GLOBAL ), nullptr );
+    KI_CHECK( m_manager.Table( Type(), LIBRARY_TABLE_SCOPE::GLOBAL ), nullptr );
     return *m_manager.Table( Type(), LIBRARY_TABLE_SCOPE::GLOBAL );
 }
 
@@ -1296,7 +1298,7 @@ std::vector<wxString> LIBRARY_MANAGER_ADAPTER::GetLibraryNames() const
     std::vector<wxString> ret;
     std::vector<LIBRARY_TABLE_ROW*> rows = m_manager.Rows( Type() );
 
-    wxLogTrace( traceLibraries, "GetLibraryNames: checking %zu rows from table", rows.size() );
+    KI_LOG_TRACE( traceLibraries, "GetLibraryNames: checking %zu rows from table", rows.size() );
 
     for( const LIBRARY_TABLE_ROW* row : rows )
     {
@@ -1309,7 +1311,7 @@ std::vector<wxString> LIBRARY_MANAGER_ADAPTER::GetLibraryNames() const
 
     StrNumSort( ret, CASE_SENSITIVITY::INSENSITIVE );
 
-    wxLogTrace( traceLibraries, "GetLibraryNames: returning %zu of %zu libraries", ret.size(), rows.size() );
+    KI_LOG_TRACE( traceLibraries, "GetLibraryNames: returning %zu of %zu libraries", ret.size(), rows.size() );
     return ret;
 }
 
@@ -1389,12 +1391,12 @@ void LIBRARY_MANAGER_ADAPTER::abortLoad()
         if( m_futures.empty() )
             return;
 
-        wxLogTrace( traceLibraries, "Aborting library load..." );
+        KI_LOG_TRACE( traceLibraries, "Aborting library load..." );
         m_abort.store( true );
     }
 
     BlockUntilLoaded();
-    wxLogTrace( traceLibraries, "Aborted" );
+    KI_LOG_TRACE( traceLibraries, "Aborted" );
 
     {
         std::lock_guard lock( m_loadMutex );
@@ -1420,15 +1422,15 @@ std::optional<float> LIBRARY_MANAGER_ADAPTER::AsyncLoadProgress() const
 
 void LIBRARY_MANAGER_ADAPTER::BlockUntilLoaded()
 {
-    wxLogTrace( traceLibraries, "BlockUntilLoaded: entry, acquiring m_loadMutex" );
+    KI_LOG_TRACE( traceLibraries, "BlockUntilLoaded: entry, acquiring m_loadMutex" );
     std::unique_lock<std::mutex> asyncLock( m_loadMutex );
 
-    wxLogTrace( traceLibraries, "BlockUntilLoaded: waiting on %zu futures", m_futures.size() );
+    KI_LOG_TRACE( traceLibraries, "BlockUntilLoaded: waiting on %zu futures", m_futures.size() );
 
     for( const std::future<void>& future : m_futures )
         future.wait();
 
-    wxLogTrace( traceLibraries, "BlockUntilLoaded: all futures complete, loadCount=%zu, loadTotal=%zu",
+    KI_LOG_TRACE( traceLibraries, "BlockUntilLoaded: all futures complete, loadCount=%zu, loadTotal=%zu",
                 m_loadCount.load(), m_loadTotal.load() );
 }
 
@@ -1563,7 +1565,7 @@ void LIBRARY_MANAGER_ADAPTER::ReloadLibraryEntry( const wxString& aNickname, LIB
 
                     if( !result.has_value() )
                     {
-                        wxLogTrace( traceLibraries, "ReloadLibraryEntry: failed to reload %s (%s): %s",
+                        KI_LOG_TRACE( traceLibraries, "ReloadLibraryEntry: failed to reload %s (%s): %s",
                                     aNickname, magic_enum::enum_name( aScopeToReload ),
                                     result.error().message );
                     }
@@ -1623,19 +1625,19 @@ bool LIBRARY_MANAGER_ADAPTER::CreateLibrary( const wxString& aNickname )
         }
         catch( const IO_ERROR& ioe )
         {
-            wxLogTrace( traceLibraries, "CreateLibrary: IO_ERROR for %s: %s",
+            KI_LOG_TRACE( traceLibraries, "CreateLibrary: IO_ERROR for %s: %s",
                         aNickname, ioe.What() );
             return false;
         }
         catch( const std::exception& e )
         {
-            wxLogTrace( traceLibraries, "CreateLibrary: std::exception for %s: %s",
+            KI_LOG_TRACE( traceLibraries, "CreateLibrary: std::exception for %s: %s",
                         aNickname, e.what() );
             return false;
         }
     }
 
-    wxLogTrace( traceLibraries, "CreateLibrary: library row '%s' not found", aNickname );
+    KI_LOG_TRACE( traceLibraries, "CreateLibrary: library row '%s' not found", aNickname );
     return false;
 }
 
@@ -1723,7 +1725,7 @@ LIBRARY_RESULT<LIB_DATA*> LIBRARY_MANAGER_ADAPTER::loadFromScope( const wxString
         if( auto result = m_manager.GetRow( Type(), aNickname, aScope ) )
         {
             const LIBRARY_TABLE_ROW* row = *result;
-            wxLogTrace( traceLibraries, "Library %s (%s) not yet loaded, will attempt...",
+            KI_LOG_TRACE( traceLibraries, "Library %s (%s) not yet loaded, will attempt...",
                         aNickname, magic_enum::enum_name( aScope ) );
 
             if( LIBRARY_RESULT<IO_BASE*> plugin = createPlugin( row ); plugin.has_value() )
@@ -1804,7 +1806,7 @@ void LIBRARY_MANAGER_ADAPTER::AsyncLoad()
 
     if( !m_futures.empty() )
     {
-        wxLogTrace( traceLibraries, "Cannot AsyncLoad, futures from a previous call remain!" );
+        KI_LOG_TRACE( traceLibraries, "Cannot AsyncLoad, futures from a previous call remain!" );
         return;
     }
 
@@ -1815,7 +1817,7 @@ void LIBRARY_MANAGER_ADAPTER::AsyncLoad()
 
     if( rows.empty() )
     {
-        wxLogTrace( traceLibraries, "AsyncLoad: no libraries left to load; exiting" );
+        KI_LOG_TRACE( traceLibraries, "AsyncLoad: no libraries left to load; exiting" );
         return;
     }
 
@@ -1879,7 +1881,7 @@ void LIBRARY_MANAGER_ADAPTER::AsyncLoad()
 
     if( workQueue->empty() )
     {
-        wxLogTrace( traceLibraries, "AsyncLoad: all libraries already loaded; exiting" );
+        KI_LOG_TRACE( traceLibraries, "AsyncLoad: all libraries already loaded; exiting" );
         return;
     }
 
@@ -1892,7 +1894,7 @@ void LIBRARY_MANAGER_ADAPTER::AsyncLoad()
 
     auto workIndex = std::make_shared<std::atomic<size_t>>( 0 );
 
-    wxLogTrace( traceLibraries, "AsyncLoad: %zu libraries to load, using %zu worker threads (pool has %zu)",
+    KI_LOG_TRACE( traceLibraries, "AsyncLoad: %zu libraries to load, using %zu worker threads (pool has %zu)",
                 workQueue->size(), numWorkers, poolSize );
 
     for( size_t w = 0; w < numWorkers; ++w )
@@ -1945,7 +1947,7 @@ void LIBRARY_MANAGER_ADAPTER::AsyncLoad()
                                                 : m_librariesMutex );
                                 lib->status.load_status = LOAD_STATUS::LOAD_ERROR;
                                 lib->status.error = LIBRARY_ERROR( { e.What() } );
-                                wxLogTrace( traceLibraries, "%s: plugin threw exception: %s",
+                                KI_LOG_TRACE( traceLibraries, "%s: plugin threw exception: %s",
                                             work.nickname, e.What() );
                             }
                         }
@@ -1971,5 +1973,5 @@ void LIBRARY_MANAGER_ADAPTER::AsyncLoad()
                 }, BS::pr::lowest ) );
     }
 
-    wxLogTrace( traceLibraries, "Started async load of %zu libraries", workQueue->size() );
+    KI_LOG_TRACE( traceLibraries, "Started async load of %zu libraries", workQueue->size() );
 }

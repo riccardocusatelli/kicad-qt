@@ -29,6 +29,7 @@
 #include <core/minoptmax.h>
 #include <optional>
 #include <utility>
+#include <core/ki_assert.h>
 
 
 class UNITS_PROVIDER
@@ -249,7 +250,7 @@ public:
         }
 
         wxString msg = wxString::Format( wxT( "Unhandled unit data type %d" ), static_cast<int>( aUnits ) );
-        wxCHECK_MSG( false, EDA_DATA_TYPE::UNITLESS, msg );
+        KI_CHECK_MSG( false, EDA_DATA_TYPE::UNITLESS, msg );
         return EDA_DATA_TYPE::UNITLESS; // Note that this is unreachable but g++-12 doesn't know that.
     }
 

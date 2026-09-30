@@ -26,6 +26,7 @@
 #include <libraries/symbol_library_adapter.h>
 #include <wx/log.h>
 #include <wx/settings.h>
+#include <core/ki_assert.h>
 
 // Component-panel style details: title, muted subtitle line, description, then a two column
 // parameter table with alternating row shading.  Colours are derived from the system theme at
@@ -86,7 +87,7 @@ public:
      */
     void GenerateHtml()
     {
-        wxCHECK_RET( m_libs, "Symbol library manager adapter pointer is not valid" );
+        KI_CHECK_RET( m_libs, "Symbol library manager adapter pointer is not valid" );
 
         if( !m_lib_id.IsValid() )
         {

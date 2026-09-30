@@ -40,6 +40,7 @@
 #include <geometry/shape_rect.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 SCH_RULE_AREA::~SCH_RULE_AREA()
@@ -263,7 +264,7 @@ void SCH_RULE_AREA::RefreshContainedItemsAndDirectives( SCH_SCREEN* screen )
         else if( areaItem->IsType( { SCH_PIN_T, SCH_LABEL_T, SCH_GLOBAL_LABEL_T, SCH_HIER_LABEL_T } ) )
         {
             std::vector<VECTOR2I> connectionPoints = areaItem->GetConnectionPoints();
-            wxASSERT( connectionPoints.size() == 1 );
+            KI_ASSERT( connectionPoints.size() == 1 );
 
             if( GetPolyShape().Collide( connectionPoints[0] ) )
                 addContainedItem( areaItem );

@@ -27,6 +27,7 @@
 #include <cvpcb_id.h>
 #include <wx/log.h>
 #include "lib_tree_model_adapter.h"
+#include <core/ki_log.h>
 
 
 /***************************************/
@@ -134,7 +135,7 @@ END_EVENT_TABLE()
 
 void LIBRARY_LISTBOX::OnChar( wxKeyEvent& event )
 {
-    wxLogTrace( kicadTraceKeyEvent, wxS( "LIBRARY_LISTBOX::OnChar %s" ), dump( event ) );
+    KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "LIBRARY_LISTBOX::OnChar %s" ), dump( event ) );
 
     int key = event.GetKeyCode();
 

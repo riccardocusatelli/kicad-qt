@@ -23,6 +23,7 @@
 #include <geometry/shape_poly_set.h>
 #include <kiid.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 const wxChar* const traceApi = wxT( "KICAD_API" );
 
@@ -54,7 +55,7 @@ KICOMMON_API std::optional<KICAD_T> TypeNameFromAny( const google::protobuf::Any
     if( it != s_types.end() )
         return it->second;
 
-    wxLogTrace( traceApi, wxString::Format( wxS( "Any message type %s is not known" ),
+    KI_LOG_TRACE( traceApi, wxString::Format( wxS( "Any message type %s is not known" ),
                                             aMessage.type_url() ) );
 
     return std::nullopt;

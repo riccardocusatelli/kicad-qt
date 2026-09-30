@@ -29,6 +29,8 @@
 
 #include "plugins/3dapi/ifsg_coordindex.h"
 #include "3d_cache/sg/sg_coordindex.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 extern char BadParent[];
@@ -57,7 +59,7 @@ IFSG_COORDINDEX::IFSG_COORDINDEX( SGNODE* aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -73,7 +75,7 @@ IFSG_COORDINDEX::IFSG_COORDINDEX( IFSG_NODE& aParent )
 
     if( !pp )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     BadParent );
 
         return;
@@ -83,7 +85,7 @@ IFSG_COORDINDEX::IFSG_COORDINDEX( IFSG_NODE& aParent )
 
     if( !m_node->SetParent( pp ) )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         delete m_node;
@@ -126,7 +128,7 @@ bool IFSG_COORDINDEX::NewNode( SGNODE* aParent )
 
     if( aParent != m_node->GetParent() )
     {
-        wxLogTrace( MASK_3D_SG,
+        KI_LOG_TRACE( MASK_3D_SG,
                     wxT( "%s:%s:%d * [BUG] invalid SGNODE parent (%s) to SGCOORDINDEX" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeTypeName( aParent->GetNodeType() ) );
@@ -146,7 +148,7 @@ bool IFSG_COORDINDEX::NewNode( IFSG_NODE& aParent )
 {
     SGNODE* np = aParent.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return NewNode( np );
 }

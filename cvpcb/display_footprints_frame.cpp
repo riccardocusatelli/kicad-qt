@@ -61,6 +61,7 @@
 #include <wx/debug.h>
 #include <cvpcb_id.h>
 #include <project_pcb.h>
+#include <core/ki_assert.h>
 
 BEGIN_EVENT_TABLE( DISPLAY_FOOTPRINTS_FRAME, PCB_BASE_FRAME )
     EVT_CLOSE( DISPLAY_FOOTPRINTS_FRAME::OnCloseWindow )
@@ -192,7 +193,7 @@ void DISPLAY_FOOTPRINTS_FRAME::setupUIConditions()
     ACTION_MANAGER*       mgr = m_toolManager->GetActionManager();
     PCB_EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )
     mgr->SetConditions( ACTIONS::zoomTool,             CHECK( cond.CurrentTool( ACTIONS::zoomTool ) ) );
@@ -240,7 +241,7 @@ WINDOW_SETTINGS* DISPLAY_FOOTPRINTS_FRAME::GetWindowSettings( APP_SETTINGS_BASE*
     if( CVPCB_SETTINGS* cfg = GetAppSettings<CVPCB_SETTINGS>( "cvpcb" ) )
         return &cfg->m_FootprintViewer;
 
-    wxFAIL_MSG( wxT( "DISPLAY_FOOTPRINTS_FRAME not running with CVPCB_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "DISPLAY_FOOTPRINTS_FRAME not running with CVPCB_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 
@@ -258,7 +259,7 @@ MAGNETIC_SETTINGS* DISPLAY_FOOTPRINTS_FRAME::GetMagneticItemsSettings()
     if( CVPCB_SETTINGS* cfg = GetAppSettings<CVPCB_SETTINGS>( "cvpcb" ) )
         return &cfg->m_FootprintViewerMagneticSettings;
 
-    wxFAIL_MSG( wxT( "DISPLAY_FOOTPRINTS_FRAME not running with CVPCB_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "DISPLAY_FOOTPRINTS_FRAME not running with CVPCB_SETTINGS" ) );
     return &fallback;
 }
 
@@ -427,7 +428,7 @@ void DISPLAY_FOOTPRINTS_FRAME::updateView()
     m_toolManager->ResetTools( TOOL_BASE::MODEL_RELOAD );
 
     CVPCB_SETTINGS* cfg = dynamic_cast<CVPCB_SETTINGS*>( config() );
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     if( cfg->m_FootprintViewerAutoZoomOnSelect )
         m_toolManager->RunAction( ACTIONS::zoomFitScreen );

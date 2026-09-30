@@ -35,6 +35,7 @@
 #include <wx/dc.h>
 #include <wx/log.h>
 #include <string_utils.h>
+#include <core/ki_assert.h>
 
 
 static const int kDataViewIndent = 20;
@@ -628,12 +629,12 @@ void LIB_TREE_MODEL_ADAPTER::FinishTreeInitialization()
 
     for( ; idx < m_columns.size() - 1; idx++ )
     {
-        wxASSERT( m_colIdxMap.count( idx ) );
+        KI_ASSERT( m_colIdxMap.count( idx ) );
 
         col    = m_columns[idx];
         header = m_colIdxMap[idx];
 
-        wxASSERT( m_colWidths.count( header ) );
+        KI_ASSERT( m_colWidths.count( header ) );
 
         col->SetWidth( m_colWidths[header] );
         totalWidth += col->GetWidth();
@@ -658,7 +659,7 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
     for( const wxDataViewColumn* col : m_columns )
         widths.emplace_back( col->GetWidth() );
 
-    wxASSERT( widths.size() );
+    KI_ASSERT( widths.size() );
 
     // Only use the widths read back if they are non-zero.
     // GTK returns the displayed width of the column, which is not calculated immediately
@@ -692,7 +693,7 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
         if( colPtr == m_columns[0] || colPtr == nullptr )
             continue;
 
-        wxASSERT( m_colWidths.count( colName ) );
+        KI_ASSERT( m_colWidths.count( colName ) );
         colPtr->SetWidth( m_colWidths[ colName ] );
     }
 
@@ -743,7 +744,7 @@ void LIB_TREE_MODEL_ADAPTER::GetValue( wxVariant& aVariant, const wxDataViewItem
     }
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, /* void */ );
+    KI_CHECK( node, /* void */ );
     wxString valueStr;
 
     switch( aCol )
@@ -785,7 +786,7 @@ bool LIB_TREE_MODEL_ADAPTER::GetAttr( const wxDataViewItem& aItem, unsigned int 
         return false;
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     if( node->m_Type == LIB_TREE_NODE::TYPE::ITEM )
     {

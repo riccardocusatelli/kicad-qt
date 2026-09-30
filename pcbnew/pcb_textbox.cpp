@@ -45,6 +45,7 @@
 #include <api/board/board_types.pb.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 PCB_TEXTBOX::PCB_TEXTBOX( BOARD_ITEM* aParent, KICAD_T aType ) :
@@ -71,7 +72,7 @@ PCB_TEXTBOX::~PCB_TEXTBOX()
 
 void PCB_TEXTBOX::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_TEXTBOX_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_TEXTBOX_T, /* void */ );
     *this = *static_cast<const PCB_TEXTBOX*>( aOther );
 }
 
@@ -342,7 +343,7 @@ VECTOR2I PCB_TEXTBOX::GetDrawPos( bool aIsFlipped ) const
         }
     }
 
-    wxASSERT_MSG( horizontalAlignment != GR_TEXT_H_ALIGN_INDETERMINATE
+    KI_ASSERT_MSG( horizontalAlignment != GR_TEXT_H_ALIGN_INDETERMINATE
                           && verticalAlignment != GR_TEXT_V_ALIGN_INDETERMINATE,
                   wxS( "Indeterminate state legal only in dialogs. Horizontal and vertical alignment "
                        "must be set before calling PCB_TEXTBOX::GetDrawPos." ) );
@@ -640,7 +641,7 @@ EDA_ITEM* PCB_TEXTBOX::Clone() const
 
 void PCB_TEXTBOX::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_TEXTBOX_T );
+    KI_ASSERT( aImage->Type() == PCB_TEXTBOX_T );
 
     std::swap( *( (PCB_TEXTBOX*) this ), *( (PCB_TEXTBOX*) aImage ) );
 }

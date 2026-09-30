@@ -33,6 +33,7 @@
 #include <settings/settings_manager.h>
 #include <wx/log.h>
 #include <wx/stattext.h>
+#include <core/ki_assert.h>
 
 
 SYMBOL_PREVIEW_WIDGET::SYMBOL_PREVIEW_WIDGET( wxWindow* aParent, KIWAY* aKiway, bool aIncludeStatus,
@@ -140,7 +141,7 @@ SYMBOL_PREVIEW_WIDGET::~SYMBOL_PREVIEW_WIDGET()
 
 void SYMBOL_PREVIEW_WIDGET::SetStatusText( wxString const& aText )
 {
-    wxCHECK( m_statusPanel, /* void */ );
+    KI_CHECK( m_statusPanel, /* void */ );
 
     m_status->SetLabel( aText );
     m_preview->Hide();

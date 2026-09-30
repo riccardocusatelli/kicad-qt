@@ -62,6 +62,7 @@
 #include <settings/settings_manager.h>
 
 #include <memory>
+#include <core/ki_assert.h>
 
 
 // Reporter is stored by pointer in KIBIS, so keep this here to avoid crashes
@@ -107,7 +108,7 @@ public:
         {
         case SIM_IDLE:    event = new wxCommandEvent( EVT_SIM_FINISHED ); break;
         case SIM_RUNNING: event = new wxCommandEvent( EVT_SIM_STARTED );  break;
-        default:          wxFAIL;                                         return;
+        default:          KI_FAIL();                                         return;
         }
 
         wxQueueEvent( m_parent, event );
@@ -136,7 +137,7 @@ SIMULATOR_FRAME::SIMULATOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
         m_workbookModified( false )
 {
     m_schematicFrame = (SCH_EDIT_FRAME*) Kiway().Player( FRAME_SCH, false );
-    wxASSERT( m_schematicFrame );
+    KI_ASSERT( m_schematicFrame );
 
     // Give an icon
     wxIcon icon;
@@ -299,7 +300,7 @@ WINDOW_SETTINGS* SIMULATOR_FRAME::GetWindowSettings( APP_SETTINGS_BASE* aCfg )
     if( EESCHEMA_SETTINGS* cfg = GetAppSettings<EESCHEMA_SETTINGS>( "eeschema" ) )
         return &cfg->m_Simulator.window;
 
-    wxFAIL_MSG( wxT( "SIMULATOR not running with EESCHEMA_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "SIMULATOR not running with EESCHEMA_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 
@@ -735,7 +736,7 @@ void SIMULATOR_FRAME::setupUIConditions()
     EDA_BASE_FRAME::setupUIConditions();
 
     ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
     auto showGridCondition =
             [this]( const SELECTION& aSel )

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <widgets/filter_combobox.h>
+#include <core/ki_assert.h>
 
 
 class BOARD;
@@ -54,7 +55,7 @@ public:
 
     void SetSelectedString( const wxString& aString ) override
     {
-        wxFAIL_MSG( "Unsupported; use SetSelectedNet() or SetSelectedNetcode()" );
+        KI_FAIL_MSG( "Unsupported; use SetSelectedNet() or SetSelectedNetcode()" );
     }
 
 protected:

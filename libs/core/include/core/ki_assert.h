@@ -21,14 +21,17 @@
  * @file ki_assert.h
  * Toolkit-independent assertion macros for the low level libraries (core, kimath, sexpr…).
  *
- * They mirror the wxWidgets macros one to one:
+ * They mirror the wxWidgets macros one to one, and accept the same message types
+ * (see core/ki_format.h):
  *
  *   wxASSERT( c )                ->  KI_ASSERT( c )
  *   wxASSERT_MSG( c, m )         ->  KI_ASSERT_MSG( c, m )
+ *   wxFAIL                       ->  KI_FAIL()
  *   wxFAIL_MSG( m )              ->  KI_FAIL_MSG( m )
  *   wxCHECK( c, rv )             ->  KI_CHECK( c, rv )
  *   wxCHECK_MSG( c, rv, m )      ->  KI_CHECK_MSG( c, rv, m )
  *   wxCHECK_RET( c, m )          ->  KI_CHECK_RET( c, m )
+ *   wxCHECK2( c, op )            ->  KI_CHECK2( c, op )
  *   wxCHECK2_MSG( c, op, m )     ->  KI_CHECK2_MSG( c, op, m )
  *
  * A failure calls the installed handler.  The default one prints to stderr; applications
@@ -42,6 +45,7 @@
 #include <string_view>
 
 #include <core/kicore_rt.h>
+#include <core/ki_format.h>
 
 
 /// Called on a failed assertion.  Strings are UTF-8; @a aMsg may be empty.
@@ -59,16 +63,22 @@ KICORE_RT_API void KiAssertFailed( const char* aFile, int aLine, const char* aFu
 #define KI_ASSERT_CONCAT_( a, b ) a##b
 #define KI_ASSERT_CONCAT( a, b )  KI_ASSERT_CONCAT_( a, b )
 
+/// Messages may be any type KI_FMT::Arg() accepts (char or wide literal, std::string,
+/// wxString in wx code...); they are used verbatim, not as formats.
+#define KI_ASSERT_REPORT( cond_str, msg )                                           \
+    ::KiAssertFailed( __FILE__, __LINE__, __func__, cond_str, ::KI_FMT::Message( msg ) )
+
 #define KI_ASSERT_MSG( cond, msg )                                                  \
     do                                                                              \
     {                                                                               \
         if( !( cond ) )                                                             \
-            ::KiAssertFailed( __FILE__, __LINE__, __func__, #cond, msg );           \
+            KI_ASSERT_REPORT( #cond, msg );                                         \
     } while( 0 )
 
-#define KI_ASSERT( cond ) KI_ASSERT_MSG( cond, {} )
+#define KI_ASSERT( cond ) KI_ASSERT_MSG( cond, "" )
 
-#define KI_FAIL_MSG( msg ) ::KiAssertFailed( __FILE__, __LINE__, __func__, "Assert failure", msg )
+#define KI_FAIL_MSG( msg ) KI_ASSERT_REPORT( "Assert failure", msg )
+#define KI_FAIL()          KI_FAIL_MSG( "" )
 
 #define KI_CHECK2_MSG( cond, op, msg )                                              \
     if( cond )                                                                      \
@@ -76,13 +86,14 @@ KICORE_RT_API void KiAssertFailed( const char* aFile, int aLine, const char* aFu
     }                                                                               \
     else                                                                            \
     {                                                                               \
-        ::KiAssertFailed( __FILE__, __LINE__, __func__, #cond, msg );               \
+        KI_ASSERT_REPORT( #cond, msg );                                             \
         op;                                                                         \
     }                                                                               \
     struct KI_ASSERT_CONCAT( KiDummyCheckStruct, __LINE__ ) /* to force a semicolon */
 
+#define KI_CHECK2( cond, op )           KI_CHECK2_MSG( cond, op, "" )
 #define KI_CHECK_MSG( cond, rval, msg ) KI_CHECK2_MSG( cond, return rval, msg )
-#define KI_CHECK( cond, rval )          KI_CHECK_MSG( cond, rval, {} )
+#define KI_CHECK( cond, rval )          KI_CHECK_MSG( cond, rval, "" )
 #define KI_CHECK_RET( cond, msg )       KI_CHECK2_MSG( cond, return, msg )
 
 #endif // KI_ASSERT_H

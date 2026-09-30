@@ -37,6 +37,7 @@
 #include <eda_pattern_match.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 EDA_ITEM::EDA_ITEM( EDA_ITEM* parent, KICAD_T idType, bool isSCH_ITEM, bool isBOARD_ITEM ) :
         KIGFX::VIEW_ITEM( isSCH_ITEM, isBOARD_ITEM ),
@@ -92,7 +93,7 @@ EDA_ITEM* EDA_ITEM::findParent( KICAD_T aType ) const
 
 void EDA_ITEM::SetParent( EDA_ITEM* aParent )
 {
-    wxCHECK( aParent != this, /* void */ );
+    KI_CHECK( aParent != this, /* void */ );
 
     m_parent = aParent;
 }
@@ -146,7 +147,7 @@ const BOX2I EDA_ITEM::GetBoundingBox() const
 
 EDA_ITEM* EDA_ITEM::Clone() const
 {
-    wxCHECK_MSG( false, nullptr, wxT( "Clone not implemented in derived class " ) + GetClass() +
+    KI_CHECK_MSG( false, nullptr, wxT( "Clone not implemented in derived class " ) + GetClass() +
                  wxT( ".  Bad programmer!" ) );
 }
 
@@ -172,7 +173,7 @@ INSPECT_RESULT EDA_ITEM::Visit( INSPECTOR inspector, void* testData,
 
 wxString EDA_ITEM::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    wxFAIL_MSG( wxT( "GetItemDescription() was not overridden for item type " ) + GetClass() );
+    KI_FAIL_MSG( wxT( "GetItemDescription() was not overridden for item type " ) + GetClass() );
 
     return wxString( wxT( "Undefined item description for " ) + GetClass() );
 }
@@ -347,7 +348,7 @@ bool EDA_ITEM::Replace( const EDA_SEARCH_DATA& aSearchData, wxString& aText )
 
 bool EDA_ITEM::operator<( const EDA_ITEM& aItem ) const
 {
-    wxFAIL_MSG( wxString::Format( wxT( "Less than operator not defined for item type %s." ),
+    KI_FAIL_MSG( wxString::Format( wxT( "Less than operator not defined for item type %s." ),
                                   GetClass() ) );
 
     return false;

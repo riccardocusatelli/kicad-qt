@@ -23,13 +23,14 @@
 #include <env_paths.h>
 #include <project.h>
 #include <wx/filename.h>
+#include <core/ki_assert.h>
 
 static bool normalizeAbsolutePaths( const wxFileName& aPathA, const wxFileName& aPathB,
                                     wxString* aResultPath )
 {
-    wxCHECK_MSG( aPathA.IsAbsolute(), false,
+    KI_CHECK_MSG( aPathA.IsAbsolute(), false,
                  aPathA.GetPath() + wxS( " is not an absolute path." ) );
-    wxCHECK_MSG( aPathB.IsAbsolute(), false,
+    KI_CHECK_MSG( aPathB.IsAbsolute(), false,
                  aPathB.GetPath() + wxS( " is not an absolute path." ) );
 
     if( aPathA.GetPath() == aPathB.GetPath() )

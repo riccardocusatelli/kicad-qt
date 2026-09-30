@@ -41,6 +41,7 @@
 #include <string_utils.h>
 #include <wx/msgdlg.h>
 #include <import_gfx/dialog_import_gfx_sch.h>
+#include <core/ki_assert.h>
 
 
 KIID SYMBOL_EDITOR_DRAWING_TOOLS::g_lastPin;
@@ -254,7 +255,7 @@ int SYMBOL_EDITOR_DRAWING_TOOLS::TwoClickPlace( const TOOL_EVENT& aEvent )
                 }
 
                 default:
-                    wxFAIL_MSG( "TwoClickPlace(): unknown type" );
+                    KI_FAIL_MSG( "TwoClickPlace(): unknown type" );
                 }
 
                 // If we started with a hotkey which has a position then warp back to that.
@@ -309,7 +310,7 @@ int SYMBOL_EDITOR_DRAWING_TOOLS::TwoClickPlace( const TOOL_EVENT& aEvent )
                     break;
 
                 default:
-                    wxFAIL_MSG( "TwoClickPlace(): unknown type" );
+                    KI_FAIL_MSG( "TwoClickPlace(): unknown type" );
                 }
 
                 item = nullptr;
@@ -720,7 +721,7 @@ int SYMBOL_EDITOR_DRAWING_TOOLS::ImportGraphics( const TOOL_EVENT& aEvent )
     for( std::unique_ptr<EDA_ITEM>& ptr : list )
     {
         SCH_ITEM* item = dynamic_cast<SCH_ITEM*>( ptr.get() );
-        wxCHECK2( item, continue );
+        KI_CHECK2( item, continue );
 
         newItems.push_back( item );
         selectedItems.push_back( item );

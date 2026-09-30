@@ -30,13 +30,14 @@
 #include "../../../3d_fastmath.h"
 #include "../ray.h"
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 RING_2D::RING_2D( const SFVEC2F& aCenter, float aInnerRadius, float aOuterRadius,
                   const BOARD_ITEM& aBoardItem ) :
         OBJECT_2D( OBJECT_2D_TYPE::RING, aBoardItem )
 {
-    wxASSERT( aInnerRadius < aOuterRadius );
+    KI_ASSERT( aInnerRadius < aOuterRadius );
 
     m_center = aCenter;
     m_inner_radius = aInnerRadius;
@@ -51,7 +52,7 @@ RING_2D::RING_2D( const SFVEC2F& aCenter, float aInnerRadius, float aOuterRadius
     m_bbox.ScaleNextUp();
     m_centroid = m_bbox.GetCenter();
 
-    wxASSERT( m_bbox.IsInitialized() );
+    KI_ASSERT( m_bbox.IsInitialized() );
 }
 
 
@@ -135,7 +136,7 @@ bool RING_2D::Intersect( const RAYSEG2D& aSegRay, float* aOutT, SFVEC2F* aNormal
         }
     }
 
-    wxASSERT( (t > 0.0f) && (t <= aSegRay.m_Length) );
+    KI_ASSERT( (t > 0.0f) && (t <= aSegRay.m_Length) );
 
     // Convert the intersection to a normalized 0.0 .. 1.0
     if( aOutT )

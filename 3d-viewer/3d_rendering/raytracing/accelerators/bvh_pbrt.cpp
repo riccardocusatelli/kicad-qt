@@ -77,6 +77,7 @@
 
 #include <stack>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 #ifdef PRINT_STATISTICS_3D_VIEWER
 #include <stdio.h>
@@ -147,7 +148,7 @@ struct LBVHTreelet
 // BVHAccel Utility Functions
 inline uint32_t LeftShift3( uint32_t x )
 {
-    wxASSERT( x <= (1 << 10) );
+    KI_ASSERT( x <= (1 << 10) );
 
     if( x == ( 1 << 10 ) )
         --x;
@@ -167,9 +168,9 @@ inline uint32_t LeftShift3( uint32_t x )
 
 inline uint32_t EncodeMorton3( const SFVEC3F& v )
 {
-    wxASSERT( v.x >= 0 && v.x <= ( 1 << 10 ) );
-    wxASSERT( v.y >= 0 && v.y <= ( 1 << 10 ) );
-    wxASSERT( v.z >= 0 && v.z <= ( 1 << 10 ) );
+    KI_ASSERT( v.x >= 0 && v.x <= ( 1 << 10 ) );
+    KI_ASSERT( v.y >= 0 && v.y <= ( 1 << 10 ) );
+    KI_ASSERT( v.z >= 0 && v.z <= ( 1 << 10 ) );
 
     return ( LeftShift3( v.z ) << 2 ) | ( LeftShift3( v.y ) << 1 ) | LeftShift3( v.x );
 }
@@ -182,7 +183,7 @@ static void RadixSort( std::vector<MortonPrimitive>* v )
     const int bitsPerPass = 6;
     const int nBits = 30;
 
-    wxASSERT( ( nBits % bitsPerPass ) == 0 );
+    KI_ASSERT( ( nBits % bitsPerPass ) == 0 );
 
     const int nPasses = nBits / bitsPerPass;
 
@@ -205,7 +206,7 @@ static void RadixSort( std::vector<MortonPrimitive>* v )
             const MortonPrimitive &mp = in[i];
             int bucket = ( mp.mortonCode >> lowBit ) & bitMask;
 
-            wxASSERT( ( bucket >= 0 ) && ( bucket < nBuckets ) );
+            KI_ASSERT( ( bucket >= 0 ) && ( bucket < nBuckets ) );
 
             ++bucketCount[bucket];
         }
@@ -253,14 +254,14 @@ BVH_PBRT::BVH_PBRT( const CONTAINER_3D_BASE& aObjectContainer, int aMaxPrimsInNo
     // Convert the objects list to vector of objects
     aObjectContainer.ConvertTo( m_primitives );
 
-    wxASSERT( aObjectContainer.GetList().size() == m_primitives.size() );
+    KI_ASSERT( aObjectContainer.GetList().size() == m_primitives.size() );
 
     // Initialize _primitiveInfo_ array for primitives
     std::vector<BVHPrimitiveInfo> primitiveInfo( m_primitives.size() );
 
     for( size_t i = 0; i < m_primitives.size(); ++i )
     {
-        wxASSERT( m_primitives[i]->GetBBox().IsInitialized() );
+        KI_ASSERT( m_primitives[i]->GetBBox().IsInitialized() );
 
         primitiveInfo[i] = BVHPrimitiveInfo( i, m_primitives[i]->GetBBox() );
     }
@@ -279,7 +280,7 @@ BVH_PBRT::BVH_PBRT( const CONTAINER_3D_BASE& aObjectContainer, int aMaxPrimsInNo
     else
         root = recursiveBuild( primitiveInfo, 0, m_primitives.size(), &totalNodes, orderedPrims );
 
-    wxASSERT( m_primitives.size() == orderedPrims.size() );
+    KI_ASSERT( m_primitives.size() == orderedPrims.size() );
 
     m_primitives.swap( orderedPrims );
 
@@ -299,7 +300,7 @@ BVH_PBRT::BVH_PBRT( const CONTAINER_3D_BASE& aObjectContainer, int aMaxPrimsInNo
 
     flattenBVHTree( root, &offset );
 
-    wxASSERT( offset == (unsigned int)totalNodes );
+    KI_ASSERT( offset == (unsigned int)totalNodes );
 }
 
 
@@ -376,7 +377,7 @@ bool CompareToBucket::operator()( const BVHPrimitiveInfo& p ) const
     if( b == nBuckets )
         b = nBuckets - 1;
 
-    wxASSERT( ( b >= 0 ) && ( b < nBuckets ) );
+    KI_ASSERT( ( b >= 0 ) && ( b < nBuckets ) );
 
     return b <= splitBucket;
 }
@@ -410,7 +411,7 @@ bool HLBVH_SAH_Evaluator::operator()( const BVHBuildNode* node ) const
     if( b == nBuckets )
         b = nBuckets - 1;
 
-    wxASSERT( b >= 0 && b < nBuckets );
+    KI_ASSERT( b >= 0 && b < nBuckets );
 
     return b <= minCostSplitBucket;
 }
@@ -427,13 +428,13 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
                                          int start, int end, int* totalNodes,
                                          CONST_VECTOR_OBJECT& orderedPrims )
 {
-    wxASSERT( totalNodes != nullptr );
-    wxASSERT( start >= 0 );
-    wxASSERT( end   >= 0 );
-    wxASSERT( start != end );
-    wxASSERT( start < end );
-    wxASSERT( start <= (int)primitiveInfo.size() );
-    wxASSERT( end   <= (int)primitiveInfo.size() );
+    KI_ASSERT( totalNodes != nullptr );
+    KI_ASSERT( start >= 0 );
+    KI_ASSERT( end   >= 0 );
+    KI_ASSERT( start != end );
+    KI_ASSERT( start < end );
+    KI_ASSERT( start <= (int)primitiveInfo.size() );
+    KI_ASSERT( end   <= (int)primitiveInfo.size() );
 
     (*totalNodes)++;
 
@@ -465,7 +466,7 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
         for( int i = start; i < end; ++i )
         {
             int primitiveNr = primitiveInfo[i].primitiveNumber;
-            wxASSERT( primitiveNr < (int)m_primitives.size() );
+            KI_ASSERT( primitiveNr < (int)m_primitives.size() );
             orderedPrims.push_back( m_primitives[ primitiveNr ] );
         }
 
@@ -495,11 +496,11 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
             {
                 int primitiveNr = primitiveInfo[i].primitiveNumber;
 
-                wxASSERT( ( primitiveNr >= 0 ) && ( primitiveNr < (int) m_primitives.size() ) );
+                KI_ASSERT( ( primitiveNr >= 0 ) && ( primitiveNr < (int) m_primitives.size() ) );
 
                 const OBJECT_3D* obj = static_cast<const OBJECT_3D*>( m_primitives[ primitiveNr ] );
 
-                wxASSERT( obj != nullptr );
+                KI_ASSERT( obj != nullptr );
 
                 orderedPrims.push_back( obj );
             }
@@ -521,7 +522,7 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
                                                            CompareToMid( dim, pmid ) );
                 mid = midPtr - &primitiveInfo[0];
 
-                wxASSERT( ( mid >= start ) && ( mid <= end ) );
+                KI_ASSERT( ( mid >= start ) && ( mid <= end ) );
 
                 if( ( mid != start ) && ( mid != end ) )
                     break;
@@ -576,7 +577,7 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
                         if( b == nBuckets )
                             b = nBuckets - 1;
 
-                        wxASSERT( b >= 0 && b < nBuckets );
+                        KI_ASSERT( b >= 0 && b < nBuckets );
 
                         buckets[b].count++;
                         buckets[b].bounds.Union( primitiveInfo[i].bounds );
@@ -639,7 +640,7 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
                                                              dim, centroidBounds ) );
                         mid = pmid - &primitiveInfo[0];
 
-                        wxASSERT( ( mid >= start ) && ( mid <= end ) );
+                        KI_ASSERT( ( mid >= start ) && ( mid <= end ) );
                     }
                     else
                     {
@@ -650,7 +651,7 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
                         {
                             const int primitiveNr = primitiveInfo[i].primitiveNumber;
 
-                            wxASSERT( primitiveNr < (int)m_primitives.size() );
+                            KI_ASSERT( primitiveNr < (int)m_primitives.size() );
 
                             orderedPrims.push_back( m_primitives[ primitiveNr ] );
                         }
@@ -694,15 +695,15 @@ BVHBuildNode *BVH_PBRT::HLBVHBuild( const std::vector<BVHPrimitiveInfo>& primiti
         const int mortonBits  = 10;
         const int mortonScale = 1 << mortonBits;
 
-        wxASSERT( primitiveInfo[i].primitiveNumber < (int)primitiveInfo.size() );
+        KI_ASSERT( primitiveInfo[i].primitiveNumber < (int)primitiveInfo.size() );
 
         mortonPrims[i].primitiveIndex = primitiveInfo[i].primitiveNumber;
 
         const SFVEC3F centroidOffset = bounds.Offset( primitiveInfo[i].centroid );
 
-        wxASSERT( ( centroidOffset.x >= 0.0f ) && ( centroidOffset.x <= 1.0f ) );
-        wxASSERT( ( centroidOffset.y >= 0.0f ) && ( centroidOffset.y <= 1.0f ) );
-        wxASSERT( ( centroidOffset.z >= 0.0f ) && ( centroidOffset.z <= 1.0f ) );
+        KI_ASSERT( ( centroidOffset.x >= 0.0f ) && ( centroidOffset.x <= 1.0f ) );
+        KI_ASSERT( ( centroidOffset.y >= 0.0f ) && ( centroidOffset.y <= 1.0f ) );
+        KI_ASSERT( ( centroidOffset.z >= 0.0f ) && ( centroidOffset.z <= 1.0f ) );
 
         mortonPrims[i].mortonCode = EncodeMorton3( centroidOffset * SFVEC3F( (float)mortonScale ) );
     }
@@ -769,7 +770,7 @@ BVHBuildNode *BVH_PBRT::HLBVHBuild( const std::vector<BVHPrimitiveInfo>& primiti
 
         LBVHTreelet &tr = treeletsToBuild[index];
 
-        wxASSERT( tr.startIndex < (int)mortonPrims.size() );
+        KI_ASSERT( tr.startIndex < (int)mortonPrims.size() );
 
         tr.buildNodes = emitLBVH( tr.buildNodes, primitiveInfo, &mortonPrims[tr.startIndex],
                                   tr.numPrimitives, &nodesCreated, orderedPrims,
@@ -798,11 +799,11 @@ BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes,
                                   CONST_VECTOR_OBJECT& orderedPrims, int *orderedPrimsOffset,
                                   int bit )
 {
-    wxASSERT( nPrimitives > 0 );
-    wxASSERT( totalNodes != nullptr );
-    wxASSERT( orderedPrimsOffset != nullptr );
-    wxASSERT( nPrimitives > 0 );
-    wxASSERT( mortonPrims != nullptr );
+    KI_ASSERT( nPrimitives > 0 );
+    KI_ASSERT( totalNodes != nullptr );
+    KI_ASSERT( orderedPrimsOffset != nullptr );
+    KI_ASSERT( nPrimitives > 0 );
+    KI_ASSERT( mortonPrims != nullptr );
 
     if( ( bit == -1 ) || ( nPrimitives < m_maxPrimsInNode ) )
     {
@@ -816,13 +817,13 @@ BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes,
         int firstPrimOffset = *orderedPrimsOffset;
         *orderedPrimsOffset += nPrimitives;
 
-        wxASSERT( ( firstPrimOffset + ( nPrimitives - 1 ) ) < (int) orderedPrims.size() );
+        KI_ASSERT( ( firstPrimOffset + ( nPrimitives - 1 ) ) < (int) orderedPrims.size() );
 
         for( int i = 0; i < nPrimitives; ++i )
         {
             const int primitiveIndex = mortonPrims[i].primitiveIndex;
 
-            wxASSERT( primitiveIndex < (int)m_primitives.size() );
+            KI_ASSERT( primitiveIndex < (int)m_primitives.size() );
 
             orderedPrims[firstPrimOffset + i] = m_primitives[primitiveIndex];
             bounds.Union( primitiveInfo[primitiveIndex].bounds );
@@ -848,7 +849,7 @@ BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes,
 
         while( searchStart + 1 != searchEnd )
         {
-            wxASSERT( searchStart != searchEnd );
+            KI_ASSERT( searchStart != searchEnd );
 
             const int mid = ( searchStart + searchEnd ) / 2;
 
@@ -857,7 +858,7 @@ BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes,
                 searchStart = mid;
             else
             {
-                wxASSERT( ( mortonPrims[mid].mortonCode & mask ) ==
+                KI_ASSERT( ( mortonPrims[mid].mortonCode & mask ) ==
                           ( mortonPrims[searchEnd].mortonCode & mask ) );
                 searchEnd = mid;
             }
@@ -865,8 +866,8 @@ BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes,
 
         const int splitOffset = searchEnd;
 
-        wxASSERT( splitOffset <= ( nPrimitives - 1 ) );
-        wxASSERT( ( mortonPrims[splitOffset - 1].mortonCode & mask )
+        KI_ASSERT( splitOffset <= ( nPrimitives - 1 ) );
+        KI_ASSERT( ( mortonPrims[splitOffset - 1].mortonCode & mask )
                   != ( mortonPrims[splitOffset].mortonCode & mask ) );
 
         // Create and return interior LBVH node
@@ -894,9 +895,9 @@ BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes,
 BVHBuildNode *BVH_PBRT::buildUpperSAH( std::vector<BVHBuildNode*>& treeletRoots, int start,
                                        int end, int* totalNodes )
 {
-    wxASSERT( totalNodes != nullptr );
-    wxASSERT( start < end );
-    wxASSERT( end <= (int)treeletRoots.size() );
+    KI_ASSERT( totalNodes != nullptr );
+    KI_ASSERT( start < end );
+    KI_ASSERT( end <= (int)treeletRoots.size() );
 
     int nNodes = end - start;
 
@@ -938,7 +939,7 @@ BVHBuildNode *BVH_PBRT::buildUpperSAH( std::vector<BVHBuildNode*>& treeletRoots,
 
     // FIXME: if this hits, what do we need to do?
     // Make sure the SAH split below does something... ?
-    wxASSERT( centroidBounds.Max()[dim] != centroidBounds.Min()[dim] );
+    KI_ASSERT( centroidBounds.Max()[dim] != centroidBounds.Min()[dim] );
 
     // Allocate _BucketInfo_ for SAH partition buckets
     const int nBuckets = 12;
@@ -962,7 +963,7 @@ BVHBuildNode *BVH_PBRT::buildUpperSAH( std::vector<BVHBuildNode*>& treeletRoots,
         if( b == nBuckets )
             b = nBuckets - 1;
 
-        wxASSERT( ( b >= 0 ) && ( b < nBuckets ) );
+        KI_ASSERT( ( b >= 0 ) && ( b < nBuckets ) );
 
         buckets[b].count++;
         buckets[b].bounds.Union( treeletRoots[i]->bounds );
@@ -1021,7 +1022,7 @@ BVHBuildNode *BVH_PBRT::buildUpperSAH( std::vector<BVHBuildNode*>& treeletRoots,
 
     const int mid = pmid - &treeletRoots[0];
 
-    wxASSERT( ( mid > start ) && ( mid < end ) );
+    KI_ASSERT( ( mid > start ) && ( mid < end ) );
 
     node->InitInterior( dim,
                         buildUpperSAH( treeletRoots, start, mid, totalNodes ),
@@ -1041,8 +1042,8 @@ int BVH_PBRT::flattenBVHTree( BVHBuildNode* node, uint32_t* offset )
 
     if( node->nPrimitives > 0 )
     {
-        wxASSERT( ( !node->children[0] ) && ( !node->children[1] ) );
-        wxASSERT( node->nPrimitives < 65536 );
+        KI_ASSERT( ( !node->children[0] ) && ( !node->children[1] ) );
+        KI_ASSERT( node->nPrimitives < 65536 );
 
         linearNode->primitivesOffset = node->firstPrimOffset;
         linearNode->nPrimitives = node->nPrimitives;
@@ -1078,7 +1079,7 @@ bool BVH_PBRT::Intersect( const RAY& aRay, HITINFO& aHitInfo ) const
     {
         const LinearBVHNode *node = &m_nodes[nodeNum];
 
-        wxASSERT( todoOffset < MAX_TODOS );
+        KI_ASSERT( todoOffset < MAX_TODOS );
 
         // Check ray against BVH node
         float hitBox = 0.0f;
@@ -1143,7 +1144,7 @@ bool BVH_PBRT::Intersect( const RAY& aRay, HITINFO& aHitInfo, unsigned int aAccN
     {
         const LinearBVHNode *node = &m_nodes[nodeNum];
 
-        wxASSERT( todoOffset < MAX_TODOS );
+        KI_ASSERT( todoOffset < MAX_TODOS );
 
         // Check ray against BVH node
         float hitBox = 0.0f;
@@ -1205,7 +1206,7 @@ bool BVH_PBRT::IntersectP( const RAY& aRay, float aMaxDistance ) const
     {
         const LinearBVHNode* node = &m_nodes[nodeNum];
 
-        wxASSERT( todoOffset < MAX_TODOS );
+        KI_ASSERT( todoOffset < MAX_TODOS );
 
         // Check ray against BVH node
         float hitBox = 0.0f;

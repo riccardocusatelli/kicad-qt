@@ -31,6 +31,7 @@
 
 #include <kiway.h>
 #include <netlist_reader/pcb_netlist.h>
+#include <core/ki_assert.h>
 
 /*
     Schematic parity test.
@@ -209,7 +210,7 @@ void DRC_TEST_PROVIDER_SCHEMATIC_PARITY::testNetlist( NETLIST& aNetlist )
 
                 for( PCB_FIELD* field : footprint->GetFields() )
                 {
-                    wxCHECK2( field, continue );
+                    KI_CHECK2( field, continue );
 
                     if( field->IsReference() || field->IsValue() || field->IsComponentClass() )
                         continue;

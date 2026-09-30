@@ -47,6 +47,7 @@
 #include <wx/log.h>
 
 #include <limits> // std::numeric_limits
+#include <core/ki_assert.h>
 
 
 void CADSTAR_PCB_ARCHIVE_LOADER::Load( BOARD* aBoard, PROJECT* aProject )
@@ -395,8 +396,8 @@ void CADSTAR_PCB_ARCHIVE_LOADER::loadBoardStackup()
         ++m_numCopperLayers;
     }
 
-    wxASSERT( m_numCopperLayers == (int) cadstarBoardStackup.size() );
-    wxASSERT( cadstarBoardStackup.back().ConstructionLayers.size() == 0 );
+    KI_ASSERT( m_numCopperLayers == (int) cadstarBoardStackup.size() );
+    KI_ASSERT( cadstarBoardStackup.back().ConstructionLayers.size() == 0 );
 
     // Create a new stackup from default stackup list
     BOARD_DESIGN_SETTINGS& boardDesignSettings = m_board->GetDesignSettings();
@@ -442,7 +443,7 @@ void CADSTAR_PCB_ARCHIVE_LOADER::loadBoardStackup()
                     break;
 
                 default:
-                    wxFAIL_MSG( wxT( "Unexpected Layer type. Was expecting an electrical type" ) );
+                    KI_FAIL_MSG( wxT( "Unexpected Layer type. Was expecting an electrical type" ) );
                     break;
                 }
 
@@ -671,13 +672,13 @@ void CADSTAR_PCB_ARCHIVE_LOADER::loadBoardStackup()
                 break;
 
             default:
-                wxFAIL_MSG( wxT( "Unknown CADSTAR Layer Sub-type" ) );
+                KI_FAIL_MSG( wxT( "Unknown CADSTAR Layer Sub-type" ) );
                 break;
             }
             break;
 
         default:
-            wxFAIL_MSG( wxT( "Unknown CADSTAR Layer Type" ) );
+            KI_FAIL_MSG( wxT( "Unknown CADSTAR Layer Type" ) );
             break;
         }
 
@@ -722,7 +723,7 @@ void CADSTAR_PCB_ARCHIVE_LOADER::remapUnsureLayers()
     {
         if( layerPair.second == PCB_LAYER_ID::UNDEFINED_LAYER )
         {
-            wxFAIL_MSG( wxT( "Unexpected Layer ID" ) );
+            KI_FAIL_MSG( wxT( "Unexpected Layer ID" ) );
             continue;
         }
 
@@ -1024,7 +1025,7 @@ PAD* CADSTAR_PCB_ARCHIVE_LOADER::getKiCadPad( const COMPONENT_PAD& aCadstarPad, 
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unknown Pad type" ) );
+        KI_FAIL_MSG( wxT( "Unknown Pad type" ) );
     }
 
     pad->SetAttribute( PAD_ATTRIB::SMD ); // assume SMD pad for now
@@ -1214,7 +1215,7 @@ PAD* CADSTAR_PCB_ARCHIVE_LOADER::getKiCadPad( const COMPONENT_PAD& aCadstarPad, 
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unknown Pad Shape" ) );
+        KI_FAIL_MSG( wxT( "Unknown Pad Shape" ) );
     }
 
     if( csPadcode.ReliefClearance != UNDEFINED_VALUE )
@@ -1299,7 +1300,7 @@ PAD* CADSTAR_PCB_ARCHIVE_LOADER::getKiCadPad( const COMPONENT_PAD& aCadstarPad, 
         }
         else
         {
-            wxFAIL_MSG( wxT( "No copper layers defined in the pad?" ) );
+            KI_FAIL_MSG( wxT( "No copper layers defined in the pad?" ) );
             csPadcode.SlotOrientation = 0;
             pad->SetOffset( PADSTACK::ALL_LAYERS, drillOffset );
         }
@@ -2050,7 +2051,7 @@ void CADSTAR_PCB_ARCHIVE_LOADER::loadTemplates()
     //Now create power plane layers:
     for( LAYER_ID layer : m_powerPlaneLayers )
     {
-        wxASSERT( Assignments.Layerdefs.Layers.find( layer ) != Assignments.Layerdefs.Layers.end() );
+        KI_ASSERT( Assignments.Layerdefs.Layers.find( layer ) != Assignments.Layerdefs.Layers.end() );
 
         //The net name will equal the layer name
         wxString powerPlaneLayerName = Assignments.Layerdefs.Layers.at( layer ).Name;
@@ -2691,7 +2692,7 @@ void CADSTAR_PCB_ARCHIVE_LOADER::drawCadstarText( const TEXT& aCadstarText,
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unknown Alignment - needs review!" ) );
+        KI_FAIL_MSG( wxT( "Unknown Alignment - needs review!" ) );
     }
 
     if( aMirrorInvert )
@@ -3041,10 +3042,10 @@ SHAPE_POLY_SET CADSTAR_PCB_ARCHIVE_LOADER::getPolySetFromCadstarShape( const SHA
 #ifdef DEBUG
     for( int i = 0; i < polySet.OutlineCount(); ++i )
     {
-        wxASSERT( polySet.Outline( i ).PointCount() > 2 );
+        KI_ASSERT( polySet.Outline( i ).PointCount() > 2 );
 
         for( int j = 0; j < polySet.HoleCount( i ); ++j )
-            wxASSERT( polySet.Hole( i, j ).PointCount() > 2 );
+            KI_ASSERT( polySet.Hole( i, j ).PointCount() > 2 );
     }
 #endif
 
@@ -3077,12 +3078,12 @@ SHAPE_LINE_CHAIN CADSTAR_PCB_ARCHIVE_LOADER::getLineChainFromShapes( const std::
             break;
 
         default:
-            wxFAIL_MSG( wxT( "Drawsegment type is unexpected. Ignored." ) );
+            KI_FAIL_MSG( wxT( "Drawsegment type is unexpected. Ignored." ) );
         }
     }
 
     // Shouldn't have less than 3 points to make a closed shape!
-    wxASSERT( lineChain.PointCount() > 2 );
+    KI_ASSERT( lineChain.PointCount() > 2 );
 
     // Check if it is closed
     if( lineChain.GetPoint( 0 ) != lineChain.GetPoint( lineChain.PointCount() - 1 ) )
@@ -3145,7 +3146,7 @@ std::vector<PCB_TRACK*> CADSTAR_PCB_ARCHIVE_LOADER::makeTracksFromShapes( const 
             break;
 
         default:
-            wxFAIL_MSG( wxT( "Drawsegment type is unexpected. Ignored." ) );
+            KI_FAIL_MSG( wxT( "Drawsegment type is unexpected. Ignored." ) );
             continue;
         }
 
@@ -3326,7 +3327,7 @@ void CADSTAR_PCB_ARCHIVE_LOADER::addAttribute( const ATTRIBUTE_LOCATION& aCadsta
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unknown Alignment - needs review!" ) );
+        KI_FAIL_MSG( wxT( "Unknown Alignment - needs review!" ) );
     }
 }
 
@@ -3393,7 +3394,7 @@ void CADSTAR_PCB_ARCHIVE_LOADER:: applyTextCode( EDA_TEXT* aKiCadText, const TEX
 
 int CADSTAR_PCB_ARCHIVE_LOADER::getLineThickness( const LINECODE_ID& aCadstarLineCodeID )
 {
-    wxCHECK( Assignments.Codedefs.LineCodes.find( aCadstarLineCodeID ) != Assignments.Codedefs.LineCodes.end(),
+    KI_CHECK( Assignments.Codedefs.LineCodes.find( aCadstarLineCodeID ) != Assignments.Codedefs.LineCodes.end(),
              m_board->GetDesignSettings().GetLineThickness( PCB_LAYER_ID::Edge_Cuts ) );
 
     return getKiCadLength( Assignments.Codedefs.LineCodes.at( aCadstarLineCodeID ).Width );
@@ -3403,7 +3404,7 @@ int CADSTAR_PCB_ARCHIVE_LOADER::getLineThickness( const LINECODE_ID& aCadstarLin
 CADSTAR_PCB_ARCHIVE_LOADER::COPPERCODE CADSTAR_PCB_ARCHIVE_LOADER::getCopperCode(
         const COPPERCODE_ID& aCadstaCopperCodeID )
 {
-    wxCHECK( Assignments.Codedefs.CopperCodes.find( aCadstaCopperCodeID ) != Assignments.Codedefs.CopperCodes.end(),
+    KI_CHECK( Assignments.Codedefs.CopperCodes.find( aCadstaCopperCodeID ) != Assignments.Codedefs.CopperCodes.end(),
              COPPERCODE() );
 
     return Assignments.Codedefs.CopperCodes.at( aCadstaCopperCodeID );
@@ -3412,7 +3413,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::COPPERCODE CADSTAR_PCB_ARCHIVE_LOADER::getCopperCode
 
 CADSTAR_PCB_ARCHIVE_LOADER::TEXTCODE CADSTAR_PCB_ARCHIVE_LOADER::getTextCode( const TEXTCODE_ID& aCadstarTextCodeID )
 {
-    wxCHECK( Assignments.Codedefs.TextCodes.find( aCadstarTextCodeID ) != Assignments.Codedefs.TextCodes.end(),
+    KI_CHECK( Assignments.Codedefs.TextCodes.find( aCadstarTextCodeID ) != Assignments.Codedefs.TextCodes.end(),
              TEXTCODE() );
 
     return Assignments.Codedefs.TextCodes.at( aCadstarTextCodeID );
@@ -3421,7 +3422,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::TEXTCODE CADSTAR_PCB_ARCHIVE_LOADER::getTextCode( co
 
 CADSTAR_PCB_ARCHIVE_LOADER::PADCODE CADSTAR_PCB_ARCHIVE_LOADER::getPadCode( const PADCODE_ID& aCadstarPadCodeID )
 {
-    wxCHECK( Assignments.Codedefs.PadCodes.find( aCadstarPadCodeID ) != Assignments.Codedefs.PadCodes.end(),
+    KI_CHECK( Assignments.Codedefs.PadCodes.find( aCadstarPadCodeID ) != Assignments.Codedefs.PadCodes.end(),
              PADCODE() );
 
     return Assignments.Codedefs.PadCodes.at( aCadstarPadCodeID );
@@ -3430,7 +3431,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::PADCODE CADSTAR_PCB_ARCHIVE_LOADER::getPadCode( cons
 
 CADSTAR_PCB_ARCHIVE_LOADER::VIACODE CADSTAR_PCB_ARCHIVE_LOADER::getViaCode( const VIACODE_ID& aCadstarViaCodeID )
 {
-    wxCHECK( Assignments.Codedefs.ViaCodes.find( aCadstarViaCodeID ) != Assignments.Codedefs.ViaCodes.end(),
+    KI_CHECK( Assignments.Codedefs.ViaCodes.find( aCadstarViaCodeID ) != Assignments.Codedefs.ViaCodes.end(),
              VIACODE() );
 
     return Assignments.Codedefs.ViaCodes.at( aCadstarViaCodeID );
@@ -3439,7 +3440,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::VIACODE CADSTAR_PCB_ARCHIVE_LOADER::getViaCode( cons
 
 CADSTAR_PCB_ARCHIVE_LOADER::LAYERPAIR CADSTAR_PCB_ARCHIVE_LOADER::getLayerPair( const LAYERPAIR_ID& aCadstarLayerPairID )
 {
-    wxCHECK( Assignments.Codedefs.LayerPairs.find( aCadstarLayerPairID ) != Assignments.Codedefs.LayerPairs.end(),
+    KI_CHECK( Assignments.Codedefs.LayerPairs.find( aCadstarLayerPairID ) != Assignments.Codedefs.LayerPairs.end(),
              LAYERPAIR() );
 
     return Assignments.Codedefs.LayerPairs.at( aCadstarLayerPairID );
@@ -3448,7 +3449,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::LAYERPAIR CADSTAR_PCB_ARCHIVE_LOADER::getLayerPair( 
 
 wxString CADSTAR_PCB_ARCHIVE_LOADER::getAttributeName( const ATTRIBUTE_ID& aCadstarAttributeID )
 {
-    wxCHECK( Assignments.Codedefs.AttributeNames.find( aCadstarAttributeID )
+    KI_CHECK( Assignments.Codedefs.AttributeNames.find( aCadstarAttributeID )
                      != Assignments.Codedefs.AttributeNames.end(),
             wxEmptyString );
 
@@ -3459,7 +3460,7 @@ wxString CADSTAR_PCB_ARCHIVE_LOADER::getAttributeName( const ATTRIBUTE_ID& aCads
 wxString CADSTAR_PCB_ARCHIVE_LOADER::getAttributeValue( const ATTRIBUTE_ID& aCadstarAttributeID,
                                                         const std::map<ATTRIBUTE_ID, ATTRIBUTE_VALUE>& aCadstarAttrMap )
 {
-    wxCHECK( aCadstarAttrMap.find( aCadstarAttributeID ) != aCadstarAttrMap.end(), wxEmptyString );
+    KI_CHECK( aCadstarAttrMap.find( aCadstarAttributeID ) != aCadstarAttrMap.end(), wxEmptyString );
 
     return aCadstarAttrMap.at( aCadstarAttributeID ).Value;
 }
@@ -3477,7 +3478,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::getLayerType( const LAYER_ID aCadstarLayerID )
 
 CADSTAR_PCB_ARCHIVE_LOADER::PART CADSTAR_PCB_ARCHIVE_LOADER::getPart( const PART_ID& aCadstarPartID )
 {
-    wxCHECK( Parts.PartDefinitions.find( aCadstarPartID ) != Parts.PartDefinitions.end(), PART() );
+    KI_CHECK( Parts.PartDefinitions.find( aCadstarPartID ) != Parts.PartDefinitions.end(), PART() );
 
     return Parts.PartDefinitions.at( aCadstarPartID );
 }
@@ -3486,7 +3487,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::PART CADSTAR_PCB_ARCHIVE_LOADER::getPart( const PART
 CADSTAR_PCB_ARCHIVE_LOADER::ROUTECODE CADSTAR_PCB_ARCHIVE_LOADER::getRouteCode(
         const ROUTECODE_ID& aCadstarRouteCodeID )
 {
-    wxCHECK( Assignments.Codedefs.RouteCodes.find( aCadstarRouteCodeID ) != Assignments.Codedefs.RouteCodes.end(),
+    KI_CHECK( Assignments.Codedefs.RouteCodes.find( aCadstarRouteCodeID ) != Assignments.Codedefs.RouteCodes.end(),
              ROUTECODE() );
 
     return Assignments.Codedefs.RouteCodes.at( aCadstarRouteCodeID );
@@ -3496,7 +3497,7 @@ CADSTAR_PCB_ARCHIVE_LOADER::ROUTECODE CADSTAR_PCB_ARCHIVE_LOADER::getRouteCode(
 CADSTAR_PCB_ARCHIVE_LOADER::HATCHCODE CADSTAR_PCB_ARCHIVE_LOADER::getHatchCode(
         const HATCHCODE_ID& aCadstarHatchcodeID )
 {
-    wxCHECK( Assignments.Codedefs.HatchCodes.find( aCadstarHatchcodeID ) != Assignments.Codedefs.HatchCodes.end(),
+    KI_CHECK( Assignments.Codedefs.HatchCodes.find( aCadstarHatchcodeID ) != Assignments.Codedefs.HatchCodes.end(),
              HATCHCODE() );
 
     return Assignments.Codedefs.HatchCodes.at( aCadstarHatchcodeID );
@@ -3541,7 +3542,7 @@ int CADSTAR_PCB_ARCHIVE_LOADER::getKiCadHatchCodeGap( const HATCHCODE_ID& aCadst
 
 PCB_GROUP* CADSTAR_PCB_ARCHIVE_LOADER::getKiCadGroup( const GROUP_ID& aCadstarGroupID )
 {
-    wxCHECK( m_groupMap.find( aCadstarGroupID ) != m_groupMap.end(), nullptr );
+    KI_CHECK( m_groupMap.find( aCadstarGroupID ) != m_groupMap.end(), nullptr );
 
     return m_groupMap.at( aCadstarGroupID );
 }
@@ -3683,7 +3684,7 @@ void CADSTAR_PCB_ARCHIVE_LOADER::applyDimensionSettings( const DIMENSION&  aCads
         break;
 
     case UNITS::DESIGN:
-        wxFAIL_MSG( wxT( "We should have handled design units before coming here!" ) );
+        KI_FAIL_MSG( wxT( "We should have handled design units before coming here!" ) );
         break;
     }
 }
@@ -3854,7 +3855,7 @@ bool CADSTAR_PCB_ARCHIVE_LOADER::calculateZonePriorities( PCB_LAYER_ID& aLayer )
             continue;
         }
 
-        wxASSERT( !isLowerPriority( id, prevID ) );
+        KI_ASSERT( !isLowerPriority( id, prevID ) );
 
         int newPriority = m_zonesMap.at( prevID )->GetAssignedPriority();
 
@@ -3914,7 +3915,7 @@ NETINFO_ITEM* CADSTAR_PCB_ARCHIVE_LOADER::getKiCadNet( const NET_ID& aCadstarNet
     }
     else
     {
-        wxCHECK( Layout.Nets.find( aCadstarNetID ) != Layout.Nets.end(), nullptr );
+        KI_CHECK( Layout.Nets.find( aCadstarNetID ) != Layout.Nets.end(), nullptr );
 
         NET_PCB  csNet   = Layout.Nets.at( aCadstarNetID );
         wxString newName = csNet.Name;
@@ -3935,7 +3936,7 @@ NETINFO_ITEM* CADSTAR_PCB_ARCHIVE_LOADER::getKiCadNet( const NET_ID& aCadstarNet
             }
             else
             {
-                wxFAIL_MSG( wxT( "A net with no pins associated?" ) );
+                KI_FAIL_MSG( wxT( "A net with no pins associated?" ) );
                 newName = wxT( "csNet-" );
                 newName << wxString::Format( wxT( "%i" ), csNet.SignalNum );
             }
@@ -4061,7 +4062,7 @@ PCB_LAYER_ID CADSTAR_PCB_ARCHIVE_LOADER::getKiCadCopperLayerID( unsigned int aLa
 
 bool CADSTAR_PCB_ARCHIVE_LOADER::isLayerSet( const LAYER_ID& aCadstarLayerID )
 {
-    wxCHECK( Assignments.Layerdefs.Layers.find( aCadstarLayerID ) != Assignments.Layerdefs.Layers.end(), false );
+    KI_CHECK( Assignments.Layerdefs.Layers.find( aCadstarLayerID ) != Assignments.Layerdefs.Layers.end(), false );
 
     LAYER& layer = Assignments.Layerdefs.Layers.at( aCadstarLayerID );
 
@@ -4087,7 +4088,7 @@ PCB_LAYER_ID CADSTAR_PCB_ARCHIVE_LOADER::getKiCadLayer( const LAYER_ID& aCadstar
         return PCB_LAYER_ID::UNDEFINED_LAYER;
     }
 
-    wxCHECK( m_layermap.find( aCadstarLayerID ) != m_layermap.end(), PCB_LAYER_ID::UNDEFINED_LAYER );
+    KI_CHECK( m_layermap.find( aCadstarLayerID ) != m_layermap.end(), PCB_LAYER_ID::UNDEFINED_LAYER );
 
     return m_layermap.at( aCadstarLayerID );
 }
@@ -4126,7 +4127,7 @@ LSET CADSTAR_PCB_ARCHIVE_LOADER::getKiCadLayerSet( const LAYER_ID& aCadstarLayer
 
 void CADSTAR_PCB_ARCHIVE_LOADER::addToGroup( const GROUP_ID& aCadstarGroupID, BOARD_ITEM* aKiCadItem )
 {
-    wxCHECK( m_groupMap.find( aCadstarGroupID ) != m_groupMap.end(), );
+    KI_CHECK( m_groupMap.find( aCadstarGroupID ) != m_groupMap.end(), );
 
     PCB_GROUP* parentGroup = m_groupMap.at( aCadstarGroupID );
     parentGroup->AddItem( aKiCadItem );

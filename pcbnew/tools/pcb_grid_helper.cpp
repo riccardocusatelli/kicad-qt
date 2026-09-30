@@ -60,6 +60,8 @@
 #include <tools/pcb_tool_base.h>
 #include <view/view.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 namespace
 {
@@ -445,7 +447,7 @@ VECTOR2I PCB_GRID_HELPER::AlignToArc( const VECTOR2I& aPoint, const SHAPE_ARC& a
 
 VECTOR2I PCB_GRID_HELPER::SnapToPad( const VECTOR2I& aMousePos, std::deque<PAD*>& aPads )
 {
-    wxLogTrace( traceSnap, "SnapToPad: mouse pos (%d, %d), pads count: %zu", aMousePos.x, aMousePos.y, aPads.size() );
+    KI_LOG_TRACE( traceSnap, "SnapToPad: mouse pos (%d, %d), pads count: %zu", aMousePos.x, aMousePos.y, aPads.size() );
     clearAnchors();
 
     for( BOARD_ITEM* item : aPads )
@@ -509,7 +511,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I &aMousePos,
                                           GRID_HELPER_GRIDS aGrid,
                                           const PCB_SELECTION_FILTER_OPTIONS* aSelectionFilter )
 {
-    wxLogTrace( traceSnap, "BestDragOrigin: mouse pos (%d, %d), items count: %zu", aMousePos.x, aMousePos.y,
+    KI_LOG_TRACE( traceSnap, "BestDragOrigin: mouse pos (%d, %d), items count: %zu", aMousePos.x, aMousePos.y,
                 aItems.size() );
     clearAnchors();
 
@@ -528,7 +530,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I &aMousePos,
         minDist = nearestOrigin->Distance( aMousePos );
         best = nearestOrigin;
 
-        wxLogTrace( traceSnap, "  nearest origin winning at (%d, %d), distance=%f", nearestOrigin->pos.x,
+        KI_LOG_TRACE( traceSnap, "  nearest origin winning at (%d, %d), distance=%f", nearestOrigin->pos.x,
                     nearestOrigin->pos.y, minDist );
     }
 
@@ -541,7 +543,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I &aMousePos,
             minDist = dist;
             best = nearestCorner;
 
-            wxLogTrace( traceSnap, "  nearest corner winning at (%d, %d), distance=%f", nearestCorner->pos.x,
+            KI_LOG_TRACE( traceSnap, "  nearest corner winning at (%d, %d), distance=%f", nearestCorner->pos.x,
                         nearestCorner->pos.y, dist );
         }
     }
@@ -554,13 +556,13 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I &aMousePos,
         {
             best = nearestOutline;
 
-            wxLogTrace( traceSnap, "  nearest outline winning at (%d, %d), distance=%f", nearestOutline->pos.x,
+            KI_LOG_TRACE( traceSnap, "  nearest outline winning at (%d, %d), distance=%f", nearestOutline->pos.x,
                         nearestOutline->pos.y, dist );
         }
     }
 
     VECTOR2I ret = best ? best->pos : aMousePos;
-    wxLogTrace( traceSnap, "  have best: %s, returning (%d, %d)", best ? "yes" : "no", ret.x, ret.y );
+    KI_LOG_TRACE( traceSnap, "  have best: %s, returning (%d, %d)", best ? "yes" : "no", ret.x, ret.y );
     return ret;
 }
 
@@ -594,7 +596,7 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
                                           GRID_HELPER_GRIDS               aGrid,
                                           const std::vector<BOARD_ITEM*>& aSkip )
 {
-    wxLogTrace( traceSnap, "BestSnapAnchor: origin (%d, %d), enableSnap=%d, enableGrid=%d, enableSnapLine=%d",
+    KI_LOG_TRACE( traceSnap, "BestSnapAnchor: origin (%d, %d), enableSnap=%d, enableGrid=%d, enableSnapLine=%d",
                 aOrigin.x, aOrigin.y, m_enableSnap, m_enableGrid, m_enableSnapLine );
 
     // Tuning constant: snap radius in screen space
@@ -627,16 +629,16 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
     const int snapIn = std::max( 0, snapRange - hysteresisWorld );
     const int snapOut = snapRange + hysteresisWorld;
 
-    wxLogTrace( traceSnap, "  snapRange=%d, snapIn=%d, snapOut=%d, hysteresis=%d",
+    KI_LOG_TRACE( traceSnap, "  snapRange=%d, snapIn=%d, snapOut=%d, hysteresis=%d",
                 snapRange, snapIn, snapOut, hysteresisWorld );
-    wxLogTrace( traceSnap, "  visibleItems count=%zu, anchors count=%zu",
+    KI_LOG_TRACE( traceSnap, "  visibleItems count=%zu, anchors count=%zu",
                 visibleItems.size(), m_anchors.size() );
-    wxLogTrace( traceSnap, "  nearest anchor: %s at (%d, %d), distance=%f",
+    KI_LOG_TRACE( traceSnap, "  nearest anchor: %s at (%d, %d), distance=%f",
                 nearest ? "found" : "none",
                 nearest ? nearest->pos.x : 0,
                 nearest ? nearest->pos.y : 0,
                 nearest ? nearest->Distance( aOrigin ) : -1.0 );
-    wxLogTrace( traceSnap, "  nearestGrid: (%d, %d)", nearestGrid.x, nearestGrid.y );
+    KI_LOG_TRACE( traceSnap, "  nearestGrid: (%d, %d)", nearestGrid.x, nearestGrid.y );
 
     if( KIGFX::ANCHOR_DEBUG* ad = enableAndGetAnchorDebug(); ad )
     {
@@ -662,9 +664,9 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
             snapDist = existingDist;
     }
 
-    wxLogTrace( traceSnap, "  snapDist: %s (value=%d)",
+    KI_LOG_TRACE( traceSnap, "  snapDist: %s (value=%d)",
                 snapDist ? "set" : "none", snapDist ? *snapDist : -1 );
-    wxLogTrace( traceSnap, "  m_snapItem: %s", m_snapItem ? "exists" : "none" );
+    KI_LOG_TRACE( traceSnap, "  m_snapItem: %s", m_snapItem ? "exists" : "none" );
 
     showConstructionGeometry( m_enableSnap );
 
@@ -713,12 +715,12 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
 
     if( m_enableSnap )
     {
-        wxLogTrace( traceSnap, "  Snap enabled, checking snap options..." );
+        KI_LOG_TRACE( traceSnap, "  Snap enabled, checking snap options..." );
 
         // Existing snap lines need priority over new snaps
         if( m_enableSnapLine )
         {
-            wxLogTrace( traceSnap, "    Checking snap lines..." );
+            KI_LOG_TRACE( traceSnap, "    Checking snap lines..." );
 
             OPT_VECTOR2I snapLineSnap = snapLineManager.GetNearestSnapLinePoint(
                     aOrigin, nearestGrid, snapDist, snapRange, gridSize, GetOrigin() );
@@ -735,7 +737,7 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
             // We found a better snap point that the nearest one
             if( snapLineSnap && m_skipPoint != *snapLineSnap )
             {
-                wxLogTrace( traceSnap, "    Snap line found at (%d, %d)",
+                KI_LOG_TRACE( traceSnap, "    Snap line found at (%d, %d)",
                             snapLineSnap->x, snapLineSnap->y );
 
                 // Check if we have a nearby anchor that should take precedence
@@ -744,21 +746,21 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
                 if( nearest && nearest->Distance( aOrigin ) <= snapIn )
                 {
                     preferAnchor = true;
-                    wxLogTrace( traceSnap, "    Preferring anchor over snap line (anchorDist=%f, snapRange=%d)",
+                    KI_LOG_TRACE( traceSnap, "    Preferring anchor over snap line (anchorDist=%f, snapRange=%d)",
                                 nearest->Distance( aOrigin ), snapRange );
                 }
                 else
                 {
                     if( nearest )
                     {
-                        wxLogTrace( traceSnap, "    Nearest anchor at (%d, %d), distance=%f is out of range (snapRange=%d)",
+                        KI_LOG_TRACE( traceSnap, "    Nearest anchor at (%d, %d), distance=%f is out of range (snapRange=%d)",
                                     nearest->pos.x, nearest->pos.y,
                                     nearest->Distance( aOrigin ),
                                     snapRange );
                     }
                     else
                     {
-                        wxLogTrace( traceSnap, "    No nearest anchor to consider" );
+                        KI_LOG_TRACE( traceSnap, "    No nearest anchor to consider" );
                     }
                 }
 
@@ -776,18 +778,18 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
                     // without actually snapping)
                     if( !ptIsReferenceOnly( *snapLineSnap ) )
                     {
-                        wxLogTrace( traceSnap, "  RETURNING snap line point (non-reference): (%d, %d)",
+                        KI_LOG_TRACE( traceSnap, "  RETURNING snap line point (non-reference): (%d, %d)",
                                     snapLineSnap->x, snapLineSnap->y );
                         return *snapLineSnap;
                     }
                     else
                     {
-                        wxLogTrace( traceSnap, "    Snap line point is reference-only, continuing..." );
+                        KI_LOG_TRACE( traceSnap, "    Snap line point is reference-only, continuing..." );
                     }
                 }
                 else
                 {
-                    wxLogTrace( traceSnap, "    Skipping snap line, will use anchor instead" );
+                    KI_LOG_TRACE( traceSnap, "    Skipping snap line, will use anchor instead" );
                 }
             }
         }
@@ -796,7 +798,7 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
         {
             int dist = m_snapItem->Distance( aOrigin );
 
-            wxLogTrace( traceSnap, "    Checking existing m_snapItem, dist=%d (snapOut=%d)",
+            KI_LOG_TRACE( traceSnap, "    Checking existing m_snapItem, dist=%d (snapOut=%d)",
                         dist, snapOut );
 
             if( dist <= snapOut )
@@ -808,19 +810,19 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
                 snapLineManager.SetSnappedAnchor( m_snapItem->pos );
                 updateSnapPoint( { m_snapItem->pos, m_snapItem->pointTypes } );
 
-                wxLogTrace( traceSnap, "  RETURNING existing m_snapItem: (%d, %d)",
+                KI_LOG_TRACE( traceSnap, "  RETURNING existing m_snapItem: (%d, %d)",
                             m_snapItem->pos.x, m_snapItem->pos.y );
                 return m_snapItem->pos;
             }
 
-            wxLogTrace( traceSnap, "    m_snapItem too far, clearing..." );
+            KI_LOG_TRACE( traceSnap, "    m_snapItem too far, clearing..." );
             m_snapItem = std::nullopt;
         }
 
         // If there's a snap anchor within range, use it if we can
         if( nearest && nearest->Distance( aOrigin ) <= snapIn )
         {
-            wxLogTrace( traceSnap, "    Nearest anchor within snapIn range" );
+            KI_LOG_TRACE( traceSnap, "    Nearest anchor within snapIn range" );
 
             const bool anchorIsConstructed = nearest->flags & ANCHOR_FLAGS::CONSTRUCTED;
 
@@ -828,14 +830,14 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
             // but we can update the snap line origin
             if( ptIsReferenceOnly( nearest->pos ) )
             {
-                wxLogTrace( traceSnap, "    Nearest anchor is reference-only, setting snap line origin" );
+                KI_LOG_TRACE( traceSnap, "    Nearest anchor is reference-only, setting snap line origin" );
                 // We can set the snap line origin, but don't mess with the
                 // accepted snap point
                 snapLineManager.SetSnapLineOrigin( nearest->pos );
             }
             else
             {
-                wxLogTrace( traceSnap, "    Nearest anchor accepted, constructed=%d", anchorIsConstructed );
+                KI_LOG_TRACE( traceSnap, "    Nearest anchor accepted, constructed=%d", anchorIsConstructed );
 
                 // 'Intrinsic' points of items can trigger adding construction geometry
                 // for _that_ item by proximity. E.g. just mousing over the intersection
@@ -852,7 +854,7 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
                 // Show the correct snap point marker
                 updateSnapPoint( { m_snapItem->pos, m_snapItem->pointTypes } );
 
-                wxLogTrace( traceSnap, "  RETURNING nearest anchor: (%d, %d)",
+                KI_LOG_TRACE( traceSnap, "  RETURNING nearest anchor: (%d, %d)",
                             m_snapItem->pos.x, m_snapItem->pos.y );
                 return m_snapItem->pos;
             }
@@ -861,13 +863,13 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
         }
         else
         {
-            wxLogTrace( traceSnap, "    No nearest anchor within snapIn range" );
+            KI_LOG_TRACE( traceSnap, "    No nearest anchor within snapIn range" );
 
             static const bool canActivateByHitTest = ADVANCED_CFG::GetCfg().m_ExtensionSnapActivateOnHover;
 
             if( canActivateByHitTest )
             {
-                wxLogTrace( traceSnap, "    Checking hit test for construction activation..." );
+                KI_LOG_TRACE( traceSnap, "    Checking hit test for construction activation..." );
 
                 // An exact hit on an item, even if not near a snap point
                 // If it's tool hard to hit by hover, this can be increased
@@ -878,7 +880,7 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
                 {
                     if( item->HitTest( aOrigin, hoverAccuracy ) )
                     {
-                        wxLogTrace( traceSnap, "    Hit item, proposing construction geometry" );
+                        KI_LOG_TRACE( traceSnap, "    Hit item, proposing construction geometry" );
                         proposeConstructionForItems( { item } );
                         snapValid = true;
                         break;
@@ -893,14 +895,14 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
         // but they're useful when there isn't a grid to snap to
         if( !m_enableGrid )
         {
-            wxLogTrace( traceSnap, "    Grid disabled, checking point-on-element snap..." );
+            KI_LOG_TRACE( traceSnap, "    Grid disabled, checking point-on-element snap..." );
 
             OPT_VECTOR2I nearestPointOnAnElement = GetNearestPoint( m_pointOnLineCandidates, aOrigin );
 
             // Got any nearest point - snap if in range
             if( nearestPointOnAnElement && nearestPointOnAnElement->Distance( aOrigin ) <= snapRange )
             {
-                wxLogTrace( traceSnap, "  RETURNING point-on-element: (%d, %d)",
+                KI_LOG_TRACE( traceSnap, "  RETURNING point-on-element: (%d, %d)",
                             nearestPointOnAnElement->x, nearestPointOnAnElement->y );
 
                 updateSnapPoint( { *nearestPointOnAnElement, POINT_TYPE::PT_ON_ELEMENT } );
@@ -915,7 +917,7 @@ VECTOR2I PCB_GRID_HELPER::BestSnapAnchor( const VECTOR2I& aOrigin, const LSET& a
 
     // Completely failed to find any snap point, so snap to the grid
 
-    wxLogTrace( traceSnap, "  RETURNING grid snap: (%d, %d)", nearestGrid.x, nearestGrid.y );
+    KI_LOG_TRACE( traceSnap, "  RETURNING grid snap: (%d, %d)", nearestGrid.x, nearestGrid.y );
 
     m_snapItem = std::nullopt;
 
@@ -1290,7 +1292,7 @@ static bool PadstackUniqueLayerAppliesToLayer( const PADSTACK& aPadStack, PCB_LA
             // But the inner layers apply to any inner layer
             return IsInnerCopperLayer( aRealLayer );
         default:
-            wxFAIL_MSG( wxString::Format( "Unexpected padstack unique layer %d in FRONT_INNER_BACK mode",
+            KI_FAIL_MSG( wxString::Format( "Unexpected padstack unique layer %d in FRONT_INNER_BACK mode",
                                           aPadstackUniqueLayer ) );
             break;
         }

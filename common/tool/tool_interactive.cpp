@@ -34,6 +34,7 @@
 #include <pgm_base.h>
 
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 TOOL_INTERACTIVE::TOOL_INTERACTIVE( TOOL_ID aId, const std::string& aName ) :
@@ -83,7 +84,7 @@ void TOOL_INTERACTIVE::resetTransitions()
 
 void TOOL_INTERACTIVE::goInternal( TOOL_STATE_FUNC& aState, const TOOL_EVENT_LIST& aConditions )
 {
-    wxLogTrace( kicadTraceToolStack,
+    KI_LOG_TRACE( kicadTraceToolStack,
                 wxS( "TOOL_INTERACTIVE::goInternal: Tool '%s', Registering handler for "
                      "actions '%s'" ),
                 GetName(), aConditions.Names() );

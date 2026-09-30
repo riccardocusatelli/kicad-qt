@@ -47,6 +47,7 @@
 #include <pad.h>
 #include <project.h>
 #include <fix_board_shape.h>
+#include <core/ki_assert.h>
 
 
 static const wxString DIRECT_MODEL_UUID_KEY = wxS( "JLC_3DModel" );
@@ -605,7 +606,7 @@ void PCB_IO_EASYEDA_PARSER::ParseToBoardItemContainer(
             }
             else
             {
-                wxFAIL_MSG( wxString::Format( "COPPERAREA unexpected size %d: %s ",
+                KI_FAIL_MSG( wxString::Format( "COPPERAREA unexpected size %d: %s ",
                                               arr.size(),
                                               shape ) );
 

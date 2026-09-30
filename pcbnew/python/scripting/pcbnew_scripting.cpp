@@ -47,6 +47,7 @@
 #include <wx/app.h>
 
 #include <config.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -63,7 +64,7 @@ static void pcbnewRunPythonMethodWithReturnedString( const char* aMethodName, wx
     PyErr_Clear();
 
     PyObject* builtins = PyImport_ImportModule( "pcbnew" );
-    wxASSERT( builtins );
+    KI_ASSERT( builtins );
 
     if( !builtins ) // Something is wrong in pcbnew.py module (incorrect version?)
         return;

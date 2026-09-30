@@ -43,6 +43,8 @@
 #include <board.h>
 #include <length_delay_calculation/length_delay_calculation.h>
 #include <pad.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 namespace PNS {
 
@@ -269,7 +271,7 @@ TOPOLOGY::PATH_RESULT TOPOLOGY::followBranch( const JOINT* aStartJoint, LINKED_I
 
         if( elapsed > timeoutMs )
         {
-            wxLogTrace( wxT( "PNS_TUNE" ),
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ),
                         wxT( "followBranch: timeout after %lld ms, returning best path found" ),
                         elapsed );
             break;
@@ -352,7 +354,7 @@ TOPOLOGY::PATH_RESULT TOPOLOGY::followBranch( const JOINT* aStartJoint, LINKED_I
         }
     }
 
-    wxLogTrace( wxT( "PNS_TUNE" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ),
                 wxT( "followBranch: completed with best path length=%d, %d items" ),
                 best.m_length, best.m_items.Size() );
 
@@ -366,10 +368,10 @@ ITEM_SET TOPOLOGY::followTrivialPath( LINE* aLine2, const JOINT** aTerminalJoint
 {
     assert( aLine2->IsLinked() );
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "=== followTrivialPath START ===" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: initial line has %d segments, %zu links" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "=== followTrivialPath START ===" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: initial line has %d segments, %zu links" ),
                 aLine2->SegmentCount(), aLine2->Links().size() );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: line endpoints: (%d,%d) to (%d,%d)" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: line endpoints: (%d,%d) to (%d,%d)" ),
                 aLine2->CPoint( 0 ).x, aLine2->CPoint( 0 ).y,
                 aLine2->CLastPoint().x, aLine2->CLastPoint().y );
 
@@ -384,16 +386,16 @@ ITEM_SET TOPOLOGY::followTrivialPath( LINE* aLine2, const JOINT** aTerminalJoint
     const JOINT* jtA = m_world->FindJoint( aLine2->CPoint( 0 ), aLine2 );
     const JOINT* jtB = m_world->FindJoint( aLine2->CLastPoint(), aLine2 );
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: LEFT branch starting from joint at (%d,%d)" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: LEFT branch starting from joint at (%d,%d)" ),
                 jtA->Pos().x, jtA->Pos().y );
     PATH_RESULT left = followBranch( jtA, aLine2->Links().front(), visited, aFollowLockedSegments );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: LEFT branch result: length=%d, %d items" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: LEFT branch result: length=%d, %d items" ),
                 left.m_length, left.m_items.Size() );
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: RIGHT branch starting from joint at (%d,%d)" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: RIGHT branch starting from joint at (%d,%d)" ),
                 jtB->Pos().x, jtB->Pos().y );
     PATH_RESULT right = followBranch( jtB, aLine2->Links().back(), visited, aFollowLockedSegments );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: RIGHT branch result: length=%d, %d items" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "followTrivialPath: RIGHT branch result: length=%d, %d items" ),
                 right.m_length, right.m_items.Size() );
 
     if( aTerminalJointA )
@@ -442,17 +444,17 @@ ITEM_SET TOPOLOGY::followTrivialPath( LINE* aLine2, const JOINT** aTerminalJoint
     // Calculate total path length
     int totalLength = left.m_length + aLine2->CLine().Length() + right.m_length;
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "=== followTrivialPath SUMMARY ===" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "Starting segment count: %d" ), initialSegCount );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "Left branch: %d segments, length=%d" ), leftSegCount, left.m_length );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "Initial line: %d segments, length=%lld" ), initialSegCount, aLine2->CLine().Length() );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "Right branch: %d segments, length=%d" ), rightSegCount, right.m_length );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "Total segments in path: %d" ), leftSegCount + initialSegCount + rightSegCount );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "Total path length: %d" ), totalLength );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "Total items in result: %d" ), path.Size() );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "=== followTrivialPath END ===" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "=== followTrivialPath SUMMARY ===" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "Starting segment count: %d" ), initialSegCount );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "Left branch: %d segments, length=%d" ), leftSegCount, left.m_length );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "Initial line: %d segments, length=%lld" ), initialSegCount, aLine2->CLine().Length() );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "Right branch: %d segments, length=%d" ), rightSegCount, right.m_length );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "Total segments in path: %d" ), leftSegCount + initialSegCount + rightSegCount );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "Total path length: %d" ), totalLength );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "Total items in result: %d" ), path.Size() );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "=== followTrivialPath END ===" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "" ) );
 
     return path;
 }
@@ -462,8 +464,8 @@ const ITEM_SET TOPOLOGY::AssembleTrivialPath( ITEM* aStart,
                                               std::pair<const JOINT*, const JOINT*>* aTerminalJoints,
                                               bool aFollowLockedSegments )
 {
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "*** AssembleTrivialPath: START ***" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: aStart=%p, kind=%s" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "*** AssembleTrivialPath: START ***" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: aStart=%p, kind=%s" ),
                 aStart, aStart->KindStr().c_str() );
 
     ITEM_SET        path;
@@ -471,13 +473,13 @@ const ITEM_SET TOPOLOGY::AssembleTrivialPath( ITEM* aStart,
 
     if( aStart->Kind() == ITEM::VIA_T )
     {
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: starting from VIA" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: starting from VIA" ) );
         VIA*         via = static_cast<VIA*>( aStart );
         const JOINT* jt  = m_world->FindJoint( via->Pos(), via );
 
         if( !jt->IsNonFanoutVia() )
         {
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: VIA is fanout, returning empty" ) );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: VIA is fanout, returning empty" ) );
             return ITEM_SET();
         }
 
@@ -488,7 +490,7 @@ const ITEM_SET TOPOLOGY::AssembleTrivialPath( ITEM* aStart,
             if( item->OfKind( ITEM::SEGMENT_T | ITEM::ARC_T ) )
             {
                 seg = static_cast<LINKED_ITEM*>( item );
-                wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: found segment/arc from VIA" ) );
+                KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: found segment/arc from VIA" ) );
                 break;
             }
         }
@@ -496,12 +498,12 @@ const ITEM_SET TOPOLOGY::AssembleTrivialPath( ITEM* aStart,
     else if( aStart->OfKind( ITEM::SEGMENT_T | ITEM::ARC_T ) )
     {
         seg = static_cast<LINKED_ITEM*>( aStart );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: starting from SEGMENT/ARC" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: starting from SEGMENT/ARC" ) );
     }
 
     if( !seg )
     {
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: no segment found, returning empty" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: no segment found, returning empty" ) );
         return ITEM_SET();
     }
 
@@ -509,7 +511,7 @@ const ITEM_SET TOPOLOGY::AssembleTrivialPath( ITEM* aStart,
     // TODO: consider if we want to allow tuning lines with different widths in the future
     LINE l = m_world->AssembleLine( seg, nullptr, false, aFollowLockedSegments );
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: assembled line with %d segments, length=%lld" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: assembled line with %d segments, length=%lld" ),
                 l.SegmentCount(), l.CLine().Length() );
 
     const JOINT* jointA = nullptr;
@@ -519,15 +521,15 @@ const ITEM_SET TOPOLOGY::AssembleTrivialPath( ITEM* aStart,
 
     if( aTerminalJoints )
     {
-        wxASSERT( jointA && jointB );
+        KI_ASSERT( jointA && jointB );
         *aTerminalJoints = std::make_pair( jointA, jointB );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: terminal joints at (%d,%d) and (%d,%d)" ),
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: terminal joints at (%d,%d) and (%d,%d)" ),
                     jointA->Pos().x, jointA->Pos().y, jointB->Pos().x, jointB->Pos().y );
     }
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: returning path with %d items" ), path.Size() );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "*** AssembleTrivialPath: END ***" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTrivialPath: returning path with %d items" ), path.Size() );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "*** AssembleTrivialPath: END ***" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "" ) );
 
     return path;
 }
@@ -553,7 +555,7 @@ std::vector<LINE> TOPOLOGY::findLinesFromVia( ROUTER_IFACE* aRouterIface, VIA* a
                                     : nullptr;
 
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "findLinesFromVia: VIA at (%d,%d), net=%p, %zu obstacles" ), aVia->Pos().x,
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "findLinesFromVia: VIA at (%d,%d), net=%p, %zu obstacles" ), aVia->Pos().x,
                 aVia->Pos().y, net, obstacles.size() );
 
     for( const OBSTACLE& obs : obstacles )
@@ -591,7 +593,7 @@ std::vector<LINE> TOPOLOGY::findLinesFromVia( ROUTER_IFACE* aRouterIface, VIA* a
 
         if( !anchor0Inside && !anchor1Inside )
         {
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "  skip collision: layer=%d anchor0=(%d,%d) anchor1=(%d,%d)" ),
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "  skip collision: layer=%d anchor0=(%d,%d) anchor1=(%d,%d)" ),
                         linked->Layer(), anchor0.x, anchor0.y, anchor1.x, anchor1.y );
             continue;
         }
@@ -641,7 +643,7 @@ TOPOLOGY::WALK_RESULT TOPOLOGY::walkTuningPath( ROUTER_IFACE* aRouterIface, LINE
 
         if( elapsed > timeoutMs )
         {
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "walkTuningPath: timeout after %lld ms" ), elapsed );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "walkTuningPath: timeout after %lld ms" ), elapsed );
             break;
         }
 
@@ -777,7 +779,7 @@ TOPOLOGY::WALK_RESULT TOPOLOGY::walkTuningPath( ROUTER_IFACE* aRouterIface, LINE
         }
     }
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "walkTuningPath: completed, best length=%lld, %d items, pad=%p" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "walkTuningPath: completed, best length=%lld, %d items, pad=%p" ),
                 best.m_length, best.m_items.Size(), best.m_endPad );
 
     return best;
@@ -787,9 +789,9 @@ TOPOLOGY::WALK_RESULT TOPOLOGY::walkTuningPath( ROUTER_IFACE* aRouterIface, LINE
 const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* aStart, SOLID** aStartPad,
                                              SOLID** aEndPad )
 {
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "########## AssembleTuningPath: START ##########" ) );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: aStart=%p, kind=%s" ),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "########## AssembleTuningPath: START ##########" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: aStart=%p, kind=%s" ),
                 aStart, aStart->KindStr().c_str() );
 
     LINKED_ITEM* seg = nullptr;
@@ -820,7 +822,7 @@ const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* a
 
             if( continuations.empty() )
             {
-                wxLogTrace( wxT( "PNS_TUNE" ),
+                KI_LOG_TRACE( wxT( "PNS_TUNE" ),
                             wxT( "AssembleTuningPath: no via continuation found, returning empty" ) );
                 return ITEM_SET();
             }
@@ -842,13 +844,13 @@ const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* a
 
     if( !seg )
     {
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: no segment found, returning empty" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: no segment found, returning empty" ) );
         return ITEM_SET();
     }
 
     LINE l = m_world->AssembleLine( seg, nullptr, false, true );
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: initial line %d segments, length=%lld" ), l.SegmentCount(),
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: initial line %d segments, length=%lld" ), l.SegmentCount(),
                 l.CLine().Length() );
 
     std::set<ITEM*> visited;
@@ -856,11 +858,11 @@ const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* a
     for( LINKED_ITEM* link : l.Links() )
         visited.insert( link );
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: walking LEFT from (%d,%d)" ), l.CPoint( 0 ).x,
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: walking LEFT from (%d,%d)" ), l.CPoint( 0 ).x,
                 l.CPoint( 0 ).y );
     WALK_RESULT left = walkTuningPath( aRouterIface, l, false, visited );
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: walking RIGHT from (%d,%d)" ), l.CLastPoint().x,
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: walking RIGHT from (%d,%d)" ), l.CLastPoint().x,
                 l.CLastPoint().y );
     WALK_RESULT right = walkTuningPath( aRouterIface, l, true, visited );
 
@@ -888,7 +890,7 @@ const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* a
             if( aStartPad )
                 *aStartPad = left.m_endPad;
 
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: found start pad" ) );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: found start pad" ) );
         }
     }
 
@@ -903,14 +905,14 @@ const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* a
             if( aEndPad )
                 *aEndPad = right.m_endPad;
 
-            wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: found end pad" ) );
+            KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: found end pad" ) );
         }
     }
 
     if( !padA && !padB )
     {
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: no pads found, returning path" ) );
-        wxLogTrace( wxT( "PNS_TUNE" ), wxT( "########## AssembleTuningPath: END ##########" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: no pads found, returning path" ) );
+        KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "########## AssembleTuningPath: END ##########" ) );
         return path;
     }
 
@@ -967,7 +969,7 @@ const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* a
 
                         if( processedPads.find( intermediatePad ) == processedPads.end() )
                         {
-                            wxLogTrace( wxT( "PNS_TUNE" ),
+                            KI_LOG_TRACE( wxT( "PNS_TUNE" ),
                                         wxT( "AssembleTuningPath: processing intermediate"
                                              " pad at (%d,%d)" ),
                                         pt.x, pt.y );
@@ -1011,8 +1013,8 @@ const ITEM_SET TOPOLOGY::AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* a
         }
     }
 
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: final path has %d items" ), path.Size() );
-    wxLogTrace( wxT( "PNS_TUNE" ), wxT( "########## AssembleTuningPath: END ##########" ) );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "AssembleTuningPath: final path has %d items" ), path.Size() );
+    KI_LOG_TRACE( wxT( "PNS_TUNE" ), wxT( "########## AssembleTuningPath: END ##########" ) );
 
     return path;
 }

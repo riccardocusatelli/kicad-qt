@@ -37,6 +37,8 @@
 #include "vrml1_transform.h"
 #include "vrml1_shapehints.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL1BASE::WRL1BASE() : WRL1NODE( nullptr )
@@ -49,7 +51,7 @@ WRL1BASE::WRL1BASE() : WRL1NODE( nullptr )
 
 WRL1BASE::~WRL1BASE()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying virtual base node." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying virtual base node." ) );
 
     cancelDict();
 }
@@ -57,26 +59,26 @@ WRL1BASE::~WRL1BASE()
 
 bool WRL1BASE::SetParent( WRL1NODE* aParent, bool /* doUnlink */ )
 {
-    wxCHECK_MSG( false, false, wxT( "Attempt to set parent on WRL1BASE node." ) );
+    KI_CHECK_MSG( false, false, wxT( "Attempt to set parent on WRL1BASE node." ) );
 }
 
 
 std::string WRL1BASE::GetName( void )
 {
-    wxCHECK_MSG( false, std::string( "" ),
+    KI_CHECK_MSG( false, std::string( "" ),
                  wxT( "Attempt to extract name from virtual base node." ) );
 }
 
 
 bool WRL1BASE::SetName( const std::string& aName )
 {
-    wxCHECK_MSG( false, false, wxT( "Attempt to set name on virtual base node." ) );
+    KI_CHECK_MSG( false, false, wxT( "Attempt to set name on virtual base node." ) );
 }
 
 
 bool WRL1BASE::Read( WRLPROC& proc )
 {
-    wxCHECK_MSG( proc.GetVRMLType() == WRLVERSION::VRML_V1, false,
+    KI_CHECK_MSG( proc.GetVRMLType() == WRLVERSION::VRML_V1, false,
                  wxT( "No open file or file is not a VRML1 file" ) );
 
     // Note: according to the VRML1 specification, a file may contain
@@ -88,7 +90,7 @@ bool WRL1BASE::Read( WRLPROC& proc )
     {
         if( !ReadNode( proc, this, nullptr ) )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n * [INFO] bad file format; unexpected eof %s" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -98,7 +100,7 @@ bool WRL1BASE::Read( WRLPROC& proc )
 
     if( !proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetError() );
 
         return false;
@@ -113,13 +115,13 @@ bool WRL1BASE::implementUse( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode 
     if( nullptr != aNode )
         *aNode = nullptr;
 
-    wxCHECK_MSG( aParent, false, wxT( "Invoked with invalid parent." ) );
+    KI_CHECK_MSG( aParent, false, wxT( "Invoked with invalid parent." ) );
 
     std::string glob;
 
     if( !proc.ReadName( glob ) )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s" ), proc.GetError() );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s" ), proc.GetError() );
 
         return false;
     }
@@ -129,7 +131,7 @@ bool WRL1BASE::implementUse( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode 
     // return 'true' - the file may be defective but it may still be somewhat OK
     if( nullptr == ref )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n * [INFO] node '%s' not found." ),
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n * [INFO] node '%s' not found." ),
                     __FILE__, __FUNCTION__, __LINE__, glob );
 
         return true;
@@ -137,7 +139,7 @@ bool WRL1BASE::implementUse( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode 
 
     if( !aParent->AddRefNode( ref ) )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n * [INFO] failed to add node '%s' (%s) to parent of type %s." ),
                     __FILE__, __FUNCTION__, __LINE__, glob,
                     ref->GetNodeTypeName( ref->GetNodeType() ),
@@ -158,14 +160,14 @@ bool WRL1BASE::implementDef( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode 
     if( nullptr != aNode )
         *aNode = nullptr;
 
-    wxCHECK_MSG( nullptr != aParent, false, wxT( "Invalid parent pointer." ) );
+    KI_CHECK_MSG( nullptr != aParent, false, wxT( "Invalid parent pointer." ) );
 
     std::string glob;
     WRL1NODE* lnode = nullptr;
 
     if( !proc.ReadName( glob ) )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetError() );
 
         return false;
@@ -178,7 +180,7 @@ bool WRL1BASE::implementDef( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode 
 
         if( lnode && !lnode->SetName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n * [INFO] bad formatting (invalid name) %s." ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -208,7 +210,7 @@ bool WRL1BASE::ReadNode( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode )
     if( nullptr != aNode )
         *aNode = nullptr;
 
-    wxCHECK_MSG( aParent, false, wxT( "Invalid parent pointer." ) );
+    KI_CHECK_MSG( aParent, false, wxT( "Invalid parent pointer." ) );
 
     std::string glob;
     WRL1NODES ntype;
@@ -217,7 +219,7 @@ bool WRL1BASE::ReadNode( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode )
     {
         if( !proc.eof() )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetError() );
         }
 
@@ -246,7 +248,7 @@ bool WRL1BASE::ReadNode( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode )
 
     ntype = getNodeTypeID( glob );
 
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Processing node '%s' ID: %d." ), glob, ntype );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Processing node '%s' ID: %d." ), glob, ntype );
 
     switch( ntype )
     {
@@ -313,7 +315,7 @@ bool WRL1BASE::ReadNode( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode )
     default:
         if( !proc.DiscardNode() )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n * [INFO] could not discard node %s." ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -321,7 +323,7 @@ bool WRL1BASE::ReadNode( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( " * [INFO] discarded node '%s' %s (currently unsupported)." ),
                         glob, proc.GetFilePosition() );
         }
@@ -335,7 +337,7 @@ bool WRL1BASE::ReadNode( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNode )
 
 bool WRL1BASE::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 {
-    wxCHECK_MSG( false, false, wxT( "This method must never be invoked on a WRL1BASE object" ) );
+    KI_CHECK_MSG( false, false, wxT( "This method must never be invoked on a WRL1BASE object" ) );
 }
 
 
@@ -518,7 +520,7 @@ bool WRL1BASE::readShapeHints( WRLPROC& proc, WRL1NODE* aParent, WRL1NODE** aNod
 
 SGNODE* WRL1BASE::TranslateToSG( SGNODE* aParent, WRL1STATUS* /*sp*/ )
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Translating VRML1 Base with %zu items." ),
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Translating VRML1 Base with %zu items." ),
                 m_Items.size() );
 
     if( m_Items.empty() )

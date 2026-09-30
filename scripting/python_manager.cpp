@@ -31,6 +31,7 @@
 #include <python_manager.h>
 #include <thread_pool.h>
 #include <wx_filename.h>
+#include <core/ki_log.h>
 
 
 class PYTHON_PROCESS : public wxProcess
@@ -110,7 +111,7 @@ long PYTHON_MANAGER::Execute( const std::vector<wxString>& aArgs,
                     buffer[processOut->Read( buffer, sizeof( buffer ) - 1 ).LastRead()] = '\0';
                     wxString stdOut( buffer, processOut->LastRead() );
                     stdOut = stdOut.BeforeLast( '\n' );
-                    wxLogTrace( traceApi, wxString::Format( "Python: %s", stdOut ) );
+                    KI_LOG_TRACE( traceApi, wxString::Format( "Python: %s", stdOut ) );
                 }
             }
         };
@@ -126,7 +127,7 @@ long PYTHON_MANAGER::Execute( const std::vector<wxString>& aArgs,
 
     args.emplace_back( nullptr );
 
-    wxLogTrace( traceApi, wxString::Format( "Execute: %s %s", m_interpreterPath, argsStr ) );
+    KI_LOG_TRACE( traceApi, wxString::Format( "Execute: %s %s", m_interpreterPath, argsStr ) );
     long pid = wxExecute( args.data(), wxEXEC_ASYNC, process, aEnv );
 
     if( pid == 0 )

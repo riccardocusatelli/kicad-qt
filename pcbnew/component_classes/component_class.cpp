@@ -21,6 +21,7 @@
 #include <component_classes/component_class.h>
 #include <wx/intl.h>
 #include <algorithm>
+#include <core/ki_assert.h>
 
 
 void COMPONENT_CLASS::AddConstituentClass( COMPONENT_CLASS* componentClass )
@@ -58,7 +59,7 @@ wxString COMPONENT_CLASS::GetHumanReadableName() const
     if( m_constituentClasses.size() == 1 )
         return m_name;
 
-    wxASSERT( m_constituentClasses.size() >= 2 );
+    KI_ASSERT( m_constituentClasses.size() >= 2 );
 
     wxString name;
 

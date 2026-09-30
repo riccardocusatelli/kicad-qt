@@ -24,6 +24,7 @@
 
 #include <cleanup_item.h>
 #include <pcb_base_frame.h>
+#include <core/ki_assert.h>
 
 
 CLEANUP_ITEM::CLEANUP_ITEM( int aErrorCode )
@@ -60,7 +61,7 @@ wxString CLEANUP_ITEM::GetErrorText( int aCode, bool aTranslate ) const
     case CLEANUP_MERGE_PAD:         msg = _HKI( "Merge overlapping shapes into pad" );          break;
 
     default:
-        wxFAIL_MSG( wxT( "Missing cleanup item description" ) );
+        KI_FAIL_MSG( wxT( "Missing cleanup item description" ) );
         msg = _HKI( "Unknown cleanup action" );
         break;
     }

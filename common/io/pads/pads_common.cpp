@@ -29,6 +29,7 @@
 #include <wx/dir.h>
 #include <wx/filename.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 namespace PADS_COMMON
 {
@@ -258,7 +259,7 @@ int ParseInt( const std::string& aStr, int aDefault, const std::string& aContext
     {
         if( !aContext.empty() )
         {
-            wxLogTrace( wxT( "PADS" ), wxT( "Parse error in %s: '%s' is not a valid integer" ),
+            KI_LOG_TRACE( wxT( "PADS" ), wxT( "Parse error in %s: '%s' is not a valid integer" ),
                         wxString::FromUTF8( aContext ), wxString::FromUTF8( aStr ) );
         }
 
@@ -277,7 +278,7 @@ double ParseDouble( const std::string& aStr, double aDefault, const std::string&
     {
         if( !aContext.empty() )
         {
-            wxLogTrace( wxT( "PADS" ), wxT( "Parse error in %s: '%s' is not a valid number" ),
+            KI_LOG_TRACE( wxT( "PADS" ), wxT( "Parse error in %s: '%s' is not a valid number" ),
                         wxString::FromUTF8( aContext ), wxString::FromUTF8( aStr ) );
         }
 

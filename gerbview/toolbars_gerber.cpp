@@ -35,6 +35,7 @@
 #include "widgets/gbr_layer_box_selector.h"
 #include "widgets/dcode_selection_box.h"
 #include <toolbars_gerber.h>
+#include <core/ki_assert.h>
 
 
 std::optional<TOOLBAR_CONFIGURATION> GERBVIEW_TOOLBAR_SETTINGS::DefaultToolbarConfig( TOOLBAR_LOC aToolbar )
@@ -365,12 +366,12 @@ void GERBVIEW_FRAME::updateDCodeSelectBox()
         break;
 
     default:
-        wxASSERT_MSG( false, wxT( "Invalid units" ) );
+        KI_ASSERT_MSG( false, wxT( "Invalid units" ) );
     }
 
     for( const auto& [_, dcode] : gerber->m_ApertureList )
     {
-        wxCHECK2( dcode,continue );
+        KI_CHECK2( dcode,continue );
 
         if( !dcode->m_InUse && !dcode->m_Defined )
             continue;

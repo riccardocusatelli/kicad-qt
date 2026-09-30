@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <set>
+#include <core/ki_assert.h>
 
 // Simple IDs for the split button menu
 enum
@@ -80,7 +81,7 @@ public:
         m_control( nullptr ),
         m_size( aSize )
     {
-        wxASSERT( aType == TOOLBAR_ITEM_TYPE::SPACER );
+        KI_ASSERT( aType == TOOLBAR_ITEM_TYPE::SPACER );
     }
 
     TOOLBAR_TREE_ITEM_DATA( TOOLBAR_ITEM_TYPE aType, wxString aName ) :
@@ -90,21 +91,21 @@ public:
         m_size( 0 ),
         m_name( aName )
     {
-        wxASSERT( aType == TOOLBAR_ITEM_TYPE::CONTROL
+        KI_ASSERT( aType == TOOLBAR_ITEM_TYPE::CONTROL
                   || aType == TOOLBAR_ITEM_TYPE::TB_GROUP );
     }
 
     void SetAction( TOOL_ACTION* aAction ) { m_action = aAction; }
     TOOL_ACTION* GetAction() const
     {
-        wxASSERT( m_type == TOOLBAR_ITEM_TYPE::TOOL );
+        KI_ASSERT( m_type == TOOLBAR_ITEM_TYPE::TOOL );
         return m_action;
     }
 
     void SetControl( ACTION_TOOLBAR_CONTROL* aControl ) { m_control = aControl; }
     ACTION_TOOLBAR_CONTROL* GetControl() const
     {
-        wxASSERT( m_type == TOOLBAR_ITEM_TYPE::CONTROL );
+        KI_ASSERT( m_type == TOOLBAR_ITEM_TYPE::CONTROL );
         return m_control;
     }
 
@@ -282,7 +283,7 @@ bool PANEL_TOOLBAR_CUSTOMIZATION::TransferDataToWindow()
         // Setup the UI name
         const auto& tbName = s_toolbarNameMap.find( tb );
 
-        wxASSERT_MSG( tbName != s_toolbarNameMap.end(),
+        KI_ASSERT_MSG( tbName != s_toolbarNameMap.end(),
                       wxString::Format( "Unknown toolbar: %s", magic_enum::enum_name( tb ) ) );
 
         tbChoices.Add( tbName->second );
@@ -362,7 +363,7 @@ std::optional<TOOLBAR_CONFIGURATION> PANEL_TOOLBAR_CUSTOMIZATION::parseToolbarTr
 
         TOOLBAR_TREE_ITEM_DATA* tbData = dynamic_cast<TOOLBAR_TREE_ITEM_DATA*>( treeData );
 
-        wxCHECK2( tbData, continue );
+        KI_CHECK2( tbData, continue );
 
         switch( tbData->GetType() )
         {
@@ -396,7 +397,7 @@ std::optional<TOOLBAR_CONFIGURATION> PANEL_TOOLBAR_CUSTOMIZATION::parseToolbarTr
 
                     TOOLBAR_TREE_ITEM_DATA* childTbData = dynamic_cast<TOOLBAR_TREE_ITEM_DATA*>( childTreeData );
 
-                    wxCHECK2( childTbData, break );
+                    KI_CHECK2( childTbData, break );
 
                     switch( childTbData->GetType() )
                     {
@@ -404,7 +405,7 @@ std::optional<TOOLBAR_CONFIGURATION> PANEL_TOOLBAR_CUSTOMIZATION::parseToolbarTr
                     case TOOLBAR_ITEM_TYPE::SPACER:
                     case TOOLBAR_ITEM_TYPE::SEPARATOR:
                     case TOOLBAR_ITEM_TYPE::CONTROL:
-                        wxASSERT_MSG( false, "Invalid entry in a group" );
+                        KI_ASSERT_MSG( false, "Invalid entry in a group" );
                         break;
 
                     case TOOLBAR_ITEM_TYPE::TOOL:
@@ -476,7 +477,7 @@ void PANEL_TOOLBAR_CUSTOMIZATION::populateToolbarTree()
 
             if( controlIter == m_availableControls.end() )
             {
-                wxASSERT_MSG( false, wxString::Format( "Unable to find control %s", item.m_ControlName ) );
+                KI_ASSERT_MSG( false, wxString::Format( "Unable to find control %s", item.m_ControlName ) );
                 continue;
             }
 
@@ -494,7 +495,7 @@ void PANEL_TOOLBAR_CUSTOMIZATION::populateToolbarTree()
 
             if( toolIter == m_availableTools.end() )
             {
-                wxASSERT_MSG( false, wxString::Format( "Unable to find tool %s", item.m_ActionName ) );
+                KI_ASSERT_MSG( false, wxString::Format( "Unable to find tool %s", item.m_ActionName ) );
                 continue;
             }
 
@@ -530,7 +531,7 @@ void PANEL_TOOLBAR_CUSTOMIZATION::populateToolbarTree()
 
                 if( toolMap == m_availableTools.end() )
                 {
-                    wxASSERT_MSG( false, wxString::Format( "Unable to find group tool %s", groupItem.m_ActionName ) );
+                    KI_ASSERT_MSG( false, wxString::Format( "Unable to find group tool %s", groupItem.m_ActionName ) );
                     continue;
                 }
 

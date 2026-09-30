@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <reporter.h>
 #include <embedded_files.h>
+#include <core/ki_log.h>
 
 #ifdef __WIN32__
 #include <windows.h>
@@ -467,7 +468,7 @@ void FONTCONFIG::ListFonts( std::vector<std::string>& aFonts, const std::string&
                     }
                     else
                     {
-                        wxLogTrace( traceFonts,
+                        KI_LOG_TRACE( traceFonts,
                                     wxS( "Font '%s' language '%s' not supported by OS." ),
                                     theFamily, langWxStr );
                     }

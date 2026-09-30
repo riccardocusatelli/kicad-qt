@@ -60,6 +60,7 @@
 #include <string_utils.h>
 #include <wildcards_and_files_ext.h>
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_assert.h>
 
 
 // Eagle schematic axes are aligned with x increasing left to right and Y increasing bottom to top
@@ -111,7 +112,7 @@ SCH_SHEET* SCH_IO_EAGLE::getCurrentSheet()
 SCH_SCREEN* SCH_IO_EAGLE::getCurrentScreen()
 {
     SCH_SHEET* currentSheet = m_sheetPath.Last();
-    wxCHECK( currentSheet, nullptr );
+    KI_CHECK( currentSheet, nullptr );
     return currentSheet->GetScreen();
 }
 
@@ -144,7 +145,7 @@ wxFileName SCH_IO_EAGLE::getLibFileName()
 {
     wxFileName fn;
 
-    wxCHECK( m_schematic, fn );
+    KI_CHECK( m_schematic, fn );
 
     fn.Assign( m_schematic->Project().GetProjectPath(), getLibName(),
                FILEEXT::KiCadSymbolLibFileExtension );
@@ -215,7 +216,7 @@ static SYMBOL_ORIENTATION_T kiCadComponentRotation( float eagleDegrees )
     case 270: return SYM_ORIENT_270;
 
     default:
-        wxASSERT_MSG( false, wxString::Format( wxT( "Unhandled orientation (%d degrees)" ),
+        KI_ASSERT_MSG( false, wxString::Format( wxT( "Unhandled orientation (%d degrees)" ),
                                                roti ) );
         return SYM_ORIENT_0;
     }
@@ -351,7 +352,7 @@ SCH_SHEET* SCH_IO_EAGLE::LoadSchematicFile( const wxString& aFileName, SCHEMATIC
                                             SCH_SHEET*             aAppendToMe,
                                             const std::map<std::string, UTF8>* aProperties )
 {
-    wxASSERT( !aFileName || aSchematic != nullptr );
+    KI_ASSERT( !aFileName || aSchematic != nullptr );
 
     // Collect the font substitution warnings (RAII - automatically reset on scope exit)
     FONTCONFIG_REPORTER_SCOPE fontconfigScope( &LOAD_INFO_REPORTER::GetInstance() );
@@ -385,7 +386,7 @@ SCH_SHEET* SCH_IO_EAGLE::LoadSchematicFile( const wxString& aFileName, SCHEMATIC
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr,
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr,
                      wxT( "Can't append to a schematic with no root!" ) );
 
         m_rootSheet = &aSchematic->Root();
@@ -429,7 +430,7 @@ SCH_SHEET* SCH_IO_EAGLE::LoadSchematicFile( const wxString& aFileName, SCHEMATIC
 
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &aSchematic->Project() );
     LIBRARY_TABLE* table = adapter->ProjectTable().value_or( nullptr );
-    wxCHECK_MSG( table, nullptr, "Could not load symbol lib table." );
+    KI_CHECK_MSG( table, nullptr, "Could not load symbol lib table." );
 
     m_pi.reset( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD ) );
 
@@ -557,7 +558,7 @@ void SCH_IO_EAGLE::ensureLoadedLibrary( const wxString& aLibraryPath )
 
     if( m_eagleLibs.find( m_libName ) != m_eagleLibs.end() )
     {
-        wxCHECK( m_timestamps.count( m_libName ), /*void*/ );
+        KI_CHECK( m_timestamps.count( m_libName ), /*void*/ );
 
         if( m_timestamps.at( m_libName ) == getLibraryTimestamp( aLibraryPath ) )
             return;
@@ -679,7 +680,7 @@ wxXmlDocument SCH_IO_EAGLE::loadXmlDocument( const wxString& aFileName )
 
 void SCH_IO_EAGLE::loadDrawing( const std::unique_ptr<EDRAWING>& aDrawing )
 {
-    wxCHECK( aDrawing, /* void */ );
+    KI_CHECK( aDrawing, /* void */ );
 
     loadLayerDefs( aDrawing->layers );
 
@@ -785,7 +786,7 @@ void SCH_IO_EAGLE::loadSchematic( const ESCHEMATIC& aSchematic )
         SCH_SCREEN* screen = new SCH_SCREEN( m_schematic );
         sheet->SetScreen( screen );
 
-        wxCHECK2( sheet && screen, continue );
+        KI_CHECK2( sheet && screen, continue );
 
         wxString pageNo = wxString::Format( wxT( "%d" ), m_sheetIndex );
 
@@ -916,7 +917,7 @@ void SCH_IO_EAGLE::loadSheet( const std::unique_ptr<ESHEET>& aSheet )
     SCH_SHEET* sheet = getCurrentSheet();
     SCH_SCREEN* screen = getCurrentScreen();
 
-    wxCHECK( sheet && screen, /* void */ );
+    KI_CHECK( sheet && screen, /* void */ );
 
     if( m_modules.empty() )
     {
@@ -1073,7 +1074,7 @@ void SCH_IO_EAGLE::loadModuleInstance( const std::unique_ptr<EMODULEINST>& aModu
     SCH_SHEET* currentSheet = getCurrentSheet();
     SCH_SCREEN* currentScreen = getCurrentScreen();
 
-    wxCHECK( currentSheet &&currentScreen, /* void */ );
+    KI_CHECK( currentSheet &&currentScreen, /* void */ );
 
     m_sheetIndex++;
 
@@ -1125,7 +1126,7 @@ void SCH_IO_EAGLE::loadModuleInstance( const std::unique_ptr<EMODULEINST>& aModu
         newScreen->SetFileName( fn.GetFullPath() );
     }
 
-    wxCHECK( newSheet && newScreen, /* void */ );
+    KI_CHECK( newSheet && newScreen, /* void */ );
 
     newSheet->SetScreen( newScreen );
     newSheet->SetFileName( fn.GetFullName() );
@@ -1225,7 +1226,7 @@ void SCH_IO_EAGLE::loadModuleInstance( const std::unique_ptr<EMODULEINST>& aModu
 
         for( const EMODULEINST* emoduleInst : m_moduleInstances )
         {
-            wxCHECK2( emoduleInst, continue );
+            KI_CHECK2( emoduleInst, continue );
 
             refPrefix += emoduleInst->name + wxS( ":" );
         }
@@ -1238,7 +1239,7 @@ void SCH_IO_EAGLE::loadModuleInstance( const std::unique_ptr<EMODULEINST>& aModu
             {
                 SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( schItem );
 
-                wxCHECK2( symbol && !symbol->GetInstances().empty(), continue );
+                KI_CHECK2( symbol && !symbol->GetInstances().empty(), continue );
 
                 SCH_SYMBOL_INSTANCE inst = symbol->GetInstances().at( 0 );
                 wxString newReference = refPrefix + inst.m_Reference.AfterLast( ':' );
@@ -1462,7 +1463,7 @@ void SCH_IO_EAGLE::loadSegments( const std::vector<std::unique_ptr<ESEGMENT>>& a
     // Loop through all segments
     SCH_SCREEN* screen         = getCurrentScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     size_t segmentCount = aSegments.size();
 
@@ -1517,7 +1518,7 @@ void SCH_IO_EAGLE::loadSegments( const std::vector<std::unique_ptr<ESEGMENT>>& a
             SCH_LABEL_BASE* label = loadLabel( elabel, netName, aIsBus );
             screen->Append( label );
 
-            wxASSERT( segDesc.labels.empty()
+            KI_ASSERT( segDesc.labels.empty()
                     || segDesc.labels.front()->GetText() == label->GetText() );
 
             segDesc.labels.push_back( label );
@@ -1851,11 +1852,11 @@ SCH_IO_EAGLE::findNearestLinePoint( const VECTOR2I&         aPoint,
 void SCH_IO_EAGLE::loadInstance( const std::unique_ptr<EINSTANCE>& aInstance,
                                  const std::map<wxString, std::unique_ptr<EPART>>& aParts )
 {
-    wxCHECK( aInstance, /* void */ );
+    KI_CHECK( aInstance, /* void */ );
 
     SCH_SCREEN* screen = getCurrentScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     const auto partIt = aParts.find( aInstance->part );
 
@@ -2138,7 +2139,7 @@ void SCH_IO_EAGLE::loadInstance( const std::unique_ptr<EINSTANCE>& aInstance,
 
     for( const EMODULEINST* emoduleInst : m_moduleInstances )
     {
-        wxCHECK2( emoduleInst, continue );
+        KI_CHECK2( emoduleInst, continue );
 
         refPrefix += emoduleInst->name + wxS( ":" );
     }
@@ -2227,7 +2228,7 @@ void SCH_IO_EAGLE::loadInstance( const std::unique_ptr<EINSTANCE>& aInstance,
 
 EAGLE_LIBRARY* SCH_IO_EAGLE::loadLibrary( const ELIBRARY* aLibrary, EAGLE_LIBRARY* aEagleLibrary )
 {
-    wxCHECK( aLibrary && aEagleLibrary, nullptr );
+    KI_CHECK( aLibrary && aEagleLibrary, nullptr );
     bool canAutoplace = ADVANCED_CFG::GetCfg().m_EagleImportFieldsCanAutoplace;
 
     // Loop through the device sets and load each of them
@@ -2248,7 +2249,7 @@ EAGLE_LIBRARY* SCH_IO_EAGLE::loadLibrary( const ELIBRARY* aLibrary, EAGLE_LIBRAR
             // Create symbol name from deviceset and device names.
             wxString symbolName = edeviceset->name + edevice->name;
             symbolName.Replace( wxT( "*" ), wxEmptyString );
-            wxASSERT( !symbolName.IsEmpty() );
+            KI_ASSERT( !symbolName.IsEmpty() );
             symbolName = EscapeString( symbolName, CTX_LIBID );
 
             if( edevice->package )
@@ -2467,7 +2468,7 @@ bool SCH_IO_EAGLE::loadSymbol( const std::unique_ptr<ESYMBOL>& aEsymbol,
                                const std::unique_ptr<EDEVICE>& aDevice, int aGateNumber,
                                const wxString& aGateName )
 {
-    wxCHECK( aEsymbol && aSymbol && aDevice, false );
+    KI_CHECK( aEsymbol && aSymbol && aDevice, false );
 
     std::vector<SCH_ITEM*> items;
 
@@ -2620,7 +2621,7 @@ SCH_SHAPE* SCH_IO_EAGLE::loadSymbolCircle( std::unique_ptr<LIB_SYMBOL>& aSymbol,
                                            const std::unique_ptr<ECIRCLE>& aCircle,
                                            int aGateNumber )
 {
-    wxCHECK( aSymbol && aCircle, nullptr );
+    KI_CHECK( aSymbol && aCircle, nullptr );
 
     // Parse the circle properties
     SCH_SHAPE* circle = new SCH_SHAPE( SHAPE_T::CIRCLE, LAYER_DEVICE );
@@ -2650,7 +2651,7 @@ SCH_SHAPE* SCH_IO_EAGLE::loadSymbolRectangle( std::unique_ptr<LIB_SYMBOL>& aSymb
                                               const std::unique_ptr<ERECT>& aRectangle,
                                               int aGateNumber )
 {
-    wxCHECK( aSymbol && aRectangle, nullptr );
+    KI_CHECK( aSymbol && aRectangle, nullptr );
 
     SCH_SHAPE* rectangle = new SCH_SHAPE( SHAPE_T::RECTANGLE, LAYER_DEVICE );
 
@@ -2684,7 +2685,7 @@ SCH_SHAPE* SCH_IO_EAGLE::loadSymbolRectangle( std::unique_ptr<LIB_SYMBOL>& aSymb
 SCH_ITEM* SCH_IO_EAGLE::loadSymbolWire( std::unique_ptr<LIB_SYMBOL>& aSymbol,
                                         const std::unique_ptr<EWIRE>& aWire, int aGateNumber )
 {
-    wxCHECK( aSymbol && aWire, nullptr );
+    KI_CHECK( aSymbol && aWire, nullptr );
 
     VECTOR2I begin, end;
 
@@ -2748,7 +2749,7 @@ SCH_SHAPE* SCH_IO_EAGLE::loadSymbolPolyLine( std::unique_ptr<LIB_SYMBOL>& aSymbo
                                              const std::unique_ptr<EPOLYGON>& aPolygon,
                                              int aGateNumber )
 {
-    wxCHECK( aSymbol && aPolygon, nullptr );
+    KI_CHECK( aSymbol && aPolygon, nullptr );
 
     SCH_SHAPE* poly = new SCH_SHAPE( SHAPE_T::POLY, LAYER_DEVICE );
     VECTOR2I   pt, prev_pt;
@@ -2793,7 +2794,7 @@ SCH_SHAPE* SCH_IO_EAGLE::loadSymbolPolyLine( std::unique_ptr<LIB_SYMBOL>& aSymbo
 SCH_PIN* SCH_IO_EAGLE::loadPin( std::unique_ptr<LIB_SYMBOL>& aSymbol,
                                 const std::unique_ptr<EPIN>& aPin, int aGateNumber )
 {
-    wxCHECK( aSymbol && aPin, nullptr );
+    KI_CHECK( aSymbol && aPin, nullptr );
 
     std::unique_ptr<SCH_PIN> pin = std::make_unique<SCH_PIN>( aSymbol.get() );
     pin->SetPosition( VECTOR2I( aPin->x.ToSchUnits(), -aPin->y.ToSchUnits() ) );
@@ -2812,7 +2813,7 @@ SCH_PIN* SCH_IO_EAGLE::loadPin( std::unique_ptr<LIB_SYMBOL>& aSymbol,
     case 90:  pin->SetOrientation( PIN_ORIENTATION::PIN_UP ); break;
     case 180: pin->SetOrientation( PIN_ORIENTATION::PIN_LEFT ); break;
     case 270: pin->SetOrientation( PIN_ORIENTATION::PIN_DOWN ); break;
-    default:  wxFAIL_MSG( wxString::Format( wxT( "Unhandled orientation (%d degrees)." ), roti ) );
+    default:  KI_FAIL_MSG( wxString::Format( wxT( "Unhandled orientation (%d degrees)." ), roti ) );
     }
 
     pin->SetLength( schIUScale.MilsToIU( 300 ) );  // Default pin length when not defined.
@@ -2880,7 +2881,7 @@ SCH_PIN* SCH_IO_EAGLE::loadPin( std::unique_ptr<LIB_SYMBOL>& aSymbol,
 SCH_TEXT* SCH_IO_EAGLE::loadSymbolText( std::unique_ptr<LIB_SYMBOL>& aSymbol,
                                         const std::unique_ptr<ETEXT>& aText, int aGateNumber )
 {
-    wxCHECK( aSymbol && aText, nullptr );
+    KI_CHECK( aSymbol && aText, nullptr );
 
     std::unique_ptr<SCH_TEXT> libtext = std::make_unique<SCH_TEXT>();
 
@@ -2914,7 +2915,7 @@ SCH_TEXT* SCH_IO_EAGLE::loadSymbolText( std::unique_ptr<LIB_SYMBOL>& aSymbol,
 
 SCH_TEXT* SCH_IO_EAGLE::loadPlainText( const std::unique_ptr<ETEXT>& aText )
 {
-    wxCHECK( aText, nullptr );
+    KI_CHECK( aText, nullptr );
 
     std::unique_ptr<SCH_TEXT> schtext = std::make_unique<SCH_TEXT>();
 
@@ -2947,7 +2948,7 @@ SCH_TEXT* SCH_IO_EAGLE::loadPlainText( const std::unique_ptr<ETEXT>& aText )
 void SCH_IO_EAGLE::loadTextAttributes( EDA_TEXT* aText,
                                        const std::unique_ptr<ETEXT>& aAttributes ) const
 {
-    wxCHECK( aText && aAttributes, /* void */ );
+    KI_CHECK( aText && aAttributes, /* void */ );
 
     aText->SetTextSize( aAttributes->ConvertSize() );
 
@@ -2966,7 +2967,7 @@ void SCH_IO_EAGLE::loadTextAttributes( EDA_TEXT* aText,
 
 void SCH_IO_EAGLE::loadFieldAttributes( SCH_FIELD* aField, const SCH_TEXT* aText ) const
 {
-    wxCHECK( aField && aText, /* void */ );
+    KI_CHECK( aField && aText, /* void */ );
 
     aField->SetTextPos( aText->GetPosition() );
     aField->SetTextSize( aText->GetTextSize() );
@@ -3121,11 +3122,11 @@ bool SCH_IO_EAGLE::checkHeader( const wxString& aFileName ) const
 
 void SCH_IO_EAGLE::moveLabels( SCH_LINE* aWire, const VECTOR2I& aNewEndPoint )
 {
-    wxCHECK( aWire, /* void */ );
+    KI_CHECK( aWire, /* void */ );
 
     SCH_SCREEN* screen = getCurrentScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     for( SCH_ITEM* item : screen->Items().Overlapping( aWire->GetBoundingBox() ) )
     {
@@ -3151,7 +3152,7 @@ void SCH_IO_EAGLE::addBusEntries()
 
     SCH_SCREEN* screen = getCurrentScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     for( SCH_ITEM* ii : screen->Items().OfType( SCH_LINE_T ) )
     {
@@ -3682,7 +3683,7 @@ void SCH_IO_EAGLE::addBusEntries()
 
 const SEG* SCH_IO_EAGLE::SEG_DESC::LabelAttached( const SCH_LABEL_BASE* aLabel ) const
 {
-    wxCHECK( aLabel, nullptr );
+    KI_CHECK( aLabel, nullptr );
 
     VECTOR2I labelPos( aLabel->GetPosition() );
 
@@ -3700,7 +3701,7 @@ const SEG* SCH_IO_EAGLE::SEG_DESC::LabelAttached( const SCH_LABEL_BASE* aLabel )
 // (see SCH_EDIT_FRAME::importFile())
 bool SCH_IO_EAGLE::checkConnections( const SCH_SYMBOL* aSymbol, const SCH_PIN* aPin ) const
 {
-    wxCHECK( aSymbol && aPin, false );
+    KI_CHECK( aSymbol && aPin, false );
 
     VECTOR2I pinPosition = aSymbol->GetPinPhysicalPosition( aPin );
     auto     pointIt     = m_connPoints.find( pinPosition );
@@ -3710,7 +3711,7 @@ bool SCH_IO_EAGLE::checkConnections( const SCH_SYMBOL* aSymbol, const SCH_PIN* a
 
     const auto& items = pointIt->second;
 
-    wxCHECK( items.find( aPin ) != items.end(), false );
+    KI_CHECK( items.find( aPin ) != items.end(), false );
 
     return items.size() > 1;
 }
@@ -3719,7 +3720,7 @@ bool SCH_IO_EAGLE::checkConnections( const SCH_SYMBOL* aSymbol, const SCH_PIN* a
 void SCH_IO_EAGLE::addImplicitConnections( SCH_SYMBOL* aSymbol, SCH_SCREEN* aScreen,
                                            bool aUpdateSet )
 {
-    wxCHECK( aSymbol && aScreen && aSymbol->GetLibSymbolRef(), /*void*/ );
+    KI_CHECK( aSymbol && aScreen && aSymbol->GetLibSymbolRef(), /*void*/ );
 
     // Normally power parts also have power input pins,
     // but they already force net names on the attached wires
@@ -3775,7 +3776,7 @@ void SCH_IO_EAGLE::addImplicitConnections( SCH_SYMBOL* aSymbol, SCH_SCREEN* aScr
                 // Found a pin creating implicit connection information in another unit.
                 // Such units will be instantiated if they do not appear in another sheet and
                 // processed later.
-                wxASSERT( pin->GetUnit() );
+                KI_ASSERT( pin->GetUnit() );
                 missingUnits.insert( pin->GetUnit() );
             }
         }
@@ -3849,7 +3850,7 @@ wxString SCH_IO_EAGLE::translateEagleBusName( const wxString& aEagleName ) const
 
 const ESYMBOL* SCH_IO_EAGLE::getEagleSymbol( const std::unique_ptr<EINSTANCE>& aInstance )
 {
-    wxCHECK( m_eagleDoc && m_eagleDoc->drawing && m_eagleDoc->drawing->schematic && aInstance,
+    KI_CHECK( m_eagleDoc && m_eagleDoc->drawing && m_eagleDoc->drawing->schematic && aInstance,
              nullptr );
 
     std::unique_ptr<EPART>& epart = m_eagleDoc->drawing->schematic->parts[aInstance->part];
@@ -3885,7 +3886,7 @@ void SCH_IO_EAGLE::getEagleSymbolFieldAttributes( const std::unique_ptr<EINSTANC
                                                   const wxString& aEagleFieldName,
                                                   SCH_FIELD* aField )
 {
-    wxCHECK( aField && !aEagleFieldName.IsEmpty(), /* void */ );
+    KI_CHECK( aField && !aEagleFieldName.IsEmpty(), /* void */ );
 
     const ESYMBOL* esymbol = getEagleSymbol( aInstance );
 

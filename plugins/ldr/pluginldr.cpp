@@ -30,6 +30,7 @@
 #include <wx/translation.h>
 
 #include "pluginldr.h"
+#include <core/ki_log.h>
 
 
 /**
@@ -76,7 +77,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
 
     if( !m_PluginLoader.IsLoaded() )
     {
-        wxLogTrace( tracePluginLoader, wxT( " * could not open file: '%s'" ),
+        KI_LOG_TRACE( tracePluginLoader, wxT( " * could not open file: '%s'" ),
                     aFullFileName.ToUTF8() );
 
         return false;
@@ -93,7 +94,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
 
     if( !m_getPluginClass )
     {
-        wxLogTrace( tracePluginLoader,
+        KI_LOG_TRACE( tracePluginLoader,
                     wxT( "%s:%s:%d\n"
                          "incompatible plugin (missing function 'GetKicadPluginClass')" ),
                     __FILE__, __FUNCTION__, __LINE__ );
@@ -105,7 +106,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'GetClassVersion')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -113,7 +114,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'GetClassVersion'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'GetClassVersion'" ) );
         }
     }
 
@@ -121,7 +122,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'CheckClassVersion')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -130,7 +131,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'CheckClassVersion'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'CheckClassVersion'" ) );
         }
     }
 
@@ -138,7 +139,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'GetKicadPluginName')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -147,7 +148,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'GetKicadPluginName'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'GetKicadPluginName'" ) );
         }
     }
 
@@ -155,14 +156,14 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'GetVersion')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'GetVersion'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'GetVersion'" ) );
         }
     }
 
@@ -238,7 +239,7 @@ bool KICAD_PLUGIN_LDR::open( const wxString& aFullFileName, const char* aPluginC
 
     m_fileName = aFullFileName;
 
-    wxLogTrace( tracePluginLoader,
+    KI_LOG_TRACE( tracePluginLoader,
                 wxT( "%s:%s:%d\n"
                      " * [INFO] opened plugin '%s'" ),
                 __FILE__, __FUNCTION__, __LINE__, m_fileName );
@@ -307,7 +308,7 @@ char const* KICAD_PLUGIN_LDR::GetKicadPluginClass( void )
     {
         m_error = "[BUG] GetPluginClass is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -352,7 +353,7 @@ bool KICAD_PLUGIN_LDR::GetClassVersion( unsigned char* Major, unsigned char* Min
     {
         m_error = "[BUG] CheckClassVersion is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -394,7 +395,7 @@ bool KICAD_PLUGIN_LDR::CheckClassVersion( unsigned char Major, unsigned char Min
     {
         m_error = "[BUG] CheckClassVersion is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -421,7 +422,7 @@ const char* KICAD_PLUGIN_LDR::GetKicadPluginName( void )
     {
         m_error = "[BUG] GetKicadPluginName is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -449,7 +450,7 @@ bool KICAD_PLUGIN_LDR::GetVersion( unsigned char* Major, unsigned char* Minor,
     {
         m_error = "[BUG] GetKicadPluginName is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 

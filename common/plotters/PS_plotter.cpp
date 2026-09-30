@@ -36,6 +36,7 @@
 #include <fmt/format.h>
 
 #include <plotters/plotters_pslike.h>
+#include <core/ki_assert.h>
 
 
 /* Forward declaration of the font width metrics
@@ -93,7 +94,7 @@ void PSLIKE_PLOTTER::SetColor( const COLOR4D& color )
 void PSLIKE_PLOTTER::FlashPadOval( const VECTOR2I& aPadPos, const VECTOR2I& aSize,
                                    const EDA_ANGLE& aPadOrient, void* aData )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     VECTOR2I  size( aSize );
     EDA_ANGLE orient( aPadOrient );
@@ -224,7 +225,7 @@ void PSLIKE_PLOTTER::FlashRegularPolygon( const VECTOR2I& aShapePos, int aRadius
                                           const EDA_ANGLE& aOrient, void* aData )
 {
     // Do nothing
-    wxASSERT( 0 );
+    KI_ASSERT( 0 );
 }
 
 
@@ -286,7 +287,7 @@ int PSLIKE_PLOTTER::returnPostscriptTextWidth( const wxString& aText, int aXSize
 void PS_PLOTTER::SetViewport( const VECTOR2I& aOffset, double aIusPerDecimil,
                               double aScale, bool aMirror )
 {
-    wxASSERT( !m_outputFile );
+    KI_ASSERT( !m_outputFile );
     m_plotMirror = aMirror;
     m_plotOffset = aOffset;
     m_plotScale = aScale;
@@ -333,7 +334,7 @@ void PSLIKE_PLOTTER::computeTextParameters( const VECTOR2I&          aPos,
     case GR_TEXT_H_ALIGN_RIGHT:  dx = -tw;     break;
     case GR_TEXT_H_ALIGN_LEFT:   dx = 0;       break;
     case GR_TEXT_H_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -343,7 +344,7 @@ void PSLIKE_PLOTTER::computeTextParameters( const VECTOR2I&          aPos,
     case GR_TEXT_V_ALIGN_TOP:    dy = th;     break;
     case GR_TEXT_V_ALIGN_BOTTOM: dy = 0;      break;
     case GR_TEXT_V_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -380,7 +381,7 @@ void PSLIKE_PLOTTER::computeTextParameters( const VECTOR2I&          aPos,
 
 void PS_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     if( aWidth == DO_NOT_SET_LINE_WIDTH )
         return;
@@ -389,7 +390,7 @@ void PS_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
     else if( aWidth == 0 )
         aWidth = 1;
 
-    wxASSERT_MSG( aWidth > 0, "Plotter called to set negative pen width" );
+    KI_ASSERT_MSG( aWidth > 0, "Plotter called to set negative pen width" );
 
     if( aWidth != GetCurrentLineWidth() )
         fmt::print( m_outputFile, "{:g} setlinewidth\n", userToDeviceSize( aWidth ) );
@@ -400,7 +401,7 @@ void PS_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
 
 void PS_PLOTTER::emitSetRGBColor( double r, double g, double b, double a )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     // Postscript treats all colors as opaque, so the best we can do with alpha is generate
     // an appropriate blended color assuming white paper.  (It's possible that a halftone would
@@ -495,7 +496,7 @@ void PS_PLOTTER::Circle( const VECTOR2I& pos, int diametre, FILL_T fill, int wid
     if( fill == FILL_T::NO_FILL && GetCurrentLineWidth() <= 0 )
         return;
 
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
     VECTOR2D pos_dev = userToDeviceCoordinates( pos );
     double   radius = userToDeviceSize( diametre / 2.0 );
 
@@ -510,7 +511,7 @@ void PS_PLOTTER::Circle( const VECTOR2I& pos, int diametre, FILL_T fill, int wid
 void PS_PLOTTER::Arc( const VECTOR2D& aCenter, const EDA_ANGLE& aStartAngle,
                       const EDA_ANGLE& aAngle, double aRadius, FILL_T aFill, int aWidth )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     VECTOR2D center_device = userToDeviceCoordinates( aCenter );
     double   radius_device = userToDeviceSize( aRadius );
@@ -694,7 +695,7 @@ void PS_PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double 
 
 void PS_PLOTTER::PenTo( const VECTOR2I& pos, char plume )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     if( plume == 'Z' )
     {
@@ -730,7 +731,7 @@ void PS_PLOTTER::PenTo( const VECTOR2I& pos, char plume )
 
 bool PS_PLOTTER::StartPlot( const wxString& aPageNumber )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     std::string PSMacro =
     "%%BeginProlog\n"
@@ -880,7 +881,7 @@ bool PS_PLOTTER::StartPlot( const wxString& aPageNumber )
 
 bool PS_PLOTTER::EndPlot()
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
     fmt::print( m_outputFile,
                 "showpage\n"
                 "grestore\n"

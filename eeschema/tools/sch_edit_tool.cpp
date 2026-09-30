@@ -75,6 +75,8 @@
 #include <wx/msgdlg.h>
 #include <project/net_settings.h>
 #include <tools/sch_tool_utils.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 class SYMBOL_UNIT_MENU : public ACTION_MENU
@@ -99,7 +101,7 @@ private:
 
         Clear();
 
-        wxCHECK( symbol, /* void */ );
+        KI_CHECK( symbol, /* void */ );
 
         const int           unit = symbol->GetUnit();
         const int           nUnits = symbol->GetLibSymbolRef()->GetUnitCount();
@@ -161,7 +163,7 @@ private:
 
         Clear();
 
-        wxCHECK( symbol, /* void */ );
+        KI_CHECK( symbol, /* void */ );
 
         if( symbol->HasDeMorganBodyStyles() )
         {
@@ -207,7 +209,7 @@ private:
 
         Clear();
 
-        wxCHECK( libPin, /* void */ );
+        KI_CHECK( libPin, /* void */ );
 
         wxMenuItem* item = Append( ID_POPUP_SCH_ALT_PIN_FUNCTION, libPin->GetName(), wxEmptyString, wxITEM_CHECK );
 
@@ -287,7 +289,7 @@ bool SCH_EDIT_TOOL::Init()
     SCH_DRAWING_TOOLS* drawingTools = m_toolMgr->GetTool<SCH_DRAWING_TOOLS>();
     SCH_MOVE_TOOL*     moveTool = m_toolMgr->GetTool<SCH_MOVE_TOOL>();
 
-    wxASSERT_MSG( drawingTools, "eeshema.InteractiveDrawing tool is not available" );
+    KI_ASSERT_MSG( drawingTools, "eeshema.InteractiveDrawing tool is not available" );
 
     static const std::vector<KICAD_T> attribTypes = { SCH_SYMBOL_T, SCH_SHEET_T, SCH_RULE_AREA_T };
     static const std::vector<KICAD_T> sheetTypes = { SCH_SHEET_T };
@@ -607,7 +609,7 @@ bool SCH_EDIT_TOOL::Init()
                             {
                                 const SCH_ITEM* schItem = dynamic_cast<const SCH_ITEM*>( item );
 
-                                wxCHECK( schItem, false );
+                                KI_CHECK( schItem, false );
 
                                 return ( schItem->HasLineStroke() && schItem->IsConnectable() )
                                         || item->Type() == SCH_JUNCTION_T;
@@ -966,7 +968,7 @@ int SCH_EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
     bool           clockwise = ( aEvent.Matches( SCH_ACTIONS::rotateCW.MakeEvent() ) );
     SCH_SELECTION& selection = m_selectionTool->RequestSelection( RotatableItems, true, false );
 
-    wxLogTrace( "KICAD_SCH_MOVE", "SCH_EDIT_TOOL::Rotate: start, clockwise=%d, selection size=%u", clockwise,
+    KI_LOG_TRACE( "KICAD_SCH_MOVE", "SCH_EDIT_TOOL::Rotate: start, clockwise=%d, selection size=%u", clockwise,
                 selection.GetSize() );
 
     if( selection.GetSize() == 0 )
@@ -1246,7 +1248,7 @@ int SCH_EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
             VECTOR2I posBefore = item->GetPosition();
             item->Rotate( rotPoint, !clockwise );
             VECTOR2I posAfter = item->GetPosition();
-            wxLogTrace( "KICAD_SCH_MOVE", "  SCH_EDIT_TOOL::Rotate: item type=%d rotated, pos (%d,%d) -> (%d,%d)",
+            KI_LOG_TRACE( "KICAD_SCH_MOVE", "  SCH_EDIT_TOOL::Rotate: item type=%d rotated, pos (%d,%d) -> (%d,%d)",
                         item->Type(), posBefore.x, posBefore.y, posAfter.x, posAfter.y );
         }
 
@@ -1254,11 +1256,11 @@ int SCH_EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
         updateItem( item, true );
     }
 
-    wxLogTrace( "KICAD_SCH_MOVE", "SCH_EDIT_TOOL::Rotate: complete, moving=%d", moving );
+    KI_LOG_TRACE( "KICAD_SCH_MOVE", "SCH_EDIT_TOOL::Rotate: complete, moving=%d", moving );
 
     if( moving )
     {
-        wxLogTrace( "KICAD_SCH_MOVE", "SCH_EDIT_TOOL::Rotate: posting refreshPreview" );
+        KI_LOG_TRACE( "KICAD_SCH_MOVE", "SCH_EDIT_TOOL::Rotate: posting refreshPreview" );
         m_toolMgr->PostAction( ACTIONS::refreshPreview );
     }
     else
@@ -1764,7 +1766,7 @@ int SCH_EDIT_TOOL::Swap( const TOOL_EVENT& aEvent )
  */
 int SCH_EDIT_TOOL::SwapPins( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     if( !m_frame->eeconfig()->m_Input.allow_unconstrained_pin_swaps )
         return 0;
@@ -2930,7 +2932,7 @@ void SCH_EDIT_TOOL::EditProperties( EDA_ITEM* aItem )
         break;
 
     default: // Unexpected item
-        wxFAIL_MSG( wxString( "Cannot edit schematic item type " ) + aItem->GetClass() );
+        KI_FAIL_MSG( wxString( "Cannot edit schematic item type " ) + aItem->GetClass() );
     }
 
     updateItem( aItem, true );
@@ -2964,7 +2966,7 @@ int SCH_EDIT_TOOL::ChangeTextType( const TOOL_EVENT& aEvent )
             SPIN_STYLE       spinStyle = SPIN_STYLE::SPIN::RIGHT;
             LABEL_FLAG_SHAPE shape = LABEL_FLAG_SHAPE::L_UNSPECIFIED;
 
-            wxCHECK2( sourceText, continue );
+            KI_CHECK2( sourceText, continue );
 
             switch( item->Type() )
             {
@@ -3014,7 +3016,7 @@ int SCH_EDIT_TOOL::ChangeTextType( const TOOL_EVENT& aEvent )
                 if( convertTo == SCH_LABEL_T || convertTo == SCH_HIER_LABEL_T || convertTo == SCH_GLOBAL_LABEL_T )
                 {
                     EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( item );
-                    wxCHECK( text, 0 );
+                    KI_CHECK( text, 0 );
                     int textSize = text->GetTextSize().y;
                     bbox.Inflate( KiROUND( item->Schematic()->Settings().m_LabelSizeRatio * textSize ) );
                 }
@@ -3239,7 +3241,7 @@ int SCH_EDIT_TOOL::ChangeTextType( const TOOL_EVENT& aEvent )
                 break;
             }
 
-            wxCHECK2( newtext, continue );
+            KI_CHECK2( newtext, continue );
 
             // Copy the old text item settings to the new one.  Justifications are not copied
             // because they are not used in labels.  Justifications will be set to default value
@@ -3250,7 +3252,7 @@ int SCH_EDIT_TOOL::ChangeTextType( const TOOL_EVENT& aEvent )
             EDA_TEXT* eda_text = dynamic_cast<EDA_TEXT*>( item );
             EDA_TEXT* new_eda_text = dynamic_cast<EDA_TEXT*>( newtext );
 
-            wxCHECK2( eda_text && new_eda_text, continue );
+            KI_CHECK2( eda_text && new_eda_text, continue );
 
             new_eda_text->SetFont( eda_text->GetFont() );
             new_eda_text->SetTextSize( eda_text->GetTextSize() );
@@ -3652,7 +3654,7 @@ void SCH_EDIT_TOOL::FixERCError( const std::shared_ptr<RC_ITEM>& aERCItem )
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( frame, /* void */ );
+    KI_CHECK( frame, /* void */ );
 
     if( aERCItem->GetErrorCode() == ERCE_SIMULATION_MODEL
         || aERCItem->GetErrorCode() == ERCE_FOOTPRINT_FILTERS

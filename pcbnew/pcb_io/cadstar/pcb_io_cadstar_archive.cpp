@@ -31,6 +31,7 @@
 #include <io/io_utils.h>
 #include <pcb_io/pcb_io.h>
 #include <reporter.h>
+#include <core/ki_assert.h>
 
 
 std::map<wxString, PCB_LAYER_ID> PCB_IO_CADSTAR_ARCHIVE::DefaultLayerMappingCallback(
@@ -244,7 +245,7 @@ void PCB_IO_CADSTAR_ARCHIVE::ensureLoadedLibrary( const wxString& aLibraryPath )
 
     if( m_cache.count( aLibraryPath ) )
     {
-        wxCHECK( m_timestamps.count( aLibraryPath ), /*void*/ );
+        KI_CHECK( m_timestamps.count( aLibraryPath ), /*void*/ );
 
         if( m_timestamps.at( aLibraryPath ) == GetLibraryTimestamp( aLibraryPath ) )
             return;

@@ -39,12 +39,13 @@
 #include <wx/log.h>
 #include <wx/dcmemory.h>
 #include <wx/log.h>
+#include <core/ki_assert.h>
 
 
 SCH_PRINTOUT::SCH_PRINTOUT( SCH_EDIT_FRAME* aParent, const wxString& aTitle ) :
         wxPrintout( aTitle )
 {
-    wxASSERT( aParent != nullptr );
+    KI_ASSERT( aParent != nullptr );
     m_parent = aParent;
     m_view = nullptr;
 }
@@ -77,10 +78,10 @@ bool SCH_PRINTOUT::OnPrintPage( int page )
     SCH_SHEET_LIST sheetList = m_parent->Schematic().Hierarchy();
     sheetList.SortByPageNumbers( false );
 
-    wxCHECK_MSG( page >= 1 && page <= (int)sheetList.size(), false,
+    KI_CHECK_MSG( page >= 1 && page <= (int)sheetList.size(), false,
                  wxT( "Cannot print invalid page number." ) );
 
-    wxCHECK_MSG( sheetList[ page - 1].LastScreen() != nullptr, false,
+    KI_CHECK_MSG( sheetList[ page - 1].LastScreen() != nullptr, false,
                  wxT( "Cannot print page with NULL screen." ) );
 
     wxString msg;

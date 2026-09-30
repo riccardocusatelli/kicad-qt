@@ -37,6 +37,7 @@
 #include <zone.h>
 #include <pad.h>
 #include <pcb_track.h>
+#include <core/ki_assert.h>
 
 
 void PCB_SEARCH_HANDLER::ActivateItem( long aItemRow )
@@ -179,7 +180,7 @@ int FOOTPRINT_SEARCH_HANDLER::Search( const wxString& aQuery )
         {
             for( PCB_FIELD* field : fp->GetFields() )
             {
-                wxCHECK2( field, continue );
+                KI_CHECK2( field, continue );
 
                 if( field->Matches( frp, nullptr ) )
                 {

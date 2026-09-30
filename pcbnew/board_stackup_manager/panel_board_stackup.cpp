@@ -50,6 +50,7 @@
 #include <eda_list_dialog.h>
 #include <richio.h>
 #include <string_utils.h>               // for UIDouble2Str()
+#include <core/ki_assert.h>
 
 
 // Some wx widget ID to know what widget has fired a event:
@@ -473,12 +474,12 @@ void PANEL_SETUP_BOARD_STACKUP::setDefaultLayerWidths( int targetThickness )
     // This code is for a symmetrical PCB stackup with even copper layer count
     // If asymmetric stackups were to be implemented, the following layer count calculations
     // for dielectric/core layers might need adjustments.
-    wxASSERT( copperLayerCount % 2 == 0 );
+    KI_ASSERT( copperLayerCount % 2 == 0 );
 
     int  dielectricLayerCount = copperLayerCount - 1;
     int  coreLayerCount = copperLayerCount / 2 - 1;
 
-    wxASSERT( dielectricLayerCount > 0 );
+    KI_ASSERT( dielectricLayerCount > 0 );
 
     bool currentLayerIsCore = false;
 
@@ -489,7 +490,7 @@ void PANEL_SETUP_BOARD_STACKUP::setDefaultLayerWidths( int targetThickness )
         currentLayerIsCore = true;
     }
 
-    wxASSERT( coreLayerCount > 0 );
+    KI_ASSERT( coreLayerCount > 0 );
 
     int prePregLayerCount = dielectricLayerCount - coreLayerCount;
 
@@ -607,7 +608,7 @@ void PANEL_SETUP_BOARD_STACKUP::updateCopperLayerCount()
 {
     const int copperCount = GetCopperLayerCount();
 
-    wxASSERT( copperCount >= 2 );
+    KI_ASSERT( copperCount >= 2 );
 
     m_enabledLayers.ClearCopperLayers();
     m_enabledLayers |= LSET::AllCuMask( copperCount );
@@ -1466,7 +1467,7 @@ void PANEL_SETUP_BOARD_STACKUP::onMaterialChange( wxCommandEvent& event )
     default:                      item_mat_list = nullptr;              break;
     }
 
-    wxCHECK( item_mat_list, /* void */ );
+    KI_CHECK( item_mat_list, /* void */ );
 
     DIALOG_DIELECTRIC_MATERIAL dlg( this, *item_mat_list );
 
@@ -1570,7 +1571,7 @@ wxColor PANEL_SETUP_BOARD_STACKUP::getColorIconItem( int aRow )
 {
     BOARD_STACKUP_ITEM* st_item = dynamic_cast<BOARD_STACKUP_ITEM*>( GetStackupItem( aRow ) );
 
-    wxASSERT( st_item );
+    KI_ASSERT( st_item );
     wxColor color;
 
     if( ! st_item )
@@ -1586,11 +1587,11 @@ wxColor PANEL_SETUP_BOARD_STACKUP::getColorIconItem( int aRow )
 
     default:
     case BS_ITEM_TYPE_UNDEFINED:
-        wxFAIL_MSG( wxT( "PANEL_SETUP_BOARD_STACKUP::getColorIconItem: unrecognized item type" ) );
+        KI_FAIL_MSG( wxT( "PANEL_SETUP_BOARD_STACKUP::getColorIconItem: unrecognized item type" ) );
         break;
     }
 
-    wxASSERT_MSG( color.IsOk(), wxT( "Invalid color in PCB stackup" ) );
+    KI_ASSERT_MSG( color.IsOk(), wxT( "Invalid color in PCB stackup" ) );
 
     return color;
 }

@@ -43,6 +43,7 @@
 #include <pcb_track.h>
 
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 #ifdef PROFILE
 #include <core/profile.h>
@@ -670,7 +671,7 @@ void CN_CONNECTIVITY_ALGO::propagateConnections( BOARD_COMMIT* aCommit )
         {
             // Conflicting pads in cluster: we don't know the user's intent so best to do
             // nothing.
-            wxLogTrace( wxT( "CN" ), wxT( "Conflicting pads in cluster %p; skipping propagation" ),
+            KI_LOG_TRACE( wxT( "CN" ), wxT( "Conflicting pads in cluster %p; skipping propagation" ),
                         cluster.get() );
         }
         else if( cluster->HasValidNet() )
@@ -697,20 +698,20 @@ void CN_CONNECTIVITY_ALGO::propagateConnections( BOARD_COMMIT* aCommit )
 
             if( n_changed )
             {
-                wxLogTrace( wxT( "CN" ), wxT( "Cluster %p: net: %d %s" ),
+                KI_LOG_TRACE( wxT( "CN" ), wxT( "Cluster %p: net: %d %s" ),
                             cluster.get(),
                             cluster->OriginNet(),
                             (const char*) cluster->OriginNetName().c_str() );
             }
             else
             {
-                wxLogTrace( wxT( "CN" ), wxT( "Cluster %p: no changeable items to propagate to" ),
+                KI_LOG_TRACE( wxT( "CN" ), wxT( "Cluster %p: no changeable items to propagate to" ),
                             cluster.get() );
             }
         }
         else
         {
-            wxLogTrace( wxT( "CN" ), wxT( "Cluster %p: connected to unused net" ),
+            KI_LOG_TRACE( wxT( "CN" ), wxT( "Cluster %p: connected to unused net" ),
                         cluster.get() );
         }
     }

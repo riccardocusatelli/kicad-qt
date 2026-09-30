@@ -32,6 +32,7 @@
 
 #include <gal/cairo/cairo_compositor.h>
 #include <wx/log.h>
+#include <core/ki_assert.h>
 
 using namespace KIGFX;
 
@@ -97,7 +98,7 @@ unsigned int CAIRO_COMPOSITOR::CreateBuffer()
 
 #ifdef DEBUG
     cairo_status_t status = cairo_status( context );
-    wxASSERT_MSG( status == CAIRO_STATUS_SUCCESS, wxT( "Cairo context creation error" ) );
+    KI_ASSERT_MSG( status == CAIRO_STATUS_SUCCESS, wxT( "Cairo context creation error" ) );
 #endif /* DEBUG */
 
     // Set default settings for the buffer
@@ -117,7 +118,7 @@ unsigned int CAIRO_COMPOSITOR::CreateBuffer()
 
 void CAIRO_COMPOSITOR::SetBuffer( unsigned int aBufferHandle )
 {
-    wxASSERT_MSG( aBufferHandle <= usedBuffers(), wxT( "Tried to use a not existing buffer" ) );
+    KI_ASSERT_MSG( aBufferHandle <= usedBuffers(), wxT( "Tried to use a not existing buffer" ) );
 
     // Get currently used transformation matrix, so it can be applied to the new buffer
     cairo_get_matrix( *m_currentContext, &m_matrix );
@@ -145,7 +146,7 @@ void CAIRO_COMPOSITOR::ClearBuffer( const COLOR4D& aColor )
 void CAIRO_COMPOSITOR::DrawBuffer( unsigned int aSourceHandle, unsigned int aDestHandle,
                                    cairo_operator_t op )
 {
-    wxASSERT_MSG( aSourceHandle <= usedBuffers() && aDestHandle <= usedBuffers(),
+    KI_ASSERT_MSG( aSourceHandle <= usedBuffers() && aDestHandle <= usedBuffers(),
                   wxT( "Tried to use a not existing buffer" ) );
 
     // Reset the transformation matrix, so it is possible to composite images using
@@ -167,7 +168,7 @@ void CAIRO_COMPOSITOR::DrawBuffer( unsigned int aSourceHandle, unsigned int aDes
 
 void CAIRO_COMPOSITOR::DrawBuffer( unsigned int aBufferHandle )
 {
-    wxASSERT_MSG( aBufferHandle <= usedBuffers(), wxT( "Tried to use a not existing buffer" ) );
+    KI_ASSERT_MSG( aBufferHandle <= usedBuffers(), wxT( "Tried to use a not existing buffer" ) );
 
     // Reset the transformation matrix, so it is possible to composite images using
     // screen coordinates instead of world coordinates

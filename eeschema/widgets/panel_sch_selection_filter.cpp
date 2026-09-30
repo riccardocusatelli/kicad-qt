@@ -25,6 +25,7 @@
 #include <widgets/panel_sch_selection_filter.h>
 #include <wx/settings.h>
 #include <wx/dcbuffer.h>
+#include <core/ki_assert.h>
 
 
 wxDEFINE_EVENT( EVT_SCH_SELECTION_FILTER_FLASH, SCH_SELECTION_FILTER_EVENT );
@@ -49,9 +50,9 @@ PANEL_SCH_SELECTION_FILTER::PANEL_SCH_SELECTION_FILTER( wxWindow* aParent ) :
 
     SetBorders( true, false, false, false );
 
-    wxASSERT( m_frame );
+    KI_ASSERT( m_frame );
     m_tool = m_frame->GetToolManager()->GetTool<SCH_SELECTION_TOOL>();
-    wxASSERT( m_tool );
+    KI_ASSERT( m_tool );
 
     SCH_SELECTION_FILTER_OPTIONS& opts = m_tool->GetFilter();
     SetCheckboxesFromFilter( opts );

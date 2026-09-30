@@ -27,6 +27,7 @@
 #define NETLIST_EXPORTER_H
 
 #include <schematic.h>
+#include <core/ki_assert.h>
 
 class SCH_SYMBOL;
 class LIB_SYMBOL;
@@ -92,7 +93,7 @@ public:
     NETLIST_EXPORTER_BASE( SCHEMATIC* aSchematic ) :
         m_schematic( aSchematic )
     {
-        wxASSERT( aSchematic );
+        KI_ASSERT( aSchematic );
     }
 
     virtual ~NETLIST_EXPORTER_BASE() = default;

@@ -33,6 +33,7 @@
 #include <gerber_file_image.h>
 #include <trigo.h>
 #include <X2_gerber_attributes.h>
+#include <core/ki_assert.h>
 
 
 /* Gerber: NOTES about some important commands found in RS274D and RS274X (G codes).
@@ -414,7 +415,7 @@ int GERBER_FILE_IMAGE::CodeNumber( char*& aText )
     if( endptr == aText || errno != 0 )
         return 0;
 
-    wxCHECK_MSG( retval < std::numeric_limits<int>::max(), 0, _( "Invalid Code Number" ) );
+    KI_CHECK_MSG( retval < std::numeric_limits<int>::max(), 0, _( "Invalid Code Number" ) );
 
     aText = endptr;
 

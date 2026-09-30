@@ -19,8 +19,10 @@
 
 #include <core/ki_assert.h>
 #include <core/ki_log.h>
+#include <core/ki_format.h>
 
 #include <atomic>
+#include <cstdint>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -62,12 +64,16 @@ void KiAssertFailed( const char* aFile, int aLine, const char* aFunc, const char
 // Logging
 
 /// True if @a aMask appears in the comma separated list in environment variable @a aVar.
+/// A null @a aMask asks whether the list is non-empty.
 static bool maskInEnv( const char* aVar, const char* aMask )
 {
     const char* env = std::getenv( aVar );
 
-    if( !env || !aMask )
+    if( !env )
         return false;
+
+    if( !aMask )
+        return *env != '\0';
 
     size_t len = std::strlen( aMask );
 
@@ -150,6 +156,12 @@ bool IsEnabled( LEVEL aLevel, const char* aMask )
 }
 
 
+bool TraceActive()
+{
+    return IsEnabled( LEVEL::TRACE, nullptr );
+}
+
+
 void Write( LEVEL aLevel, const char* aMask, const char* aFormat, ... )
 {
     va_list args;
@@ -171,4 +183,66 @@ std::string KiStrFormat( const char* aFormat, ... )
     std::string msg = vformat( aFormat, args );
     va_end( args );
     return msg;
+}
+
+
+std::string KiStrFormatUnchecked( const char* aFormat, ... )
+{
+    va_list args;
+    va_start( args, aFormat );
+    std::string msg = vformat( aFormat, args );
+    va_end( args );
+    return msg;
+}
+
+
+std::string KiWideToUtf8( const wchar_t* aText, size_t aLen )
+{
+    std::string out;
+    out.reserve( aLen );
+
+    for( size_t i = 0; i < aLen; ++i )
+    {
+        uint32_t cp = static_cast<uint32_t>( aText[i] );
+
+        // wchar_t is UTF-16 on Windows: combine surrogate pairs
+        if constexpr( sizeof( wchar_t ) == 2 )
+        {
+            if( cp >= 0xD800 && cp <= 0xDBFF && i + 1 < aLen
+                && static_cast<uint32_t>( aText[i + 1] ) >= 0xDC00
+                && static_cast<uint32_t>( aText[i + 1] ) <= 0xDFFF )
+            {
+                cp = 0x10000 + ( ( cp - 0xD800 ) << 10 ) + ( static_cast<uint32_t>( aText[i + 1] ) - 0xDC00 );
+                ++i;
+            }
+        }
+
+        if( cp > 0x10FFFF || ( cp >= 0xD800 && cp <= 0xDFFF ) )
+            cp = 0xFFFD;
+
+        if( cp <= 0x7F )
+        {
+            out += char( cp );
+        }
+        else if( cp <= 0x7FF )
+        {
+            out += char( 0xC0 | ( cp >> 6 ) );
+            out += char( 0x80 | ( cp & 0x3F ) );
+        }
+        else if( cp <= 0xFFFF )
+        {
+            out += char( 0xE0 | ( cp >> 12 ) );
+            out += char( 0x80 | ( ( cp >> 6 ) & 0x3F ) );
+            out += char( 0x80 | ( cp & 0x3F ) );
+        }
+        else
+        {
+            out += char( 0xF0 | ( cp >> 18 ) );
+            out += char( 0x80 | ( ( cp >> 12 ) & 0x3F ) );
+            out += char( 0x80 | ( ( cp >> 6 ) & 0x3F ) );
+            out += char( 0x80 | ( cp & 0x3F ) );
+        }
+    }
+
+    return out;
 }

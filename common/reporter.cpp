@@ -38,6 +38,8 @@
 #include <wx/statusbr.h>
 #include <wx/tokenzr.h>
 #include <wx/weakref.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -85,7 +87,7 @@ REPORTER& WX_TEXT_CTRL_REPORTER::Report( const wxString& aText, SEVERITY aSeveri
 {
     REPORTER::Report( aText, aSeverity );
 
-    wxCHECK_MSG( m_textCtrl != nullptr, *this,
+    KI_CHECK_MSG( m_textCtrl != nullptr, *this,
                  wxT( "No wxTextCtrl object defined in WX_TEXT_CTRL_REPORTER." ) );
 
     m_textCtrl->AppendText( aText + wxS( "\n" ) );
@@ -269,7 +271,7 @@ REPORTER& WXLOG_REPORTER::Report( const wxString& aMsg, SEVERITY aSeverity )
     case RPT_SEVERITY_UNDEFINED: wxLogMessage( aMsg );                break;
     case RPT_SEVERITY_INFO:      wxLogInfo( aMsg );                   break;
     case RPT_SEVERITY_ACTION:    wxLogInfo( aMsg );                   break;
-    case RPT_SEVERITY_DEBUG:     wxLogTrace( traceReporter, aMsg );   break;
+    case RPT_SEVERITY_DEBUG:     KI_LOG_TRACE( traceReporter, aMsg );   break;
     case RPT_SEVERITY_EXCLUSION:                                      break;
     case RPT_SEVERITY_IGNORE:                                         break;
     }

@@ -37,6 +37,7 @@
 #include <widgets/msgpanel.h>
 
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 GERBER_DRAW_ITEM::GERBER_DRAW_ITEM( GERBER_FILE_IMAGE* aGerberImageFile ) :
     EDA_ITEM( nullptr, GERBER_DRAW_ITEM_T )
@@ -375,7 +376,7 @@ const BOX2I GERBER_DRAW_ITEM::GetBoundingBox() const
         break;
 
     default:
-        wxASSERT_MSG( false, wxT( "GERBER_DRAW_ITEM shape is unknown!" ) );
+        KI_ASSERT_MSG( false, wxT( "GERBER_DRAW_ITEM shape is unknown!" ) );
         break;
     }
 

@@ -47,6 +47,7 @@
 
 #include <wx/filedlg.h>
 #include <kiplatform/ui.h>
+#include <core/ki_assert.h>
 
 
 bool SYMBOL_EDITOR_CONTROL::Init()
@@ -395,7 +396,7 @@ int SYMBOL_EDITOR_CONTROL::OpenDirectory( const TOOL_EVENT& aEvent )
     std::optional<wxString> libItemName =
         manager.GetFullURI( LIBRARY_TABLE_TYPE::SYMBOL, libName, true );
 
-    wxCHECK( libItemName, 0 );
+    KI_CHECK( libItemName, 0 );
 
     wxFileName fileName( *libItemName );
 
@@ -457,7 +458,7 @@ int SYMBOL_EDITOR_CONTROL::OpenWithTextEditor( const TOOL_EVENT& aEvent )
     std::optional<wxString> optUri =
         manager.GetFullURI( LIBRARY_TABLE_TYPE::SYMBOL, libName, true );
 
-    wxCHECK( optUri, 0 );
+    KI_CHECK( optUri, 0 );
 
     wxString tempFName = ( *optUri ).wc_str();
 
@@ -871,7 +872,7 @@ int SYMBOL_EDITOR_CONTROL::FlattenSymbol( const TOOL_EVENT& aEvent )
 
     const LIB_SYMBOL*           symbol = libMgr.GetBufferedSymbol( symId.GetLibItemName(), symId.GetLibNickname() );
     std::unique_ptr<LIB_SYMBOL> flatSymbol = symbol->Flatten();
-    wxCHECK_MSG( flatSymbol, 0, _( "Failed to flatten symbol" ) );
+    KI_CHECK_MSG( flatSymbol, 0, _( "Failed to flatten symbol" ) );
 
     if( !libMgr.UpdateSymbol( flatSymbol.get(), symId.GetLibNickname() ) )
     {

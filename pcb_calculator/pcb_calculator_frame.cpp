@@ -50,6 +50,7 @@
 #include <calculator_panels/panel_wavelength.h>
 #include <calculator_panels/panel_eseries_display.h>
 #include "widgets/wx_menubar.h"
+#include <core/ki_assert.h>
 
 
 BEGIN_EVENT_TABLE( PCB_CALCULATOR_FRAME, KIWAY_PLAYER )
@@ -198,7 +199,7 @@ void PCB_CALCULATOR_FRAME::doReCreateMenuBar()
     EDA_BASE_FRAME* base_frame = dynamic_cast<EDA_BASE_FRAME*>( this );
 
     // base_frame == nullptr should not happen, but it makes Coverity happy
-    wxCHECK( base_frame, /* void */ );
+    KI_CHECK( base_frame, /* void */ );
 
     // wxWidgets handles the OSX Application menu behind the scenes, but that means
     // we always have to start from scratch with a new wxMenuBar.
@@ -307,10 +308,10 @@ void PCB_CALCULATOR_FRAME::OnUpdateUI( wxUpdateUIEvent& event )
         PANEL_VIA_SIZE*           viaSizePanel     = GetCalculator<PANEL_VIA_SIZE>();
         PANEL_REGULATOR*          regulPanel       = GetCalculator<PANEL_REGULATOR>();
 
-        wxASSERT( translinePanel );
-        wxASSERT( attenPanel );
-        wxASSERT( viaSizePanel );
-        wxASSERT( regulPanel );
+        KI_ASSERT( translinePanel );
+        KI_ASSERT( attenPanel );
+        KI_ASSERT( viaSizePanel );
+        KI_ASSERT( regulPanel );
 
         {
             wxCommandEvent event2( wxEVT_RADIOBUTTON );
@@ -349,7 +350,7 @@ void PCB_CALCULATOR_FRAME::OnClosePcbCalc( wxCloseEvent& event )
 {
     PANEL_REGULATOR* regPanel = GetCalculator<PANEL_REGULATOR>();
 
-    wxASSERT( regPanel );
+    KI_ASSERT( regPanel );
 
     if( regPanel->m_RegulatorListChanged )
     {

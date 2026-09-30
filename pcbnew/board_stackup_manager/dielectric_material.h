@@ -31,6 +31,7 @@
 
 
 #include <wx/string.h>
+#include <core/ki_assert.h>
 
 
 // A class to handle substrates prms in gerber job file and dialog.
@@ -123,7 +124,7 @@ public:
      */
     void DeleteSubstrate( int aIdx )
     {
-        wxCHECK( aIdx > 0 && aIdx < (int) m_substrateList.size(), /* void */ );
+        KI_CHECK( aIdx > 0 && aIdx < (int) m_substrateList.size(), /* void */ );
 
         m_substrateList.erase( m_substrateList.begin() + aIdx );
     }

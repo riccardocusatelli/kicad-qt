@@ -40,6 +40,7 @@
 #include <map>
 #include <pgm_base.h>
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_assert.h>
 
 
 // Helper sort function, used in getSymbols, to sort a symbol list by lib_id
@@ -183,7 +184,7 @@ wxString RESCUE_CASE_CANDIDATE::GetActionDescription() const
 
 bool RESCUE_CASE_CANDIDATE::PerformAction( RESCUER* aRescuer )
 {
-    wxCHECK( m_lib_candidate, true );
+    KI_CHECK( m_lib_candidate, true );
 
     std::unique_ptr<LIB_SYMBOL> new_symbol = m_lib_candidate->Flatten();
     new_symbol->SetName( m_new_name );
@@ -469,7 +470,7 @@ bool RESCUE_SYMBOL_LIB_TABLE_CANDIDATE::PerformAction( RESCUER* aRescuer )
 {
     LIB_SYMBOL* tmp = ( m_cache_candidate ) ? m_cache_candidate : m_lib_candidate;
 
-    wxCHECK_MSG( tmp, false, wxS( "Both cache and library symbols undefined." ) );
+    KI_CHECK_MSG( tmp, false, wxS( "Both cache and library symbols undefined." ) );
 
     std::unique_ptr<LIB_SYMBOL> new_symbol = tmp->Flatten();
     new_symbol->SetLibId( m_new_id );
@@ -495,7 +496,7 @@ RESCUER::RESCUER( PROJECT& aProject, SCHEMATIC* aSchematic, SCH_SHEET_PATH* aCur
 {
     m_schematic = aSchematic ? aSchematic : aCurrentSheet->LastScreen()->Schematic();
 
-    wxASSERT( m_schematic );
+    KI_ASSERT( m_schematic );
 
     if( m_schematic )
         getSymbols( m_schematic, m_symbols );
@@ -742,7 +743,7 @@ bool LEGACY_RESCUER::WriteRescueLibrary( wxWindow *aParent )
 
 void LEGACY_RESCUER::AddSymbol( LIB_SYMBOL* aNewSymbol )
 {
-    wxCHECK_RET( aNewSymbol, wxS( "Invalid LIB_SYMBOL pointer." ) );
+    KI_CHECK_RET( aNewSymbol, wxS( "Invalid LIB_SYMBOL pointer." ) );
 
     aNewSymbol->SetLib( m_rescue_lib.get() );
     m_rescue_lib->AddSymbol( aNewSymbol );
@@ -832,7 +833,7 @@ bool SYMBOL_LIB_TABLE_RESCUER::WriteRescueLibrary( wxWindow *aParent )
 
         std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL,
                                                                 LIBRARY_TABLE_SCOPE::PROJECT );
-        wxCHECK( optTable, false );
+        KI_CHECK( optTable, false );
         LIBRARY_TABLE* projectTable = *optTable;
         LIBRARY_TABLE_ROW* row = nullptr;
 
@@ -869,7 +870,7 @@ bool SYMBOL_LIB_TABLE_RESCUER::WriteRescueLibrary( wxWindow *aParent )
 
 void SYMBOL_LIB_TABLE_RESCUER::AddSymbol( LIB_SYMBOL* aNewSymbol )
 {
-    wxCHECK_RET( aNewSymbol, wxS( "Invalid LIB_SYMBOL pointer." ) );
+    KI_CHECK_RET( aNewSymbol, wxS( "Invalid LIB_SYMBOL pointer." ) );
 
     m_rescueLibSymbols.emplace_back( std::make_unique<LIB_SYMBOL>( *aNewSymbol ) );
 }

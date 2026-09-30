@@ -32,6 +32,8 @@
 #include <wx/sstream.h>
 
 #include <io/csv.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 bool SaveClipboard( const std::string& aTextUTF8 )
 {
@@ -305,7 +307,7 @@ bool EncodeImageToPng( const wxImage& aImage, wxMemoryBuffer& aOutput )
 
     if( !imageCopy.SaveFile( bufferedStream, wxBITMAP_TYPE_PNG ) )
     {
-        wxLogDebug( wxS( "Failed to encode PNG" ) );
+        KI_LOG_DEBUG( wxS( "Failed to encode PNG" ) );
         return false;
     }
 
@@ -322,8 +324,8 @@ bool EncodeImageToPng( const wxImage& aImage, wxMemoryBuffer& aOutput )
 bool AddPngToClipboardData( wxDataObjectComposite* aData, const wxMemoryBuffer& aPngData,
                             const wxImage* aFallbackImage )
 {
-    wxCHECK( wxTheClipboard->IsOpened(), false );
-    wxCHECK( aPngData.GetDataLen() > 0, false );
+    KI_CHECK( wxTheClipboard->IsOpened(), false );
+    KI_CHECK( aPngData.GetDataLen() > 0, false );
 
 #if defined( __WXMSW__ )
     aData->Add( new wxCustomDataObject( wxDataFormat( wxDataFormatId::wxDF_BITMAP ) ) );
@@ -336,7 +338,7 @@ bool AddPngToClipboardData( wxDataObjectComposite* aData, const wxMemoryBuffer& 
     pngObj->SetData( aPngData.GetDataLen(), aPngData.GetData() );
     aData->Add( pngObj );
 #else // __WXOSX__
-    wxCHECK( aFallbackImage && aFallbackImage->IsOk(), false );
+    KI_CHECK( aFallbackImage && aFallbackImage->IsOk(), false );
     aData->Add( new wxBitmapDataObject( wxBitmap( *aFallbackImage ) ) );
 #endif
 
@@ -346,8 +348,8 @@ bool AddPngToClipboardData( wxDataObjectComposite* aData, const wxMemoryBuffer& 
 
 bool AddTransparentImageToClipboardData( wxDataObjectComposite* aData, wxImage aImage )
 {
-    wxCHECK( wxTheClipboard->IsOpened(), false );
-    wxCHECK( aImage.IsOk(), false );
+    KI_CHECK( wxTheClipboard->IsOpened(), false );
+    KI_CHECK( aImage.IsOk(), false );
 
 #if defined( __WXGTK__ ) || defined( __WXMSW__ )
     wxMemoryBuffer pngData;

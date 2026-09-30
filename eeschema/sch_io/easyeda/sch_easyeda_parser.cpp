@@ -43,6 +43,7 @@
 #include <import_gfx/svg_import_plugin.h>
 #include <import_gfx/graphics_importer_lib_symbol.h>
 #include <import_gfx/graphics_importer_sch.h>
+#include <core/ki_assert.h>
 
 
 // clang-format off
@@ -130,7 +131,7 @@ ParseImageTransform( const wxString& transformData )
         for( const wxString& cmdPart : cmdParts )
         {
             double arg = 0;
-            wxASSERT( cmdPart.Strip( wxString::both ).ToCDouble( &arg ) );
+            KI_ASSERT( cmdPart.Strip( wxString::both ).ToCDouble( &arg ) );
 
             cmdArgs.push_back( arg );
         }

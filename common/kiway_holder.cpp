@@ -27,6 +27,7 @@
 #include <kiway.h>
 #include <kiway_holder.h>
 #include <project.h>
+#include <core/ki_assert.h>
 
 #if defined(DEBUG)
  #include <typeinfo>
@@ -44,7 +45,7 @@ void KIWAY_HOLDER::SetKiway( wxWindow* aDest, KIWAY* aKiway )
 {
 #if defined(DEBUG)
     // offer a trap point for debugging most any window
-    wxASSERT( aDest );
+    KI_ASSERT( aDest );
     if( !strcmp( typeid(aDest).name(), "DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB" ) )
     {
         int breakhere=1;

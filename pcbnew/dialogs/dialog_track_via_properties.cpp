@@ -39,6 +39,7 @@
 #include <magic_enum.hpp>
 #include <macros.h>
 #include <optional>
+#include <core/ki_assert.h>
 
 
 bool DIALOG_TRACK_VIA_PROPERTIES::IPC4761_CONFIGURATION::operator==( const IPC4761_CONFIGURATION& aOther ) const
@@ -84,7 +85,7 @@ DIALOG_TRACK_VIA_PROPERTIES::DIALOG_TRACK_VIA_PROPERTIES( PCB_BASE_EDIT_FRAME* a
 {
     m_useCalculatedSize = true;
 
-    wxASSERT( !m_items.Empty() );
+    KI_ASSERT( !m_items.Empty() );
 
     m_legacyTeardropsIcon->SetBitmap( KiBitmapBundle( BITMAPS::dialog_warning ) );
     m_legacyTeardropsWarning->Show( m_frame->GetBoard()->LegacyTeardrops() );
@@ -776,7 +777,7 @@ bool DIALOG_TRACK_VIA_PROPERTIES::TransferDataToWindow()
         m_netSelector->SetIndeterminate();
     }
 
-    wxASSERT( m_tracks || m_vias );
+    KI_ASSERT( m_tracks || m_vias );
 
     if( m_vias )
     {
@@ -1229,7 +1230,7 @@ bool DIALOG_TRACK_VIA_PROPERTIES::TransferDataFromWindow()
             case PCB_TRACE_T:
             case PCB_ARC_T:
             {
-                wxASSERT( m_tracks );
+                KI_ASSERT( m_tracks );
 
                 if( !m_trackStartX.IsIndeterminate() )
                     track->SetStartX( m_trackStartX.GetIntValue() );
@@ -1270,7 +1271,7 @@ bool DIALOG_TRACK_VIA_PROPERTIES::TransferDataFromWindow()
 
             case PCB_VIA_T:
             {
-                wxASSERT( m_vias );
+                KI_ASSERT( m_vias );
                 PCB_VIA* via = static_cast<PCB_VIA*>( track );
                 bool     updatePadstack = m_padstackDirty;
 
@@ -1723,7 +1724,7 @@ void DIALOG_TRACK_VIA_PROPERTIES::onViaSelect( wxCommandEvent& aEvent )
 
 void DIALOG_TRACK_VIA_PROPERTIES::onPadstackModeChanged( wxCommandEvent& aEvent )
 {
-    wxCHECK_MSG( m_viaStack, /* void */, "Expected valid via stack in onPadstackModeChanged" );
+    KI_CHECK_MSG( m_viaStack, /* void */, "Expected valid via stack in onPadstackModeChanged" );
 
     switch( m_cbPadstackMode->GetSelection() )
     {
@@ -1741,7 +1742,7 @@ void DIALOG_TRACK_VIA_PROPERTIES::onPadstackModeChanged( wxCommandEvent& aEvent 
 
 void DIALOG_TRACK_VIA_PROPERTIES::onEditLayerChanged( wxCommandEvent& aEvent )
 {
-    wxCHECK_MSG( m_viaStack, /* void */, "Expected valid via stack in onEditLayerChanged" );
+    KI_CHECK_MSG( m_viaStack, /* void */, "Expected valid via stack in onEditLayerChanged" );
 
     // Save data from the previous layer
     if( !m_viaDiameter.IsIndeterminate() )
@@ -1796,7 +1797,7 @@ void DIALOG_TRACK_VIA_PROPERTIES::afterPadstackModeChanged()
 {
     // NOTE: synchronize changes here with DIALOG_PAD_PROPERTIES::afterPadstackModeChanged
 
-    wxCHECK_MSG( m_viaStack, /* void */, "Expected valid via stack in afterPadstackModeChanged" );
+    KI_CHECK_MSG( m_viaStack, /* void */, "Expected valid via stack in afterPadstackModeChanged" );
     m_cbEditLayer->Clear();
 
     BOARD* board = m_frame->GetBoard();

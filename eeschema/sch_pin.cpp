@@ -41,6 +41,8 @@
 #include <string_utils.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 wxString FormatStackedPinForDisplay( const wxString& aPinNumber, int aPinLength, int aTextSize, KIFONT::FONT* aFont,
                                      const KIFONT::METRICS& aFontMetrics )
@@ -172,7 +174,7 @@ SCH_PIN::SCH_PIN( SCH_SYMBOL* aParentSymbol, SCH_PIN* aLibPin ) :
         m_type( ELECTRICAL_PINTYPE::PT_INHERIT ),
         m_isDangling( true )
 {
-    wxASSERT( aParentSymbol );
+    KI_ASSERT( aParentSymbol );
 
     SetName( m_libPin->GetName() );
     SetNumber( m_libPin->GetNumber() );
@@ -193,7 +195,7 @@ SCH_PIN::SCH_PIN( SCH_SYMBOL* aParentSymbol, const wxString& aNumber, const wxSt
         m_alt( aAlt ),
         m_isDangling( true )
 {
-    wxASSERT( aParentSymbol );
+    KI_ASSERT( aParentSymbol );
 
     const_cast<KIID&>( m_Uuid ) = aUuid;
     m_layer = LAYER_PIN;
@@ -446,14 +448,14 @@ void SCH_PIN::SetAlt( const wxString& aAlt )
 
     if( !m_libPin )
     {
-        wxFAIL_MSG( wxString::Format( wxS( "Pin '%s' has no corresponding lib_pin" ), m_number ) );
+        KI_FAIL_MSG( wxString::Format( wxS( "Pin '%s' has no corresponding lib_pin" ), m_number ) );
         m_alt = wxEmptyString;
         return;
     }
 
     if( !m_libPin->GetAlternates().contains( aAlt ) )
     {
-        wxFAIL_MSG( wxString::Format( wxS( "Pin '%s' has no alterate '%s'" ), m_number, aAlt ) );
+        KI_FAIL_MSG( wxString::Format( wxS( "Pin '%s' has no alterate '%s'" ), m_number, aAlt ) );
         m_alt = wxEmptyString;
         return;
     }
@@ -490,7 +492,7 @@ bool SCH_PIN::IsStacked( const SCH_PIN* aPin ) const
                              || isPassiveOrNic( GetType() )
                              || isPassiveOrNic( aPin->GetType() );
 
-    wxLogTrace( traceStackedPins,
+    KI_LOG_TRACE( traceStackedPins,
                 wxString::Format( "IsStacked: this='%s/%s' other='%s/%s' sameParent=%d samePos=%d sameName=%d typeCompat=%d",
                                   GetName(), GetNumber(), aPin->GetName(), aPin->GetNumber(), sameParent,
                                   samePos, sameName, typeCompat ) );
@@ -597,15 +599,15 @@ const wxString& SCH_PIN::GetShownNumber() const
 std::vector<wxString> SCH_PIN::GetStackedPinNumbers( bool* aValid ) const
 {
     const wxString& shown = GetShownNumber();
-    wxLogTrace( traceStackedPins, "GetStackedPinNumbers: shown='%s'", shown );
+    KI_LOG_TRACE( traceStackedPins, "GetStackedPinNumbers: shown='%s'", shown );
 
     std::vector<wxString> numbers = ExpandStackedPinNotation( shown, aValid );
 
     // Log the expansion for debugging
-    wxLogTrace( traceStackedPins, "Expanded '%s' to %zu pins", shown, numbers.size() );
+    KI_LOG_TRACE( traceStackedPins, "Expanded '%s' to %zu pins", shown, numbers.size() );
     for( const wxString& num : numbers )
     {
-        wxLogTrace( traceStackedPins, wxString::Format( " -> '%s'", num ) );
+        KI_LOG_TRACE( traceStackedPins, wxString::Format( " -> '%s'", num ) );
     }
 
     return numbers;
@@ -763,7 +765,7 @@ void SCH_PIN::PlotPinType( PLOTTER *aPlotter, const VECTOR2I &aPosition,
     case PIN_ORIENTATION::PIN_DOWN:   y1 = aPosition.y + pinLength;  MapY1 = -1;             break;
     case PIN_ORIENTATION::PIN_LEFT:   x1 = aPosition.x - pinLength;  MapX1 = 1;              break;
     case PIN_ORIENTATION::PIN_RIGHT:  x1 = aPosition.x + pinLength;  MapX1 = -1;             break;
-    case PIN_ORIENTATION::INHERIT:    wxFAIL_MSG( wxS( "aOrientation must be resolved!" ) ); break;
+    case PIN_ORIENTATION::INHERIT:    KI_FAIL_MSG( wxS( "aOrientation must be resolved!" ) ); break;
     }
 
     if( m_shape == GRAPHIC_PINSHAPE::INVERTED || m_shape == GRAPHIC_PINSHAPE::INVERTED_CLOCK )
@@ -1285,7 +1287,7 @@ EDA_ITEM* SCH_PIN::Clone() const
 {
     //return new SCH_PIN( *this );
     SCH_ITEM* newPin = new SCH_PIN( *this );
-    wxASSERT( newPin->GetUnit() == m_unit && newPin->GetBodyStyle() == m_bodyStyle );
+    KI_ASSERT( newPin->GetUnit() == m_unit && newPin->GetBodyStyle() == m_bodyStyle );
     return newPin;
 }
 
@@ -1544,7 +1546,7 @@ wxString SCH_PIN::GetDefaultNetName( const SCH_SHEET_PATH& aPath, bool aForceNoC
 
     if( effectivePadNumber != libPinShownNumber )
     {
-        wxLogTrace( traceStackedPins,
+        KI_LOG_TRACE( traceStackedPins,
                     wxString::Format( "GetDefaultNetName: stacked pin shown='%s' -> using smallest logical='%s'",
                                       libPinShownNumber, effectivePadNumber ) );
     }
@@ -1654,7 +1656,7 @@ bool SCH_PIN::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_PIN* pin = dynamic_cast<const SCH_PIN*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( pin, false );
+    KI_CHECK( pin, false );
 
     if( GetPosition() != pin->GetPosition() )
         return true;
@@ -1783,7 +1785,7 @@ int SCH_PIN::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 
     const SCH_PIN* tmp = static_cast<const SCH_PIN*>( &aOther );
 
-    wxCHECK( tmp, -1 );
+    KI_CHECK( tmp, -1 );
 
     if( m_number != tmp->m_number )
     {

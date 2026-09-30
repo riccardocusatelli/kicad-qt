@@ -30,6 +30,7 @@
 #include "pns_item.h"
 #include "pns_segment.h"
 #include "pns_itemset.h"
+#include <core/ki_assert.h>
 
 namespace PNS {
 
@@ -206,7 +207,7 @@ public:
             }
         }
 
-        wxCHECK( seg1 && seg2, false );
+        KI_CHECK( seg1 && seg2, false );
 
         return seg1->Width() != seg2->Width();
     }

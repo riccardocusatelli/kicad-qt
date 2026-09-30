@@ -22,6 +22,7 @@
 #include <boost/locale.hpp>
 #include <fmt/core.h>
 #include <nanodbc/nanodbc.h>
+#include <core/ki_log.h>
 
 // Some outdated definitions are used in sql.h
 // We need to define them for "recent" dev tools
@@ -152,12 +153,12 @@ bool DATABASE_CONNECTION::Connect()
     {
         if( cs.empty() )
         {
-            wxLogTrace( traceDatabase, wxT( "Creating connection to DSN %s" ), m_dsn );
+            KI_LOG_TRACE( traceDatabase, wxT( "Creating connection to DSN %s" ), m_dsn );
             m_conn = std::make_unique<nanodbc::connection>( dsn, user, pass, m_timeout );
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "Creating connection with connection string" ) );
+            KI_LOG_TRACE( traceDatabase, wxT( "Creating connection with connection string" ) );
             m_conn = std::make_unique<nanodbc::connection>( cs, m_timeout );
         }
     }
@@ -180,7 +181,7 @@ bool DATABASE_CONNECTION::Disconnect()
 {
     if( !m_conn )
     {
-        wxLogTrace( traceDatabase, wxT( "Note: Disconnect() called without valid connection" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "Note: Disconnect() called without valid connection" ) );
         return false;
     }
 
@@ -190,7 +191,7 @@ bool DATABASE_CONNECTION::Disconnect()
     }
     catch( std::exception& exc )
     {
-        wxLogTrace( traceDatabase, wxT( "Disconnect() error \"%s\" occured." ), exc.what() );
+        KI_LOG_TRACE( traceDatabase, wxT( "Disconnect() error \"%s\" occured." ), exc.what() );
         return false;
     }
 
@@ -231,7 +232,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable,
 
         if( !tables.next() )
         {
-            wxLogTrace( traceDatabase, wxT( "CacheTableInfo: table '%s' not found in catalog" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "CacheTableInfo: table '%s' not found in catalog" ),
                         aTable );
             return false;
         }
@@ -267,7 +268,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable,
 
                 if( !columnsInCatalog.count( requestedColLower ) && !requestedCol.empty() )
                 {
-                    wxLogTrace( traceDatabase,
+                    KI_LOG_TRACE( traceDatabase,
                                 wxT( "CacheTableInfo: column '%s' not found in catalog for table "
                                      "'%s', adding anyway" ),
                                 requestedCol, key );
@@ -293,7 +294,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable,
         catch( nanodbc::database_error& e )
         {
             m_lastError = e.what();
-            wxLogTrace( traceDatabase, wxT( "Exception while syncing columns for table '%s': %s" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "Exception while syncing columns for table '%s': %s" ),
                         key, m_lastError );
             return false;
         }
@@ -301,7 +302,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable,
     catch( std::exception& e )
     {
         m_lastError = e.what();
-        wxLogTrace( traceDatabase, wxT( "Exception while caching table info: %s" ), m_lastError );
+        KI_LOG_TRACE( traceDatabase, wxT( "Exception while caching table info: %s" ), m_lastError );
         return false;
     }
 
@@ -323,12 +324,12 @@ bool DATABASE_CONNECTION::getQuoteChar()
 
         m_quoteChar = *toUTF8( qc ).begin();
 
-        wxLogTrace( traceDatabase, wxT( "Quote char retrieved: %c" ), m_quoteChar );
+        KI_LOG_TRACE( traceDatabase, wxT( "Quote char retrieved: %c" ), m_quoteChar );
     }
     catch( std::exception& e )
     {
         m_lastError = e.what();
-        wxLogTrace( traceDatabase, wxT( "Exception while querying quote char: %s" ), m_lastError );
+        KI_LOG_TRACE( traceDatabase, wxT( "Exception while querying quote char: %s" ), m_lastError );
         return false;
     }
 
@@ -340,14 +341,14 @@ std::string DATABASE_CONNECTION::columnsFor( const std::string& aTable )
 {
     if( !m_columnCache.count( aTable ) )
     {
-        wxLogTrace( traceDatabase, wxT( "columnsFor: requested table %s missing from cache!" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "columnsFor: requested table %s missing from cache!" ),
                     aTable );
         return "*";
     }
 
     if( m_columnCache[aTable].empty() )
     {
-        wxLogTrace( traceDatabase, wxT( "columnsFor: requested table %s has no columns mapped!" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "columnsFor: requested table %s has no columns mapped!" ),
                     aTable );
         return "*";
     }
@@ -371,7 +372,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
 {
     if( !m_conn )
     {
-        wxLogTrace( traceDatabase, wxT( "Called SelectOne without valid connection!" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "Called SelectOne without valid connection!" ) );
         return false;
     }
 
@@ -379,7 +380,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
 
     if( tableMapIter == m_tables.end() )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectOne: requested table %s not found in cache" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: requested table %s not found in cache" ),
                     aTable );
         return false;
     }
@@ -391,7 +392,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
     {
         if( cacheEntry.count( aWhere.second ) )
         {
-            wxLogTrace( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s` - cache hit" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s` - cache hit" ),
                         tableName, aWhere.second );
             aResult = cacheEntry.at( aWhere.second );
             return true;
@@ -399,7 +400,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
     }
     else
     {
-        wxLogTrace( traceDatabase, wxT( "SelectOne: table `%s` not in row cache; will SelectAll" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: table `%s` not in row cache; will SelectAll" ),
                     tableName, aWhere.second );
 
         selectAllAndCache( tableName, aWhere.first );
@@ -408,7 +409,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
         {
             if( cacheEntry.count( aWhere.second ) )
             {
-                wxLogTrace( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s` - cache hit" ),
+                KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s` - cache hit" ),
                             tableName, aWhere.second );
                 aResult = cacheEntry.at( aWhere.second );
                 return true;
@@ -418,7 +419,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
 
     if( !m_columnCache.count( tableName ) )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectOne: requested table %s missing from column cache" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: requested table %s missing from column cache" ),
                     tableName );
         return false;
     }
@@ -427,7 +428,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
 
     if( columnCacheIter == m_columnCache.at( tableName ).end() )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectOne: requested column %s not found in cache for %s" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: requested column %s not found in cache for %s" ),
                     aWhere.first, tableName );
         return false;
     }
@@ -452,7 +453,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
     catch( std::exception& e )
     {
         m_lastError = e.what();
-        wxLogTrace( traceDatabase, wxT( "Exception while preparing statement for SelectOne: %s" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "Exception while preparing statement for SelectOne: %s" ),
                     m_lastError );
 
         // Exception may be due to a connection error; nanodbc won't auto-reconnect
@@ -471,7 +472,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
     catch( std::exception& e )
     {
         m_lastError = e.what();
-        wxLogTrace( traceDatabase, wxT( "Exception while binding parameter for SelectOne: %s" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "Exception while binding parameter for SelectOne: %s" ),
                     m_lastError );
 
         Disconnect();
@@ -479,7 +480,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
         return false;
     }
 
-    wxLogTrace( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s`" ), toUTF8( query ),
+    KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s`" ), toUTF8( query ),
                 aWhere.second );
 
     nanodbc::result results;
@@ -491,7 +492,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
     catch( std::exception& e )
     {
         m_lastError = e.what();
-        wxLogTrace( traceDatabase, wxT( "Exception while executing statement for SelectOne: %s" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "Exception while executing statement for SelectOne: %s" ),
                     m_lastError );
 
         // Exception may be due to a connection error; nanodbc won't auto-reconnect
@@ -505,11 +506,11 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
 
     if( !results.first() )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectOne: no results returned from query" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: no results returned from query" ) );
         return false;
     }
 
-    wxLogTrace( traceDatabase, wxT( "SelectOne: %ld results returned from query in %0.1f ms" ),
+    KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: %ld results returned from query in %0.1f ms" ),
                 results.rows(), timer.msecs() );
 
     aResult.clear();
@@ -549,7 +550,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable,
     catch( std::exception& e )
     {
         m_lastError = e.what();
-        wxLogTrace( traceDatabase, wxT( "Exception while parsing results from SelectOne: %s" ),
+        KI_LOG_TRACE( traceDatabase, wxT( "Exception while parsing results from SelectOne: %s" ),
                     m_lastError );
         return false;
     }
@@ -568,7 +569,7 @@ bool DATABASE_CONNECTION::selectAllAndCache( const std::string& aTable, const st
                                                        columnsFor( aTable ),
                                                        m_quoteChar, aTable, m_quoteChar ) );
 
-        wxLogTrace( traceDatabase, wxT( "selectAllAndCache: `%s`" ), toUTF8( query ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "selectAllAndCache: `%s`" ), toUTF8( query ) );
 
         PROF_TIMER timer;
 
@@ -579,7 +580,7 @@ bool DATABASE_CONNECTION::selectAllAndCache( const std::string& aTable, const st
         catch( std::exception& e )
         {
             m_lastError = e.what();
-            wxLogTrace( traceDatabase,
+            KI_LOG_TRACE( traceDatabase,
                         wxT( "Exception while preparing query for selectAllAndCache: %s" ),
                         m_lastError );
 
@@ -598,7 +599,7 @@ bool DATABASE_CONNECTION::selectAllAndCache( const std::string& aTable, const st
         catch( std::exception& e )
         {
             m_lastError = e.what();
-            wxLogTrace( traceDatabase,
+            KI_LOG_TRACE( traceDatabase,
                         wxT( "Exception while executing query for selectAllAndCache: %s" ),
                         m_lastError );
 
@@ -617,7 +618,7 @@ bool DATABASE_CONNECTION::selectAllAndCache( const std::string& aTable, const st
                 {
                     m_lastError = aException.what();
                     std::string extra = aExtraContext.empty() ? "" : ": " + aExtraContext;
-                    wxLogTrace( traceDatabase,
+                    KI_LOG_TRACE( traceDatabase,
                                 wxT( "Exception while parsing result %d from selectAllAndCache: %s%s" ),
                                 cacheEntry.size(), m_lastError, extra );
                 };
@@ -697,7 +698,7 @@ bool DATABASE_CONNECTION::selectAllAndCache( const std::string& aTable, const st
 
             if( !result.count( aKey ) )
             {
-                wxLogTrace( traceDatabase,
+                KI_LOG_TRACE( traceDatabase,
                             wxT( "selectAllAndCache: warning: key %s not found in result set" ), aKey );
                 continue;
             }
@@ -706,7 +707,7 @@ bool DATABASE_CONNECTION::selectAllAndCache( const std::string& aTable, const st
             cacheEntry[keyStr] = result;
         }
 
-        wxLogTrace( traceDatabase, wxT( "selectAllAndCache from %s completed in %0.1f ms" ), aTable,
+        KI_LOG_TRACE( traceDatabase, wxT( "selectAllAndCache from %s completed in %0.1f ms" ), aTable,
                     timer.msecs() );
 
         m_cache->Put( aTable, cacheEntry );
@@ -715,7 +716,7 @@ bool DATABASE_CONNECTION::selectAllAndCache( const std::string& aTable, const st
     catch( std::exception& e )
     {
         m_lastError = e.what();
-        wxLogTrace( traceDatabase, wxT( "Exception in selectAllAndCache: %s" ), m_lastError );
+        KI_LOG_TRACE( traceDatabase, wxT( "Exception in selectAllAndCache: %s" ), m_lastError );
 
         // Exception may be due to a connection error; nanodbc won't auto-reconnect
         Disconnect();
@@ -729,7 +730,7 @@ bool DATABASE_CONNECTION::SelectAll( const std::string& aTable, const std::strin
 {
     if( !m_conn )
     {
-        wxLogTrace( traceDatabase, wxT( "Called SelectAll without valid connection!" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "Called SelectAll without valid connection!" ) );
         return false;
     }
 
@@ -737,7 +738,7 @@ bool DATABASE_CONNECTION::SelectAll( const std::string& aTable, const std::strin
 
     if( tableMapIter == m_tables.end() )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectAll: requested table %s not found in cache" ), aTable );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: requested table %s not found in cache" ), aTable );
         return false;
     }
 
@@ -747,7 +748,7 @@ bool DATABASE_CONNECTION::SelectAll( const std::string& aTable, const std::strin
     {
         if( !selectAllAndCache( aTable, aKey ) )
         {
-            wxLogTrace( traceDatabase, wxT( "SelectAll: `%s` cache fill failed" ), aTable );
+            KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: `%s` cache fill failed" ), aTable );
             return false;
         }
 
@@ -757,11 +758,11 @@ bool DATABASE_CONNECTION::SelectAll( const std::string& aTable, const std::strin
 
     if( !m_cache->Get( aTable, cacheEntry ) )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectAll: `%s` failed to get results from cache!" ), aTable );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: `%s` failed to get results from cache!" ), aTable );
         return false;
     }
 
-    wxLogTrace( traceDatabase, wxT( "SelectAll: `%s` - returning cached results" ), aTable );
+    KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: `%s` - returning cached results" ), aTable );
 
     aResults.reserve( cacheEntry.size() );
 

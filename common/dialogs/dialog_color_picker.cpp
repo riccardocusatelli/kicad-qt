@@ -27,6 +27,7 @@
 #include <widgets/color_swatch.h>
 #include <wx/bitmap.h>
 #include <wx/dcmemory.h>
+#include <core/ki_assert.h>
 
 #define ALPHA_MAX 100   // the max value returned by the alpha (opacity) slider
 #define SLOPE_AXIS ( bmsize.y / 5.28 ) // was 50 at 264 size
@@ -84,7 +85,7 @@ DIALOG_COLOR_PICKER::DIALOG_COLOR_PICKER( wxWindow* aParent, const COLOR4D& aCur
         m_val = 1.0;
 
     APP_SETTINGS_BASE* cfg = Kiface().KifaceSettings();
-    wxASSERT( cfg );
+    KI_ASSERT( cfg );
 
     m_notebook->SetSelection( cfg->m_ColorPicker.default_tab );
 
@@ -108,7 +109,7 @@ DIALOG_COLOR_PICKER::DIALOG_COLOR_PICKER( wxWindow* aParent, const COLOR4D& aCur
 DIALOG_COLOR_PICKER::~DIALOG_COLOR_PICKER()
 {
     APP_SETTINGS_BASE* cfg = Kiface().KifaceSettings();
-    wxASSERT( cfg );
+    KI_ASSERT( cfg );
 
     if( cfg )
         cfg->m_ColorPicker.default_tab = m_notebook->GetSelection();

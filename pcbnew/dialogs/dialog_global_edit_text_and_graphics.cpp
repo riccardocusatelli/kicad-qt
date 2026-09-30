@@ -44,6 +44,7 @@
 #include <tools/global_edit_tool.h>
 #include <tools/footprint_editor_control.h>
 #include <dialog_global_edit_text_and_graphics_base.h>
+#include <core/ki_assert.h>
 
 // Columns of layer classes grid
 enum
@@ -536,7 +537,7 @@ bool DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS::TransferDataFromWindow()
 
         for( PCB_FIELD* field : fp->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             if( field->IsReference() )
                 continue;

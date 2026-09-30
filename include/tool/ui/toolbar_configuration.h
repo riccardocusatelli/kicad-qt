@@ -33,6 +33,7 @@
 #include <tool/action_toolbar.h>
 #include <tool/tool_action.h>
 #include <tool/ui/toolbar_context_menu_registry.h>
+#include <core/ki_assert.h>
 
 enum class TOOLBAR_ITEM_TYPE
 {
@@ -60,7 +61,7 @@ public:
         m_Type( aType ),
         m_Size( aSize )
     {
-        wxASSERT( aType == TOOLBAR_ITEM_TYPE::SPACER );
+        KI_ASSERT( aType == TOOLBAR_ITEM_TYPE::SPACER );
     }
 
     TOOLBAR_ITEM( TOOLBAR_ITEM_TYPE aType, std::string aName ) :

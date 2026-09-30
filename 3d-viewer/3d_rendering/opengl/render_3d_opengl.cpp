@@ -43,6 +43,8 @@
 #include <wx/log.h>
 
 #include <base_units.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 /**
  * Scale conversion from 3d model units to pcb units
@@ -53,7 +55,7 @@ RENDER_3D_OPENGL::RENDER_3D_OPENGL( EDA_3D_CANVAS* aCanvas, BOARD_ADAPTER& aAdap
         RENDER_3D_BASE( aAdapter, aCamera ),
         m_canvas( aCanvas )
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_OPENGL::RENDER_3D_OPENGL" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_OPENGL::RENDER_3D_OPENGL" ) );
 
     m_layers.clear();
     m_outerLayerHoles.clear();
@@ -90,7 +92,7 @@ RENDER_3D_OPENGL::RENDER_3D_OPENGL( EDA_3D_CANVAS* aCanvas, BOARD_ADAPTER& aAdap
 
 RENDER_3D_OPENGL::~RENDER_3D_OPENGL()
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_OPENGL::RENDER_3D_OPENGL" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_OPENGL::RENDER_3D_OPENGL" ) );
 
     freeAllLists();
 
@@ -993,7 +995,7 @@ void RENDER_3D_OPENGL::freeAllLists()
 void RENDER_3D_OPENGL::renderSolderMaskLayer( PCB_LAYER_ID aLayerID, float aZPos,
                                               bool aShowThickness, bool aSkipRenderHoles )
 {
-    wxASSERT( (aLayerID == B_Mask) || (aLayerID == F_Mask) );
+    KI_ASSERT( (aLayerID == B_Mask) || (aLayerID == F_Mask) );
 
     if( m_board )
     {
@@ -1027,7 +1029,7 @@ void RENDER_3D_OPENGL::get3dModelsSelected( std::list<MODELTORENDER> &aDstRender
                                             bool aGetBot, bool aRenderTransparentOnly,
                                             bool aRenderSelectedOnly )
 {
-    wxASSERT( ( aGetTop == true ) || ( aGetBot == true ) );
+    KI_ASSERT( ( aGetTop == true ) || ( aGetBot == true ) );
 
     if( !m_boardAdapter.GetBoard() )
         return;

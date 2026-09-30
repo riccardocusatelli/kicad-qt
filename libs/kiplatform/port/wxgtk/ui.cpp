@@ -30,6 +30,7 @@
 
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
+#include <core/ki_log.h>
 
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -319,7 +320,7 @@ wxPoint KIPLATFORM::UI::GetMousePosition()
 
     if( wx_pos == s_warped_from )
     {
-        wxLogTrace( traceWayland, wxS( "Faked mouse pos %d %d -> %d %d" ), wx_pos.x, wx_pos.y,
+        KI_LOG_TRACE( traceWayland, wxS( "Faked mouse pos %d %d -> %d %d" ), wx_pos.x, wx_pos.y,
                     s_warped_to.x, s_warped_to.y );
 
         return s_warped_to;
@@ -363,13 +364,13 @@ bool KIPLATFORM::UI::WarpPointer( wxWindow* aWindow, int aX, int aY )
                 s_warped_from = initialPos;
                 s_warped_to = aWindow->ClientToScreen( wxPoint( aX, aY ) );
 
-                wxLogTrace( traceWayland, wxS( "Set warped from %d %d to %d %d" ), s_warped_from.x,
+                KI_LOG_TRACE( traceWayland, wxS( "Set warped from %d %d to %d %d" ), s_warped_from.x,
                             s_warped_from.y, s_warped_to.x, s_warped_to.y );
 
                 return true;
             }
 
-            wxLogTrace( traceWayland, wxS( "*** Warp to %d %d failed ***" ), aX, aY );
+            KI_LOG_TRACE( traceWayland, wxS( "*** Warp to %d %d failed ***" ), aX, aY );
 
             return false;
         }
@@ -489,7 +490,7 @@ static bool                               s_wl_locked_flag = false;
 static void handle_global( void* data, struct wl_registry* registry, uint32_t name,
                            const char* interface, uint32_t version )
 {
-    wxLogTrace( traceWayland, "handle_global received %s name %u version %u", interface,
+    KI_LOG_TRACE( traceWayland, "handle_global received %s name %u version %u", interface,
                 (unsigned int) name, (unsigned int) version );
 
     if( strcmp( interface, wl_compositor_interface.name ) == 0 )
@@ -506,7 +507,7 @@ static void handle_global( void* data, struct wl_registry* registry, uint32_t na
 
 static void handle_global_remove( void*, struct wl_registry*, uint32_t name )
 {
-    wxLogTrace( traceWayland, "handle_global_remove name %u", (unsigned int) name );
+    KI_LOG_TRACE( traceWayland, "handle_global_remove name %u", (unsigned int) name );
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -516,13 +517,13 @@ static const struct wl_registry_listener registry_listener = {
 
 static void confined_handler( void* data, struct zwp_confined_pointer_v1* zwp_confined_pointer_v1 )
 {
-    wxLogTrace( traceWayland, wxS( "Pointer confined" ) );
+    KI_LOG_TRACE( traceWayland, wxS( "Pointer confined" ) );
 }
 
 static void unconfined_handler( void*                           data,
                                 struct zwp_confined_pointer_v1* zwp_confined_pointer_v1 )
 {
-    wxLogTrace( traceWayland, wxS( "Pointer unconfined" ) );
+    KI_LOG_TRACE( traceWayland, wxS( "Pointer unconfined" ) );
 }
 
 static const struct zwp_confined_pointer_v1_listener confined_pointer_listener = {
@@ -533,12 +534,12 @@ static const struct zwp_confined_pointer_v1_listener confined_pointer_listener =
 static void locked_handler( void* data, struct zwp_locked_pointer_v1* zwp_locked_pointer_v1 )
 {
     s_wl_locked_flag = true;
-    wxLogTrace( traceWayland, wxS( "Pointer locked" ) );
+    KI_LOG_TRACE( traceWayland, wxS( "Pointer locked" ) );
 }
 
 static void unlocked_handler( void* data, struct zwp_locked_pointer_v1* zwp_locked_pointer_v1 )
 {
-    wxLogTrace( traceWayland, wxS( "Pointer unlocked" ) );
+    KI_LOG_TRACE( traceWayland, wxS( "Pointer unlocked" ) );
 }
 
 static const struct zwp_locked_pointer_v1_listener locked_pointer_listener = {
@@ -575,7 +576,7 @@ static void on_frame_clock_after_paint( GdkFrameClock* clock, GtkWidget* widget 
         zwp_locked_pointer_v1_destroy( s_wl_locked_pointer );
         s_wl_locked_pointer = NULL;
 
-        wxLogTrace( traceWayland, wxS( "after-paint: locked_pointer destroyed" ) );
+        KI_LOG_TRACE( traceWayland, wxS( "after-paint: locked_pointer destroyed" ) );
 
         g_signal_handler_disconnect( (gpointer) clock, s_after_paint_handler_id );
         s_after_paint_handler_id = 0;
@@ -583,7 +584,7 @@ static void on_frame_clock_after_paint( GdkFrameClock* clock, GtkWidget* widget 
         // restore confinement
         if( s_wl_confinement_region != NULL )
         {
-            wxLogTrace( traceWayland, wxS( "after-paint: Restoring confinement" ) );
+            KI_LOG_TRACE( traceWayland, wxS( "after-paint: Restoring confinement" ) );
 
             GdkDisplay* disp = gtk_widget_get_display( widget );
             GdkSeat*    seat = gdk_display_get_default_seat( disp );
@@ -614,7 +615,7 @@ static bool wayland_warp_pointer( GtkWidget* aWidget, GdkDisplay* aDisplay, GdkW
     if( s_after_paint_handler_id )
     {
         // Previous paint not done yet
-        wxLogTrace( traceWayland, wxS( "Not warping: after-paint pending" ) );
+        KI_LOG_TRACE( traceWayland, wxS( "Not warping: after-paint pending" ) );
         return false;
     }
 
@@ -623,7 +624,7 @@ static bool wayland_warp_pointer( GtkWidget* aWidget, GdkDisplay* aDisplay, GdkW
     if( s_wl_locked_pointer )
     {
         // This shouldn't happen but let's be safe
-        wxLogTrace( traceWayland, wxS( "** Destroying previous locked_pointer **" ) );
+        KI_LOG_TRACE( traceWayland, wxS( "** Destroying previous locked_pointer **" ) );
         zwp_locked_pointer_v1_destroy( s_wl_locked_pointer );
         wl_display_roundtrip( wldisp );
         s_wl_locked_pointer = NULL;
@@ -668,7 +669,7 @@ static bool wayland_warp_pointer( GtkWidget* aWidget, GdkDisplay* aDisplay, GdkW
 
 bool KIPLATFORM::UI::InfiniteDragPrepareWindow( wxWindow* aWindow )
 {
-    wxLogTrace( traceWayland, wxS( "InfiniteDragPrepareWindow" ) );
+    KI_LOG_TRACE( traceWayland, wxS( "InfiniteDragPrepareWindow" ) );
 
     GtkWidget*  widget = static_cast<GtkWidget*>( aWindow->GetHandle() );
     GdkDisplay* disp = gtk_widget_get_display( widget );
@@ -693,7 +694,7 @@ bool KIPLATFORM::UI::InfiniteDragPrepareWindow( wxWindow* aWindow )
         gint x, y, width, height;
         gdk_window_get_geometry( gdk_window_get_toplevel( win ), &x, &y, &width, &height );
 
-        wxLogTrace( traceWayland, wxS( "Confine region: %d %d %d %d" ), x, y, width, height );
+        KI_LOG_TRACE( traceWayland, wxS( "Confine region: %d %d %d %d" ), x, y, width, height );
 
         s_wl_confinement_region = wl_compositor_create_region( s_wl_compositor );
         wl_region_add( s_wl_confinement_region, x, y, width, height );
@@ -719,7 +720,7 @@ bool KIPLATFORM::UI::InfiniteDragPrepareWindow( wxWindow* aWindow )
 
 void KIPLATFORM::UI::InfiniteDragReleaseWindow()
 {
-    wxLogTrace( traceWayland, wxS( "InfiniteDragReleaseWindow" ) );
+    KI_LOG_TRACE( traceWayland, wxS( "InfiniteDragReleaseWindow" ) );
 
     if( s_wl_confined_pointer )
     {

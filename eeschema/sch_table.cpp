@@ -36,6 +36,7 @@
 #include <geometry/geometry_utils.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 SCH_TABLE::SCH_TABLE( int aLineWidth ) :
@@ -81,7 +82,7 @@ SCH_TABLE::~SCH_TABLE()
 
 void SCH_TABLE::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( aItem != nullptr && aItem->Type() == SCH_TABLE_T, wxT( "Cannot swap data with invalid table." ) );
+    KI_CHECK_RET( aItem != nullptr && aItem->Type() == SCH_TABLE_T, wxT( "Cannot swap data with invalid table." ) );
 
     SCH_TABLE* table = static_cast<SCH_TABLE*>( aItem );
 

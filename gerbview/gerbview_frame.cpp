@@ -59,6 +59,8 @@
 #include "widgets/gerbview_layer_widget.h"
 #include "widgets/dcode_selection_box.h"
 #include <dialog_draw_layers_settings.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #if defined(__linux__) || defined(__FreeBSD__)
 #include <spacenav/spnav_2d_plugin.h>
@@ -325,7 +327,7 @@ void GERBVIEW_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
     EDA_DRAW_FRAME::LoadSettings( aCfg );
 
     GERBVIEW_SETTINGS* cfg = dynamic_cast<GERBVIEW_SETTINGS*>( aCfg );
-    wxCHECK( cfg, /*void*/ );
+    KI_CHECK( cfg, /*void*/ );
 
     SetElementVisibility( LAYER_GERBVIEW_DRAWINGSHEET, cfg->m_Appearance.show_border_and_titleblock );
     SetElementVisibility( LAYER_GERBVIEW_PAGE_LIMITS, cfg->m_Display.m_DisplayPageLimits );
@@ -447,7 +449,7 @@ void GERBVIEW_FRAME::SetElementVisibility( int aLayerID, bool aNewState )
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "GERBVIEW_FRAME::SetElementVisibility(): bad arg %d" ),
+        KI_FAIL_MSG( wxString::Format( wxT( "GERBVIEW_FRAME::SetElementVisibility(): bad arg %d" ),
                                       aLayerID ) );
     }
 
@@ -731,7 +733,7 @@ bool GERBVIEW_FRAME::IsElementVisible( int aLayerID ) const
     case LAYER_GERBVIEW_BACKGROUND:   return true;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "GERBVIEW_FRAME::IsElementVisible(): bad arg %d" ), aLayerID ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "GERBVIEW_FRAME::IsElementVisible(): bad arg %d" ), aLayerID ) );
     }
 
     return true;
@@ -797,7 +799,7 @@ COLOR4D GERBVIEW_FRAME::GetVisibleElementColor( int aLayerID )
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "GERBVIEW_FRAME::GetVisibleElementColor(): bad arg %d" ),
+        KI_FAIL_MSG( wxString::Format( wxT( "GERBVIEW_FRAME::GetVisibleElementColor(): bad arg %d" ),
                                       aLayerID ) );
     }
 
@@ -919,14 +921,14 @@ const VECTOR2I GERBVIEW_FRAME::GetPageSizeIU() const
 
 const TITLE_BLOCK& GERBVIEW_FRAME::GetTitleBlock() const
 {
-    wxASSERT( m_gerberLayout );
+    KI_ASSERT( m_gerberLayout );
     return m_gerberLayout->GetTitleBlock();
 }
 
 
 void GERBVIEW_FRAME::SetTitleBlock( const TITLE_BLOCK& aTitleBlock )
 {
-    wxASSERT( m_gerberLayout );
+    KI_ASSERT( m_gerberLayout );
     m_gerberLayout->SetTitleBlock( aTitleBlock );
 }
 
@@ -1069,11 +1071,11 @@ void GERBVIEW_FRAME::ActivateGalCanvas()
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
     }
     catch( ... )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "Unknown exception during SpaceMouse initialization" ) );
     }
 }
@@ -1109,7 +1111,7 @@ void GERBVIEW_FRAME::setupUIConditions()
     ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
     EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )

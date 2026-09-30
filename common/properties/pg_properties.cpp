@@ -35,6 +35,7 @@
 #include <properties/property.h>
 #include <string_utils.h>
 #include <widgets/color_swatch.h>
+#include <core/ki_assert.h>
 
 
 class wxAnyToSTD_OPTIONAL_INT_VARIANTRegistrationImpl : public wxAnyToVariantRegistration
@@ -252,7 +253,7 @@ wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME*
         break;
 
     default:
-        wxFAIL;
+        KI_FAIL();
         KI_FALLTHROUGH;
         /* fall through */
     case PROPERTY_DISPLAY::PT_DEFAULT:
@@ -295,7 +296,7 @@ wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME*
         }
         else
         {
-            wxFAIL_MSG( wxString::Format( wxS( "Property %s not supported by PGPropertyFactory" ),
+            KI_FAIL_MSG( wxString::Format( wxS( "Property %s not supported by PGPropertyFactory" ),
                                           aProperty->Name() ) );
             ret = new wxPropertyCategory();
             ret->Enable( false );
@@ -338,7 +339,7 @@ bool PGPROPERTY_DISTANCE::StringToDistance( wxVariant& aVariant, const wxString&
                                             int aFlags ) const
 #endif
 {
-    wxCHECK_MSG( false, false, wxS( "PGPROPERTY_DISTANCE::StringToDistance should not be used." ) );
+    KI_CHECK_MSG( false, false, wxS( "PGPROPERTY_DISTANCE::StringToDistance should not be used." ) );
 }
 
 
@@ -378,7 +379,7 @@ wxString PGPROPERTY_DISTANCE::DistanceToString( wxVariant& aVariant, int aFlags 
     }
     else
     {
-        wxFAIL_MSG( wxT( "Expected int (or std::optional<int>) value type" ) );
+        KI_FAIL_MSG( wxT( "Expected int (or std::optional<int>) value type" ) );
         return wxEmptyString;
     }
 
@@ -404,7 +405,7 @@ bool PGPROPERTY_AREA::StringToValue( wxVariant& aVariant, const wxString& aText,
 bool PGPROPERTY_AREA::StringToValue( wxVariant& aVariant, const wxString& aText, int aArgFlags ) const
 #endif
 {
-    wxCHECK_MSG( false, false, wxS( "PGPROPERTY_AREA::StringToValue should not be used." ) );
+    KI_CHECK_MSG( false, false, wxS( "PGPROPERTY_AREA::StringToValue should not be used." ) );
 }
 
 
@@ -426,7 +427,7 @@ wxString PGPROPERTY_AREA::ValueToString( wxVariant& aVariant, int aArgFlags ) co
     }
     else
     {
-        wxFAIL_MSG( wxString::Format( wxS( "Unexpected variant type in PGPROPERTY_AREA: %s" ),
+        KI_FAIL_MSG( wxString::Format( wxS( "Unexpected variant type in PGPROPERTY_AREA: %s" ),
                                       aVariant.GetType() ) );
         return wxEmptyString;
     }
@@ -493,7 +494,7 @@ PGPROPERTY_RATIO::PGPROPERTY_RATIO() :
 
 const wxPGEditor* PGPROPERTY_RATIO::DoGetEditorClass() const
 {
-    wxCHECK_MSG( m_customEditor, wxPGEditor_TextCtrl,
+    KI_CHECK_MSG( m_customEditor, wxPGEditor_TextCtrl,
                  wxT( "Make sure to RegisterEditorClass() for PGPROPERTY_RATIO!" ) );
     return m_customEditor;
 }
@@ -506,7 +507,7 @@ bool PGPROPERTY_RATIO::StringToValue( wxVariant& aVariant, const wxString& aText
 bool PGPROPERTY_RATIO::StringToValue( wxVariant& aVariant, const wxString& aText, int aArgFlags ) const
 #endif
 {
-    wxCHECK_MSG( false, false, wxS( "PGPROPERTY_RATIO::StringToValue should not be used." ) );
+    KI_CHECK_MSG( false, false, wxS( "PGPROPERTY_RATIO::StringToValue should not be used." ) );
 }
 
 
@@ -533,7 +534,7 @@ wxString PGPROPERTY_RATIO::ValueToString( wxVariant& aVariant, int aArgFlags ) c
     }
     else
     {
-        wxFAIL_MSG( wxT( "Expected double (or std::optional<double>) value type" ) );
+        KI_FAIL_MSG( wxT( "Expected double (or std::optional<double>) value type" ) );
         return wxEmptyString;
     }
 
@@ -622,7 +623,7 @@ wxString PGPROPERTY_ANGLE::ValueToString( wxVariant& aVariant, int aArgFlags ) c
     }
     else
     {
-        wxCHECK_MSG( false, wxEmptyString, wxS( "Unexpected variant type in PGPROPERTY_ANGLE" ) );
+        KI_CHECK_MSG( false, wxEmptyString, wxS( "Unexpected variant type in PGPROPERTY_ANGLE" ) );
     }
 }
 
@@ -703,7 +704,7 @@ PGPROPERTY_BOOL::PGPROPERTY_BOOL( const wxString& aLabel, const wxString& aName,
 
 const wxPGEditor* PGPROPERTY_BOOL::DoGetEditorClass() const
 {
-    wxCHECK_MSG( m_customEditor, wxPGEditor_CheckBox,
+    KI_CHECK_MSG( m_customEditor, wxPGEditor_CheckBox,
                  wxT( "Make sure to RegisterEditorClass() for PGPROPERTY_BOOL!" ) );
     return m_customEditor;
 }
@@ -768,7 +769,7 @@ bool PGPROPERTY_TIME::StringToValue( wxVariant& aVariant, const wxString& aText,
 bool PGPROPERTY_TIME::StringToValue( wxVariant& aVariant, const wxString& aText, int aArgFlags ) const
 #endif
 {
-    wxCHECK_MSG( false, false, wxS( "PGPROPERTY_RATIO::StringToValue should not be used." ) );
+    KI_CHECK_MSG( false, false, wxS( "PGPROPERTY_RATIO::StringToValue should not be used." ) );
 }
 
 
@@ -795,7 +796,7 @@ wxString PGPROPERTY_TIME::ValueToString( wxVariant& aVariant, int aArgFlags ) co
     }
     else
     {
-        wxFAIL_MSG( wxT( "Expected int (or std::optional<int>) value type" ) );
+        KI_FAIL_MSG( wxT( "Expected int (or std::optional<int>) value type" ) );
         return wxEmptyString;
     }
 
@@ -824,7 +825,7 @@ PGPROPERTY_NET::PGPROPERTY_NET( const wxPGChoices& aChoices ) :
 
 const wxPGEditor* PGPROPERTY_NET::DoGetEditorClass() const
 {
-    wxCHECK_MSG( m_customEditor, wxPGEditor_Choice,
+    KI_CHECK_MSG( m_customEditor, wxPGEditor_Choice,
                  wxT( "Make sure to RegisterEditorClass() for PGPROPERTY_NET!" ) );
 
     return m_customEditor;

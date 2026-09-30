@@ -27,6 +27,7 @@
 #include <optional>
 #include <rc_item.h>
 #include "sch_sheet_path.h"
+#include <core/ki_assert.h>
 
 /**
  * A specialisation of the RC_TREE_MODEL class to enable ERC errors / warnings to be resolved in
@@ -115,7 +116,7 @@ public:
      */
     const SCH_SHEET_PATH& GetSpecificSheetPath() const
     {
-        wxASSERT( m_sheetSpecificPath.has_value() );
+        KI_ASSERT( m_sheetSpecificPath.has_value() );
         return m_sheetSpecificPath.value();
     }
 
@@ -150,7 +151,7 @@ public:
      */
     SCH_SHEET_PATH& GetMainItemSheetPath()
     {
-        wxASSERT( MainItemHasSheetPath() );
+        KI_ASSERT( MainItemHasSheetPath() );
         return m_mainItemSheet.value();
     }
 
@@ -160,7 +161,7 @@ public:
      */
     SCH_SHEET_PATH& GetAuxItemSheetPath()
     {
-        wxASSERT( AuxItemHasSheetPath() );
+        KI_ASSERT( AuxItemHasSheetPath() );
         return m_auxItemSheet.value();
     }
 

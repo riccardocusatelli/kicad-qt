@@ -31,6 +31,7 @@
 #include <functional>
 #include <string>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 class EDA_ITEM;
 class TOOL_EVENT;
@@ -186,7 +187,7 @@ protected:
     T* getEditFrame() const
     {
 #if !defined( QA_TEST )   // Dynamic casts give the linker a seizure in the test framework
-        wxASSERT( dynamic_cast<T*>( getToolHolderInternal() ) );
+        KI_ASSERT( dynamic_cast<T*>( getToolHolderInternal() ) );
 #endif
         return static_cast<T*>( getToolHolderInternal() );
     }
@@ -199,7 +200,7 @@ protected:
     {
         EDA_ITEM* m = getModelInternal();
 #if !defined( QA_TEST )   // Dynamic casts give the linker a seizure in the test framework
-        wxASSERT( dynamic_cast<T*>( m ) );
+        KI_ASSERT( dynamic_cast<T*>( m ) );
 #endif
         return static_cast<T*>( m );
     }

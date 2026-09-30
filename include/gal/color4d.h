@@ -33,6 +33,7 @@
 #include <wx/string.h>
 #include <hash.h>
 #include <nlohmann/json_fwd.hpp>
+#include <core/ki_assert.h>
 
 
 /**
@@ -125,10 +126,10 @@ public:
         b( aBlue ),
         a( aAlpha )
     {
-        wxASSERT( r >= 0.0 && r <= 1.0 );
-        wxASSERT( g >= 0.0 && g <= 1.0 );
-        wxASSERT( b >= 0.0 && b <= 1.0 );
-        wxASSERT( a >= 0.0 && a <= 1.0 );
+        KI_ASSERT( r >= 0.0 && r <= 1.0 );
+        KI_ASSERT( g >= 0.0 && g <= 1.0 );
+        KI_ASSERT( b >= 0.0 && b <= 1.0 );
+        KI_ASSERT( a >= 0.0 && a <= 1.0 );
     }
 
     /**
@@ -209,7 +210,7 @@ public:
      */
     COLOR4D& Brighten( double aFactor )
     {
-        wxASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
+        KI_ASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
 
         r = r * ( 1.0 - aFactor ) + aFactor;
         g = g * ( 1.0 - aFactor ) + aFactor;
@@ -226,7 +227,7 @@ public:
      */
     COLOR4D& Darken( double aFactor )
     {
-        wxASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
+        KI_ASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
 
         r = r * ( 1.0 - aFactor );
         g = g * ( 1.0 - aFactor );
@@ -268,7 +269,7 @@ public:
      */
     COLOR4D Brightened( double aFactor ) const
     {
-        wxASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
+        KI_ASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
 
         return COLOR4D( r * ( 1.0 - aFactor ) + aFactor, g * ( 1.0 - aFactor ) + aFactor,
                         b * ( 1.0 - aFactor ) + aFactor, a );
@@ -282,7 +283,7 @@ public:
      */
     COLOR4D Darkened( double aFactor ) const
     {
-        wxASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
+        KI_ASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
 
         return COLOR4D( r * ( 1.0 - aFactor ), g * ( 1.0 - aFactor ), b * ( 1.0 - aFactor ), a );
     }
@@ -295,7 +296,7 @@ public:
      */
     COLOR4D Mix( const COLOR4D& aColor, double aFactor ) const
     {
-        wxASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
+        KI_ASSERT( aFactor >= 0.0 && aFactor <= 1.0 );
 
         return COLOR4D( aColor.r * ( 1.0 - aFactor ) + r * aFactor,
                         aColor.g * ( 1.0 - aFactor ) + g * aFactor,
@@ -311,7 +312,7 @@ public:
      */
      COLOR4D WithAlpha( double aAlpha ) const
      {
-         wxASSERT( aAlpha >= 0.0 && aAlpha <= 1.0 );
+         KI_ASSERT( aAlpha >= 0.0 && aAlpha <= 1.0 );
 
          return COLOR4D( r, g, b, aAlpha );
      }

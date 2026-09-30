@@ -53,6 +53,7 @@
 #include <widgets/symbol_library_save_as_filedlg_hook.h>
 #include <io/kicad/kicad_io_utils.h>
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_assert.h>
 
 
 void SYMBOL_EDIT_FRAME::UpdateTitle()
@@ -291,7 +292,7 @@ bool SYMBOL_EDIT_FRAME::LoadOneLibrarySymbolAux( LIB_SYMBOL* aEntry, const wxStr
     }
 
     LIB_SYMBOL* lib_symbol = m_libMgr->GetBufferedSymbol( aEntry->GetName(), aLibrary );
-    wxCHECK( lib_symbol, false );
+    KI_CHECK( lib_symbol, false );
 
     m_unit = aUnit > 0 ? aUnit : 1;
     m_bodyStyle = aBodyStyle > 0 ? aBodyStyle : 1;
@@ -653,7 +654,7 @@ public:
             // If we're not copying parent symbols, we need to flatten the symbol
             // and only save that.
             flattenedSymbol = symbol.Flatten();
-            wxCHECK( flattenedSymbol, false );
+            KI_CHECK( flattenedSymbol, false );
 
             parentChain.push_back( flattenedSymbol->SharedPtr() );
         }
@@ -706,7 +707,7 @@ public:
                 LIB_SYMBOL* newParent = m_libMgr.GetSymbol( newNames.back(), aNewLibName );
 
                 // We should have stored this already, why didn't we get it back?
-                wxASSERT( newParent );
+                KI_ASSERT( newParent );
                 new_symbol.SetParent( newParent );
             }
 
@@ -746,7 +747,7 @@ private:
             // No default
         }
 
-        wxFAIL_MSG( "Invalid conflict strategy" );
+        KI_FAIL_MSG( "Invalid conflict strategy" );
         return "";
     }
 
@@ -1208,7 +1209,7 @@ void SYMBOL_EDIT_FRAME::ExportSymbol()
 
 void SYMBOL_EDIT_FRAME::UpdateAfterSymbolProperties( wxString* aOldName )
 {
-    wxCHECK( m_symbol, /* void */ );
+    KI_CHECK( m_symbol, /* void */ );
 
     wxString lib = GetCurLib();
 
@@ -1474,7 +1475,7 @@ void SYMBOL_EDIT_FRAME::Revert( bool aConfirm )
 
 void SYMBOL_EDIT_FRAME::RevertAll()
 {
-    wxCHECK_RET( m_libMgr, "Library manager object not created." );
+    KI_CHECK_RET( m_libMgr, "Library manager object not created." );
 
     Revert( false );
     m_libMgr->RevertAll();
@@ -1572,7 +1573,7 @@ bool SYMBOL_EDIT_FRAME::saveLibrary( const wxString& aLibrary, bool aNewFile )
     else
     {
         std::optional<LIBRARY_TABLE_ROW*> optRow = adapter->GetRow( aLibrary );
-        wxCHECK( optRow, false );
+        KI_CHECK( optRow, false );
 
         fn = LIBRARY_MANAGER::GetFullURI( *optRow, true );
         fileType = SCH_IO_MGR::GuessPluginTypeFromLibPath( fn.GetFullPath() );

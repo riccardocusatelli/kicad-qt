@@ -28,6 +28,7 @@
 #include <sch_sheet_path.h>
 #include <sch_symbol.h>
 #include <sch_sheet.h>
+#include <core/ki_assert.h>
 
 
 SCH_SELECTION::SCH_SELECTION( SCH_SCREEN* aScreen ) :
@@ -98,7 +99,7 @@ BOX2I SCH_SELECTION::GetBoundingBox() const
             }
             catch( const boost::bad_pointer& )
             {
-                wxFAIL_MSG( "Invalid pointer." );
+                KI_FAIL_MSG( "Invalid pointer." );
             }
         }
         else if( item->Type() == SCH_SHEET_T )

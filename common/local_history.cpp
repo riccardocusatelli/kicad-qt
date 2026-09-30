@@ -55,6 +55,7 @@
 #include <map>
 #include <functional>
 #include <cstring>
+#include <core/ki_log.h>
 
 // Resolve the local-history storage directory for @p aProjectPath, honoring the
 static wxString historyPath( const wxString& aProjectPath )
@@ -258,7 +259,7 @@ void LOCAL_HISTORY::RegisterSaver(
 {
     if( m_savers.find( aSaverObject ) != m_savers.end() )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] Saver %p already registered, skipping"), aSaverObject );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] Saver %p already registered, skipping"), aSaverObject );
         return;
     }
 
@@ -271,7 +272,7 @@ void LOCAL_HISTORY::RegisterSaver(
     entry.tracked = aLifetime.lock() != nullptr;
 
     m_savers[aSaverObject] = std::move( entry );
-    wxLogTrace( traceAutoSave, wxS( "[history] Registered saver %p (total=%zu)" ), aSaverObject, m_savers.size() );
+    KI_LOG_TRACE( traceAutoSave, wxS( "[history] Registered saver %p (total=%zu)" ), aSaverObject, m_savers.size() );
 }
 
 
@@ -301,7 +302,7 @@ void LOCAL_HISTORY::UnregisterSaver( const void* aSaverObject )
     if( it != m_savers.end() )
     {
         m_savers.erase( it );
-        wxLogTrace( traceAutoSave, wxS("[history] Unregistered saver %p (total=%zu)"), aSaverObject, m_savers.size() );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] Unregistered saver %p (total=%zu)"), aSaverObject, m_savers.size() );
     }
 }
 
@@ -310,7 +311,7 @@ void LOCAL_HISTORY::ClearAllSavers()
 {
     WaitForPendingSave();
     m_savers.clear();
-    wxLogTrace( traceAutoSave, wxS("[history] Cleared all savers") );
+    KI_LOG_TRACE( traceAutoSave, wxS("[history] Cleared all savers") );
 }
 
 
@@ -319,7 +320,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAndCommit( const wxString& aProjectPath, 
 {
     if( !localHistoryEnabled() )
     {
-        wxLogTrace( traceAutoSave, wxS( "Local history disabled, returning" ) );
+        KI_LOG_TRACE( traceAutoSave, wxS( "Local history disabled, returning" ) );
         return true;
     }
 
@@ -328,13 +329,13 @@ bool LOCAL_HISTORY::RunRegisteredSaversAndCommit( const wxString& aProjectPath, 
 
     Init( aProjectPath );
 
-    wxLogTrace( traceAutoSave,
+    KI_LOG_TRACE( traceAutoSave,
                 wxS( "[history] RunRegisteredSaversAndCommit start project='%s' title='%s' savers=%zu tag='%s'" ),
                 aProjectPath, aTitle, m_savers.size(), aTagFileType );
 
     if( m_savers.empty() )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] no savers registered; skipping") );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] no savers registered; skipping") );
         return false;
     }
 
@@ -345,7 +346,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAndCommit( const wxString& aProjectPath, 
     }
     else if( m_saveInProgress.load( std::memory_order_acquire ) )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] previous save still in progress; skipping cycle") );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] previous save still in progress; skipping cycle") );
         return false;
     }
 
@@ -358,7 +359,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAndCommit( const wxString& aProjectPath, 
     {
         size_t before = fileData.size();
         entry.saver( aProjectPath, fileData );
-        wxLogTrace( traceAutoSave, wxS( "[history] saver %p produced %zu entries (total=%zu)" ),
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] saver %p produced %zu entries (total=%zu)" ),
                     saverObject, fileData.size() - before, fileData.size() );
     }
 
@@ -370,7 +371,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAndCommit( const wxString& aProjectPath, 
         {
             if( entry.relativePath.IsEmpty() || wxFileName( entry.relativePath ).IsAbsolute() )
             {
-                wxLogTrace( traceAutoSave, wxS("[history] filtered out entry with invalid path: '%s'"),
+                KI_LOG_TRACE( traceAutoSave, wxS("[history] filtered out entry with invalid path: '%s'"),
                             entry.relativePath );
                 return true;
             }
@@ -380,7 +381,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAndCommit( const wxString& aProjectPath, 
 
     if( fileData.empty() )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] saver set produced no entries; skipping") );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] saver set produced no entries; skipping") );
         return false;
     }
 
@@ -415,7 +416,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAsAutosaveFiles( const wxString& aProject
 
     if( m_savers.empty() )
     {
-        wxLogTrace( traceAutoSave, wxS("[autosave] no savers registered; skipping") );
+        KI_LOG_TRACE( traceAutoSave, wxS("[autosave] no savers registered; skipping") );
         return false;
     }
 
@@ -425,7 +426,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAsAutosaveFiles( const wxString& aProject
 
     if( !PATHS::EnsurePathExists( autosaveRoot ) )
     {
-        wxLogTrace( traceAutoSave, wxS("[autosave] cannot create autosave root '%s'"), autosaveRoot );
+        KI_LOG_TRACE( traceAutoSave, wxS("[autosave] cannot create autosave root '%s'"), autosaveRoot );
         return false;
     }
 
@@ -448,7 +449,7 @@ bool LOCAL_HISTORY::RunRegisteredSaversAsAutosaveFiles( const wxString& aProject
 
         if( !PATHS::EnsurePathExists( dstFn.GetPath() ) )
         {
-            wxLogTrace( traceAutoSave, wxS("[autosave] cannot create dir '%s'"), dstFn.GetPath() );
+            KI_LOG_TRACE( traceAutoSave, wxS("[autosave] cannot create dir '%s'"), dstFn.GetPath() );
             continue;
         }
 
@@ -491,11 +492,11 @@ bool LOCAL_HISTORY::RunRegisteredSaversAsAutosaveFiles( const wxString& aProject
         if( out.IsOpened() && ( buf.empty() || out.Write( buf.data(), buf.size() ) == buf.size() ) )
         {
             anyWritten = true;
-            wxLogTrace( traceAutoSave, wxS("[autosave] wrote %zu bytes to '%s'"), buf.size(), dst );
+            KI_LOG_TRACE( traceAutoSave, wxS("[autosave] wrote %zu bytes to '%s'"), buf.size(), dst );
         }
         else
         {
-            wxLogTrace( traceAutoSave, wxS("[autosave] write failed for '%s'"), dst );
+            KI_LOG_TRACE( traceAutoSave, wxS("[autosave] write failed for '%s'"), dst );
         }
     }
 
@@ -679,14 +680,14 @@ void LOCAL_HISTORY::RemoveAutosaveFiles( const wxString& aProjectPath,
 bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxString& aTitle,
                                         const std::vector<HISTORY_FILE_DATA>& aFileData, bool aIsManualSave )
 {
-    wxLogTrace( traceAutoSave, wxS("[history] background: writing %zu entries for '%s'"),
+    KI_LOG_TRACE( traceAutoSave, wxS("[history] background: writing %zu entries for '%s'"),
                 aFileData.size(), aProjectPath );
 
     wxString hist = historyPath( aProjectPath );
 
     if( !PATHS::EnsurePathExists( hist ) )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] background: cannot create history root '%s'"), hist );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] background: cannot create history root '%s'"), hist );
         return false;
     }
 
@@ -698,7 +699,7 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
 
         if( !parent.IsEmpty() && !PATHS::EnsurePathExists( parent ) )
         {
-            wxLogTrace( traceAutoSave, wxS("[history] background: cannot create dir '%s'"), parent );
+            KI_LOG_TRACE( traceAutoSave, wxS("[history] background: cannot create dir '%s'"), parent );
             continue;
         }
 
@@ -715,18 +716,18 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
             {
                 fp.Write( buf.data(), buf.size() );
                 fp.Close();
-                wxLogTrace( traceAutoSave, wxS("[history] background: wrote %zu bytes to '%s'"),
+                KI_LOG_TRACE( traceAutoSave, wxS("[history] background: wrote %zu bytes to '%s'"),
                             buf.size(), dst );
             }
             else
             {
-                wxLogTrace( traceAutoSave, wxS("[history] background: failed to open '%s' for writing"), dst );
+                KI_LOG_TRACE( traceAutoSave, wxS("[history] background: failed to open '%s' for writing"), dst );
             }
         }
         else if( !entry.sourcePath.IsEmpty() )
         {
             wxCopyFile( entry.sourcePath, dst, true );
-            wxLogTrace( traceAutoSave, wxS("[history] background: copied '%s' -> '%s'"),
+            KI_LOG_TRACE( traceAutoSave, wxS("[history] background: copied '%s' -> '%s'"),
                         entry.sourcePath, dst );
         }
     }
@@ -736,7 +737,7 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
 
     if( !lock.IsLocked() )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] background: failed to acquire lock: %s"), lock.GetLockError() );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] background: failed to acquire lock: %s"), lock.GetLockError() );
         return false;
     }
 
@@ -776,7 +777,7 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
     {
         if( head_tree ) git_tree_free( head_tree );
         if( head_commit ) git_commit_free( head_commit );
-        wxLogTrace( traceAutoSave, wxS("[history] background: failed to write index tree" ) );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] background: failed to write index tree" ) );
         return false;
     }
 
@@ -792,7 +793,7 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
         if( git_diff_tree_to_tree( &diff, repo, head_tree, indexTree.get(), nullptr ) == 0 )
         {
             hasChanges = git_diff_num_deltas( diff ) > 0;
-            wxLogTrace( traceAutoSave, wxS("[history] background: diff deltas=%u"), (unsigned) git_diff_num_deltas( diff ) );
+            KI_LOG_TRACE( traceAutoSave, wxS("[history] background: diff deltas=%u"), (unsigned) git_diff_num_deltas( diff ) );
             git_diff_free( diff );
         }
     }
@@ -836,7 +837,7 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
 
         if( stagedMatchesDisk && !aIsManualSave )
         {
-            wxLogTrace( traceAutoSave, wxS( "[history] background: first commit; staged matches disk -- skipping" ) );
+            KI_LOG_TRACE( traceAutoSave, wxS( "[history] background: first commit; staged matches disk -- skipping" ) );
             hasChanges = false;
         }
     }
@@ -846,7 +847,7 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
 
     if( !hasChanges )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] background: no changes detected; no commit") );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] background: no changes detected; no commit") );
 
         // Manual save matching HEAD: amend the prior message so the user's explicit save
         // shows in the history dialog. Skip if HEAD already has this title.
@@ -870,10 +871,10 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
                                                              nullptr, aTitle.mb_str().data(), nullptr );
 
                         if( amend_rc == 0 )
-                            wxLogTrace( traceAutoSave, wxS( "[history] background: amended HEAD message '%s' -> '%s'" ),
+                            KI_LOG_TRACE( traceAutoSave, wxS( "[history] background: amended HEAD message '%s' -> '%s'" ),
                                         existingMsg, aTitle );
                         else
-                            wxLogTrace( traceAutoSave, wxS( "[history] background: amend failed rc=%d" ), amend_rc );
+                            KI_LOG_TRACE( traceAutoSave, wxS( "[history] background: amend failed rc=%d" ), amend_rc );
                     }
 
                     git_commit_free( head_commit_amend );
@@ -907,10 +908,10 @@ bool LOCAL_HISTORY::commitInBackground( const wxString& aProjectPath, const wxSt
                        parents ? &constParent : nullptr );
 
     if( rc == 0 )
-        wxLogTrace( traceAutoSave, wxS("[history] background: commit created %s (%s entries=%zu)"),
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] background: commit created %s (%s entries=%zu)"),
                     wxString::FromUTF8( git_oid_tostr_s( &commit_id ) ), msg, aFileData.size() );
     else
-        wxLogTrace( traceAutoSave, wxS("[history] background: commit failed rc=%d"), rc );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] background: commit failed rc=%d"), rc );
 
     if( parent ) git_commit_free( parent );
 
@@ -923,7 +924,7 @@ void LOCAL_HISTORY::WaitForPendingSave()
 {
     if( m_pendingFuture.valid() )
     {
-        wxLogTrace( traceAutoSave, wxS("[history] waiting for pending background save") );
+        KI_LOG_TRACE( traceAutoSave, wxS("[history] waiting for pending background save") );
         m_pendingFuture.get();
     }
 }
@@ -1041,12 +1042,12 @@ static SNAPSHOT_COMMIT_RESULT commitSnapshotWithLock( git_repository* repo, git_
 
         if( rc == 0 && status != 0 )
         {
-            wxLogTrace( traceAutoSave, wxS( "File %s status %d " ), relPath, status );
+            KI_LOG_TRACE( traceAutoSave, wxS( "File %s status %d " ), relPath, status );
             filesArrStr.emplace_back( relPathStr );
         }
         else if( rc != 0 )
         {
-            wxLogTrace( traceAutoSave, wxS( "File %s status error %d " ), relPath, rc );
+            KI_LOG_TRACE( traceAutoSave, wxS( "File %s status error %d " ), relPath, rc );
             filesArrStr.emplace_back( relPathStr ); // Add anyway even if the file is untracked.
         }
     }
@@ -1062,13 +1063,13 @@ static SNAPSHOT_COMMIT_RESULT commitSnapshotWithLock( git_repository* repo, git_
 
     if( filesArrStr.size() == 0 )
     {
-        wxLogTrace( traceAutoSave, wxS( "No changes, skipping" ) );
+        KI_LOG_TRACE( traceAutoSave, wxS( "No changes, skipping" ) );
         return SNAPSHOT_COMMIT_RESULT::NoChanges;
     }
 
     int rc = git_index_add_all( index, &filesArrGit, GIT_INDEX_ADD_DISABLE_PATHSPEC_MATCH | GIT_INDEX_ADD_FORCE, NULL,
                                 NULL );
-    wxLogTrace( traceAutoSave, wxS( "Adding %zu files, rc %d" ), filesArrStr.size(), rc );
+    KI_LOG_TRACE( traceAutoSave, wxS( "Adding %zu files, rc %d" ), filesArrStr.size(), rc );
 
     if( rc != 0 )
         return SNAPSHOT_COMMIT_RESULT::Error;
@@ -1114,7 +1115,7 @@ static SNAPSHOT_COMMIT_RESULT commitSnapshotWithLock( git_repository* repo, git_
 
     if( numChangedFiles == 0 )
     {
-        wxLogTrace( traceAutoSave, wxS( "No actual changes in tree, skipping commit" ) );
+        KI_LOG_TRACE( traceAutoSave, wxS( "No actual changes in tree, skipping commit" ) );
         return SNAPSHOT_COMMIT_RESULT::NoChanges;
     }
 
@@ -1168,7 +1169,7 @@ static bool commitSnapshotForProject( const wxString& aProjectPath, const std::v
 
     if( !lock.IsLocked() )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] commitSnapshotForProject failed to acquire lock: %s" ),
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] commitSnapshotForProject failed to acquire lock: %s" ),
                     lock.GetLockError() );
         return false;
     }
@@ -1231,7 +1232,7 @@ static void collectProjectFiles( const wxString& aProjectPath, std::vector<wxStr
     {
         if( !topLevel && isProjectDirectory( path ) )
         {
-            wxLogTrace( traceAutoSave,
+            KI_LOG_TRACE( traceAutoSave,
                         wxS( "[history] collectProjectFiles: Skipping nested project at %s" ),
                         path );
             return;
@@ -1350,7 +1351,7 @@ bool LOCAL_HISTORY::TagSave( const wxString& aProjectPath, const wxString& aFile
 
     if( !lock.IsLocked() )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] TagSave: Failed to acquire lock for %s" ), aProjectPath );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] TagSave: Failed to acquire lock for %s" ), aProjectPath );
         return false;
     }
 
@@ -1425,7 +1426,7 @@ bool LOCAL_HISTORY::CommitDuplicateOfLastSave( const wxString& aProjectPath, con
 
     if( !lock.IsLocked() )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] CommitDuplicateOfLastSave: Failed to acquire lock for %s" ), aProjectPath );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] CommitDuplicateOfLastSave: Failed to acquire lock for %s" ), aProjectPath );
         return false;
     }
 
@@ -1686,7 +1687,7 @@ bool LOCAL_HISTORY::EnforceSizeLimit( const wxString& aProjectPath, size_t aMaxB
 
     if( !lock.IsLocked() )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] EnforceSizeLimit: Failed to acquire lock for %s" ), aProjectPath );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] EnforceSizeLimit: Failed to acquire lock for %s" ), aProjectPath );
         return false;
     }
 
@@ -1842,7 +1843,7 @@ bool LOCAL_HISTORY::EnforceSizeLimit( const wxString& aProjectPath, size_t aMaxB
                         {
                             // Add tagged commit to keep list (even if it exceeds size limit)
                             keep.push_back( *toid );
-                            wxLogTrace( traceAutoSave, wxS( "[history] EnforceSizeLimit: Preserving tagged commit %s" ),
+                            KI_LOG_TRACE( traceAutoSave, wxS( "[history] EnforceSizeLimit: Preserving tagged commit %s" ),
                                        name );
                         }
                     }
@@ -2114,7 +2115,7 @@ bool extractCommitToTemp( git_repository* aRepo, git_tree* aTree, const wxString
                                    wxEmptyString );
                 if( !wxFileName::Mkdir( dirPath.GetPath(), 0777, wxPATH_MKDIR_FULL ) )
                 {
-                    wxLogTrace( traceAutoSave,
+                    KI_LOG_TRACE( traceAutoSave,
                                wxS( "[history] extractCommitToTemp: Failed to create directory '%s'" ),
                                dirPath.GetPath() );
                     extractSuccess = false;
@@ -2147,7 +2148,7 @@ bool extractCommitToTemp( git_repository* aRepo, git_tree* aTree, const wxString
                     }
                     else
                     {
-                        wxLogTrace( traceAutoSave,
+                        KI_LOG_TRACE( traceAutoSave,
                                    wxS( "[history] extractCommitToTemp: Failed to write '%s'" ),
                                    dst.GetFullPath() );
                         extractSuccess = false;
@@ -2246,7 +2247,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
                                    bool aConfirm )
 {
     // STEP 1: Verify no files are open by checking for LOCKFILEs
-    wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Checking for open files in %s" ),
+    KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Checking for open files in %s" ),
                aProjectPath );
 
     std::vector<wxString> lockedFiles;
@@ -2256,7 +2257,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
         for( const auto& f : lockedFiles )
             lockList += wxS("\n  - ") + f;
 
-        wxLogTrace( traceAutoSave,
+        KI_LOG_TRACE( traceAutoSave,
                    wxS( "[history] RestoreCommit: Cannot restore - files are open:%s" ),
                    lockList );
 
@@ -2275,7 +2276,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
 
     if( !lock.IsLocked() )
     {
-        wxLogTrace( traceAutoSave,
+        KI_LOG_TRACE( traceAutoSave,
                    wxS( "[history] RestoreCommit: Failed to acquire lock for %s" ),
                    aProjectPath );
         return false;
@@ -2289,14 +2290,14 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
     git_oid oid;
     if( git_oid_fromstr( &oid, aHash.mb_str().data() ) != 0 )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Invalid hash %s" ), aHash );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Invalid hash %s" ), aHash );
         return false;
     }
 
     git_commit* commit = nullptr;
     if( git_commit_lookup( &commit, repo, &oid ) != 0 )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Commit not found %s" ), aHash );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Commit not found %s" ), aHash );
         return false;
     }
 
@@ -2321,7 +2322,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
 
         if( dlg.ShowModal() != wxID_YES )
         {
-            wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: User cancelled at confirm" ) );
+            KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: User cancelled at confirm" ) );
             git_tree_free( tree );
             git_commit_free( commit );
             return false;
@@ -2329,7 +2330,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
     }
 
     // Create pre-restore backup snapshot using the existing lock
-    wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Creating pre-restore backup" ) );
+    KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Creating pre-restore backup" ) );
 
     std::vector<wxString> backupFiles;
     collectProjectFiles( aProjectPath, backupFiles );
@@ -2342,7 +2343,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
 
         if( backupResult == SNAPSHOT_COMMIT_RESULT::Error )
         {
-            wxLogTrace( traceAutoSave,
+            KI_LOG_TRACE( traceAutoSave,
                        wxS( "[history] RestoreCommit: Failed to create pre-restore backup" ) );
             git_tree_free( tree );
             git_commit_free( commit );
@@ -2351,7 +2352,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
 
         if( backupResult == SNAPSHOT_COMMIT_RESULT::NoChanges )
         {
-            wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Current state already matches HEAD; "
+            KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Current state already matches HEAD; "
                                             "continuing without a new backup commit" ) );
         }
     }
@@ -2364,7 +2365,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
 
     if( !wxFileName::Mkdir( tempRestorePath, 0777, wxPATH_MKDIR_FULL ) )
     {
-        wxLogTrace( traceAutoSave,
+        KI_LOG_TRACE( traceAutoSave,
                    wxS( "[history] RestoreCommit: Failed to create temp directory %s" ),
                    tempRestorePath );
         git_tree_free( tree );
@@ -2372,12 +2373,12 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
         return false;
     }
 
-    wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Extracting to temp location %s" ),
+    KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Extracting to temp location %s" ),
                tempRestorePath );
 
     if( !extractCommitToTemp( repo, tree, tempRestorePath ) )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Extraction failed, cleaning up" ) );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Extraction failed, cleaning up" ) );
         wxFileName::Rmdir( tempRestorePath, wxPATH_RMDIR_RECURSIVE );
         git_tree_free( tree );
         git_commit_free( commit );
@@ -2395,7 +2396,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
 
     if( !overlaySnapshotFiles( tempRestorePath, aProjectPath, backupPath ) )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Overlay failed, rolling back from backup" ) );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Overlay failed, rolling back from backup" ) );
 
         // Put back whatever we already overwrote, then drop the partial backups.
         if( wxDirExists( backupPath ) )
@@ -2413,7 +2414,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
     }
 
     // The backup directory is retained so the user can recover any displaced file.
-    wxLogTrace( traceAutoSave,
+    KI_LOG_TRACE( traceAutoSave,
                 wxS( "[history] RestoreCommit: Restore successful, backup retained at %s" ),
                 backupPath );
     wxFileName::Rmdir( tempRestorePath, wxPATH_RMDIR_RECURSIVE );
@@ -2430,7 +2431,7 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
     git_tree_free( tree );
     git_commit_free( commit );
 
-    wxLogTrace( traceAutoSave, wxS( "[history] RestoreCommit: Complete" ) );
+    KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Complete" ) );
     return true;
 }
 

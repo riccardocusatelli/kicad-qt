@@ -48,6 +48,8 @@
 #include <widgets/grid_combobox.h>
 #include <pgm_base.h>
 #include <project_sch.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 enum
@@ -98,7 +100,7 @@ static wxString netList( SCH_SYMBOL* aSymbol, SCH_SHEET_PATH& aSheetPath )
     if( !pins.IsEmpty() )
     {
         wxString dbg = wxJoin( pins, '\t' );
-        wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins: %s" ), dbg );
+        KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins: %s" ), dbg );
         netlist << EscapeString( dbg, CTX_LINE );
     }
 
@@ -147,7 +149,7 @@ static wxString netList( LIB_SYMBOL* aSymbol )
     if( !pins.IsEmpty() )
     {
         wxString dbg = wxJoin( pins, '\t' );
-        wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins: %s" ), dbg );
+        KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins: %s" ), dbg );
         netlist << EscapeString( dbg, CTX_LINE );
     }
 
@@ -511,7 +513,7 @@ SCH_FIELD& FIELDS_GRID_TABLE::getField( int aRow )
             ++visibleRow;
         }
 
-        wxFAIL_MSG( wxT( "Row index off end of visible row count" ) );
+        KI_FAIL_MSG( wxT( "Row index off end of visible row count" ) );
     }
 
     return this->at( aRow );
@@ -538,7 +540,7 @@ wxString FIELDS_GRID_TABLE::GetColLabelValue( int aCol )
     case FDC_COLOR:           return _( "Color" );
     case FDC_ALLOW_AUTOPLACE: return _( "Allow Autoplacement" );
     case FDC_PRIVATE:         return _( "Private" );
-    default:      wxFAIL;     return wxEmptyString;
+    default:      KI_FAIL();     return wxEmptyString;
     }
 }
 
@@ -568,7 +570,7 @@ bool FIELDS_GRID_TABLE::CanGetValueAs( int aRow, int aCol, const wxString& aType
         return aTypeName == wxGRID_VALUE_BOOL;
 
     default:
-        wxFAIL;
+        KI_FAIL();
         return false;
     }
 }
@@ -582,7 +584,7 @@ bool FIELDS_GRID_TABLE::CanSetValueAs( int aRow, int aCol, const wxString& aType
 
 wxGridCellAttr* FIELDS_GRID_TABLE::GetAttr( int aRow, int aCol, wxGridCellAttr::wxAttrKind aKind  )
 {
-    wxCHECK( aRow < GetNumberRows(), nullptr );
+    KI_CHECK( aRow < GetNumberRows(), nullptr );
 
     const SCH_FIELD& field = getField( aRow );
     wxGridCellAttr*  attr = nullptr;
@@ -750,7 +752,7 @@ wxGridCellAttr* FIELDS_GRID_TABLE::GetAttr( int aRow, int aCol, wxGridCellAttr::
 
 wxString FIELDS_GRID_TABLE::GetValue( int aRow, int aCol )
 {
-    wxCHECK( aRow < GetNumberRows(), wxEmptyString );
+    KI_CHECK( aRow < GetNumberRows(), wxEmptyString );
 
     wxGrid*          grid = GetView();
     const SCH_FIELD& field = getField( aRow );
@@ -860,7 +862,7 @@ wxString FIELDS_GRID_TABLE::GetValue( int aRow, int aCol )
 
 bool FIELDS_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
 {
-    wxCHECK( aRow < GetNumberRows(), false );
+    KI_CHECK( aRow < GetNumberRows(), false );
     const SCH_FIELD& field = getField( aRow );
 
     switch( aCol )
@@ -872,7 +874,7 @@ bool FIELDS_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
     case FDC_ALLOW_AUTOPLACE: return field.CanAutoplace();
     case FDC_PRIVATE:         return field.IsPrivate();
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
         return false;
     }
 }
@@ -880,7 +882,7 @@ bool FIELDS_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
 
 void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
 {
-    wxCHECK( aRow < GetNumberRows(), /*void*/ );
+    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
     SCH_FIELD& field = getField( aRow );
     VECTOR2I   pos;
     wxString   value = aValue;
@@ -992,7 +994,7 @@ void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
         else if( value == _( "Vertical" ) )
             field.SetTextAngle( ANGLE_VERTICAL );
         else
-            wxFAIL_MSG( wxT( "unknown orientation: " ) + value );
+            KI_FAIL_MSG( wxT( "unknown orientation: " ) + value );
 
         break;
 
@@ -1031,7 +1033,7 @@ void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
         break;
     }
 
@@ -1043,7 +1045,7 @@ void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
 
 void FIELDS_GRID_TABLE::SetValueAsBool( int aRow, int aCol, bool aValue )
 {
-    wxCHECK( aRow < GetNumberRows(), /*void*/ );
+    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
     SCH_FIELD& field = getField( aRow );
 
     switch( aCol )
@@ -1073,7 +1075,7 @@ void FIELDS_GRID_TABLE::SetValueAsBool( int aRow, int aCol, bool aValue )
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
         break;
     }
 
@@ -1102,7 +1104,7 @@ bool FIELDS_GRID_TABLE::BoolFromString( const wxString& aValue ) const
     }
     else
     {
-        wxFAIL_MSG( wxString::Format( "string '%s' can't be converted to boolean correctly and "
+        KI_FAIL_MSG( wxString::Format( "string '%s' can't be converted to boolean correctly and "
                                       "will be perceived as FALSE", aValue ) );
         return false;
     }
@@ -1163,8 +1165,8 @@ bool FIELDS_GRID_TABLE::EraseRow( size_t aRow )
 
 void FIELDS_GRID_TABLE::SwapRows( size_t a, size_t b )
 {
-    wxCHECK( a < this->size() && b < this->size(), /*void*/ );
-    wxCHECK( a < m_isInherited.size() && b < m_isInherited.size() && a < m_parentFields.size()
+    KI_CHECK( a < this->size() && b < this->size(), /*void*/ );
+    KI_CHECK( a < m_isInherited.size() && b < m_isInherited.size() && a < m_parentFields.size()
                      && b < m_parentFields.size(),
              /*void*/ );
 

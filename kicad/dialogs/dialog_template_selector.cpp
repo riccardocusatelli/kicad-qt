@@ -45,6 +45,7 @@
 #include <confirm.h>
 #include <project_tree_traverser.h>
 #include "template_default_html.h"
+#include <core/ki_log.h>
 
 
 static const wxChar* traceTemplateSelector = wxT( "KICAD_TEMPLATE_SELECTOR" );
@@ -674,7 +675,7 @@ void DIALOG_TEMPLATE_SELECTOR::BuildMRUList()
 
 void DIALOG_TEMPLATE_SELECTOR::BuildTemplateList()
 {
-    wxLogTrace( traceTemplateSelector, "BuildTemplateList() called" );
+    KI_LOG_TRACE( traceTemplateSelector, "BuildTemplateList() called" );
 
     // Clear existing template widgets
     for( TEMPLATE_WIDGET* widget : m_templateWidgets )
@@ -697,7 +698,7 @@ void DIALOG_TEMPLATE_SELECTOR::BuildTemplateList()
                 if( !dir.Open( aPath ) )
                     return;
 
-                wxLogTrace( traceTemplateSelector, "Scanning directory: %s (user=%d)", aPath, aIsUser );
+                KI_LOG_TRACE( traceTemplateSelector, "Scanning directory: %s (user=%d)", aPath, aIsUser );
 
                 if( dir.HasSubDirs( "meta" ) )
                 {
@@ -792,7 +793,7 @@ void DIALOG_TEMPLATE_SELECTOR::BuildTemplateList()
                 OnScrolledTemplatesSize( evt );
             } );
 
-    wxLogTrace( traceTemplateSelector, "BuildTemplateList() found %zu templates", m_templateWidgets.size() );
+    KI_LOG_TRACE( traceTemplateSelector, "BuildTemplateList() found %zu templates", m_templateWidgets.size() );
 }
 
 
@@ -957,7 +958,7 @@ void DIALOG_TEMPLATE_SELECTOR::SelectTemplateByPath( const wxString& aPath, bool
         }
     }
 
-    wxLogTrace( traceTemplateSelector, "SelectTemplateByPath: template not found at %s", aPath );
+    KI_LOG_TRACE( traceTemplateSelector, "SelectTemplateByPath: template not found at %s", aPath );
 }
 
 
@@ -1044,7 +1045,7 @@ void DIALOG_TEMPLATE_SELECTOR::SetupFileWatcher()
                 if( dir.DirExists() )
                 {
                     m_watcher->Add( dir );
-                    wxLogTrace( traceTemplateSelector, "Watching %s templates: %s", aLabel, aPath );
+                    KI_LOG_TRACE( traceTemplateSelector, "Watching %s templates: %s", aLabel, aPath );
                 }
             };
 
@@ -1059,7 +1060,7 @@ void DIALOG_TEMPLATE_SELECTOR::OnFileSystemEvent( wxFileSystemWatcherEvent& even
     if( !m_watcher )
         return;
 
-    wxLogTrace( traceTemplateSelector, "File system event detected" );
+    KI_LOG_TRACE( traceTemplateSelector, "File system event detected" );
 
     // wxFileSystemWatcher may fire events from a worker thread on some platforms.
     // Use CallAfter to marshal timer operations to the main thread.

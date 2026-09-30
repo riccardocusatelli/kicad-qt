@@ -28,6 +28,7 @@
 #include <ranges>
 #include <utility>
 #include <wx/wx.h>
+#include <core/ki_assert.h>
 
 
 // Global to prevent simultaneous multi-threaded static initialization
@@ -43,7 +44,7 @@ PROPERTY_MANAGER::~PROPERTY_MANAGER()
 
 void PROPERTY_MANAGER::RegisterType( TYPE_ID aType, const wxString& aName )
 {
-    wxASSERT( m_classNames.count( aType ) == 0 );
+    KI_ASSERT( m_classNames.count( aType ) == 0 );
     m_classNames.emplace( aType, aName );
 }
 
@@ -176,27 +177,27 @@ void PROPERTY_MANAGER::AddTypeCast( TYPE_CAST_BASE* aCast )
     TYPE_ID     derivedHash = aCast->DerivedHash();
     CLASS_DESC& classDesc = getClass( aCast->BaseHash() );
 
-    wxASSERT_MSG( classDesc.m_typeCasts.count( derivedHash ) == 0, wxT( "Such converter already exists" ) );
+    KI_ASSERT_MSG( classDesc.m_typeCasts.count( derivedHash ) == 0, wxT( "Such converter already exists" ) );
     classDesc.m_typeCasts.emplace( derivedHash, aCast );
 }
 
 
 void PROPERTY_MANAGER::InheritsAfter( TYPE_ID aDerived, TYPE_ID aBase )
 {
-    wxASSERT_MSG( aDerived != aBase, wxT( "Class cannot inherit from itself" ) );
+    KI_ASSERT_MSG( aDerived != aBase, wxT( "Class cannot inherit from itself" ) );
 
     CLASS_DESC& derived = getClass( aDerived );
     derived.m_bases.push_back( getClass( aBase ) );
     m_dirty = true;
 
-    wxASSERT_MSG( derived.m_bases.size() == 1 || derived.m_typeCasts.count( aBase ) == 1,
+    KI_ASSERT_MSG( derived.m_bases.size() == 1 || derived.m_typeCasts.count( aBase ) == 1,
                   wxT( "You need to add a TYPE_CAST for classes inheriting from multiple bases" ) );
 }
 
 
 void PROPERTY_MANAGER::Mask( TYPE_ID aDerived, TYPE_ID aBase, const wxString& aName )
 {
-    wxASSERT_MSG( aDerived != aBase, wxT( "Class cannot mask from itself" ) );
+    KI_ASSERT_MSG( aDerived != aBase, wxT( "Class cannot mask from itself" ) );
 
     CLASS_DESC& derived = getClass( aDerived );
     derived.m_maskedBaseProperties.insert( std::make_pair( aBase, aName ) );
@@ -207,7 +208,7 @@ void PROPERTY_MANAGER::Mask( TYPE_ID aDerived, TYPE_ID aBase, const wxString& aN
 void PROPERTY_MANAGER::OverrideAvailability( TYPE_ID aDerived, TYPE_ID aBase, const wxString& aName,
                                              std::function<bool( INSPECTABLE* )> aFunc )
 {
-    wxASSERT_MSG( aDerived != aBase, wxT( "Class cannot override from itself" ) );
+    KI_ASSERT_MSG( aDerived != aBase, wxT( "Class cannot override from itself" ) );
 
     CLASS_DESC& derived = getClass( aDerived );
     derived.m_availabilityOverrides[std::make_pair( aBase, aName )] = std::move( aFunc );
@@ -218,7 +219,7 @@ void PROPERTY_MANAGER::OverrideAvailability( TYPE_ID aDerived, TYPE_ID aBase, co
 void PROPERTY_MANAGER::OverrideWriteability( TYPE_ID aDerived, TYPE_ID aBase, const wxString& aName,
                                              std::function<bool( INSPECTABLE* )> aFunc )
 {
-    wxASSERT_MSG( aDerived != aBase, wxT( "Class cannot override from itself" ) );
+    KI_ASSERT_MSG( aDerived != aBase, wxT( "Class cannot override from itself" ) );
 
     CLASS_DESC& derived = getClass( aDerived );
     derived.m_writeabilityOverrides[std::make_pair( aBase, aName )] = std::move( aFunc );
@@ -264,7 +265,7 @@ bool PROPERTY_MANAGER::IsOfType( TYPE_ID aDerived, TYPE_ID aBase ) const
         return true;
 
     auto derived = m_classes.find( aDerived );
-    wxCHECK( derived != m_classes.end(), false );   // missing class description
+    KI_CHECK( derived != m_classes.end(), false );   // missing class description
 
     // traverse the hierarchy seeking for the base class
     for( const std::reference_wrapper<CLASS_DESC>& base : derived->second.m_bases )
@@ -445,7 +446,7 @@ void PROPERTY_MANAGER::PropertyChanged( INSPECTABLE* aObject, PROPERTY_BASE* aPr
 
 PROPERTY_COMMIT_HANDLER::PROPERTY_COMMIT_HANDLER( COMMIT* aCommit )
 {
-    wxCHECK2_MSG( PROPERTY_MANAGER::Instance().m_managedCommit == nullptr,
+    KI_CHECK2_MSG( PROPERTY_MANAGER::Instance().m_managedCommit == nullptr,
                   return, wxT( "Can't have more than one managed commit at a time!" ) );
 
     PROPERTY_MANAGER::Instance().m_managedCommit = aCommit;
@@ -454,7 +455,7 @@ PROPERTY_COMMIT_HANDLER::PROPERTY_COMMIT_HANDLER( COMMIT* aCommit )
 
 PROPERTY_COMMIT_HANDLER::~PROPERTY_COMMIT_HANDLER()
 {
-    wxASSERT_MSG( PROPERTY_MANAGER::Instance().m_managedCommit != nullptr,
+    KI_ASSERT_MSG( PROPERTY_MANAGER::Instance().m_managedCommit != nullptr,
                   wxT( "Something went wrong: m_managedCommit already null!" ) );
 
     PROPERTY_MANAGER::Instance().m_managedCommit = nullptr;

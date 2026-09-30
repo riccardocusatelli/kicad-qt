@@ -56,6 +56,8 @@
 // TODO (ISM): This should be better abstracted away from the toolbars
 #include <python_scripting.h>
 #include <api/api_plugin_manager.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 ACTION_GROUP::ACTION_GROUP( const std::string_view& aName )
@@ -78,7 +80,7 @@ ACTION_GROUP::ACTION_GROUP( const std::string_view& aName,
 
 void ACTION_GROUP::SetActions( const std::vector<const TOOL_ACTION*>& aActions )
 {
-    wxASSERT_MSG( aActions.size() > 0, wxS( "Action groups must have at least one action" ) );
+    KI_ASSERT_MSG( aActions.size() > 0, wxS( "Action groups must have at least one action" ) );
 
     // The default action is just the first action in the vector
     m_actions       = aActions;
@@ -100,7 +102,7 @@ void ACTION_GROUP::SetDefaultAction( const TOOL_ACTION& aDefault )
                                   return aAction->GetId() == aDefault.GetId();
                               } );
 
-    wxASSERT_MSG( valid, wxS( "Action must be present in a group to be the default" ) );
+    KI_ASSERT_MSG( valid, wxS( "Action must be present in a group to be the default" ) );
 
     m_defaultAction = &aDefault;
 }
@@ -302,7 +304,7 @@ std::list<ACTION_TOOLBAR_CONTROL*> ACTION_TOOLBAR::GetCustomControlList( FRAME_T
 
 void ACTION_TOOLBAR::ApplyConfiguration( const TOOLBAR_CONFIGURATION& aConfig )
 {
-    wxASSERT( GetParent() );
+    KI_ASSERT( GetParent() );
 
     // Keep each group's selection across the rebuild.
     std::map<std::string, std::string> currentGroupItems = m_groupSelections;
@@ -340,7 +342,7 @@ void ACTION_TOOLBAR::ApplyConfiguration( const TOOLBAR_CONFIGURATION& aConfig )
                 case TOOLBAR_ITEM_TYPE::SPACER:
                 case TOOLBAR_ITEM_TYPE::TB_GROUP:
                 case TOOLBAR_ITEM_TYPE::CONTROL:
-                    wxFAIL_MSG( wxT( "Unsupported group item type" ) );
+                    KI_FAIL_MSG( wxT( "Unsupported group item type" ) );
                     continue;
 
                 case TOOLBAR_ITEM_TYPE::TOOL:
@@ -348,7 +350,7 @@ void ACTION_TOOLBAR::ApplyConfiguration( const TOOLBAR_CONFIGURATION& aConfig )
 
                     if( !grpAction )
                     {
-                        wxFAIL_MSG( wxString::Format( wxT( "Unable to find group tool %s" ), groupItem.m_ActionName ) );
+                        KI_FAIL_MSG( wxString::Format( wxT( "Unable to find group tool %s" ), groupItem.m_ActionName ) );
                         continue;
                     }
 
@@ -391,7 +393,7 @@ void ACTION_TOOLBAR::ApplyConfiguration( const TOOLBAR_CONFIGURATION& aConfig )
 
             if( !factory )
             {
-                wxFAIL_MSG( wxString::Format( wxT( "Unable to find control factory for %s" ), item.m_ControlName ) );
+                KI_FAIL_MSG( wxString::Format( wxT( "Unable to find control factory for %s" ), item.m_ControlName ) );
                 continue;
             }
 
@@ -406,7 +408,7 @@ void ACTION_TOOLBAR::ApplyConfiguration( const TOOLBAR_CONFIGURATION& aConfig )
 
             if( !action )
             {
-                wxFAIL_MSG( wxString::Format( wxT( "Unable to find toolbar tool %s" ), item.m_ActionName ) );
+                KI_FAIL_MSG( wxString::Format( wxT( "Unable to find toolbar tool %s" ), item.m_ActionName ) );
                 continue;
             }
 
@@ -441,7 +443,7 @@ void ACTION_TOOLBAR::DoSetToolTipText( const wxString& aTip )
 
 void ACTION_TOOLBAR::Add( const TOOL_ACTION& aAction )
 {
-    wxASSERT_MSG( !aAction.CheckToolbarState( TOOLBAR_STATE::HIDDEN ),
+    KI_ASSERT_MSG( !aAction.CheckToolbarState( TOOLBAR_STATE::HIDDEN ),
                   wxString::Format( "Attempting to add hidden action %s to the toolbar", aAction.GetName() ) );
 
     bool isToggleEntry = aAction.CheckToolbarState( TOOLBAR_STATE::TOGGLE );
@@ -453,8 +455,8 @@ void ACTION_TOOLBAR::Add( const TOOL_ACTION& aAction )
 
 void ACTION_TOOLBAR::Add( const TOOL_ACTION& aAction, bool aIsToggleEntry, bool aIsCancellable )
 {
-    wxASSERT( GetParent() );
-    wxASSERT_MSG( !( aIsCancellable && !aIsToggleEntry ),
+    KI_ASSERT( GetParent() );
+    KI_ASSERT_MSG( !( aIsCancellable && !aIsToggleEntry ),
                   wxS( "aIsCancellable requires aIsToggleEntry" ) );
 
     int toolId = aAction.GetUIId();
@@ -503,7 +505,7 @@ void ACTION_TOOLBAR::AddScaledSeparator( wxWindow* aWindow )
 
 void ACTION_TOOLBAR::Add( wxControl* aControl, const wxString& aLabel )
 {
-    wxASSERT( aControl );
+    KI_ASSERT( aControl );
     m_controlIDs.push_back( aControl->GetId() );
     AddControl( aControl, aLabel );
 }
@@ -523,8 +525,8 @@ void ACTION_TOOLBAR::AddGroup( std::unique_ptr<ACTION_GROUP> aGroup )
     const TOOL_ACTION* defaultAction = aGroup->GetDefaultAction();
     int                iconSize = Pgm().GetCommonSettings()->m_Appearance.toolbar_icon_size;
 
-    wxASSERT( GetParent() );
-    wxASSERT( defaultAction );
+    KI_ASSERT( GetParent() );
+    KI_ASSERT( defaultAction );
 
     // Turn this into a toggle entry if any one of the actions is a toggle entry
     bool isToggleEntry = false;
@@ -585,7 +587,7 @@ void ACTION_TOOLBAR::SelectAction( const TOOL_ACTION& aAction )
 
 void ACTION_TOOLBAR::doSelectAction( ACTION_GROUP* aGroup, const TOOL_ACTION& aAction )
 {
-    wxASSERT( GetParent() );
+    KI_ASSERT( GetParent() );
 
     int groupId = aGroup->GetUIId();
 
@@ -615,7 +617,7 @@ void ACTION_TOOLBAR::doSelectAction( ACTION_GROUP* aGroup, const TOOL_ACTION& aA
         }
         else
         {
-            wxLogTrace( kicadTraceToolStack, wxString::Format( "No UI condition for action %s",
+            KI_LOG_TRACE( kicadTraceToolStack, wxString::Format( "No UI condition for action %s",
                                                                aAction.GetName() ) );
         }
     }
@@ -638,11 +640,11 @@ void ACTION_TOOLBAR::UpdateControlWidths()
 void ACTION_TOOLBAR::UpdateControlWidth( int aID )
 {
     wxAuiToolBarItem* item = FindTool( aID );
-    wxASSERT_MSG( item, wxString::Format( "No toolbar item found for ID %d", aID ) );
+    KI_ASSERT_MSG( item, wxString::Format( "No toolbar item found for ID %d", aID ) );
 
     // The control on the toolbar is stored inside the window field of the item
     wxControl* control = dynamic_cast<wxControl*>( item->GetWindow() );
-    wxASSERT_MSG( control, wxString::Format( "No control located in toolbar item with ID %d", aID ) );
+    KI_ASSERT_MSG( control, wxString::Format( "No control located in toolbar item with ID %d", aID ) );
 
     // Update the size the item has stored using the best size of the control
     control->InvalidateBestSize();
@@ -994,7 +996,7 @@ void ACTION_TOOLBAR::popupPalette( wxAuiToolBarItem* aItem )
 
     wxWindow* toolParent = dynamic_cast<wxWindow*>( m_toolManager->GetToolHolder() );
 
-    wxCHECK( GetParent() && m_auiManager && toolParent, /* void */ );
+    KI_CHECK( GetParent() && m_auiManager && toolParent, /* void */ );
 
     // Ensure the item we are using for the palette has a group associated with it.
     const auto it = m_actionGroups.find( aItem->GetId() );

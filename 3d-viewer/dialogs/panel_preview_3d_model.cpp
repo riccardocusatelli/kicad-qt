@@ -51,6 +51,8 @@
 #include <widgets/std_bitmap_button.h>
 #include <eda_3d_viewer_settings.h>
 #include <board_design_settings.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #if defined(__linux__) || defined(__FreeBSD__)
 #include <3d_spacenav/spnav_viewer_plugin.h>
@@ -218,11 +220,11 @@ PANEL_PREVIEW_3D_MODEL::PANEL_PREVIEW_3D_MODEL( wxWindow* aParent, PCB_BASE_FRAM
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
     }
     catch( ... )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "Unknown exception during SpaceMouse initialization" ) );
     }
 
@@ -291,7 +293,7 @@ void PANEL_PREVIEW_3D_MODEL::OnMenuEvent( wxMenuEvent& aEvent )
 
 void PANEL_PREVIEW_3D_MODEL::loadSettings()
 {
-    wxCHECK_RET( m_previewPane, wxT( "Cannot load settings to null canvas" ) );
+    KI_CHECK_RET( m_previewPane, wxT( "Cannot load settings to null canvas" ) );
 
     COMMON_SETTINGS* settings = Pgm().GetCommonSettings();
 
@@ -487,7 +489,7 @@ void PANEL_PREVIEW_3D_MODEL::doIncrementScale( wxSpinEvent& event, double aSign 
 {
     wxSpinButton* spinCtrl = dynamic_cast<wxSpinButton*>( event.GetEventObject() );
 
-    wxCHECK( spinCtrl, /* void */ );
+    KI_CHECK( spinCtrl, /* void */ );
 
     wxTextCtrl * textCtrl = xscale;
 
@@ -515,7 +517,7 @@ void PANEL_PREVIEW_3D_MODEL::doIncrementRotation( wxSpinEvent& aEvent, double aS
 {
     wxSpinButton* spinCtrl = dynamic_cast<wxSpinButton*>( aEvent.GetEventObject() );
 
-    wxCHECK( spinCtrl, /* void */ );
+    KI_CHECK( spinCtrl, /* void */ );
 
     wxTextCtrl* textCtrl = xrot;
 
@@ -541,7 +543,7 @@ void PANEL_PREVIEW_3D_MODEL::doIncrementOffset( wxSpinEvent& event, double aSign
 {
     wxSpinButton* spinCtrl = dynamic_cast<wxSpinButton*>( event.GetEventObject() );
 
-    wxCHECK( spinCtrl, /* void */ );
+    KI_CHECK( spinCtrl, /* void */ );
 
     wxTextCtrl * textCtrl = xoff;
 
@@ -578,7 +580,7 @@ void PANEL_PREVIEW_3D_MODEL::onMouseWheelScale( wxMouseEvent& event )
 {
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( event.GetEventObject() );
 
-    wxCHECK( textCtrl, /* void */ );
+    KI_CHECK( textCtrl, /* void */ );
 
     double step = SCALE_INCREMENT;
 
@@ -602,7 +604,7 @@ void PANEL_PREVIEW_3D_MODEL::onMouseWheelRot( wxMouseEvent& event )
 {
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( event.GetEventObject() );
 
-    wxCHECK( textCtrl, /* void */ );
+    KI_CHECK( textCtrl, /* void */ );
 
     double step = ROTATION_INCREMENT;
 
@@ -624,7 +626,7 @@ void PANEL_PREVIEW_3D_MODEL::onMouseWheelOffset( wxMouseEvent& event )
 {
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( event.GetEventObject() );
 
-    wxCHECK( textCtrl, /* void */ );
+    KI_CHECK( textCtrl, /* void */ );
 
     double step_mm = OFFSET_INCREMENT_MM;
 

@@ -57,6 +57,7 @@
 #include <libraries/library_manager.h>
 #include <lib_table_notebook_panel.h>
 #include <widgets/wx_aui_art_providers.h>
+#include <core/ki_assert.h>
 
 /**
  * Container that describes file type info for the add a library options
@@ -150,7 +151,7 @@ public:
 
     void SetValue( int aRow, int aCol, const wxString& aValue ) override
     {
-        wxCHECK( aRow < (int) size(), /* void */ );
+        KI_CHECK( aRow < (int) size(), /* void */ );
 
         LIB_TABLE_GRID_DATA_MODEL::SetValue( aRow, aCol, aValue );
 
@@ -391,7 +392,7 @@ PANEL_DESIGN_BLOCK_LIB_TABLE::PANEL_DESIGN_BLOCK_LIB_TABLE( DIALOG_EDIT_LIBRARY_
 
     std::optional<LIBRARY_TABLE*> table = Pgm().GetLibraryManager().Table( LIBRARY_TABLE_TYPE::DESIGN_BLOCK,
                                                                            LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxASSERT( table.has_value() );
+    KI_ASSERT( table.has_value() );
 
     AddTable( table.value(), _( "Global Libraries" ), false /* closable */ );
 
@@ -843,7 +844,7 @@ bool PANEL_DESIGN_BLOCK_LIB_TABLE::TransferDataFromWindow()
 
     std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::DESIGN_BLOCK,
                                                             LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxCHECK( optTable.has_value(), false );
+    KI_CHECK( optTable.has_value(), false );
     LIBRARY_TABLE* globalTable = optTable.value();
 
     if( get_model( 0 )->Table() != *globalTable )
@@ -901,7 +902,7 @@ bool PANEL_DESIGN_BLOCK_LIB_TABLE::TransferDataFromWindow()
 void PANEL_DESIGN_BLOCK_LIB_TABLE::populateEnvironReadOnlyTable()
 {
     wxRegEx re( ".*?(\\$\\{(.+?)\\})|(\\$\\((.+?)\\)).*?", wxRE_ADVANCED );
-    wxASSERT( re.IsValid() ); // wxRE_ADVANCED is required.
+    KI_ASSERT( re.IsValid() ); // wxRE_ADVANCED is required.
 
     std::set<wxString> unique;
 

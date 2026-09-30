@@ -96,6 +96,8 @@
 #include <wx/dir.h>
 
 #include "widgets/filedlg_hook_save_project.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 //#define     USE_INSTRUMENTATION     1
 #define     USE_INSTRUMENTATION     0
@@ -127,7 +129,7 @@ bool AskLoadBoardFileName( PCB_EDIT_FRAME* aParent, wxString* aFileName, int aCt
             continue;
 
         IO_RELEASER<PCB_IO> pi( plugin.m_createFunc() );
-        wxCHECK( pi, false );
+        KI_CHECK( pi, false );
 
         const IO_BASE::IO_FILE_DESC& desc = pi->GetBoardFileDesc();
 
@@ -490,7 +492,7 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         KIPLATFORM::APP::RegisterApplicationRestart( fullFileName );
 
     // We insist on caller sending us an absolute path, if it does not, we say it's a bug.
-    wxASSERT_MSG( wx_filename.IsAbsolute(), wxT( "Path is not absolute!" ) );
+    KI_ASSERT_MSG( wx_filename.IsAbsolute(), wxT( "Path is not absolute!" ) );
 
     std::unique_ptr<LOCKFILE> lock = std::make_unique<LOCKFILE>( fullFileName );
 
@@ -781,7 +783,7 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
         PROF_TIMER postLoadTimer;
         SetBoard( loadedBoard, false, &progressReporter );
-        wxLogTrace( traceAllegroPerf, wxT( "Post-load SetBoard: %.3f ms" ),
+        KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load SetBoard: %.3f ms" ),
                     postLoadTimer.msecs( true ) );
 
         if( loadedBoard->m_LegacyDesignSettingsLoaded )
@@ -827,19 +829,19 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
         // we should not ask PCB_IOs to do these items:
         loadedBoard->BuildListOfNets();
-        wxLogTrace( traceAllegroPerf, wxT( "Post-load BuildListOfNets: %.3f ms" ),
+        KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load BuildListOfNets: %.3f ms" ),
                     postLoadTimer.msecs( true ) );
 
         progressReporter.KeepRefreshing();
 
         m_toolManager->RunAction( PCB_ACTIONS::repairBoard, true);
-        wxLogTrace( traceAllegroPerf, wxT( "Post-load repairBoard: %.3f ms" ),
+        KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load repairBoard: %.3f ms" ),
                     postLoadTimer.msecs( true ) );
 
         progressReporter.KeepRefreshing();
 
         m_toolManager->RunAction( PCB_ACTIONS::rehatchShapes );
-        wxLogTrace( traceAllegroPerf, wxT( "Post-load rehatchShapes: %.3f ms" ),
+        KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load rehatchShapes: %.3f ms" ),
                     postLoadTimer.msecs( true ) );
 
         progressReporter.KeepRefreshing();
@@ -900,13 +902,13 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     // Rebuild list of nets (full ratsnest rebuild)
     PROF_TIMER connectivityTimer;
     GetBoard()->BuildConnectivity( &progressReporter );
-    wxLogTrace( traceAllegroPerf, wxT( "Post-load BuildConnectivity: %.3f ms" ),
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load BuildConnectivity: %.3f ms" ),
                 connectivityTimer.msecs( true ) );
 
     // Load project settings after setting up board; some of them depend on the nets list
     LoadProjectSettings();
     LoadDrawingSheet();
-    wxLogTrace( traceAllegroPerf, wxT( "Post-load LoadProjectSettings+DrawingSheet: %.3f ms" ),
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load LoadProjectSettings+DrawingSheet: %.3f ms" ),
                 connectivityTimer.msecs( true ) );
 
     // Resolve DRC exclusions after project settings are loaded
@@ -917,14 +919,14 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
     // Initialise time domain tuning caches
     GetBoard()->GetLengthCalculation()->SynchronizeTuningProfileProperties();
-    wxLogTrace( traceAllegroPerf, wxT( "Post-load DRC+ComponentClass+Tuning caches: %.3f ms" ),
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load DRC+ComponentClass+Tuning caches: %.3f ms" ),
                 connectivityTimer.msecs( true ) );
 
     // Syncs the UI (appearance panel, etc) with the loaded board and project
     OnBoardLoaded();
-    wxLogTrace( traceAllegroPerf, wxT( "Post-load OnBoardLoaded: %.3f ms" ),
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "Post-load OnBoardLoaded: %.3f ms" ),
                 connectivityTimer.msecs( true ) );
-    wxLogTrace( traceAllegroPerf, wxT( "=== Post-load pipeline total: %.3f ms ===" ),
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "=== Post-load pipeline total: %.3f ms ===" ),
                 connectivityTimer.msecs() );
 
     // Refresh the 3D view, if any
@@ -1135,7 +1137,7 @@ bool PCB_EDIT_FRAME::SavePcbCopy( const wxString& aFileName, bool aCreateProject
     {
         IO_RELEASER<PCB_IO> pi( PCB_IO_MGR::FindPlugin( PCB_IO_MGR::KICAD_SEXP ) );
 
-        wxASSERT( pcbFileName.IsAbsolute() );
+        KI_ASSERT( pcbFileName.IsAbsolute() );
 
         pi->SaveBoard( pcbFileName.GetFullPath(), GetBoard(), nullptr );
     }

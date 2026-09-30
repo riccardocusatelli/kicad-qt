@@ -34,6 +34,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <core/ki_assert.h>
 
 const int jobsFileSchemaVersion = 1;
 
@@ -306,7 +307,7 @@ JOBSET_DESTINATION* JOBSET::FindDestination( wxString& aDestinationStr )
 
 std::vector<JOBSET_JOB> JOBSET::GetJobsForDestination( JOBSET_DESTINATION* aDestination )
 {
-    wxASSERT( aDestination != nullptr );
+    KI_ASSERT( aDestination != nullptr );
 
     if( aDestination->m_only.size() == 0 )
     {

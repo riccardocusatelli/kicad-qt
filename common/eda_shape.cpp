@@ -49,6 +49,7 @@
 #include <api/api_enums.h>
 #include <api/api_utils.h>
 #include <api/common/types/base_types.pb.h>
+#include <core/ki_assert.h>
 
 
 EDA_SHAPE::EDA_SHAPE( SHAPE_T aType, int aLineWidth, FILL_T aFill ) :
@@ -290,7 +291,7 @@ void EDA_SHAPE::Serialize( google::protobuf::Any &aContainer ) const
     }
 
     default:
-        wxASSERT_MSG( false, "Unhandled shape in EDA_SHAPE::Serialize" );
+        KI_ASSERT_MSG( false, "Unhandled shape in EDA_SHAPE::Serialize" );
     }
 
     // TODO m_hasSolderMask and m_solderMaskMargin
@@ -2965,7 +2966,7 @@ static struct EDA_SHAPE_DESC
                 .SetAvailableFunc( isRectangle )
                 .SetValidator( []( const wxAny&& aValue, EDA_ITEM* aItem ) -> VALIDATOR_RESULT
                                {
-                                   wxASSERT_MSG( aValue.CheckType<int>(),
+                                   KI_ASSERT_MSG( aValue.CheckType<int>(),
                                                  "Expecting int-containing value" );
 
                                    int radius = aValue.As<int>();

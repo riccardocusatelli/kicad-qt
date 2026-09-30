@@ -81,6 +81,7 @@
 #include <project_sch.h>
 
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_assert.h>
 
 
 EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY* aKiway ) :
@@ -96,7 +97,7 @@ EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY* aKiway ) :
                   SCH_EDIT_FRAME* editFrame =
                           static_cast<SCH_EDIT_FRAME*>( aKiway->Player( FRAME_SCH, false ) );
 
-                  wxCHECK( bomJob && editFrame, false );
+                  KI_CHECK( bomJob && editFrame, false );
 
                   DIALOG_SYMBOL_FIELDS_TABLE dlg( editFrame, bomJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -116,7 +117,7 @@ EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY* aKiway ) :
                   SCH_EDIT_FRAME* editFrame =
                           static_cast<SCH_EDIT_FRAME*>( aKiway->Player( FRAME_SCH, false ) );
 
-                  wxCHECK( netJob && editFrame, false );
+                  KI_CHECK( netJob && editFrame, false );
 
                   DIALOG_EXPORT_NETLIST dlg( editFrame, aParent, netJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -130,7 +131,7 @@ EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY* aKiway ) :
                   SCH_EDIT_FRAME* editFrame =
                           static_cast<SCH_EDIT_FRAME*>( aKiway->Player( FRAME_SCH, false ) );
 
-                  wxCHECK( plotJob && editFrame, false );
+                  KI_CHECK( plotJob && editFrame, false );
 
                   if( plotJob->m_plotFormat == SCH_PLOT_FORMAT::HPGL )
                   {
@@ -159,7 +160,7 @@ EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY* aKiway ) :
               {
                   JOB_SCH_ERC* ercJob = dynamic_cast<JOB_SCH_ERC*>( job );
 
-                  wxCHECK( ercJob, false );
+                  KI_CHECK( ercJob, false );
 
                   DIALOG_ERC_JOB_CONFIG dlg( aParent, ercJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -268,7 +269,7 @@ int EESCHEMA_JOBS_HANDLER::JobExportPlot( JOB* aJob )
 {
     JOB_EXPORT_SCH_PLOT* aPlotJob = dynamic_cast<JOB_EXPORT_SCH_PLOT*>( aJob );
 
-    wxCHECK( aPlotJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( aPlotJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     if( aPlotJob->m_plotFormat == SCH_PLOT_FORMAT::HPGL )
     {
@@ -409,7 +410,7 @@ int EESCHEMA_JOBS_HANDLER::JobExportNetlist( JOB* aJob )
 {
     JOB_EXPORT_SCH_NETLIST* aNetJob = dynamic_cast<JOB_EXPORT_SCH_NETLIST*>( aJob );
 
-    wxCHECK( aNetJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( aNetJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     SCHEMATIC* sch = getSchematic( aNetJob->m_filename );
 
@@ -537,7 +538,7 @@ int EESCHEMA_JOBS_HANDLER::JobExportBom( JOB* aJob )
 {
     JOB_EXPORT_SCH_BOM* aBomJob = dynamic_cast<JOB_EXPORT_SCH_BOM*>( aJob );
 
-    wxCHECK( aBomJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( aBomJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     SCHEMATIC* sch = getSchematic( aBomJob->m_filename );
 
@@ -897,7 +898,7 @@ int EESCHEMA_JOBS_HANDLER::JobExportPythonBom( JOB* aJob )
 {
     JOB_EXPORT_SCH_PYTHONBOM* aNetJob = dynamic_cast<JOB_EXPORT_SCH_PYTHONBOM*>( aJob );
 
-    wxCHECK( aNetJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( aNetJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     SCHEMATIC* sch = getSchematic( aNetJob->m_filename );
 
@@ -967,7 +968,7 @@ int EESCHEMA_JOBS_HANDLER::JobExportPythonBom( JOB* aJob )
 int EESCHEMA_JOBS_HANDLER::doSymExportSvg( JOB_SYM_EXPORT_SVG* aSvgJob, SCH_RENDER_SETTINGS* aRenderSettings,
                                            LIB_SYMBOL* symbol )
 {
-    wxCHECK( symbol, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( symbol, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     std::shared_ptr<LIB_SYMBOL> parent;
     LIB_SYMBOL*                 symbolToPlot = symbol;
@@ -977,7 +978,7 @@ int EESCHEMA_JOBS_HANDLER::doSymExportSvg( JOB_SYM_EXPORT_SVG* aSvgJob, SCH_REND
     {
         parent = symbol->GetRootSymbol();
 
-        wxCHECK( parent, CLI::EXIT_CODES::ERR_UNKNOWN );
+        KI_CHECK( parent, CLI::EXIT_CODES::ERR_UNKNOWN );
 
         symbolToPlot = parent.get();
     }
@@ -1082,7 +1083,7 @@ int EESCHEMA_JOBS_HANDLER::JobSymExportSvg( JOB* aJob )
 {
     JOB_SYM_EXPORT_SVG* svgJob = dynamic_cast<JOB_SYM_EXPORT_SVG*>( aJob );
 
-    wxCHECK( svgJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( svgJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     wxFileName fn( svgJob->m_libraryPath );
     fn.MakeAbsolute();
@@ -1206,7 +1207,7 @@ int EESCHEMA_JOBS_HANDLER::JobSymUpgrade( JOB* aJob )
 {
     JOB_SYM_UPGRADE* upgradeJob = dynamic_cast<JOB_SYM_UPGRADE*>( aJob );
 
-    wxCHECK( upgradeJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( upgradeJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     wxFileName fn( upgradeJob->m_libraryPath );
     fn.MakeAbsolute();
@@ -1292,7 +1293,7 @@ int EESCHEMA_JOBS_HANDLER::JobSchErc( JOB* aJob )
 {
     JOB_SCH_ERC* ercJob = dynamic_cast<JOB_SCH_ERC*>( aJob );
 
-    wxCHECK( ercJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( ercJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     SCHEMATIC* sch = getSchematic( ercJob->m_filename );
 

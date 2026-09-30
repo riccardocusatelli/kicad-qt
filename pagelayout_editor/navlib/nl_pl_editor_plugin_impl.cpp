@@ -42,6 +42,8 @@
 
 #include <wx/log.h>
 #include <wx/mstream.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -69,7 +71,7 @@ NL_PL_EDITOR_PLUGIN_IMPL::~NL_PL_EDITOR_PLUGIN_IMPL()
 
         if( errCode.value() != 0 )
         {
-            wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+            KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                         wxT( "Error occured when calling EnableNavigation. Error code: %d" ),
                         errCode.value() );
         }
@@ -105,7 +107,7 @@ void NL_PL_EDITOR_PLUGIN_IMPL::SetCanvas( EDA_DRAW_PANEL_GAL* aViewport )
 
 void NL_PL_EDITOR_PLUGIN_IMPL::SetFocus( bool aFocus )
 {
-    wxLogTrace( m_logTrace, wxT( "NL_PL_EDITOR_PLUGIN_IMPL::SetFocus %d" ), aFocus );
+    KI_LOG_TRACE( m_logTrace, wxT( "NL_PL_EDITOR_PLUGIN_IMPL::SetFocus %d" ), aFocus );
     NAV_3D::Write( navlib::focus_k, aFocus );
 }
 
@@ -168,7 +170,7 @@ static void try_add_category( const std::string& aCategoryPath, CATEGORY_STORE& 
 
 void NL_PL_EDITOR_PLUGIN_IMPL::exportCommandsAndImages()
 {
-    wxLogTrace( m_logTrace, wxT( "NL_PL_EDITOR_PLUGIN_IMPL::exportCommandsAndImages" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "NL_PL_EDITOR_PLUGIN_IMPL::exportCommandsAndImages" ) );
 
     std::list<TOOL_ACTION*> actions = ACTION_MANAGER::GetActionList();
 
@@ -209,7 +211,7 @@ void NL_PL_EDITOR_PLUGIN_IMPL::exportCommandsAndImages()
         try_add_category( strCategory, categoryStore );
         CATEGORY_STORE::iterator iter = categoryStore.find( strCategory );
 
-        wxCHECK2( iter != categoryStore.end(), continue );
+        KI_CHECK2( iter != categoryStore.end(), continue );
 
         // Arbitrary 8-bit data stream
         wxMemoryOutputStream imageStream;
@@ -229,12 +231,12 @@ void NL_PL_EDITOR_PLUGIN_IMPL::exportCommandsAndImages()
                                      streamBuffer->GetBufferSize() ),
                         0 );
 
-                wxLogTrace( m_logTrace, wxT( "Adding image for : %s" ), name );
+                KI_LOG_TRACE( m_logTrace, wxT( "Adding image for : %s" ), name );
                 vImages.push_back( std::move( tdxImage ) );
             }
         }
 
-        wxLogTrace( m_logTrace, wxT( "Inserting command: %s,  description: %s,  in category:  %s" ),
+        KI_LOG_TRACE( m_logTrace, wxT( "Inserting command: %s,  description: %s,  in category:  %s" ),
                     name, description, iter->first );
 
         iter->second->push_back( CCommand( std::move( name ), std::move( label ),

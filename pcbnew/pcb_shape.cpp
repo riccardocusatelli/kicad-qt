@@ -49,6 +49,7 @@
 #include <api/api_utils.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 PCB_SHAPE::PCB_SHAPE( BOARD_ITEM* aParent, KICAD_T aItemType, SHAPE_T aShapeType ) :
@@ -74,7 +75,7 @@ PCB_SHAPE::~PCB_SHAPE()
 
 void PCB_SHAPE::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_SHAPE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_SHAPE_T, /* void */ );
     *this = *static_cast<const PCB_SHAPE*>( aOther );
 }
 
@@ -812,7 +813,7 @@ int PCB_SHAPE::getMaxError() const
 void PCB_SHAPE::swapData( BOARD_ITEM* aImage )
 {
     PCB_SHAPE* image = dynamic_cast<PCB_SHAPE*>( aImage );
-    wxCHECK( image, /* void */ );
+    KI_CHECK( image, /* void */ );
 
     SwapShape( image );
 

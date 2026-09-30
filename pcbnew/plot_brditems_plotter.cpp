@@ -63,6 +63,7 @@
 #include <pcb_barcode.h>
 
 #include <wx/debug.h>                         // for wxASSERT_MSG
+#include <core/ki_assert.h>
 
 
 COLOR4D BRDITEMS_PLOTTER::getColor( int aLayer ) const
@@ -424,7 +425,7 @@ void BRDITEMS_PLOTTER::PlotFootprintTextItems( const FOOTPRINT* aFootprint )
     // Skip the reference and value texts that are handled specially
     for( PCB_FIELD* field : aFootprint->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->IsReference() || field->IsValue() )
             continue;

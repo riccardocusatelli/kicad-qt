@@ -35,6 +35,7 @@
 #include <tools/cvpcb_control.h>
 #include <wx/settings.h>
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 
@@ -303,7 +304,7 @@ int CVPCB_CONTROL::ToNA( const TOOL_EVENT& aEvent )
         break;
 
     default:
-        wxASSERT_MSG( false, "Invalid direction" );
+        KI_ASSERT_MSG( false, "Invalid direction" );
     }
 
     // Set the new component selection

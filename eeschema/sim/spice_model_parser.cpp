@@ -34,6 +34,8 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <pegtl.hpp>
 #include <pegtl/contrib/parse_tree.hpp>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -80,7 +82,7 @@ bool SPICE_MODEL_PARSER::ReadType( const SIM_LIBRARY_SPICE& aLibrary, const std:
     }
     catch( const tao::pegtl::parse_error& e )
     {
-        wxLogTrace( traceSpiceModelParser, wxS( "%s" ), e.what() );
+        KI_LOG_TRACE( traceSpiceModelParser, wxS( "%s" ), e.what() );
         return true;
     }
 
@@ -144,7 +146,7 @@ bool SPICE_MODEL_PARSER::ReadType( const SIM_LIBRARY_SPICE& aLibrary, const std:
                 }
                 else if( subnode->is_type<SIM_MODEL_SPICE_PARSER::paramValue>() )
                 {
-                    wxASSERT( paramName != "" );
+                    KI_ASSERT( paramName != "" );
 
                     if( paramName == "level" )
                         level = subnode->string();
@@ -153,7 +155,7 @@ bool SPICE_MODEL_PARSER::ReadType( const SIM_LIBRARY_SPICE& aLibrary, const std:
                 }
                 else
                 {
-                    wxFAIL_MSG( "Unhandled parse tree subnode" );
+                    KI_FAIL_MSG( "Unhandled parse tree subnode" );
                     return true;
                 }
             }
@@ -177,12 +179,12 @@ bool SPICE_MODEL_PARSER::ReadType( const SIM_LIBRARY_SPICE& aLibrary, const std:
         }
         else
         {
-            wxFAIL_MSG( "Unhandled parse tree node" );
+            KI_FAIL_MSG( "Unhandled parse tree node" );
             return true;
         }
     }
 
-    wxFAIL_MSG( "Could not derive type from SPICE code" );
+    KI_FAIL_MSG( "Could not derive type from SPICE code" );
     return true;
 }
 
@@ -246,13 +248,13 @@ void SPICE_MODEL_PARSER::ReadModel( const SIM_LIBRARY_SPICE& aLibrary,
                 }
                 else if( subnode->is_type<SIM_MODEL_SPICE_PARSER::paramValue>() )
                 {
-                    wxASSERT( paramName != "" );
+                    KI_ASSERT( paramName != "" );
 
                     m_model.SetParamFromSpiceCode( paramName, subnode->string() );
                 }
                 else
                 {
-                    wxFAIL_MSG( "Unhandled parse tree subnode" );
+                    KI_FAIL_MSG( "Unhandled parse tree subnode" );
                 }
             }
         }
@@ -277,19 +279,19 @@ void SPICE_MODEL_PARSER::ReadModel( const SIM_LIBRARY_SPICE& aLibrary,
                 }
                 else if( subnode->is_type<SIM_MODEL_SPICE_PARSER::paramValue>() )
                 {
-                    wxASSERT( paramName != "" );
+                    KI_ASSERT( paramName != "" );
 
                     m_model.SetParamFromSpiceCode( paramName, subnode->string() );
                 }
                 else
                 {
-                    wxFAIL_MSG( "Unhandled parse tree subnode" );
+                    KI_FAIL_MSG( "Unhandled parse tree subnode" );
                 }
             }
         }
         else
         {
-            wxFAIL_MSG( "Unhandled parse tree node" );
+            KI_FAIL_MSG( "Unhandled parse tree node" );
         }
     }
 

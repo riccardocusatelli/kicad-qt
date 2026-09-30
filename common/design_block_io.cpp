@@ -44,6 +44,7 @@
 #include <fstream>
 #include <libraries/library_table.h>
 #include <libraries/library_table_parser.h>
+#include <core/ki_log.h>
 
 const wxString DESIGN_BLOCK_IO_MGR::ShowType( DESIGN_BLOCK_FILE_T aFileType )
 {
@@ -264,7 +265,7 @@ bool DESIGN_BLOCK_IO::DeleteLibrary( const wxString&                    aLibrary
             wxRemoveFile( dirs[i] );
     }
 
-    wxLogTrace( traceDesignBlocks, wxT( "Removing design block library '%s'." ),
+    KI_LOG_TRACE( traceDesignBlocks, wxT( "Removing design block library '%s'." ),
                 aLibraryPath.GetData() );
 
     // Some of the more elaborate wxRemoveFile() crap puts up its own wxLog dialog

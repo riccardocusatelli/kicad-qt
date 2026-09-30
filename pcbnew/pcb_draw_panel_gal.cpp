@@ -59,6 +59,7 @@
 #include <memory>
 #include <thread>
 #include <fmt/format.h>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 
@@ -486,7 +487,7 @@ void PCB_DRAW_PANEL_GAL::UpdateColors()
     else if( PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" ) )
         cs = ::GetColorSettings( cfg->m_ColorTheme );
 
-    wxCHECK_RET( cs, wxT( "null COLOR_SETTINGS" ) );
+    KI_CHECK_RET( cs, wxT( "null COLOR_SETTINGS" ) );
 
     auto rs = static_cast<KIGFX::PCB_RENDER_SETTINGS*>( m_view->GetPainter()->GetSettings() );
     rs->LoadColors( cs );
@@ -789,7 +790,7 @@ void PCB_DRAW_PANEL_GAL::setDefaultLayerOrder()
     for( int i = 0; (unsigned) i < sizeof( GAL_LAYER_ORDER ) / sizeof( int ); ++i )
     {
         int layer = GAL_LAYER_ORDER[i];
-        wxASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
+        KI_ASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
 
         // MW: Gross hack to make SetTopLayer bring the correct bitmap layer to
         // the top of the other bitmaps, but still below all the other layers
@@ -839,7 +840,7 @@ void PCB_DRAW_PANEL_GAL::setDefaultLayerDeps()
     for( int i = 0; (unsigned) i < sizeof( GAL_LAYER_ORDER ) / sizeof( int ); ++i )
     {
         int layer = GAL_LAYER_ORDER[i];
-        wxASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
+        KI_ASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
 
         // Set layer display dependencies & targets
         if( IsCopperLayer( layer ) )

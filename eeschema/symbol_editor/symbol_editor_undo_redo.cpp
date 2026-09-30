@@ -28,6 +28,7 @@
 #include <tool/tool_manager.h>
 #include <tools/sch_selection_tool.h>
 #include <tools/symbol_editor_drawing_tools.h>
+#include <core/ki_assert.h>
 
 
 void SYMBOL_EDIT_FRAME::PushSymbolToUndoList( const wxString& aDescription, LIB_SYMBOL* aSymbolCopy,
@@ -75,7 +76,7 @@ void SYMBOL_EDIT_FRAME::GetSymbolFromRedoList()
 
     LIB_SYMBOL* symbol = (LIB_SYMBOL*) redoWrapper.GetItem();
     UNDO_REDO   undoRedoType = redoWrapper.GetStatus();
-    wxCHECK( symbol, /* void */ );
+    KI_CHECK( symbol, /* void */ );
     symbol->ClearFlags( UR_TRANSIENT );
 
     // Store the current symbol in the undo buffer
@@ -125,7 +126,7 @@ void SYMBOL_EDIT_FRAME::GetSymbolFromUndoList()
 
     LIB_SYMBOL* symbol = (LIB_SYMBOL*) undoWrapper.GetItem();
     UNDO_REDO   undoRedoType = undoWrapper.GetStatus();
-    wxCHECK( symbol, /* void */ );
+    KI_CHECK( symbol, /* void */ );
     symbol->ClearFlags( UR_TRANSIENT );
 
     // Store the current symbol in the redo buffer

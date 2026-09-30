@@ -57,6 +57,7 @@
 #include <wx/mstream.h>
 #include <wx/datstrm.h>
 #include <wx/intl.h>
+#include <core/ki_log.h>
 
 using namespace U3D;
 
@@ -211,7 +212,7 @@ static void printLabel( TDF_Label aLabel, Handle( XCAFDoc_ShapeTool ) aShapeTool
             ss << ", cc: " << c;
     }
 
-    wxLogTrace( TRACE_MASK, ss.str().c_str() );
+    KI_LOG_TRACE( TRACE_MASK, ss.str().c_str() );
 }
 
 
@@ -1040,7 +1041,7 @@ bool WRITER::Perform( const Handle( TDocStd_Document ) & aDocument )
 
     if( !u3dFile.is_open() )
     {
-        wxLogTrace( TRACE_MASK, wxString::Format( "Error opening file:%s", m_filename ) );
+        KI_LOG_TRACE( TRACE_MASK, wxString::Format( "Error opening file:%s", m_filename ) );
         return false;
     }
 

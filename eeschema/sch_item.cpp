@@ -38,6 +38,7 @@
 #include <font/kicad_font_name.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 // Rendering fonts is expensive (particularly when using outline fonts).  At small effective
@@ -164,7 +165,7 @@ SCH_ITEM* SCH_ITEM::Duplicate( bool addToParentGroup, SCH_COMMIT* aCommit, bool 
 
     if( addToParentGroup )
     {
-        wxCHECK_MSG( aCommit, newItem, "Must supply a commit to update parent group" );
+        KI_CHECK_MSG( aCommit, newItem, "Must supply a commit to update parent group" );
 
         if( EDA_GROUP* group = newItem->GetParentGroup() )
         {

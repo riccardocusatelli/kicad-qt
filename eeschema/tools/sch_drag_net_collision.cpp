@@ -44,6 +44,7 @@
 #include <layer_ids.h>
 #include <settings/color_settings.h>
 #include <eeschema_settings.h>
+#include <core/ki_log.h>
 
 SCH_DRAG_NET_COLLISION_MONITOR::SCH_DRAG_NET_COLLISION_MONITOR( SCH_EDIT_FRAME* aFrame,
                                                                 KIGFX::VIEW* aView ) :
@@ -66,7 +67,7 @@ SCH_DRAG_NET_COLLISION_MONITOR::~SCH_DRAG_NET_COLLISION_MONITOR()
 
 void SCH_DRAG_NET_COLLISION_MONITOR::Initialize( const SCH_SELECTION& aSelection )
 {
-    wxLogTrace( traceSchDragNetCollision, "Initialize: Starting initialization" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "Initialize: Starting initialization" );
 
     m_itemNetCodes.clear();
     m_originalConnections.clear();
@@ -75,13 +76,13 @@ void SCH_DRAG_NET_COLLISION_MONITOR::Initialize( const SCH_SELECTION& aSelection
 
     EE_RTREE& items = m_frame->GetScreen()->Items();
 
-    wxLogTrace( traceSchDragNetCollision, "Initialize: Recording nets for %zu screen items",
+    KI_LOG_TRACE( traceSchDragNetCollision, "Initialize: Recording nets for %zu screen items",
                 items.size() );
 
     for( SCH_ITEM* item : items )
         recordItemNet( item );
 
-    wxLogTrace( traceSchDragNetCollision, "Initialize: Recording nets for %d selected items",
+    KI_LOG_TRACE( traceSchDragNetCollision, "Initialize: Recording nets for %d selected items",
                 aSelection.GetSize() );
 
     for( EDA_ITEM* edaItem : aSelection )
@@ -89,7 +90,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::Initialize( const SCH_SELECTION& aSelection
 
     recordOriginalConnections( aSelection );
 
-    wxLogTrace( traceSchDragNetCollision, "Initialize: Complete. Tracked %zu items with net codes",
+    KI_LOG_TRACE( traceSchDragNetCollision, "Initialize: Complete. Tracked %zu items with net codes",
                 m_itemNetCodes.size() );
 }
 
@@ -98,7 +99,7 @@ bool SCH_DRAG_NET_COLLISION_MONITOR::Update( const std::vector<SCH_JUNCTION*>& a
                                              const SCH_SELECTION& aSelection,
                                              std::span<const PREVIEW_NET_ASSIGNMENT> aPreviewAssignments )
 {
-    wxLogTrace( traceSchDragNetCollision, "Update: Called with %zu junctions, %d selected items, %zu preview assignments",
+    KI_LOG_TRACE( traceSchDragNetCollision, "Update: Called with %zu junctions, %d selected items, %zu preview assignments",
                 aJunctions.size(), aSelection.GetSize(), aPreviewAssignments.size() );
 
     std::unordered_map<const SCH_ITEM*, std::optional<int>> previewNetCodes;
@@ -110,7 +111,7 @@ bool SCH_DRAG_NET_COLLISION_MONITOR::Update( const std::vector<SCH_JUNCTION*>& a
         if( !assignment.item )
             continue;
 
-    wxLogTrace( traceSchDragNetCollision, "Update: Preview assignment - item %p, netCode %s",
+    KI_LOG_TRACE( traceSchDragNetCollision, "Update: Preview assignment - item %p, netCode %s",
             assignment.item,
             assignment.netCode.has_value() ? std::to_string( *assignment.netCode ).c_str() : "none" );
 
@@ -121,17 +122,17 @@ bool SCH_DRAG_NET_COLLISION_MONITOR::Update( const std::vector<SCH_JUNCTION*>& a
 
     if( aJunctions.empty() )
     {
-    wxLogTrace( traceSchDragNetCollision, "Update: No junctions to analyze" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "Update: No junctions to analyze" );
     }
     else
     {
-    wxLogTrace( traceSchDragNetCollision, "Update: Analyzing %zu junctions", aJunctions.size() );
+    KI_LOG_TRACE( traceSchDragNetCollision, "Update: Analyzing %zu junctions", aJunctions.size() );
 
         for( SCH_JUNCTION* junction : aJunctions )
         {
             if( auto marker = analyzeJunction( junction, aSelection, previewNetCodes ) )
             {
-                wxLogTrace( traceSchDragNetCollision, "Update: Junction at (%d, %d) has collision",
+                KI_LOG_TRACE( traceSchDragNetCollision, "Update: Junction at (%d, %d) has collision",
                             marker->position.x, marker->position.y );
                 markers.push_back( *marker );
             }
@@ -142,13 +143,13 @@ bool SCH_DRAG_NET_COLLISION_MONITOR::Update( const std::vector<SCH_JUNCTION*>& a
 
     if( markers.empty() && disconnections.empty() )
     {
-    wxLogTrace( traceSchDragNetCollision, "Update: No collisions or disconnections detected" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "Update: No collisions or disconnections detected" );
         clearOverlay();
         m_hasCollision = false;
         return false;
     }
 
-    wxLogTrace( traceSchDragNetCollision, "Update: Drawing %zu collision markers and %zu disconnection markers",
+    KI_LOG_TRACE( traceSchDragNetCollision, "Update: Drawing %zu collision markers and %zu disconnection markers",
                 markers.size(), disconnections.size() );
 
     ensureOverlay();
@@ -258,7 +259,7 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
     VECTOR2I position = aJunction->GetPosition();
     EE_RTREE& items = m_frame->GetScreen()->Items();
 
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Checking junction at (%d, %d)",
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Checking junction at (%d, %d)",
                 position.x, position.y );
 
     std::unordered_set<int> allNetCodes;
@@ -271,20 +272,20 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
     {
         if( !item )
         {
-            wxLogTrace( traceSchDragNetCollision, "  accumulateNet: null item" );
+            KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: null item" );
             return;
         }
 
         if( !item->IsConnectable() )
         {
-            wxLogTrace( traceSchDragNetCollision, "  accumulateNet: item %p (%s) not connectable",
+            KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: item %p (%s) not connectable",
                         item, item->GetClass().c_str() );
             return;
         }
 
         if( !item->IsConnected( position ) && !( item->IsType( { SCH_LINE_T } ) && item->HitTest( position ) ) )
         {
-            wxLogTrace( traceSchDragNetCollision, "  accumulateNet: item %p (%s) not connected at (%d, %d)",
+            KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: item %p (%s) not connected at (%d, %d)",
                         item, item->GetClass().c_str(), position.x, position.y );
             return;
         }
@@ -300,20 +301,20 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
         if( previewIt != aPreviewNetCodes.end() )
         {
             netCodeOpt = previewIt->second;
-            wxLogTrace( traceSchDragNetCollision, "  accumulateNet: item %p (%s) using preview net %s",
+            KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: item %p (%s) using preview net %s",
                         item, item->GetClass().c_str(),
                         netCodeOpt.has_value() ? std::to_string( *netCodeOpt ).c_str() : "none" );
         }
         else if( originalIt != m_itemNetCodes.end() )
         {
             netCodeOpt = originalIt->second;
-            wxLogTrace( traceSchDragNetCollision, "  accumulateNet: item %p (%s) using cached net %s",
+            KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: item %p (%s) using cached net %s",
                         item, item->GetClass().c_str(),
                         netCodeOpt.has_value() ? std::to_string( *netCodeOpt ).c_str() : "none" );
         }
         else
         {
-            wxLogTrace( traceSchDragNetCollision, "  accumulateNet: item %p (%s) has no net code",
+            KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: item %p (%s) has no net code",
                         item, item->GetClass().c_str() );
         }
 
@@ -332,7 +333,7 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
                     stationaryOriginalNetCodes.insert( *originalNetOpt );
             }
 
-            wxLogTrace( traceSchDragNetCollision, "  accumulateNet: item %p (%s) netCode is nullopt",
+            KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: item %p (%s) netCode is nullopt",
                         item, item->GetClass().c_str() );
             return;
         }
@@ -340,7 +341,7 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
         int netCode = *netCodeOpt;
         allNetCodes.insert( netCode );
 
-    wxLogTrace( traceSchDragNetCollision, "  accumulateNet: item %p (%s) net %d, moved=%s",
+    KI_LOG_TRACE( traceSchDragNetCollision, "  accumulateNet: item %p (%s) net %d, moved=%s",
             item, item->GetClass().c_str(), netCode, isMoved ? "yes" : "no" );
 
         if( isMoved )
@@ -357,7 +358,7 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
         }
     };
 
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Checking items overlapping position" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Checking items overlapping position" );
 
     int candidateCount = 0;
 
@@ -367,49 +368,49 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
         accumulateNet( candidate );
     }
 
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Checked %d overlapping items", candidateCount );
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Checking %d selected items", aSelection.GetSize() );
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Checked %d overlapping items", candidateCount );
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Checking %d selected items", aSelection.GetSize() );
 
     for( EDA_ITEM* selected : aSelection )
         accumulateNet( static_cast<SCH_ITEM*>( selected ) );
 
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Found %zu unique nets, %zu moved nets",
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Found %zu unique nets, %zu moved nets",
                 allNetCodes.size(), movedNetCodes.size() );
 
     if( !movedNetCodes.empty() )
     {
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Moved nets:" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Moved nets:" );
 
         for( int netCode : movedNetCodes )
-            wxLogTrace( traceSchDragNetCollision, "  - Net %d", netCode );
+            KI_LOG_TRACE( traceSchDragNetCollision, "  - Net %d", netCode );
     }
 
-    wxLogTrace( traceSchDragNetCollision,
+    KI_LOG_TRACE( traceSchDragNetCollision,
                 "analyzeJunction: Original nets=%zu, moved originals=%zu, stationary originals=%zu",
                 originalNetCodes.size(), movedOriginalNetCodes.size(), stationaryOriginalNetCodes.size() );
 
     if( !movedOriginalNetCodes.empty() )
     {
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Moved original nets:" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Moved original nets:" );
 
         for( int netCode : movedOriginalNetCodes )
-            wxLogTrace( traceSchDragNetCollision, "  - Net %d", netCode );
+            KI_LOG_TRACE( traceSchDragNetCollision, "  - Net %d", netCode );
     }
 
     if( !stationaryOriginalNetCodes.empty() )
     {
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: Stationary original nets:" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: Stationary original nets:" );
 
         for( int netCode : stationaryOriginalNetCodes )
-            wxLogTrace( traceSchDragNetCollision, "  - Net %d", netCode );
+            KI_LOG_TRACE( traceSchDragNetCollision, "  - Net %d", netCode );
     }
 
     if( allNetCodes.size() >= 2 )
     {
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: All nets at junction:" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: All nets at junction:" );
 
         for( int netCode : allNetCodes )
-            wxLogTrace( traceSchDragNetCollision, "  - Net %d", netCode );
+            KI_LOG_TRACE( traceSchDragNetCollision, "  - Net %d", netCode );
     }
 
     bool previewCollision = !movedNetCodes.empty() && allNetCodes.size() >= 2;
@@ -436,14 +437,14 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
 
     if( !previewCollision && !originalCollision )
     {
-        wxLogTrace( traceSchDragNetCollision, "analyzeJunction: No collision (movedNets=%zu, allNets=%zu)",
+        KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: No collision (movedNets=%zu, allNets=%zu)",
                     movedNetCodes.size(), allNetCodes.size() );
         return std::nullopt;
     }
 
     if( originalCollision && !previewCollision )
     {
-        wxLogTrace( traceSchDragNetCollision,
+        KI_LOG_TRACE( traceSchDragNetCollision,
                         "analyzeJunction: Original net mismatch detected under moved endpoints" );
     }
 
@@ -452,7 +453,7 @@ std::optional<SCH_DRAG_NET_COLLISION_MONITOR::COLLISION_MARKER> SCH_DRAG_NET_COL
     double base = static_cast<double>( aJunction->GetEffectiveDiameter() );
     marker.radius = std::max( base * 1.5, 800.0 );
 
-    wxLogTrace( traceSchDragNetCollision, "analyzeJunction: COLLISION DETECTED at (%d, %d) with radius %.1f",
+    KI_LOG_TRACE( traceSchDragNetCollision, "analyzeJunction: COLLISION DETECTED at (%d, %d) with radius %.1f",
                 position.x, position.y, marker.radius );
 
     return marker;
@@ -478,7 +479,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordItemNet( SCH_ITEM* aItem )
 
             if( netCode > 0 )
             {
-                wxLogTrace( traceSchDragNetCollision, "recordItemNet: Item %p (%s) at (%d, %d) -> net %d (%s)",
+                KI_LOG_TRACE( traceSchDragNetCollision, "recordItemNet: Item %p (%s) at (%d, %d) -> net %d (%s)",
                             aItem, aItem->GetClass().c_str(),
                             aItem->GetPosition().x, aItem->GetPosition().y,
                             netCode, connection->Name().c_str() );
@@ -486,21 +487,21 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordItemNet( SCH_ITEM* aItem )
             }
             else
             {
-                wxLogTrace( traceSchDragNetCollision, "recordItemNet: Item %p (%s) has invalid netCode %d",
+                KI_LOG_TRACE( traceSchDragNetCollision, "recordItemNet: Item %p (%s) has invalid netCode %d",
                             aItem, aItem->GetClass().c_str(), netCode );
                 m_itemNetCodes.emplace( aItem, std::nullopt );
             }
         }
         else
         {
-            wxLogTrace( traceSchDragNetCollision, "recordItemNet: Item %p (%s) connection not a net or unconnected",
+            KI_LOG_TRACE( traceSchDragNetCollision, "recordItemNet: Item %p (%s) connection not a net or unconnected",
                         aItem, aItem->GetClass().c_str() );
             m_itemNetCodes.emplace( aItem, std::nullopt );
         }
     }
     else
     {
-    wxLogTrace( traceSchDragNetCollision, "recordItemNet: Item %p (%s) has no connection",
+    KI_LOG_TRACE( traceSchDragNetCollision, "recordItemNet: Item %p (%s) has no connection",
             aItem, aItem->GetClass().c_str() );
         m_itemNetCodes.emplace( aItem, std::nullopt );
     }
@@ -509,7 +510,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordItemNet( SCH_ITEM* aItem )
 
 void SCH_DRAG_NET_COLLISION_MONITOR::recordOriginalConnections( const SCH_SELECTION& aSelection )
 {
-    wxLogTrace( traceSchDragNetCollision, "recordOriginalConnections: Recording connections for %d items",
+    KI_LOG_TRACE( traceSchDragNetCollision, "recordOriginalConnections: Recording connections for %d items",
                 aSelection.GetSize() );
 
     // Don't record original connections for new or pasted items (duplicates, pastes)
@@ -527,7 +528,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordOriginalConnections( const SCH_SELECT
 
     if( hasNewOrPastedItems )
     {
-        wxLogTrace( traceSchDragNetCollision,
+        KI_LOG_TRACE( traceSchDragNetCollision,
                     "recordOriginalConnections: Skipping - selection contains new or pasted items" );
         return;
     }
@@ -611,7 +612,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordOriginalConnections( const SCH_SELECT
         }
     }
 
-    wxLogTrace( traceSchDragNetCollision, "recordOriginalConnections: Tracked %zu connections",
+    KI_LOG_TRACE( traceSchDragNetCollision, "recordOriginalConnections: Tracked %zu connections",
                 m_originalConnections.size() );
 }
 
@@ -673,7 +674,7 @@ SCH_DRAG_NET_COLLISION_MONITOR::collectDisconnectedMarkers( const SCH_SELECTION&
 
     if( !markers.empty() )
     {
-    wxLogTrace( traceSchDragNetCollision,
+    KI_LOG_TRACE( traceSchDragNetCollision,
             "collectDisconnectedMarkers: Identified %zu disconnections", markers.size() );
     }
 

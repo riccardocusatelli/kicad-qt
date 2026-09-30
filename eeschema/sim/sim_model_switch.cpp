@@ -24,6 +24,7 @@
 #include <sim/sim_model_switch.h>
 
 #include <fmt/core.h>
+#include <core/ki_assert.h>
 
 
 std::string SPICE_GENERATOR_SWITCH::ItemLine( const SPICE_ITEM& aItem ) const
@@ -42,7 +43,7 @@ std::string SPICE_GENERATOR_SWITCH::ItemLine( const SPICE_ITEM& aItem ) const
     {
         std::string vsourceName = fmt::format( "V__{}", aItem.refName );
 
-        wxCHECK_MSG( aItem.pinNetNames.size() >= 2, "", wxS( "Missing two pin net names for SW_I" ) );
+        KI_CHECK_MSG( aItem.pinNetNames.size() >= 2, "", wxS( "Missing two pin net names for SW_I" ) );
 
         // Current switches measure input current through a voltage source.
         result.append( fmt::format( "{0} {1} 0\n", aItem.pinNetNames[0], aItem.pinNetNames[1] ) );
@@ -54,7 +55,7 @@ std::string SPICE_GENERATOR_SWITCH::ItemLine( const SPICE_ITEM& aItem ) const
     }
 
     default:
-        wxFAIL_MSG( wxS( "Unhandled SIM_MODEL type in SIM_MODEL_SWITCH" ) );
+        KI_FAIL_MSG( wxS( "Unhandled SIM_MODEL type in SIM_MODEL_SWITCH" ) );
         break;
     }
 
@@ -95,7 +96,7 @@ std::vector<std::reference_wrapper<const SIM_MODEL_PIN>> SPICE_GENERATOR_SWITCH:
         return { m_model.GetPin( 2 ), m_model.GetPin( 3 ) };
 
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_SWITCH" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_SWITCH" );
         return {};
     }
 }
@@ -121,7 +122,7 @@ SIM_MODEL_SWITCH::SIM_MODEL_SWITCH( TYPE aType ) :
         break;
 
     default:
-        wxFAIL_MSG( wxS( "Unhandled SIM_MODEL type in SIM_MODEL_SWITCH" ) );
+        KI_FAIL_MSG( wxS( "Unhandled SIM_MODEL type in SIM_MODEL_SWITCH" ) );
         break;
     }
 }

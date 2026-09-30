@@ -84,6 +84,7 @@
 #include <Standard_Version.hxx>
 
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
 
 
 // log mask for wxLogTrace
@@ -351,7 +352,7 @@ void getTag( const TDF_Label& aLabel, std::string& aTag )
 
     if( aLabel.IsNull() )
     {
-        wxLogTrace( MASK_OCE, wxT( "Null label passed to getTag" ) );
+        KI_LOG_TRACE( MASK_OCE, wxT( "Null label passed to getTag" ) );
         return;
     }
 
@@ -477,7 +478,7 @@ static void printLabel( TDF_Label aLabel, Handle( XCAFDoc_ShapeTool ) aShapeTool
             ss << ", cc: " << c;
     }
 
-    wxLogTrace( MASK_OCE, ss.str().c_str() );
+    KI_LOG_TRACE( MASK_OCE, ss.str().c_str() );
 }
 
 
@@ -585,7 +586,7 @@ bool readIGES( Handle( TDocStd_Document ) & m_doc, const char* fname )
 
 bool readSTEP( Handle(TDocStd_Document)& m_doc, const char* fname )
 {
-    wxLogTrace( MASK_OCE, wxT( "Reading step file %s" ), fname );
+    KI_LOG_TRACE( MASK_OCE, wxT( "Reading step file %s" ), fname );
 
     STEPCAFControl_Reader reader;
     IFSelect_ReturnStatus stat  = reader.ReadFile( fname );
@@ -810,7 +811,7 @@ bool processShell( const TopoDS_Shape& shape, DATA& data, SGNODE* parent,
     TopoDS_Iterator it;
     bool ret = false;
 
-    wxLogTrace( MASK_OCE, wxT( "Processing shell" ) );
+    KI_LOG_TRACE( MASK_OCE, wxT( "Processing shell" ) );
     for( it.Initialize( shape, false, false ); it.More(); it.Next() )
     {
         const TopoDS_Face& face = TopoDS::Face( it.Value() );
@@ -833,7 +834,7 @@ bool processSolidOrShell( const TopoDS_Shape& shape, DATA& data, SGNODE* parent,
 
     data.hasSolid = shape.ShapeType() == TopAbs_SOLID;
 
-    wxLogTrace( MASK_OCE, wxT( "Processing solid" ) );
+    KI_LOG_TRACE( MASK_OCE, wxT( "Processing solid" ) );
 
     // Search the whole model first to make sure something exists (may or may not have color)
     if( !data.m_assy->Search( shape, label ) )
@@ -934,7 +935,7 @@ bool processSolidOrShell( const TopoDS_Shape& shape, DATA& data, SGNODE* parent,
             }
             else
             {
-                wxLogTrace( MASK_OCE, wxT( "Unsupported subshape in solid" ) );
+                KI_LOG_TRACE( MASK_OCE, wxT( "Unsupported subshape in solid" ) );
             }
         }
     }
@@ -959,7 +960,7 @@ bool processLabel( const TDF_Label& aLabel, DATA& aData, SGNODE* aParent,
         getTag( aLabel, labelTag );
     }
 
-    wxLogTrace( MASK_OCE, wxT( "Processing label %s" ), labelTag );
+    KI_LOG_TRACE( MASK_OCE, wxT( "Processing label %s" ), labelTag );
 
     TopoDS_Shape originalShape;
     TDF_Label shapeLabel = aLabel;
@@ -973,7 +974,7 @@ bool processLabel( const TDF_Label& aLabel, DATA& aData, SGNODE* aParent,
 
     if( aData.m_assy->IsReference( aLabel ) )
     {
-        wxLogTrace( MASK_OCE, wxT( "Label %s is ref, trying to pull up referred label" ),
+        KI_LOG_TRACE( MASK_OCE, wxT( "Label %s is ref, trying to pull up referred label" ),
                     labelTag );
 
         if( !aData.m_assy->GetReferredShape( aLabel, shapeLabel ) )
@@ -982,7 +983,7 @@ bool processLabel( const TDF_Label& aLabel, DATA& aData, SGNODE* aParent,
         }
 
         labelTag = static_cast<int>( shapeLabel.Tag() );
-       // wxLogTrace( MASK_OCE, wxT( "Label %s referred" ), labelTag );
+       // KI_LOG_TRACE( MASK_OCE, wxT( "Label %s referred" ), labelTag );
 
         if( !aData.m_assy->GetShape( shapeLabel, shape ) )
         {
@@ -998,18 +999,18 @@ bool processLabel( const TDF_Label& aLabel, DATA& aData, SGNODE* aParent,
 
     if( !loc.IsIdentity() )
     {
-        wxLogTrace( MASK_OCE, wxT( "Label %d has location" ), static_cast<int>( aLabel.Tag() ) );
+        KI_LOG_TRACE( MASK_OCE, wxT( "Label %d has location" ), static_cast<int>( aLabel.Tag() ) );
         gp_Trsf T = loc.Transformation();
         gp_XYZ  coord = T.TranslationPart();
         childNode.SetTranslation( SGPOINT( coord.X(), coord.Y(), coord.Z() ) );
-        wxLogTrace( MASK_OCE, wxT( "Translation %f, %f, %f" ), coord.X(), coord.Y(), coord.Z() );
+        KI_LOG_TRACE( MASK_OCE, wxT( "Translation %f, %f, %f" ), coord.X(), coord.Y(), coord.Z() );
         gp_XYZ        axis;
         double angle;
 
         if( T.GetRotation( axis, angle ) )
         {
             childNode.SetRotation( SGVECTOR( axis.X(), axis.Y(), axis.Z() ), angle );
-            wxLogTrace( MASK_OCE, wxT( "Rotation %f, %f, %f, angle %f" ),
+            KI_LOG_TRACE( MASK_OCE, wxT( "Rotation %f, %f, %f, angle %f" ),
                         axis.X(), axis.Y(), axis.Z(), angle );
         }
     }
@@ -1079,7 +1080,7 @@ bool processLabel( const TDF_Label& aLabel, DATA& aData, SGNODE* aParent,
 
     if( !aData.m_assy->IsSimpleShape( shapeLabel ) && shapeLabel.HasChild() )
     {
-        wxLogTrace( MASK_OCE, wxT( "Label %s has children" ), labelTag );
+        KI_LOG_TRACE( MASK_OCE, wxT( "Label %s has children" ), labelTag );
         TDF_ChildIterator it;
 
         for( it.Initialize( shapeLabel ); it.More(); it.Next() )

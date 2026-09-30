@@ -36,6 +36,7 @@
 #include <tool/tool_manager.h>
 #include <tools/pcb_actions.h>
 #include <wx/fdrepdlg.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_FIND::DIALOG_FIND( PCB_EDIT_FRAME *aFrame ) :
@@ -263,7 +264,7 @@ void DIALOG_FIND::search( bool aDirection )
                 {
                     for( PCB_FIELD* field : fp->GetFields() )
                     {
-                        wxCHECK2( field, continue );
+                        KI_CHECK2( field, continue );
 
                         if( field->Matches( frd, nullptr ) )
                         {

@@ -58,6 +58,8 @@
 #include <advanced_config.h>
 #include <magic_enum.hpp>
 #include <widgets/wx_infobar.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SIM_TRACE_TYPE operator|( SIM_TRACE_TYPE aFirst, SIM_TRACE_TYPE aSecond )
@@ -1442,7 +1444,7 @@ void SIMULATOR_FRAME_UI::onCursorsGridCellChanged( wxGridEvent& aEvent )
     }
     else
     {
-        wxFAIL_MSG( wxT( "All other columns are supposed to be read-only!" ) );
+        KI_FAIL_MSG( wxT( "All other columns are supposed to be read-only!" ) );
     }
 }
 
@@ -1486,7 +1488,7 @@ void SIMULATOR_FRAME_UI::onMeasurementsGridCellChanged( wxGridEvent& aEvent )
     }
     else
     {
-        wxFAIL_MSG( wxT( "All other columns are supposed to be read-only!" ) );
+        KI_FAIL_MSG( wxT( "All other columns are supposed to be read-only!" ) );
     }
 
     // Always leave a single empty row for type-in
@@ -1990,7 +1992,7 @@ void SIMULATOR_FRAME_UI::updateTrace( const wxString& aVectorName, int aTraceTyp
         else if( aTraceType & SPT_AC_PHASE )
             data_y = simulator()->GetPhaseVector( (const char*) simVectorName.c_str(), size );
         else
-            wxFAIL_MSG( wxT( "Plot type missing AC_PHASE or AC_MAG bit" ) );
+            KI_FAIL_MSG( wxT( "Plot type missing AC_PHASE or AC_MAG bit" ) );
 
         break;
     case ST_SP:
@@ -1999,7 +2001,7 @@ void SIMULATOR_FRAME_UI::updateTrace( const wxString& aVectorName, int aTraceTyp
         else if( aTraceType & SPT_AC_PHASE )
             data_y = simulator()->GetPhaseVector( (const char*) simVectorName.c_str(), size );
         else
-            wxFAIL_MSG( wxT( "Plot type missing AC_PHASE or SPT_SP_AMP bit" ) );
+            KI_FAIL_MSG( wxT( "Plot type missing AC_PHASE or SPT_SP_AMP bit" ) );
 
         break;
 
@@ -2014,7 +2016,7 @@ void SIMULATOR_FRAME_UI::updateTrace( const wxString& aVectorName, int aTraceTyp
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unhandled plot type" ) );
+        KI_FAIL_MSG( wxT( "Unhandled plot type" ) );
     }
 
     SPICE_DC_PARAMS source1, source2;
@@ -2617,31 +2619,31 @@ bool SIMULATOR_FRAME_UI::loadJsonWorkbook( const wxString& aPath )
     }
     catch( nlohmann::json::parse_error& error )
     {
-        wxLogTrace( traceSettings, wxT( "Json parse error reading %s: %s" ), aPath, error.what() );
+        KI_LOG_TRACE( traceSettings, wxT( "Json parse error reading %s: %s" ), aPath, error.what() );
 
         return false;
     }
     catch( nlohmann::json::type_error& error )
     {
-        wxLogTrace( traceSettings, wxT( "Json type error reading %s: %s" ), aPath, error.what() );
+        KI_LOG_TRACE( traceSettings, wxT( "Json type error reading %s: %s" ), aPath, error.what() );
 
         return false;
     }
     catch( nlohmann::json::invalid_iterator& error )
     {
-        wxLogTrace( traceSettings, wxT( "Json invalid_iterator error reading %s: %s" ), aPath, error.what() );
+        KI_LOG_TRACE( traceSettings, wxT( "Json invalid_iterator error reading %s: %s" ), aPath, error.what() );
 
         return false;
     }
     catch( nlohmann::json::out_of_range& error )
     {
-        wxLogTrace( traceSettings, wxT( "Json out_of_range error reading %s: %s" ), aPath, error.what() );
+        KI_LOG_TRACE( traceSettings, wxT( "Json out_of_range error reading %s: %s" ), aPath, error.what() );
 
         return false;
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "Error reading %s" ), aPath );
+        KI_LOG_TRACE( traceSettings, wxT( "Error reading %s" ), aPath );
         return false;
     }
 
@@ -2861,7 +2863,7 @@ SIM_TRACE_TYPE SIMULATOR_FRAME_UI::getXAxisType( SIM_TYPE aType ) const
     case ST_NOISE: return SPT_LIN_FREQUENCY;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxS( "Unhandled simulation type: %d" ), (int) aType ) );
+        KI_FAIL_MSG( wxString::Format( wxS( "Unhandled simulation type: %d" ), (int) aType ) );
         return SPT_UNKNOWN;
     }
 }
@@ -3415,7 +3417,7 @@ void SIMULATOR_FRAME_UI::OnSimRefresh( bool aFinal )
         }
 
         SIM_PLOT_TAB* plotTab = dynamic_cast<SIM_PLOT_TAB*>( simTab );
-        wxCHECK_RET( plotTab, wxString::Format( wxT( "No SIM_PLOT_TAB for: %s" ),
+        KI_CHECK_RET( plotTab, wxString::Format( wxT( "No SIM_PLOT_TAB for: %s" ),
                                                 magic_enum::enum_name( simType ) ) );
 
         struct TRACE_INFO

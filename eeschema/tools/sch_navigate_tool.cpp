@@ -28,6 +28,7 @@
 #include <tools/sch_navigate_tool.h>
 #include <common.h>
 #include "eda_doc.h"
+#include <core/ki_assert.h>
 
 
 wxString SCH_NAVIGATE_TOOL::g_BackLink = wxT( "HYPERTEXT_BACK" );
@@ -43,11 +44,11 @@ void SCH_NAVIGATE_TOOL::ResetHistory()
 
 void SCH_NAVIGATE_TOOL::CleanHistory()
 {
-    wxCHECK( m_frame, /* void */ );
+    KI_CHECK( m_frame, /* void */ );
 
     SCH_SHEET_LIST sheets = m_frame->Schematic().Hierarchy();
 
-    wxCHECK( !sheets.empty(), /* void */ );
+    KI_CHECK( !sheets.empty(), /* void */ );
 
     // Search through our history, and removing any entries
     // that the no longer point to a sheet on the schematic
@@ -237,7 +238,7 @@ bool SCH_NAVIGATE_TOOL::CanGoNext()
 int SCH_NAVIGATE_TOOL::ChangeSheet( const TOOL_EVENT& aEvent )
 {
     SCH_SHEET_PATH* path = aEvent.Parameter<SCH_SHEET_PATH*>();
-    wxCHECK( path, 0 );
+    KI_CHECK( path, 0 );
 
     changeSheet( *path );
 

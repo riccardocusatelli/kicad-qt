@@ -34,6 +34,7 @@
 #include <tool/tool_manager.h>
 #include <dialogs/html_message_box.h>
 #include <dialog_tablecell_properties.h>
+#include <core/ki_assert.h>
 
 DIALOG_TABLECELL_PROPERTIES::DIALOG_TABLECELL_PROPERTIES( SCH_EDIT_FRAME* aFrame, std::vector<SCH_TABLECELL*> aCells ) :
         DIALOG_TABLECELL_PROPERTIES_BASE( aFrame ),
@@ -50,7 +51,7 @@ DIALOG_TABLECELL_PROPERTIES::DIALOG_TABLECELL_PROPERTIES( SCH_EDIT_FRAME* aFrame
         m_cellText( m_cellTextCtrl ),
         m_returnValue( TABLECELL_PROPS_CANCEL )
 {
-    wxASSERT( m_cells.size() > 0 && m_cells[0] );
+    KI_ASSERT( m_cells.size() > 0 && m_cells[0] );
 
     m_cellText->SetEOLMode( wxSTC_EOL_LF );
 

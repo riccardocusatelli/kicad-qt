@@ -35,6 +35,7 @@
 #include <sch_actions.h>
 #include <tool/tool_manager.h>
 #include <tools/sch_design_block_control.h>
+#include <core/ki_assert.h>
 
 
 // Do not make these static wxStrings; they need to respond to language changes
@@ -164,7 +165,7 @@ FILEDLG_IMPORT_SHEET_CONTENTS::FILEDLG_IMPORT_SHEET_CONTENTS( EESCHEMA_SETTINGS*
         m_cbRepeatedPlacement( nullptr ), m_cbPlaceAsGroup( nullptr ), m_cbPlaceAsSheet( nullptr ),
         m_cbKeepAnnotations( nullptr )
 {
-    wxASSERT( aSettings );
+    KI_ASSERT( aSettings );
     m_settings = aSettings;
 };
 

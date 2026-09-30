@@ -58,6 +58,7 @@
 #include <drawing_sheet/ds_draw_item.h>
 #include <drawing_sheet/ds_painter.h>
 #include <trigo.h>
+#include <core/ki_assert.h>
 
 using KIGFX::COLOR4D;
 
@@ -116,7 +117,7 @@ void DS_DATA_ITEM::SyncDrawItems( DS_DRAW_ITEM_LIST* aCollector, KIGFX::VIEW* aV
             item = new DS_DRAW_ITEM_RECT( this, j, GetStartPosIU( j ), GetEndPosIU( j ), pensize );
         else
         {
-            wxFAIL_MSG( wxS( "Unknown drawing sheet item type" ) );
+            KI_FAIL_MSG( wxS( "Unknown drawing sheet item type" ) );
             continue;
         }
 

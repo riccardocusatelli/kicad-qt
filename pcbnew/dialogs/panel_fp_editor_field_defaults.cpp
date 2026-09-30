@@ -35,6 +35,7 @@
 #include <board_design_settings.h>
 #include <bitmaps.h>
 #include <confirm.h>
+#include <core/ki_assert.h>
 
 
 class TEXT_ITEMS_GRID_TABLE : public wxGridTableBase
@@ -92,7 +93,7 @@ public:
             case 0: return aTypeName == wxGRID_VALUE_STRING;
             case 1: return aTypeName == wxGRID_VALUE_BOOL;
             case 2: return aTypeName == wxGRID_VALUE_NUMBER;
-            default: wxFAIL; return false;
+            default: KI_FAIL(); return false;
             }
         }
         else
@@ -101,7 +102,7 @@ public:
             {
             case 0: return aTypeName == wxGRID_VALUE_STRING;
             case 1: return aTypeName == wxGRID_VALUE_NUMBER;
-            default: wxFAIL; return false;
+            default: KI_FAIL(); return false;
             }
         }
     }

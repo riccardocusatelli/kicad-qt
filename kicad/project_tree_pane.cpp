@@ -95,6 +95,8 @@
 
 #include <kiplatform/io.h>
 #include <kiplatform/secrets.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /* Note about the project tree build process:
@@ -470,7 +472,7 @@ wxTreeItemId PROJECT_TREE_PANE::addItemToProjectTree( const wxString& aName,
 
         for( const wxString& m_filter : m_filters )
         {
-            wxCHECK2_MSG( reg.Compile( m_filter, wxRE_ICASE ), continue,
+            KI_CHECK2_MSG( reg.Compile( m_filter, wxRE_ICASE ), continue,
                           wxString::Format( "Regex %s failed to compile.", m_filter ) );
 
             if( reg.Matches( aName ) )
@@ -802,7 +804,7 @@ void PROJECT_TREE_PANE::ReCreateTreePrj()
     CallAfter(
             [this] ()
             {
-                wxLogTrace( traceGit, "PROJECT_TREE_PANE::ReCreateTreePrj: starting timers" );
+                KI_LOG_TRACE( traceGit, "PROJECT_TREE_PANE::ReCreateTreePrj: starting timers" );
                 m_gitSyncTimer.Start( 100, wxTIMER_ONE_SHOT );
                 m_gitStatusTimer.Start( 500, wxTIMER_ONE_SHOT );
             } );
@@ -1313,7 +1315,7 @@ std::vector<PROJECT_TREE_ITEM*> PROJECT_TREE_PANE::GetSelectedData()
 
         if( !item )
         {
-            wxLogTrace( traceGit, wxS( "Null tree item returned for selection, dynamic_cast failed?" ) );
+            KI_LOG_TRACE( traceGit, wxS( "Null tree item returned for selection, dynamic_cast failed?" ) );
             continue;
         }
 
@@ -1427,7 +1429,7 @@ void PROJECT_TREE_PANE::onFileSystemEvent( wxFileSystemWatcherEvent& event )
 
     CallAfter( [this] ()
     {
-        wxLogTrace( traceGit, wxS( "File system event detected, updating tree cache" ) );
+        KI_LOG_TRACE( traceGit, wxS( "File system event detected, updating tree cache" ) );
         m_gitStatusTimer.Start( 1500, wxTIMER_ONE_SHOT );
     } );
 
@@ -1606,7 +1608,7 @@ void PROJECT_TREE_PANE::FileWatcherReset()
 #ifdef __WINDOWS__
         if( ! m_watcher->AddTree( fn ) )
         {
-            wxLogTrace( tracePathsAndFiles, "%s: failed to add '%s'\n", __func__,
+            KI_LOG_TRACE( tracePathsAndFiles, "%s: failed to add '%s'\n", __func__,
                         TO_UTF8( fn.GetFullPath() ) );
             return;
         }
@@ -1614,7 +1616,7 @@ void PROJECT_TREE_PANE::FileWatcherReset()
 #else
         if( !m_watcher->Add( fn ) )
         {
-            wxLogTrace( tracePathsAndFiles, "%s: failed to add '%s'\n", __func__,
+            KI_LOG_TRACE( tracePathsAndFiles, "%s: failed to add '%s'\n", __func__,
                         TO_UTF8( fn.GetFullPath() ) );
             return;
         }
@@ -1665,7 +1667,7 @@ void PROJECT_TREE_PANE::FileWatcherReset()
                 continue;
             }
 
-            wxLogTrace( tracePathsAndFiles, "%s: add '%s'\n", __func__, TO_UTF8( path ) );
+            KI_LOG_TRACE( tracePathsAndFiles, "%s: add '%s'\n", __func__, TO_UTF8( path ) );
 
             if( wxFileName::IsDirReadable( path ) )   // linux whines about watching protected dir
             {
@@ -1687,16 +1689,16 @@ void PROJECT_TREE_PANE::FileWatcherReset()
     }
 
     if( total_watch_count >= ADVANCED_CFG::GetCfg().m_MaxFilesystemWatchers )
-        wxLogTrace( tracePathsAndFiles, "%s: too many directories to watch\n", __func__ );
+        KI_LOG_TRACE( tracePathsAndFiles, "%s: too many directories to watch\n", __func__ );
 #endif
 
 #if defined(DEBUG) && 1
     wxArrayString paths;
     m_watcher->GetWatchedPaths( &paths );
-    wxLogTrace( tracePathsAndFiles, "%s: watched paths:", __func__ );
+    KI_LOG_TRACE( tracePathsAndFiles, "%s: watched paths:", __func__ );
 
     for( unsigned ii = 0; ii < paths.GetCount(); ii++ )
-        wxLogTrace( tracePathsAndFiles, " %s\n", TO_UTF8( paths[ii] ) );
+        KI_LOG_TRACE( tracePathsAndFiles, " %s\n", TO_UTF8( paths[ii] ) );
 #endif
     }
 
@@ -2277,7 +2279,7 @@ void PROJECT_TREE_PANE::onGitSwitchBranch( wxCommandEvent& aEvent )
         branchName = branches[branchIndex];
     }
 
-    wxLogTrace( traceGit, wxS( "onGitSwitchBranch: Switching to branch '%s'" ), branchName );
+    KI_LOG_TRACE( traceGit, wxS( "onGitSwitchBranch: Switching to branch '%s'" ), branchName );
     if( branchHandler.SwitchToBranch( branchName ) != BranchResult::Success )
     {
         DisplayError( m_parent, branchHandler.GetErrorString() );
@@ -2296,7 +2298,7 @@ void PROJECT_TREE_PANE::onGitRemoveVCS( wxCommandEvent& aEvent )
     // Toggle the Git integration disabled preference
     localSettings.m_GitIntegrationDisabled = !localSettings.m_GitIntegrationDisabled;
 
-    wxLogTrace( traceGit, wxS( "onGitRemoveVCS: Git integration %s" ),
+    KI_LOG_TRACE( traceGit, wxS( "onGitRemoveVCS: Git integration %s" ),
                 localSettings.m_GitIntegrationDisabled ? wxS( "disabled" ) : wxS( "enabled" ) );
 
     if( localSettings.m_GitIntegrationDisabled )
@@ -2357,19 +2359,19 @@ void PROJECT_TREE_PANE::onGitRemoveVCS( wxCommandEvent& aEvent )
 
 void PROJECT_TREE_PANE::updateGitStatusIcons()
 {
-    wxLogTrace( traceGit, wxS( "updateGitStatusIcons: Updating git status icons" ) );
+    KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIcons: Updating git status icons" ) );
     std::unique_lock<std::mutex> lock( m_gitStatusMutex, std::try_to_lock );
 
     if( !lock.owns_lock() )
     {
-        wxLogTrace( traceGit, wxS( "updateGitStatusIcons: Failed to acquire lock for git status icon update" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIcons: Failed to acquire lock for git status icon update" ) );
         m_gitStatusTimer.Start( 500, wxTIMER_ONE_SHOT );
         return;
     }
 
     if( !Pgm().GetCommonSettings()->m_Git.enableGit || !m_TreeProject )
     {
-        wxLogTrace( traceGit, wxS( "updateGitStatusIcons: Git is disabled or tree control is null" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIcons: Git is disabled or tree control is null" ) );
         return;
     }
 
@@ -2413,25 +2415,25 @@ void PROJECT_TREE_PANE::updateGitStatusIcons()
         }
     }
 
-    wxLogTrace( traceGit, wxS( "updateGitStatusIcons: Git status icons updated" ) );
+    KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIcons: Git status icons updated" ) );
 }
 
 
 void PROJECT_TREE_PANE::updateTreeCache()
 {
-    wxLogTrace( traceGit, wxS( "updateTreeCache: Updating tree cache" ) );
+    KI_LOG_TRACE( traceGit, wxS( "updateTreeCache: Updating tree cache" ) );
 
     std::unique_lock<std::mutex> lock( m_gitTreeCacheMutex, std::try_to_lock );
 
     if( !lock.owns_lock() )
     {
-        wxLogTrace( traceGit, wxS( "updateTreeCache: Failed to acquire lock for tree cache update" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateTreeCache: Failed to acquire lock for tree cache update" ) );
         return;
     }
 
     if( !m_TreeProject )
     {
-        wxLogTrace( traceGit, wxS( "updateTreeCache: Tree control is null" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateTreeCache: Tree control is null" ) );
         return;
     }
 
@@ -2475,7 +2477,7 @@ void PROJECT_TREE_PANE::updateTreeCache()
 
 void PROJECT_TREE_PANE::updateGitStatusIconMap()
 {
-    wxLogTrace( traceGit, wxS( "updateGitStatusIconMap: Updating git status icons" ) );
+    KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIconMap: Updating git status icons" ) );
 #if defined( _WIN32 )
     int refresh = ADVANCED_CFG::GetCfg().m_GitIconRefreshInterval;
 
@@ -2501,7 +2503,7 @@ void PROJECT_TREE_PANE::updateGitStatusIconMap()
 
     if( !lock1.owns_lock() || !lock2.owns_lock() )
     {
-        wxLogTrace( traceGit, wxS( "updateGitStatusIconMap: Failed to acquire locks for git status icon update" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIconMap: Failed to acquire locks for git status icon update" ) );
         return;
     }
 
@@ -2513,7 +2515,7 @@ void PROJECT_TREE_PANE::updateGitStatusIconMap()
 
     if( !gitCommon || !gitCommon->GetRepo() )
     {
-        wxLogTrace( traceGit, wxS( "updateGitStatusIconMap: No git repository found" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIconMap: No git repository found" ) );
         return;
     }
 
@@ -2523,14 +2525,14 @@ void PROJECT_TREE_PANE::updateGitStatusIconMap()
 
     if( !gitLock.owns_lock() )
     {
-        wxLogTrace( traceGit, wxS( "updateGitStatusIconMap: Failed to acquire git action mutex" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIconMap: Failed to acquire git action mutex" ) );
         return;
     }
 
     // Check if cancellation was requested (e.g., during shutdown)
     if( gitCommon->IsCancelled() )
     {
-        wxLogTrace( traceGit, wxS( "updateGitStatusIconMap: Cancelled" ) );
+        KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIconMap: Cancelled" ) );
         return;
     }
 
@@ -2561,7 +2563,7 @@ void PROJECT_TREE_PANE::updateGitStatusIconMap()
         auto iter = m_gitTreeCache.find( absPath );
         if( iter == m_gitTreeCache.end() )
         {
-            wxLogTrace( traceGit, wxS( "File '%s' not found in tree cache" ), absPath );
+            KI_LOG_TRACE( traceGit, wxS( "File '%s' not found in tree cache" ), absPath );
             continue;
         }
 
@@ -2580,7 +2582,7 @@ void PROJECT_TREE_PANE::updateGitStatusIconMap()
     m_gitCurrentBranchName = branchName;
     m_gitCurrentUpstream = gitCommon->GetUpstreamShorthand();
 
-    wxLogTrace( traceGit, wxS( "updateGitStatusIconMap: Updated git status icons" ) );
+    KI_LOG_TRACE( traceGit, wxS( "updateGitStatusIconMap: Updated git status icons" ) );
 
     // Update UI if icons changed
     if( updated || !m_gitIconsInitialized )
@@ -2800,7 +2802,7 @@ void PROJECT_TREE_PANE::onGitCommit( wxCommandEvent& aEvent )
         return;
     }
 
-    wxLogTrace( traceGit, wxS( "Created commit" ) );
+    KI_LOG_TRACE( traceGit, wxS( "Created commit" ) );
     m_gitStatusTimer.Start( 500, wxTIMER_ONE_SHOT );
 }
 
@@ -3094,7 +3096,7 @@ void PROJECT_TREE_PANE::onGitAmendCommit( wxCommandEvent& aEvent )
         return;
     }
 
-    wxLogTrace( traceGit, wxS( "Amended commit" ) );
+    KI_LOG_TRACE( traceGit, wxS( "Amended commit" ) );
     m_gitStatusTimer.Start( 500, wxTIMER_ONE_SHOT );
 }
 
@@ -3130,12 +3132,12 @@ bool PROJECT_TREE_PANE::canFileBeAddedToVCS( const wxString& aFile )
 
 void PROJECT_TREE_PANE::onGitSyncProject( wxCommandEvent& aEvent )
 {
-    wxLogTrace( traceGit, "Syncing project" );
+    KI_LOG_TRACE( traceGit, "Syncing project" );
     git_repository* repo = m_TreeProject->GetGitRepo();
 
     if( !repo )
     {
-        wxLogTrace( traceGit, "sync: No git repository found" );
+        KI_LOG_TRACE( traceGit, "sync: No git repository found" );
         return;
     }
 
@@ -3221,7 +3223,7 @@ void PROJECT_TREE_PANE::onRunSelectedJobsFile(wxCommandEvent& event)
 
 void PROJECT_TREE_PANE::onGitSyncTimer( wxTimerEvent& aEvent )
 {
-    wxLogTrace( traceGit, "onGitSyncTimer" );
+    KI_LOG_TRACE( traceGit, "onGitSyncTimer" );
     COMMON_SETTINGS::GIT& gitSettings = Pgm().GetCommonSettings()->m_Git;
 
     if( !gitSettings.enableGit || !m_TreeProject )
@@ -3237,14 +3239,14 @@ void PROJECT_TREE_PANE::onGitSyncTimer( wxTimerEvent& aEvent )
 
         if( !gitCommon || !gitCommon->GetRepo() )
         {
-            wxLogTrace( traceGit, "onGitSyncTimer: No git repository found" );
+            KI_LOG_TRACE( traceGit, "onGitSyncTimer: No git repository found" );
             return;
         }
 
         // Check if cancellation was requested (e.g., during shutdown)
         if( gitCommon->IsCancelled() )
         {
-            wxLogTrace( traceGit, "onGitSyncTimer: Cancelled" );
+            KI_LOG_TRACE( traceGit, "onGitSyncTimer: Cancelled" );
             return;
         }
 
@@ -3258,7 +3260,7 @@ void PROJECT_TREE_PANE::onGitSyncTimer( wxTimerEvent& aEvent )
 
     if( gitSettings.updatInterval > 0 )
     {
-        wxLogTrace( traceGit, "onGitSyncTimer: Restarting git sync timer" );
+        KI_LOG_TRACE( traceGit, "onGitSyncTimer: Restarting git sync timer" );
         // We store the timer interval in minutes but wxTimer uses milliseconds
         m_gitSyncTimer.Start( gitSettings.updatInterval * 60 * 1000, wxTIMER_ONE_SHOT );
     }
@@ -3281,7 +3283,7 @@ void PROJECT_TREE_PANE::gitStatusTimerHandler()
 
 void PROJECT_TREE_PANE::onGitStatusTimer( wxTimerEvent& aEvent )
 {
-    wxLogTrace( traceGit, "onGitStatusTimer" );
+    KI_LOG_TRACE( traceGit, "onGitStatusTimer" );
 
     if( !Pgm().GetCommonSettings()->m_Git.enableGit || !m_TreeProject )
         return;

@@ -28,6 +28,7 @@
  */
 
 #include <Python.h>
+#include <core/ki_assert.h>
 #undef HAVE_CLOCK_GETTIME  // macro is defined in Python.h and causes redefine warning
 
 #include "pcbnew_scripting_helpers.h"
@@ -552,7 +553,7 @@ bool IsActionRunning()
 bool WriteDRCReport( BOARD* aBoard, const wxString& aFileName, EDA_UNITS aUnits,
                      bool aReportAllTrackErrors )
 {
-    wxCHECK( aBoard, false );
+    KI_CHECK( aBoard, false );
 
     BOARD_DESIGN_SETTINGS&      bds = aBoard->GetDesignSettings();
     std::shared_ptr<DRC_ENGINE> engine = bds.m_DRCEngine;
@@ -564,7 +565,7 @@ bool WriteDRCReport( BOARD* aBoard, const wxString& aFileName, EDA_UNITS aUnits,
         engine = bds.m_DRCEngine;
     }
 
-    wxCHECK( engine, false );
+    KI_CHECK( engine, false );
 
     wxFileName fn = aBoard->GetFileName();
     fn.SetExt( FILEEXT::DesignRulesFileExtension );
@@ -575,7 +576,7 @@ bool WriteDRCReport( BOARD* aBoard, const wxString& aFileName, EDA_UNITS aUnits,
     else if( s_SettingsManager )
         prj = &s_SettingsManager->Prj();
 
-    wxCHECK( prj, false );
+    KI_CHECK( prj, false );
 
     wxString drcRulesPath = prj->AbsolutePath( fn.GetFullName() );
 

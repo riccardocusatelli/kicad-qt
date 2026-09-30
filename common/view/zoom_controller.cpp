@@ -33,6 +33,7 @@
 #include <wx/log.h>
 
 #include <algorithm>
+#include <core/ki_log.h>
 
 using namespace KIGFX;
 
@@ -80,7 +81,7 @@ double ACCELERATING_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation )
 
     m_prevTimestamp = timestamp;
 
-    wxLogTrace( traceZoomScroll,
+    KI_LOG_TRACE( traceZoomScroll,
             wxString::Format( "Rot %d, time diff: %ldms", aRotation, (long)timeDiff.count() ) );
 
     double zoomScale;
@@ -103,7 +104,7 @@ double ACCELERATING_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation )
     }
     m_prevRotationPositive = aRotation > 0;
 
-    wxLogTrace( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoomScale ) );
+    KI_LOG_TRACE( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoomScale ) );
 
     return zoomScale;
 }
@@ -124,7 +125,7 @@ CONSTANT_ZOOM_CONTROLLER::CONSTANT_ZOOM_CONTROLLER( double aScale ) : m_scale( a
 
 double CONSTANT_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation )
 {
-    wxLogTrace( traceZoomScroll, wxString::Format( "Rot %d", aRotation ) );
+    KI_LOG_TRACE( traceZoomScroll, wxString::Format( "Rot %d", aRotation ) );
 
     aRotation = ( aRotation > 0 ) ? std::min( aRotation, 100 ) : std::max( aRotation, -100 );
 
@@ -132,7 +133,7 @@ double CONSTANT_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation )
 
     double zoom_scale = ( aRotation > 0 ) ? ( 1 + dscale ) : 1 / ( 1 - dscale );
 
-    wxLogTrace( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoom_scale ) );
+    KI_LOG_TRACE( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoom_scale ) );
 
     return zoom_scale;
 }

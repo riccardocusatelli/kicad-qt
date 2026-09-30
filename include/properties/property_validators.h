@@ -23,6 +23,7 @@
 
 #include <properties/property_validator.h>
 #include <units_provider.h>
+#include <core/ki_assert.h>
 
 /*
  * This file includes some standard validators and errors.  Include it only where needed, use
@@ -106,7 +107,7 @@ public:
     template<int Min, int Max>
     static VALIDATOR_RESULT RangeIntValidator( const wxAny&& aValue, EDA_ITEM* aItem )
     {
-        wxASSERT_MSG( aValue.CheckType<int>() || aValue.CheckType<std::optional<int>>(),
+        KI_ASSERT_MSG( aValue.CheckType<int>() || aValue.CheckType<std::optional<int>>(),
                       "Expecting int-containing value" );
 
         int val = 0;
@@ -133,7 +134,7 @@ public:
 
     static VALIDATOR_RESULT PositiveIntValidator( const wxAny&& aValue, EDA_ITEM* aItem )
     {
-        wxASSERT_MSG( aValue.CheckType<int>() || aValue.CheckType<std::optional<int>>(),
+        KI_ASSERT_MSG( aValue.CheckType<int>() || aValue.CheckType<std::optional<int>>(),
                       "Expecting int-containing value" );
 
         int val = 0;
@@ -158,7 +159,7 @@ public:
 
     static VALIDATOR_RESULT PositiveRatioValidator( const wxAny&& aValue, EDA_ITEM* aItem )
     {
-        wxASSERT_MSG( aValue.CheckType<double>(), "Expecting double-containing value" );
+        KI_ASSERT_MSG( aValue.CheckType<double>(), "Expecting double-containing value" );
 
         double val = aValue.As<double>();
 

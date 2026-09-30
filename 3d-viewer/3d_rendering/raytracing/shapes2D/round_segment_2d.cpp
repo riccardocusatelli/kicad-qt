@@ -28,6 +28,7 @@
 
 #include "round_segment_2d.h"
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 ROUND_SEGMENT_2D::ROUND_SEGMENT_2D( const SFVEC2F& aStart, const SFVEC2F& aEnd, float aWidth,
@@ -35,7 +36,7 @@ ROUND_SEGMENT_2D::ROUND_SEGMENT_2D( const SFVEC2F& aStart, const SFVEC2F& aEnd, 
         OBJECT_2D( OBJECT_2D_TYPE::ROUNDSEG, aBoardItem ),
         m_segment( aStart, aEnd )
 {
-    wxASSERT( aStart != aEnd );
+    KI_ASSERT( aStart != aEnd );
 
     m_radius = (aWidth / 2.0f);
     m_radius_squared = m_radius * m_radius;
@@ -61,7 +62,7 @@ ROUND_SEGMENT_2D::ROUND_SEGMENT_2D( const SFVEC2F& aStart, const SFVEC2F& aEnd, 
     m_bbox.ScaleNextUp();
     m_centroid = m_bbox.GetCenter();
 
-    wxASSERT( m_bbox.IsInitialized() );
+    KI_ASSERT( m_bbox.IsInitialized() );
 }
 
 
@@ -272,14 +273,14 @@ bool ROUND_SEGMENT_2D::Intersect( const RAYSEG2D& aSegRay, float* aOutT, SFVEC2F
         {
             if( aOutT )
                 *aOutT = closerHitT;
-            //wxASSERT( (closerHitT > 0.0f) && (closerHitT <= 1.0f) );
+            //KI_ASSERT( (closerHitT > 0.0f) && (closerHitT <= 1.0f) );
 
             if( aNormalOut )
                 *aNormalOut = closerHitNormal;
         }
         else
         {
-            wxASSERT( (farHitT >= 0.0f) && (farHitT <= 1.0f) );
+            KI_ASSERT( (farHitT >= 0.0f) && (farHitT <= 1.0f) );
 
             if( aOutT )
                 *aOutT = farHitT;

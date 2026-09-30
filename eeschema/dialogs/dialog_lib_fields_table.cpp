@@ -51,6 +51,8 @@
 #include <wx/srchctrl.h>
 
 #include <wx/textdlg.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 using DIALOG_NEW_SYMBOL = DIALOG_LIB_NEW_SYMBOL;
 
@@ -177,7 +179,7 @@ protected:
         else if( event.GetId() == MYID_CREATE_DERIVED_SYMBOL )
         {
             EDA_DRAW_FRAME* frame = dynamic_cast<EDA_DRAW_FRAME*>( m_dlg->GetParent() );
-            wxCHECK( frame, /* void */ );
+            KI_CHECK( frame, /* void */ );
 
             const LIB_SYMBOL* parentSymbol = m_dataModel->GetSymbolForRow( row );
 
@@ -622,14 +624,14 @@ bool DIALOG_LIB_FIELDS_TABLE::TransferDataFromWindow()
                 // Handle newly created derived symbols
                 auto createdSymbols = m_dataModel->GetAndClearCreatedDerivedSymbols();
 
-                wxLogTrace( traceLibFieldTable, "Post-apply handler: found %zu created derived symbols",
+                KI_LOG_TRACE( traceLibFieldTable, "Post-apply handler: found %zu created derived symbols",
                             createdSymbols.size() );
 
                 for( const auto& [symbol, libraryName] : createdSymbols )
                 {
                     if( !libraryName.IsEmpty() )
                     {
-                        wxLogTrace( traceLibFieldTable, "Updating symbol '%s' (UUID: %s) in library '%s'",
+                        KI_LOG_TRACE( traceLibFieldTable, "Updating symbol '%s' (UUID: %s) in library '%s'",
                                     symbol->GetName(), symbol->m_Uuid.AsString(), libraryName );
                         // Update the symbol in the library manager to properly register it
                         m_parent->GetLibManager().UpdateSymbol( symbol, libraryName );
@@ -639,7 +641,7 @@ bool DIALOG_LIB_FIELDS_TABLE::TransferDataFromWindow()
                 // Sync libraries and refresh tree if there were changes
                 if( !createdSymbols.empty() )
                 {
-                    wxLogTrace( traceLibFieldTable, "Syncing libraries due to %zu new symbols", createdSymbols.size() );
+                    KI_LOG_TRACE( traceLibFieldTable, "Syncing libraries due to %zu new symbols", createdSymbols.size() );
 
                     // Store references to the created symbols before sync
                     std::vector<LIB_SYMBOL*> symbolsToPreserve;
@@ -665,20 +667,20 @@ bool DIALOG_LIB_FIELDS_TABLE::TransferDataFromWindow()
                         }
                         if( !found )
                         {
-                            wxLogTrace( traceLibFieldTable, "Re-adding symbol '%s' to list after sync", symbol->GetName() );
+                            KI_LOG_TRACE( traceLibFieldTable, "Re-adding symbol '%s' to list after sync", symbol->GetName() );
                             m_symbolsList.push_back( symbol );
                         }
                     }
                 }
 
-                wxLogTrace( traceLibFieldTable, "Dialog symbol list size after processing: %zu", m_symbolsList.size() );
+                KI_LOG_TRACE( traceLibFieldTable, "Dialog symbol list size after processing: %zu", m_symbolsList.size() );
             } );
 
     ClearModify();
 
-    wxLogTrace( traceLibFieldTable, "About to rebuild grid rows to include new symbols" );
+    KI_LOG_TRACE( traceLibFieldTable, "About to rebuild grid rows to include new symbols" );
     RegroupSymbols();
-    wxLogTrace( traceLibFieldTable, "Grid rebuild completed" );
+    KI_LOG_TRACE( traceLibFieldTable, "Grid rebuild completed" );
 
     m_parent->RefreshLibraryTree();
 
@@ -759,7 +761,7 @@ void DIALOG_LIB_FIELDS_TABLE::OnRenameField(wxCommandEvent& event)
     wxString fieldName = m_viewControlsDataModel->GetCanonicalFieldName( row );
 
     int col = m_dataModel->GetFieldNameCol( fieldName );
-    wxCHECK_RET( col != -1, wxS( "Existing field name missing from data model" ) );
+    KI_CHECK_RET( col != -1, wxS( "Existing field name missing from data model" ) );
 
     wxTextEntryDialog dlg( this, _( "New field name:" ), _( "Rename Field" ), fieldName );
 
@@ -1109,7 +1111,7 @@ void DIALOG_LIB_FIELDS_TABLE::AddField( const wxString& aFieldName, const wxStri
 void DIALOG_LIB_FIELDS_TABLE::RemoveField(const wxString& fieldName)
 {
     int col = m_dataModel->GetFieldNameCol( fieldName );
-    wxCHECK_RET( col != -1, wxS( "Field name not found" ) );
+    KI_CHECK_RET( col != -1, wxS( "Field name not found" ) );
 
     m_dataModel->RemoveColumn( col );
 }
@@ -1118,7 +1120,7 @@ void DIALOG_LIB_FIELDS_TABLE::RemoveField(const wxString& fieldName)
 void DIALOG_LIB_FIELDS_TABLE::RenameField(const wxString& oldName, const wxString& newName)
 {
     int col = m_dataModel->GetFieldNameCol( oldName );
-    wxCHECK_RET( col != -1, wxS( "Existing field name missing from data model" ) );
+    KI_CHECK_RET( col != -1, wxS( "Existing field name missing from data model" ) );
 
     m_dataModel->RenameColumn( col, newName );
 }
@@ -1212,7 +1214,7 @@ void DIALOG_LIB_FIELDS_TABLE::OnViewControlsCellChanged( wxGridEvent& aEvent )
 {
     int row = aEvent.GetRow();
 
-    wxCHECK( row < m_viewControlsGrid->GetNumberRows(), /* void */ );
+    KI_CHECK( row < m_viewControlsGrid->GetNumberRows(), /* void */ );
 
     switch( aEvent.GetCol() )
     {

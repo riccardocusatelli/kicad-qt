@@ -36,6 +36,7 @@
 #include <wx/debug.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 SCH_GROUP::SCH_GROUP() : SCH_ITEM( nullptr, SCH_GROUP_T )
 {
@@ -385,7 +386,7 @@ void SCH_GROUP::RunOnChildren( const std::function<void( SCH_ITEM* )>& aFunction
     }
     catch( std::bad_function_call& )
     {
-        wxFAIL_MSG( wxT( "Error calling function in SCH_GROUP::RunOnChildren" ) );
+        KI_FAIL_MSG( wxT( "Error calling function in SCH_GROUP::RunOnChildren" ) );
     }
 }
 

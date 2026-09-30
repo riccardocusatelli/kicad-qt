@@ -29,6 +29,8 @@
 #include <wx/log.h>
 
 #include "plugins/3dapi/sg_base.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SGCOLOR::SGCOLOR()
@@ -42,7 +44,7 @@ SGCOLOR::SGCOLOR( float aRVal, float aGVal, float aBVal )
 {
     if( !checkRange( aRVal, aGVal, aBVal ) )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid value passed to constructor" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid value passed to constructor" ),
                     __FILE__, __FUNCTION__, __LINE__ );
         red = 0.0;
         green = 0.0;
@@ -74,7 +76,7 @@ void SGCOLOR::GetColor( SGCOLOR& aColor ) const noexcept
 
 void SGCOLOR::GetColor( SGCOLOR* aColor ) const noexcept
 {
-    wxCHECK_MSG( aColor, /* void */, wxT( "NULL pointer passed for aRGBColor" ) );
+    KI_CHECK_MSG( aColor, /* void */, wxT( "NULL pointer passed for aRGBColor" ) );
 
     aColor->red = red;
     aColor->green = green;
@@ -106,7 +108,7 @@ bool SGCOLOR::SetColor( const SGCOLOR& aColor ) noexcept
 
 bool SGCOLOR::SetColor( const SGCOLOR* aColor ) noexcept
 {
-    wxCHECK_MSG( aColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
+    KI_CHECK_MSG( aColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
 
     red = aColor->red;
     green = aColor->green;
@@ -121,7 +123,7 @@ bool SGCOLOR::checkRange( float aRedVal, float aGreenVal, float aBlueVal ) const
 
     if( aRedVal < 0.0 || aRedVal > 1.0 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid RED value: %g" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid RED value: %g" ),
                     __FILE__, __FUNCTION__, __LINE__, aRedVal );
 
         ok = false;
@@ -129,7 +131,7 @@ bool SGCOLOR::checkRange( float aRedVal, float aGreenVal, float aBlueVal ) const
 
     if( aGreenVal < 0.0 || aGreenVal > 1.0 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid GREEN value: %g" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid GREEN value: %g" ),
                     __FILE__, __FUNCTION__, __LINE__, aGreenVal );
 
         ok = false;
@@ -137,7 +139,7 @@ bool SGCOLOR::checkRange( float aRedVal, float aGreenVal, float aBlueVal ) const
 
     if( aBlueVal < 0.0 || aBlueVal > 1.0 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid BLUE value: %g" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid BLUE value: %g" ),
                     __FILE__, __FUNCTION__, __LINE__, aBlueVal );
 
         ok = false;
@@ -181,7 +183,7 @@ void SGPOINT::GetPoint( const SGPOINT& aPoint ) noexcept
 
 void SGPOINT::GetPoint( const SGPOINT* aPoint ) noexcept
 {
-    wxCHECK_MSG( aPoint, /* void */, wxT( "NULL pointer passed for aPoint" ) );
+    KI_CHECK_MSG( aPoint, /* void */, wxT( "NULL pointer passed for aPoint" ) );
 
     x = aPoint->x;
     y = aPoint->y;

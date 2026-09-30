@@ -37,6 +37,7 @@
 #include <settings/color_settings.h>
 #include <erc/erc_item.h>
 #include <sch_screen.h>
+#include <core/ki_assert.h>
 
 /// Factor to convert the maker unit shape to internal units:
 #define SCALING_FACTOR schIUScale.mmToIU( 0.15 )
@@ -276,7 +277,7 @@ void SCH_MARKER::Show( int nestLevel, std::ostream& os ) const
 
 std::vector<int> SCH_MARKER::ViewGetLayers() const
 {
-    wxCHECK2_MSG( Schematic(), return {}, "No SCHEMATIC set for SCH_MARKER!" );
+    KI_CHECK2_MSG( Schematic(), return {}, "No SCHEMATIC set for SCH_MARKER!" );
 
     // Don't display sheet-specific markers when SCH_SHEET_PATHs do not match
     std::shared_ptr<ERC_ITEM> ercItem = std::static_pointer_cast<ERC_ITEM>( GetRCItem() );
@@ -314,7 +315,7 @@ SCH_LAYER_ID SCH_MARKER::GetColorLayer() const
     if( IsExcluded() )
         return LAYER_ERC_EXCLUSION;
 
-    wxCHECK_MSG( Schematic(), LAYER_ERC_ERR, "No SCHEMATIC set for SCH_MARKER!" );
+    KI_CHECK_MSG( Schematic(), LAYER_ERC_ERR, "No SCHEMATIC set for SCH_MARKER!" );
 
     switch( Schematic()->ErcSettings().GetSeverity( m_rcItem->GetErrorCode() ) )
     {

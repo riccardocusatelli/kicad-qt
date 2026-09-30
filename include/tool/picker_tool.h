@@ -29,6 +29,7 @@
 #include <gal/cursors.h>
 #include <math/vector2d.h>
 #include <tool/tool_interactive.h>
+#include <core/ki_assert.h>
 
 class EDA_DRAW_FRAME;
 
@@ -80,7 +81,7 @@ public:
      */
     inline void SetClickHandler( CLICK_HANDLER aHandler )
     {
-        wxASSERT( !m_clickHandler );
+        KI_ASSERT( !m_clickHandler );
         m_clickHandler = aHandler;
     }
 
@@ -91,7 +92,7 @@ public:
      */
     inline void SetMotionHandler( MOTION_HANDLER aHandler )
     {
-        wxASSERT( !m_motionHandler );
+        KI_ASSERT( !m_motionHandler );
         m_motionHandler = aHandler;
     }
 
@@ -100,7 +101,7 @@ public:
      */
     inline void SetCancelHandler( CANCEL_HANDLER aHandler )
     {
-        wxASSERT( !m_cancelHandler );
+        KI_ASSERT( !m_cancelHandler );
         m_cancelHandler = aHandler;
     }
 
@@ -111,7 +112,7 @@ public:
      */
     inline void SetFinalizeHandler( FINALIZE_HANDLER aHandler )
     {
-        wxASSERT( !m_finalizeHandler );
+        KI_ASSERT( !m_finalizeHandler );
         m_finalizeHandler = aHandler;
     }
 

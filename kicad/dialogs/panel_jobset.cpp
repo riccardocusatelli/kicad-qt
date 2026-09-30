@@ -48,6 +48,7 @@
 #include <jobs/job_special_copyfiles.h>
 #include <dialogs/dialog_executecommand_job_settings.h>
 #include <common.h>
+#include <core/ki_assert.h>
 
 
 extern KICOMMON_API
@@ -214,7 +215,7 @@ public:
     void ClearStatus()
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         destination->m_lastRunSuccess = std::nullopt;
         destination->m_lastResolvedOutputPath = std::nullopt;
@@ -224,7 +225,7 @@ public:
     void UpdateStatus()
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         if( destination->m_lastRunSuccess.has_value() )
         {
@@ -290,7 +291,7 @@ public:
     void OnOpenOutput( wxCommandEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         wxString resolvedPath;
 
@@ -319,7 +320,7 @@ public:
     void OnLastStatusClick( wxMouseEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         DIALOG_JOBSET_RUN_LOG dialog( m_frame, m_jobsFile, destination );
         dialog.ShowModal();
@@ -328,7 +329,7 @@ public:
     void OnRightDown( wxMouseEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         wxMenu menu;
         menu.Append( wxID_EDIT, _( "Edit Destination Options..." ) );
@@ -347,7 +348,7 @@ public:
     void OnProperties( wxCommandEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         DIALOG_DESTINATION dialog( m_frame, m_jobsFile, destination );
 
@@ -410,7 +411,7 @@ private:
                 }
                 break;
 
-                default: wxFAIL_MSG( wxT( "Unknown ID in context menu event" ) );
+                default: KI_FAIL_MSG( wxT( "Unknown ID in context menu event" ) );
                 }
     }
 

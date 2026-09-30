@@ -38,6 +38,7 @@
 #include <wx/settings.h>
 #include <wx/stattext.h>
 #include <wx/propgrid/advprops.h>
+#include <core/ki_assert.h>
 
 
 // This is provided by wx >3.3.0
@@ -241,7 +242,7 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
     for( EDA_ITEM* item : aSelection )
         types.insert( TYPE_HASH( *item ) );
 
-    wxCHECK( !types.empty(), /* void */ );  // already guarded above, but Coverity doesn't know that
+    KI_CHECK( !types.empty(), /* void */ );  // already guarded above, but Coverity doesn't know that
 
     PROPERTY_MANAGER&                  propMgr = PROPERTY_MANAGER::Instance();
     std::map<wxString, PROPERTY_BASE*> commonProps;
@@ -363,7 +364,7 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
             pgProp->ChangeFlag( wxPG_PROP_READONLY, !writeable );
             m_displayed.push_back( property );
 
-            wxASSERT( displayOrder.count( name ) );
+            KI_ASSERT( displayOrder.count( name ) );
             pgPropOrders[pgProp] = displayOrder[name];
             pgPropGroups[property->Group()].emplace_back( pgProp );
         }
@@ -420,7 +421,7 @@ bool PROPERTIES_PANEL::getItemValue( EDA_ITEM* aItem, PROPERTY_BASE* aProperty, 
     {
         wxString propName = aProperty->Name();
         propName.Replace( ' ', '_' );
-        wxFAIL_MSG( wxString::Format( wxS( "Could not convert wxAny to wxVariant for %s::%s" ),
+        KI_FAIL_MSG( wxString::Format( wxS( "Could not convert wxAny to wxVariant for %s::%s" ),
                                       aItem->GetClass(),
                                       propName ) );
     }

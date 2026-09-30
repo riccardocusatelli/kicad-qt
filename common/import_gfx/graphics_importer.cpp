@@ -32,6 +32,7 @@
 #include "graphics_import_plugin.h"
 
 #include <wx/log.h>
+#include <core/ki_assert.h>
 
 GRAPHICS_IMPORTER::GRAPHICS_IMPORTER()
 {
@@ -49,7 +50,7 @@ bool GRAPHICS_IMPORTER::Load( const wxString& aFileName )
 
     if( !m_plugin )
     {
-        wxASSERT_MSG( false, wxT( "Plugin must be set before load." ) );
+        KI_ASSERT_MSG( false, wxT( "Plugin must be set before load." ) );
         return false;
     }
 
@@ -71,7 +72,7 @@ bool GRAPHICS_IMPORTER::Import( const VECTOR2D& aScale )
 {
     if( !m_plugin )
     {
-        wxASSERT_MSG( false, wxT( "Plugin must be set before import." ) );
+        KI_ASSERT_MSG( false, wxT( "Plugin must be set before import." ) );
         return false;
     }
 

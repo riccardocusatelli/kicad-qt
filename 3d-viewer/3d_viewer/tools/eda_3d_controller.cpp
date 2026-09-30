@@ -37,6 +37,7 @@
 #include <dialogs/dialog_export_3d_image.h>
 #include <dialogs/panel_preview_3d_model.h>
 #include <dialogs/appearance_controls_3D.h>
+#include <core/ki_assert.h>
 
 
 bool EDA_3D_CONTROLLER::Init()
@@ -95,21 +96,21 @@ void EDA_3D_CONTROLLER::Reset( RESET_REASON aReason )
 
     TOOLS_HOLDER* holder = m_toolMgr->GetToolHolder();
 
-    wxCHECK( holder, /* void */ );
-    wxCHECK( holder->GetToolCanvas()->GetId() == EDA_3D_CANVAS_ID, /* void */ );
+    KI_CHECK( holder, /* void */ );
+    KI_CHECK( holder->GetToolCanvas()->GetId() == EDA_3D_CANVAS_ID, /* void */ );
 
     m_canvas = static_cast<EDA_3D_CANVAS*>( holder->GetToolCanvas() );
 
     if( EDA_BASE_FRAME* frame = dynamic_cast<EDA_BASE_FRAME*>( holder ) )
     {
-        wxCHECK( frame->GetFrameType() == FRAME_PCB_DISPLAY3D, /* void */ );
+        KI_CHECK( frame->GetFrameType() == FRAME_PCB_DISPLAY3D, /* void */ );
 
         m_boardAdapter = &static_cast<EDA_3D_VIEWER_FRAME*>( frame )->GetAdapter();
         m_camera = &static_cast<EDA_3D_VIEWER_FRAME*>( frame )->GetCurrentCamera();
     }
     else if( wxWindow* previewWindow = dynamic_cast<wxWindow*>( holder ) )
     {
-        wxCHECK( previewWindow->GetId() == PANEL_PREVIEW_3D_MODEL_ID, /* void */ );
+        KI_CHECK( previewWindow->GetId() == PANEL_PREVIEW_3D_MODEL_ID, /* void */ );
 
         m_boardAdapter = &static_cast<PANEL_PREVIEW_3D_MODEL*>( holder )->GetAdapter();
         m_camera = &static_cast<PANEL_PREVIEW_3D_MODEL*>( holder )->GetCurrentCamera();
@@ -192,7 +193,7 @@ int EDA_3D_CONTROLLER::PanControl( const TOOL_EVENT& aEvent )
     case ACTIONS::CURSOR_DOWN:  m_canvas->SetView3D( VIEW3D_TYPE::VIEW3D_PAN_DOWN );  break;
     case ACTIONS::CURSOR_LEFT:  m_canvas->SetView3D( VIEW3D_TYPE::VIEW3D_PAN_LEFT );  break;
     case ACTIONS::CURSOR_RIGHT: m_canvas->SetView3D( VIEW3D_TYPE::VIEW3D_PAN_RIGHT ); break;
-    default:                    wxFAIL;                                               break;
+    default:                    KI_FAIL();                                               break;
     }
 
     return 0;
@@ -213,7 +214,7 @@ int EDA_3D_CONTROLLER::RotateView( const TOOL_EVENT& aEvent )
     case ROTATION_DIR::Y_CCW: m_camera->RotateY( -rotIncrement ); break;
     case ROTATION_DIR::Z_CW:  m_camera->RotateZ( -rotIncrement ); break;
     case ROTATION_DIR::Z_CCW: m_camera->RotateZ( rotIncrement );  break;
-    default:                  wxFAIL;                             break;
+    default:                  KI_FAIL();                             break;
     }
 
     if( m_boardAdapter->m_Cfg->m_Render.engine == RENDER_ENGINE::OPENGL )

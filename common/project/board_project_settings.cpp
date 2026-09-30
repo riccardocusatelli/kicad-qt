@@ -24,6 +24,7 @@
 #include <project/board_project_settings.h>
 #include <project/board_project_settings_params.h>
 #include <settings/layer_settings_utils.h>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 
@@ -36,7 +37,7 @@ PARAM_LAYER_PRESET::PARAM_LAYER_PRESET( const std::string& aPath,
                                       {} ),
         m_presets( aPresetList )
 {
-    wxASSERT( aPresetList );
+    KI_ASSERT( aPresetList );
 }
 
 
@@ -149,7 +150,7 @@ void PARAM_LAYER_PRESET::MigrateToV9Layers( nlohmann::json& aJson )
 
     for( const nlohmann::json& layer : aJson.at( "layers" ) )
     {
-        wxCHECK2( layer.is_number_integer(), continue );
+        KI_CHECK2( layer.is_number_integer(), continue );
         newLayers.emplace_back( BoardLayerFromLegacyId( layer.get<int>() ) );
     }
 
@@ -171,7 +172,7 @@ void PARAM_LAYER_PRESET::MigrateToNamedRenderLayers( nlohmann::json& aJson )
 
     for( const nlohmann::json& layer : aJson.at( "renderLayers" ) )
     {
-        wxCHECK2( layer.is_number_integer(), continue );
+        KI_CHECK2( layer.is_number_integer(), continue );
         GAL_LAYER_ID layerId = GAL_LAYER_ID_START + ( layer.get<int>() - V8_GAL_LAYER_ID_START );
 
         if( std::optional<VISIBILITY_LAYER> vl = VisibilityLayerFromRenderLayer( layerId ) )
@@ -189,7 +190,7 @@ PARAM_VIEWPORT::PARAM_VIEWPORT( const std::string& aPath, std::vector<VIEWPORT>*
                                       {} ),
         m_viewports( aViewportList )
 {
-    wxASSERT( aViewportList );
+    KI_ASSERT( aViewportList );
 }
 
 
@@ -253,7 +254,7 @@ PARAM_VIEWPORT3D::PARAM_VIEWPORT3D( const std::string& aPath,
                                       {} ),
         m_viewports( aViewportList )
 {
-    wxASSERT( aViewportList );
+    KI_ASSERT( aViewportList );
 }
 
 

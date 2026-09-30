@@ -28,6 +28,8 @@
  */
 
 #include <python_scripting.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #undef pid_t
 #include <pybind11/embed.h>
@@ -158,7 +160,7 @@ except Exception as e:
 
         // Compile a regex to extract the wxPython version
         wxRegEx re( "([0-9]+)\\.([0-9]+)\\.?([0-9]+)?\\.?([0-9]+)?" );
-        wxASSERT( re.IsValid() );
+        KI_ASSERT( re.IsValid() );
 
         if( re.Matches( version ) )
         {
@@ -398,7 +400,7 @@ void UpdatePythonEnvVar( const wxString& aVar, const wxString& aValue )
     if( !Py_IsInitialized() )
         return;
 
-    wxLogTrace( traceEnvVars, "UpdatePythonEnvVar: Updating Python variable %s = %s",
+    KI_LOG_TRACE( traceEnvVars, "UpdatePythonEnvVar: Updating Python variable %s = %s",
                 aVar, aValue );
 
     wxString escapedVar = PyEscapeString( aVar );

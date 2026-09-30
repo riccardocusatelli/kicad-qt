@@ -39,6 +39,7 @@
 #include <wx/bmpbuttn.h>
 
 #include <wx/log.h>
+#include <core/ki_assert.h>
 
 const wxString PG_UNIT_EDITOR::EDITOR_NAME = wxS( "KiCadUnitEditor" );
 const wxString PG_CHECKBOX_EDITOR::EDITOR_NAME = wxS( "KiCadCheckboxEditor" );
@@ -92,7 +93,7 @@ void PG_UNIT_EDITOR::UpdateFrame( EDA_DRAW_FRAME* aFrame )
 wxPGWindowList PG_UNIT_EDITOR::CreateControls( wxPropertyGrid* aPropGrid, wxPGProperty* aProperty,
                                                const wxPoint& aPos, const wxSize& aSize ) const
 {
-    wxASSERT( m_unitBinder );
+    KI_ASSERT( m_unitBinder );
 
 #if wxCHECK_VERSION( 3, 3, 0 )
     wxString text = aProperty->GetValueAsString( wxPGPropValFormatFlags::EditableValue );
@@ -177,7 +178,7 @@ void PG_UNIT_EDITOR::UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) c
     }
     else if( !aProperty->IsValueUnspecified() )
     {
-        wxFAIL_MSG( wxT( "PG_UNIT_EDITOR should only be used with numeric properties!" ) );
+        KI_FAIL_MSG( wxT( "PG_UNIT_EDITOR should only be used with numeric properties!" ) );
     }
 }
 
@@ -208,7 +209,7 @@ bool PG_UNIT_EDITOR::GetValueFromControl( wxVariant& aVariant, wxPGProperty* aPr
         return false;
 
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( aCtrl );
-    wxCHECK_MSG( textCtrl, false, "PG_UNIT_EDITOR requires a text control!" );
+    KI_CHECK_MSG( textCtrl, false, "PG_UNIT_EDITOR requires a text control!" );
     wxString textVal = textCtrl->GetValue();
 
     if( textVal == wxT( "<...>" ) )
@@ -421,7 +422,7 @@ bool PG_RATIO_EDITOR::GetValueFromControl( wxVariant& aVariant, wxPGProperty* aP
                                            wxWindow* aCtrl ) const
 {
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( aCtrl );
-    wxCHECK_MSG( textCtrl, false, "PG_RATIO_EDITOR requires a text control!" );
+    KI_CHECK_MSG( textCtrl, false, "PG_RATIO_EDITOR requires a text control!" );
     wxString textVal = textCtrl->GetValue();
 
     if( textVal == wxT( "<...>" ) )
@@ -484,7 +485,7 @@ void PG_RATIO_EDITOR::UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) 
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( aCtrl );
     wxVariant   var = aProperty->GetValue();
 
-    wxCHECK_MSG( textCtrl, /*void*/, wxT( "PG_RATIO_EDITOR must be used with a textCtrl!" ) );
+    KI_CHECK_MSG( textCtrl, /*void*/, wxT( "PG_RATIO_EDITOR must be used with a textCtrl!" ) );
 
     if( var.GetType() == wxT( "std::optional<double>" ) )
     {
@@ -502,7 +503,7 @@ void PG_RATIO_EDITOR::UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) 
     }
     else if( !aProperty->IsValueUnspecified() )
     {
-        wxFAIL_MSG( wxT( "PG_RATIO_EDITOR should only be used with scale-free numeric "
+        KI_FAIL_MSG( wxT( "PG_RATIO_EDITOR should only be used with scale-free numeric "
                          "properties!" ) );
     }
 }

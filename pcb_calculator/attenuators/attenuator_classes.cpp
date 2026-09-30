@@ -14,6 +14,7 @@
 
 #include "attenuator_classes.h"
 #include "pcb_calculator_settings.h"
+#include <core/ki_assert.h>
 
 // Html texts showing the formulas
 wxString pi_formula =
@@ -65,7 +66,7 @@ void ATTENUATOR::ReadConfig()
     auto cfg = static_cast<PCB_CALCULATOR_SETTINGS*>( Kiface().KifaceSettings() );
     std::string name = m_Name.ToStdString();
 
-    wxASSERT( cfg->m_Attenuators.attenuators.count( name ) );
+    KI_ASSERT( cfg->m_Attenuators.attenuators.count( name ) );
 
     m_Attenuation = cfg->m_Attenuators.attenuators.at( name ).attenuation;
     m_Zin         = cfg->m_Attenuators.attenuators.at( name ).zin;

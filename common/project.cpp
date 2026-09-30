@@ -50,6 +50,8 @@
 #include <settings/settings_manager.h>
 #include <title_block.h>
 #include <local_history.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 
@@ -160,17 +162,17 @@ void PROJECT::setProjectFullName( const wxString& aFullPathAndName )
     {
         Clear();            // clear the data when the project changes.
 
-        wxLogTrace( tracePathsAndFiles, "%s: old:'%s' new:'%s'", __func__,
+        KI_LOG_TRACE( tracePathsAndFiles, "%s: old:'%s' new:'%s'", __func__,
                     TO_UTF8( GetProjectFullName() ), TO_UTF8( aFullPathAndName ) );
 
         m_project_name = aFullPathAndName;
 
-        wxASSERT( m_project_name.IsAbsolute() );
+        KI_ASSERT( m_project_name.IsAbsolute() );
         wxString ext = m_project_name.GetExt();
 
         if( !ext.IsEmpty() && ext != FILEEXT::ProjectFileExtension )
         {
-            wxLogDebug( wxT( "Project file has unexpected extension '%s', expected '%s'" ), ext,
+            KI_LOG_DEBUG( wxT( "Project file has unexpected extension '%s', expected '%s'" ), ext,
                         FILEEXT::ProjectFileExtension );
             m_project_name.SetExt( FILEEXT::ProjectFileExtension );
         }
@@ -247,7 +249,7 @@ void PROJECT::PinLibrary( const wxString& aLibrary, enum LIB_TYPE_T aLibType )
         pinnedLibsCfg = &cfg->m_Session.pinned_design_block_libs;
         break;
     default:
-        wxFAIL_MSG( "Cannot pin library: invalid library type" );
+        KI_FAIL_MSG( "Cannot pin library: invalid library type" );
         return;
     }
 
@@ -284,7 +286,7 @@ void PROJECT::UnpinLibrary( const wxString& aLibrary, enum LIB_TYPE_T aLibType )
         pinnedLibsCfg = &cfg->m_Session.pinned_design_block_libs;
         break;
     default:
-        wxFAIL_MSG( "Cannot unpin library: invalid library type" );
+        KI_FAIL_MSG( "Cannot unpin library: invalid library type" );
         return;
     }
 
@@ -363,7 +365,7 @@ void PROJECT::SetRString( RSTRING_T aIndex, const wxString& aString )
     if( ndx < m_rstrings.size() )
         m_rstrings[ndx] = aString;
     else
-        wxASSERT( 0 );      // bad index
+        KI_ASSERT( 0 );      // bad index
 }
 
 
@@ -379,7 +381,7 @@ const wxString& PROJECT::GetRString( RSTRING_T aIndex )
     {
         static wxString no_cookie_for_you;
 
-        wxASSERT( 0 );      // bad index
+        KI_ASSERT( 0 );      // bad index
 
         return no_cookie_for_you;
     }
@@ -447,11 +449,11 @@ DESIGN_BLOCK_LIBRARY_ADAPTER* PROJECT::DesignBlockLibs()
                              std::make_unique<DESIGN_BLOCK_LIBRARY_ADAPTER>( mgr ) );
 
         std::optional<LIBRARY_MANAGER_ADAPTER*> created = mgr.Adapter( LIBRARY_TABLE_TYPE::DESIGN_BLOCK );
-        wxCHECK( created && ( *created )->Type() == LIBRARY_TABLE_TYPE::DESIGN_BLOCK, nullptr );
+        KI_CHECK( created && ( *created )->Type() == LIBRARY_TABLE_TYPE::DESIGN_BLOCK, nullptr );
         return static_cast<DESIGN_BLOCK_LIBRARY_ADAPTER*>( *created );
     }
 
-    wxCHECK( ( *adapter )->Type() == LIBRARY_TABLE_TYPE::DESIGN_BLOCK, nullptr );
+    KI_CHECK( ( *adapter )->Type() == LIBRARY_TABLE_TYPE::DESIGN_BLOCK, nullptr );
     return static_cast<DESIGN_BLOCK_LIBRARY_ADAPTER*>( *adapter );
 }
 

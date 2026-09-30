@@ -42,6 +42,7 @@
 #include <sch_plotter.h>
 
 #include "sch_printout.h"
+#include <core/ki_assert.h>
 
 
 /**
@@ -97,7 +98,7 @@ DIALOG_PRINT::DIALOG_PRINT( SCH_EDIT_FRAME* aParent ) :
         DIALOG_PRINT_BASE( aParent ),
         m_parent( aParent )
 {
-    wxASSERT( aParent );
+    KI_ASSERT( aParent );
 
     // Show m_panelPrinters only if there are printers to list:
     m_panelPrinters->Show( m_panelPrinters->AsPrintersAvailable() );

@@ -24,6 +24,7 @@
 #include <wx/arrstr.h>
 #include <widgets/grid_striped_renderer.h>
 #include <fields_data_model.h>
+#include <core/ki_assert.h>
 
 
 struct LIB_DATA_MODEL_ROW
@@ -110,7 +111,7 @@ public:
 
     void MoveColumn( int aCol, int aNewPos )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
 
         if( aCol == aNewPos )
         {
@@ -133,19 +134,19 @@ public:
 
     void SetColLabelValue( int aCol, const wxString& aLabel ) override
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
         m_cols[aCol].m_label = aLabel;
     }
 
     wxString GetColLabelValue( int aCol ) override
     {
-        wxCHECK( aCol >= 0 && aCol < (int) m_cols.size(), wxString() );
+        KI_CHECK( aCol >= 0 && aCol < (int) m_cols.size(), wxString() );
         return m_cols[aCol].m_label;
     }
 
     wxString GetColFieldName( int aCol )
     {
-        wxCHECK( aCol >= 0 && aCol < (int) m_cols.size(), wxString() );
+        KI_CHECK( aCol >= 0 && aCol < (int) m_cols.size(), wxString() );
         return m_cols[aCol].m_fieldName;
     }
 
@@ -178,7 +179,7 @@ public:
 
     void SetSorting( int aCol, bool ascending )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
         m_sortColumn = aCol;
         m_sortAscending = ascending;
     }
@@ -188,7 +189,7 @@ public:
 
     const LIB_SYMBOL* GetSymbolForRow( int aRow )
     {
-        wxCHECK( aRow >= 0 && aRow < (int) m_rows.size(), nullptr );
+        KI_CHECK( aRow >= 0 && aRow < (int) m_rows.size(), nullptr );
         return m_rows[aRow].m_Refs[0];
     }
 
@@ -232,51 +233,51 @@ public:
 
     void SetGroupColumn( int aCol, bool group )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
         m_cols[aCol].m_group = group;
     }
 
     bool GetGroupColumn( int aCol )
     {
-        wxCHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
+        KI_CHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
         return m_cols[aCol].m_group;
     }
 
     void SetShowColumn( int aCol, bool show )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
         m_cols[aCol].m_show = show;
     }
 
     bool GetShowColumn( int aCol )
     {
-        wxCHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
+        KI_CHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
         return m_cols[aCol].m_show;
     }
 
     bool IsRowEditable( int aRow )
     {
-        wxCHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
+        KI_CHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
         return m_rows[aRow].m_Flag == GROUP_SINGLETON || m_rows[aRow].m_Flag == GROUP_SINGLETON;
     }
 
     bool IsCellEdited( int aRow, int aCol )
     {
-        wxCHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
-        wxCHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
+        KI_CHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
+        KI_CHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
         return m_dataStore[m_rows[aRow].m_Refs[0]->m_Uuid][m_cols[aCol].m_fieldName].m_isModified;
     }
 
     bool IsCellClear( int aRow, int aCol )
     {
-        wxCHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
-        wxCHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
+        KI_CHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
+        KI_CHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
         return m_dataStore[m_rows[aRow].m_Refs[0]->m_Uuid][m_cols[aCol].m_fieldName].m_currentlyEmpty;
     }
 
     bool IsRowSingleSymbol( int aRow )
     {
-        wxCHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
+        KI_CHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
         return m_rows[aRow].m_Flag == GROUP_SINGLETON || m_rows[aRow].m_Flag == CHILD_ITEM;
     }
 

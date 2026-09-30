@@ -45,6 +45,8 @@
 #include <algorithm>
 
 #include <signal.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 #ifdef __WINDOWS__
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -90,7 +92,7 @@ void NGSPICE::updateNgspiceSettings()
 {
     for( const std::string& command : GetSettingCommands() )
     {
-        wxLogTrace( traceNgspice, "Sending Ngspice configuration command '%s'.", command );
+        KI_LOG_TRACE( traceNgspice, "Sending Ngspice configuration command '%s'.", command );
         Command( command );
     }
 }
@@ -453,7 +455,7 @@ std::vector<std::string> NGSPICE::GetSettingCommands() const
 
     std::vector<std::string> commands;
 
-    wxCHECK( settings, commands );
+    KI_CHECK( settings, commands );
 
     switch( settings->GetCompatibilityMode() )
     {
@@ -463,7 +465,7 @@ std::vector<std::string> NGSPICE::GetSettingCommands() const
     case NGSPICE_COMPATIBILITY_MODE::LTSPICE:   commands.emplace_back( "set ngbehavior=lta" );   break;
     case NGSPICE_COMPATIBILITY_MODE::LT_PSPICE: commands.emplace_back( "set ngbehavior=ltpsa" ); break;
     case NGSPICE_COMPATIBILITY_MODE::HSPICE:    commands.emplace_back( "set ngbehavior=hsa" );   break;
-    default:    wxFAIL_MSG( wxString::Format( "Undefined NGSPICE_COMPATIBILITY_MODE %d.",
+    default:    KI_FAIL_MSG( wxString::Format( "Undefined NGSPICE_COMPATIBILITY_MODE %d.",
                                               settings->GetCompatibilityMode() ) );              break;
     }
 
@@ -520,12 +522,12 @@ void NGSPICE::init_dll()
     for( const auto& path : dllPaths )
     {
         dllFile.SetPath( path );
-        wxLogTrace( traceNgspice, "libngspice search path: %s", dllFile.GetFullPath() );
+        KI_LOG_TRACE( traceNgspice, "libngspice search path: %s", dllFile.GetFullPath() );
         m_dll.Load( dllFile.GetFullPath(), wxDL_VERBATIM | wxDL_QUIET | wxDL_NOW );
 
         if( m_dll.IsLoaded() )
         {
-            wxLogTrace( traceNgspice, "libngspice path found in: %s", dllFile.GetFullPath() );
+            KI_LOG_TRACE( traceNgspice, "libngspice path found in: %s", dllFile.GetFullPath() );
             break;
         }
     }
@@ -542,12 +544,12 @@ void NGSPICE::init_dll()
         for( const auto& path : dllPaths )
         {
             dllFile.SetPath( path );
-            wxLogTrace( traceNgspice, "libngspice search path: %s", dllFile.GetFullPath() );
+            KI_LOG_TRACE( traceNgspice, "libngspice search path: %s", dllFile.GetFullPath() );
             m_dll.Load( dllFile.GetFullPath(), wxDL_VERBATIM | wxDL_QUIET | wxDL_NOW );
 
             if( m_dll.IsLoaded() )
             {
-                wxLogTrace( traceNgspice, "libngspice path found in: %s", dllFile.GetFullPath() );
+                KI_LOG_TRACE( traceNgspice, "libngspice path found in: %s", dllFile.GetFullPath() );
                 break;
             }
         }
@@ -611,11 +613,11 @@ void NGSPICE::init_dll()
 
     for( const auto& path : spiceinitPaths )
     {
-        wxLogTrace( traceNgspice, "ngspice init script search path: %s", path );
+        KI_LOG_TRACE( traceNgspice, "ngspice init script search path: %s", path );
 
         if( loadSpinit( path + "/spiceinit" ) )
         {
-            wxLogTrace( traceNgspice, "ngspice path found in: %s", path );
+            KI_LOG_TRACE( traceNgspice, "ngspice path found in: %s", path );
             foundSpiceinit = true;
             break;
         }
@@ -692,11 +694,11 @@ std::string NGSPICE::findCmPath() const
 
     for( const auto& path : cmPaths )
     {
-        wxLogTrace( traceNgspice, "ngspice code models search path: %s", path );
+        KI_LOG_TRACE( traceNgspice, "ngspice code models search path: %s", path );
 
         if( wxFileName::FileExists( path + "/spice2poly.cm" ) )
         {
-            wxLogTrace( traceNgspice, "ngspice code models found in: %s", path );
+            KI_LOG_TRACE( traceNgspice, "ngspice code models found in: %s", path );
             return path;
         }
     }

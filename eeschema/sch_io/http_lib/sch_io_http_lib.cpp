@@ -29,6 +29,8 @@
 #include <http_lib/http_lib_connection.h>
 #include "sch_io_http_lib.h"
 #include <ki_exception.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SCH_IO_HTTP_LIB::SCH_IO_HTTP_LIB() :
@@ -41,7 +43,7 @@ SCH_IO_HTTP_LIB::SCH_IO_HTTP_LIB() :
 void SCH_IO_HTTP_LIB::EnumerateSymbolLib( wxArrayString& aSymbolNameList, const wxString& aLibraryPath,
                                           const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_RET( m_adapter, "HTTP plugin missing library manager adapter handle!" );
+    KI_CHECK_RET( m_adapter, "HTTP plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
     ensureConnection();
 
@@ -63,7 +65,7 @@ void SCH_IO_HTTP_LIB::EnumerateSymbolLib( wxArrayString& aSymbolNameList, const 
 void SCH_IO_HTTP_LIB::EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList, const wxString& aLibraryPath,
                                           const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_RET( m_adapter, "HTTP plugin missing library manager adapter handle!" );
+    KI_CHECK_RET( m_adapter, "HTTP plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
     ensureConnection();
 
@@ -108,7 +110,7 @@ void SCH_IO_HTTP_LIB::EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList,
 LIB_SYMBOL* SCH_IO_HTTP_LIB::LoadSymbol( const wxString& aLibraryPath, const wxString& aAliasName,
                                          const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_MSG( m_adapter, nullptr, "HTTP plugin missing library manager adapter handle!" );
+    KI_CHECK_MSG( m_adapter, nullptr, "HTTP plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
     ensureConnection();
 
@@ -143,7 +145,7 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::LoadSymbol( const wxString& aLibraryPath, const wxS
     // return Null if no category was found. This should never happen
     if( foundCategory == nullptr )
     {
-        wxLogTrace( traceHTTPLib, wxT( "loadSymbol: no category found for %s" ), partName );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "loadSymbol: no category found for %s" ), partName );
         return nullptr;
     }
 
@@ -159,17 +161,17 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::LoadSymbol( const wxString& aLibraryPath, const wxS
 
     if( m_conn->SelectOne( part_id, result ) )
     {
-        wxLogTrace( traceHTTPLib, wxT( "LoadSymbol: SelectOne (%s) found in %s" ), part_id, foundCategory->name );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "LoadSymbol: SelectOne (%s) found in %s" ), part_id, foundCategory->name );
     }
     else
     {
-        wxLogTrace( traceHTTPLib, wxT( "LoadSymbol: SelectOne (%s) failed for category %s" ), part_id,
+        KI_LOG_TRACE( traceHTTPLib, wxT( "LoadSymbol: SelectOne (%s) failed for category %s" ), part_id,
                     foundCategory->name );
 
         THROW_IO_ERROR( m_lastError );
     }
 
-    wxCHECK( foundCategory, nullptr );
+    KI_CHECK( foundCategory, nullptr );
 
     return loadSymbolFromPart( aLibraryPath, aAliasName, *foundCategory, result );
 }
@@ -290,14 +292,14 @@ void SCH_IO_HTTP_LIB::ensureSettings( const wxString& aSettingsPath )
     }
     else if( !m_settings )
     {
-        wxLogTrace( traceHTTPLib, wxT( "ensureSettings: no settings available!" ) );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "ensureSettings: no settings available!" ) );
     }
 }
 
 
 void SCH_IO_HTTP_LIB::ensureConnection()
 {
-    wxCHECK_RET( m_settings, "Call ensureSettings before ensureConnection!" );
+    KI_CHECK_RET( m_settings, "Call ensureSettings before ensureConnection!" );
 
     connect();
 
@@ -312,7 +314,7 @@ void SCH_IO_HTTP_LIB::ensureConnection()
 
 void SCH_IO_HTTP_LIB::connect()
 {
-    wxCHECK_RET( m_settings, "Call ensureSettings before connect()!" );
+    KI_CHECK_RET( m_settings, "Call ensureSettings before connect()!" );
 
     if( !m_conn )
     {
@@ -403,7 +405,7 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::loadSymbolFromPart( const wxString& aLibraryPath,
 
         if( originalSymbol )
         {
-            wxLogTrace( traceHTTPLib, wxT( "loadSymbolFromPart: found original symbol '%s'" ), symbolIdStr );
+            KI_LOG_TRACE( traceHTTPLib, wxT( "loadSymbolFromPart: found original symbol '%s'" ), symbolIdStr );
 
             symbol = originalSymbol->Duplicate();
             symbol->SetSourceLibId( symbolId );
@@ -416,12 +418,12 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::loadSymbolFromPart( const wxString& aLibraryPath,
         }
         else if( !symbolId.IsValid() )
         {
-            wxLogTrace( traceHTTPLib, wxT( "loadSymbolFromPart: source symbol id '%s' is invalid, "
+            KI_LOG_TRACE( traceHTTPLib, wxT( "loadSymbolFromPart: source symbol id '%s' is invalid, "
                                            "will create empty symbol" ), symbolIdStr );
         }
         else
         {
-            wxLogTrace( traceHTTPLib, wxT( "loadSymbolFromPart: source symbol '%s' not found, "
+            KI_LOG_TRACE( traceHTTPLib, wxT( "loadSymbolFromPart: source symbol '%s' not found, "
                                            "will create empty symbol" ), symbolIdStr );
         }
     }

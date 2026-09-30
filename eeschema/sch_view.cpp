@@ -40,6 +40,7 @@
 #include <string_utils.h>
 
 #include "sch_view.h"
+#include <core/ki_assert.h>
 
 
 namespace KIGFX {
@@ -133,11 +134,11 @@ void SCH_VIEW::DisplaySheet( const SCH_SCREEN *aScreen )
     {
         SCH_EDIT_FRAME* editFrame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-        wxCHECK( editFrame, /* void */ );
+        KI_CHECK( editFrame, /* void */ );
 
         // The title block metadata (sheet name/path, first-page flag) is derived from the
         // current sheet, so the screen being displayed must be the current sheet's screen.
-        wxCHECK( editFrame->GetCurrentSheet().LastScreen() == aScreen, /* void */ );
+        KI_CHECK( editFrame->GetCurrentSheet().LastScreen() == aScreen, /* void */ );
 
         syncDrawingSheetToCurrentSheet( editFrame );
     }
@@ -162,7 +163,7 @@ void SCH_VIEW::syncDrawingSheetToCurrentSheet( SCH_EDIT_FRAME* aFrame )
 {
     SCH_SCREEN* screen = aFrame->GetScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     m_drawingSheet->SetPageNumber( TO_UTF8( screen->GetPageNumber() ) );
     m_drawingSheet->SetSheetCount( screen->GetPageCount() );
@@ -218,7 +219,7 @@ void SCH_VIEW::DisplaySymbol( LIB_SYMBOL* aSymbol )
             drawnSymbol = parent.get();
         else
         {
-            wxCHECK( false, /* void */ );
+            KI_CHECK( false, /* void */ );
         }
     }
 

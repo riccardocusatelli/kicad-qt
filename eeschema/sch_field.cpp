@@ -42,6 +42,8 @@
 #include "sim/sim_lib_mgr.h"
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 static const std::vector<KICAD_T> labelTypes = { SCH_LABEL_LOCATE_ANY_T };
 
@@ -266,7 +268,7 @@ wxString SCH_FIELD::GetShownText( bool aAllowExtraText, int aDepth ) const
         const SCH_SHEET_PATH& currentSheet = schematic->CurrentSheet();
         wxString variantName = schematic->GetCurrentVariant();
 
-        wxLogTrace( traceSchFieldRendering,
+        KI_LOG_TRACE( traceSchFieldRendering,
                     "GetShownText (no path arg): field=%s, current sheet path='%s', variant='%s', size=%zu, empty=%d",
                     GetName(), currentSheet.Path().AsString(), variantName, currentSheet.size(),
                     currentSheet.empty() ? 1 : 0 );
@@ -380,7 +382,7 @@ void SCH_FIELD::ImportValues( const SCH_FIELD& aSource )
 
 void SCH_FIELD::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( aItem && aItem->Type() == SCH_FIELD_T, wxT( "Cannot swap with invalid item." ) );
+    KI_CHECK_RET( aItem && aItem->Type() == SCH_FIELD_T, wxT( "Cannot swap with invalid item." ) );
 
     SCH_FIELD* item = static_cast<SCH_FIELD*>( aItem );
 
@@ -622,7 +624,7 @@ bool SCH_FIELD::Matches( const EDA_SEARCH_DATA& aSearchData, void* aAuxData ) co
         if( aSearchData.searchMetadata && parentSymbol->Matches( aSearchData, aAuxData ) )
             return true;
 
-        wxASSERT( aAuxData );
+        KI_ASSERT( aAuxData );
 
         // Take sheet path into account which effects the reference field and the unit for
         // symbols with multiple parts.
@@ -807,7 +809,7 @@ bool SCH_FIELD::Replace( const EDA_SEARCH_DATA& aSearchData, void* aAuxData )
         if( !replaceReferences )
             return false;
 
-        wxCHECK_MSG( aAuxData, false, wxT( "Need sheetpath to replace in refdes." ) );
+        KI_CHECK_MSG( aAuxData, false, wxT( "Need sheetpath to replace in refdes." ) );
 
         text = parentSymbol->GetRef( (SCH_SHEET_PATH*) aAuxData );
         isReplaced = EDA_ITEM::Replace( aSearchData, text );
@@ -883,7 +885,7 @@ void SCH_FIELD::Rotate( const VECTOR2I& aCenter, bool aRotateCCW )
     }
     else
     {
-        wxFAIL_MSG( wxString::Format( wxT( "SCH_FIELD text angle is not horizontal or vertical: %f" ),
+        KI_FAIL_MSG( wxString::Format( wxT( "SCH_FIELD text angle is not horizontal or vertical: %f" ),
                                       GetTextAngle().AsDegrees() ) );
     }
 
@@ -1063,7 +1065,7 @@ void SCH_FIELD::SetText( const wxString& aText )
 
 void SCH_FIELD::SetText( const wxString& aText, const SCH_SHEET_PATH* aPath, const wxString& aVariantName )
 {
-    wxCHECK( m_parent, /* void */ );
+    KI_CHECK( m_parent, /* void */ );
 
     if( m_isGeneratedField )
         return;
@@ -1078,7 +1080,7 @@ void SCH_FIELD::SetText( const wxString& aText, const SCH_SHEET_PATH* aPath, con
     case SCH_SYMBOL_T:
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( m_parent );
-        wxCHECK( symbol, /* void */ );
+        KI_CHECK( symbol, /* void */ );
         symbol->SetFieldText( GetName(), aText, aPath, aVariantName );
         break;
     }
@@ -1086,7 +1088,7 @@ void SCH_FIELD::SetText( const wxString& aText, const SCH_SHEET_PATH* aPath, con
     case SCH_SHEET_T:
     {
         SCH_SHEET* sheet = static_cast<SCH_SHEET*>( m_parent );
-        wxCHECK( sheet, /* void */ );
+        KI_CHECK( sheet, /* void */ );
         sheet->SetFieldText( GetName(), aText, aPath, aVariantName );
         break;
     }
@@ -1102,14 +1104,14 @@ wxString SCH_FIELD::GetText( const SCH_SHEET_PATH* aPath, const wxString& aVaria
 {
     wxString retv;
 
-    wxCHECK( aPath && m_parent, retv );
+    KI_CHECK( aPath && m_parent, retv );
 
     switch( m_parent->Type() )
     {
     case SCH_SYMBOL_T:
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( m_parent );
-        wxCHECK( symbol, retv );
+        KI_CHECK( symbol, retv );
         retv = symbol->GetFieldText( GetName(), aPath, aVariantName );
         break;
     }
@@ -1117,7 +1119,7 @@ wxString SCH_FIELD::GetText( const SCH_SHEET_PATH* aPath, const wxString& aVaria
     case SCH_SHEET_T:
     {
         SCH_SHEET* sheet = static_cast<SCH_SHEET*>( m_parent );
-        wxCHECK( sheet, retv );
+        KI_CHECK( sheet, retv );
         retv = sheet->GetFieldText( GetName(), aPath, aVariantName );
         break;
     }
@@ -1568,7 +1570,7 @@ double SCH_FIELD::Similarity( const SCH_ITEM& aOther ) const
 
 int SCH_FIELD::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 {
-    wxASSERT( aOther.Type() == SCH_FIELD_T );
+    KI_ASSERT( aOther.Type() == SCH_FIELD_T );
 
     int compareFlags = aCompareFlags;
 
@@ -1656,7 +1658,7 @@ wxString SCH_FIELD::getUnescapedText( const SCH_SHEET_PATH* aPath, const wxStrin
     // Only use the path if it's non-empty; an empty path can't match any instances
     if( m_parent && aPath && !aPath->empty() )
     {
-        wxLogTrace( traceSchFieldRendering, "  Path is valid and non-empty, parent type=%d", m_parent->Type() );
+        KI_LOG_TRACE( traceSchFieldRendering, "  Path is valid and non-empty, parent type=%d", m_parent->Type() );
 
         switch( m_parent->Type() )
         {
@@ -1665,12 +1667,12 @@ wxString SCH_FIELD::getUnescapedText( const SCH_SHEET_PATH* aPath, const wxStrin
             {
                 if( m_id == FIELD_T::REFERENCE )
                 {
-                    wxLogTrace( traceSchFieldRendering, "  Calling GetRef for symbol %s on path %s",
+                    KI_LOG_TRACE( traceSchFieldRendering, "  Calling GetRef for symbol %s on path %s",
                                 symbol->m_Uuid.AsString(), aPath->Path().AsString() );
 
                     retv = symbol->GetRef( aPath, true );
 
-                    wxLogTrace( traceSchFieldRendering, "  GetRef returned: '%s'", retv );
+                    KI_LOG_TRACE( traceSchFieldRendering, "  GetRef returned: '%s'", retv );
                 }
                 else if( !aVariantName.IsEmpty() )
                 {

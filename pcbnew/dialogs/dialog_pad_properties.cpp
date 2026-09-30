@@ -54,6 +54,7 @@
 #include <advanced_config.h>    // for pad property feature management
 #include <wx/choicdlg.h>
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 
 int DIALOG_PAD_PROPERTIES::m_page = 0;     // remember the last open page during session
@@ -950,7 +951,7 @@ void DIALOG_PAD_PROPERTIES::afterPadstackModeChanged()
 {
     // NOTE: synchronize changes here with DIALOG_TRACK_VIA_PROPERTIES::afterPadstackModeChanged
 
-    wxCHECK_MSG( m_board, /* void */, "Expected valid board in afterPadstackModeChanged" );
+    KI_CHECK_MSG( m_board, /* void */, "Expected valid board in afterPadstackModeChanged" );
     m_cbEditLayer->Clear();
 
     switch( m_previewPad->Padstack().Mode() )
@@ -2143,7 +2144,7 @@ bool DIALOG_PAD_PROPERTIES::transferDataToPad( PAD* aPad )
         break;
 
     default:
-        wxFAIL_MSG( wxT( "DIALOG_PAD_PROPERTIES::transferDataToPad: unknown pad type" ) );
+        KI_FAIL_MSG( wxT( "DIALOG_PAD_PROPERTIES::transferDataToPad: unknown pad type" ) );
         break;
     }
 

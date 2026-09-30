@@ -33,6 +33,7 @@
 #include <symbol_editor_settings.h>
 #include <sch_commit.h>
 #include <string_utils.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_SHAPE_PROPERTIES::DIALOG_SHAPE_PROPERTIES( SCH_BASE_FRAME* aParent, SCH_SHAPE* aShape ) :
@@ -149,7 +150,7 @@ bool DIALOG_SHAPE_PROPERTIES::TransferDataToWindow()
     else if( style < (int) lineTypeNames.size() )
         m_borderStyleCombo->SetSelection( style );
     else
-        wxFAIL_MSG( wxT( "Line type not found in the type lookup map" ) );
+        KI_FAIL_MSG( wxT( "Line type not found in the type lookup map" ) );
 
     if( dynamic_cast<SYMBOL_EDIT_FRAME*>( m_frame ) )
     {

@@ -30,6 +30,7 @@
 
 #include <bitmap_base.h>
 #include <geometry/geometry_utils.h>
+#include <core/ki_assert.h>
 
 
 static bool compareImages( const BITMAP_BASE& aLeft, const BITMAP_BASE& aRight )
@@ -96,7 +97,7 @@ void REFERENCE_IMAGE::updatePixelSizeInIU()
 
 REFERENCE_IMAGE& REFERENCE_IMAGE::operator=( const REFERENCE_IMAGE& aOther )
 {
-    wxASSERT( m_iuScale.IU_PER_MILS == aOther.m_iuScale.IU_PER_MILS );
+    KI_ASSERT( m_iuScale.IU_PER_MILS == aOther.m_iuScale.IU_PER_MILS );
 
     if( &aOther != this )
     {

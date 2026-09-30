@@ -43,6 +43,7 @@
 #include <wx/progdlg.h>
 #include <wx/tokenzr.h>
 #include <sim/sim_model.h>
+#include <core/ki_assert.h>
 
 LEGACY_SYMBOL_LIB::LEGACY_SYMBOL_LIB( SCH_LIB_TYPE aType, const wxString& aFileName,
                         SCH_IO_MGR::SCH_FILE_T aPluginType ) :
@@ -73,7 +74,7 @@ LEGACY_SYMBOL_LIB::~LEGACY_SYMBOL_LIB()
 
 void LEGACY_SYMBOL_LIB::Save( bool aSaveDocFile )
 {
-    wxCHECK_RET( m_plugin != nullptr,
+    KI_CHECK_RET( m_plugin != nullptr,
                  wxString::Format( wxT( "no plugin defined for library `%s`." ),
                                    fileName.GetFullPath() ) );
 
@@ -198,7 +199,7 @@ void LEGACY_SYMBOL_LIB::AddSymbol( LIB_SYMBOL* aSymbol )
 
 LIB_SYMBOL* LEGACY_SYMBOL_LIB::RemoveSymbol( LIB_SYMBOL* aEntry )
 {
-    wxCHECK_MSG( aEntry != nullptr, nullptr, "NULL pointer cannot be removed from library." );
+    KI_CHECK_MSG( aEntry != nullptr, nullptr, "NULL pointer cannot be removed from library." );
 
     m_plugin->DeleteSymbol( fileName.GetFullPath(), aEntry->GetName(), m_properties.get() );
 
@@ -214,8 +215,8 @@ LIB_SYMBOL* LEGACY_SYMBOL_LIB::RemoveSymbol( LIB_SYMBOL* aEntry )
 
 LIB_SYMBOL* LEGACY_SYMBOL_LIB::ReplaceSymbol( LIB_SYMBOL* aOldSymbol, LIB_SYMBOL* aNewSymbol )
 {
-    wxASSERT( aOldSymbol != nullptr );
-    wxASSERT( aNewSymbol != nullptr );
+    KI_ASSERT( aOldSymbol != nullptr );
+    KI_ASSERT( aNewSymbol != nullptr );
 
     m_plugin->DeleteSymbol( fileName.GetFullPath(), aOldSymbol->GetName(), m_properties.get() );
 
@@ -458,7 +459,7 @@ void LEGACY_SYMBOL_LIBS::FindLibraryNearEntries( std::vector<LIB_SYMBOL*>& aCand
 
 void LEGACY_SYMBOL_LIBS::GetLibNamesAndPaths( PROJECT* aProject, wxString* aPaths, wxArrayString* aNames )
 {
-    wxCHECK_RET( aProject, "Null PROJECT in GetLibNamesAndPaths" );
+    KI_CHECK_RET( aProject, "Null PROJECT in GetLibNamesAndPaths" );
 
     PROJECT_FILE& project = aProject->GetProjectFile();
 
@@ -473,7 +474,7 @@ void LEGACY_SYMBOL_LIBS::GetLibNamesAndPaths( PROJECT* aProject, wxString* aPath
 void LEGACY_SYMBOL_LIBS::SetLibNamesAndPaths( PROJECT* aProject, const wxString& aPaths,
                                        const wxArrayString& aNames )
 {
-    wxCHECK_RET( aProject, "Null PROJECT in SetLibNamesAndPaths" );
+    KI_CHECK_RET( aProject, "Null PROJECT in SetLibNamesAndPaths" );
 
     PROJECT_FILE& project = aProject->GetProjectFile();
 

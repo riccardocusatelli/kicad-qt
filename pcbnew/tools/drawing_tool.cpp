@@ -88,6 +88,7 @@
 #include <zone.h>
 #include <fix_board_shape.h>
 #include <view/view_controls.h>
+#include <core/ki_assert.h>
 
 const unsigned int DRAWING_TOOL::COORDS_PADDING = pcbIUScale.mmToIU( 20 );
 
@@ -1785,7 +1786,7 @@ int DRAWING_TOOL::DrawDimension( const TOOL_EVENT& aEvent )
                 }
                 else
                 {
-                    wxFAIL_MSG( wxT( "Unhandled action in DRAWING_TOOL::DrawDimension" ) );
+                    KI_FAIL_MSG( wxT( "Unhandled action in DRAWING_TOOL::DrawDimension" ) );
                 }
 
                 t = dimension->Type();
@@ -2363,7 +2364,7 @@ bool DRAWING_TOOL::drawShape( const TOOL_EVENT& aTool, PCB_SHAPE** aGraphic,
     SHAPE_T shape = ( *aGraphic )->GetShape();
 
     // Only three shapes are currently supported
-    wxASSERT( shape == SHAPE_T::SEGMENT || shape == SHAPE_T::CIRCLE || shape == SHAPE_T::RECTANGLE );
+    KI_ASSERT( shape == SHAPE_T::SEGMENT || shape == SHAPE_T::CIRCLE || shape == SHAPE_T::RECTANGLE );
 
     const BOARD_DESIGN_SETTINGS& bds = m_frame->GetDesignSettings();
     EDA_UNITS                    userUnits = m_frame->GetUserUnits();
@@ -2792,11 +2793,11 @@ static void updateArcFromConstructionMgr( const KIGFX::PREVIEW::ARC_GEOM_MANAGER
 bool DRAWING_TOOL::drawArc( const TOOL_EVENT& aTool, PCB_SHAPE** aGraphic,
                             std::optional<VECTOR2D> aStartingPoint )
 {
-    wxCHECK( aGraphic, false );
+    KI_CHECK( aGraphic, false );
 
     PCB_SHAPE*&  graphic = *aGraphic;
 
-    wxCHECK( graphic, false );
+    KI_CHECK( graphic, false );
 
     if( m_layer != m_frame->GetActiveLayer() )
     {
@@ -3772,7 +3773,7 @@ int DRAWING_TOOL::DrawVia( const TOOL_EVENT& aEvent )
             KIGFX::PCB_VIEW*        view = m_frame->GetCanvas()->GetView();
             std::vector<PCB_TRACK*> possible_tracks;
 
-            wxCHECK( view, nullptr );
+            KI_CHECK( view, nullptr );
 
             view->Query( bbox, items );
 

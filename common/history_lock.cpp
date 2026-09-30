@@ -33,6 +33,7 @@
 #include <wx/datetime.h>
 
 #include <git2.h>
+#include <core/ki_log.h>
 
 #define HISTORY_LOCK_TRACE wxT( "KICAD_HISTORY_LOCK" )
 
@@ -52,37 +53,37 @@ HISTORY_LOCK_MANAGER::HISTORY_LOCK_MANAGER( const wxString& aProjectPath, int aS
         m_indexOwned( false ),
         m_staleTimeoutSec( aStaleTimeoutSec <= 0 ? ADVANCED_CFG::GetCfg().m_HistoryLockStaleTimeout : aStaleTimeoutSec )
 {
-    wxLogTrace( HISTORY_LOCK_TRACE, "Attempting to acquire lock for project: %s (timeout: %d sec)",
+    KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Attempting to acquire lock for project: %s (timeout: %d sec)",
                aProjectPath, m_staleTimeoutSec );
 
     // Layer 1: Acquire file-based lock to prevent cross-instance conflicts
     if( !acquireFileLock() )
     {
-        wxLogTrace( HISTORY_LOCK_TRACE, "Failed to acquire file lock: %s", m_lockError );
+        KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Failed to acquire file lock: %s", m_lockError );
         return;
     }
 
     // Layer 2: Open git repository
     if( !openRepository() )
     {
-        wxLogTrace( HISTORY_LOCK_TRACE, "Failed to open repository: %s", m_lockError );
+        KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Failed to open repository: %s", m_lockError );
         return;
     }
 
     // Layer 3: Acquire git index lock for fine-grained operation safety
     if( !acquireIndexLock() )
     {
-        wxLogTrace( HISTORY_LOCK_TRACE, "Failed to acquire index lock: %s", m_lockError );
+        KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Failed to acquire index lock: %s", m_lockError );
         return;
     }
 
-    wxLogTrace( HISTORY_LOCK_TRACE, "Successfully acquired all locks for project: %s", aProjectPath );
+    KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Successfully acquired all locks for project: %s", aProjectPath );
 }
 
 
 HISTORY_LOCK_MANAGER::~HISTORY_LOCK_MANAGER()
 {
-    wxLogTrace( HISTORY_LOCK_TRACE, "Releasing locks for project: %s", m_projectPath );
+    KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Releasing locks for project: %s", m_projectPath );
 
     // Release in reverse order of acquisition
     if( m_indexOwned && m_index )
@@ -260,7 +261,7 @@ bool HISTORY_LOCK_MANAGER::IsLockStale( const wxString& aProjectPath, int aStale
     wxDateTime now = wxDateTime::Now();
     wxTimeSpan age = now - modTime;
 
-    wxLogTrace( HISTORY_LOCK_TRACE, "Lock file age: %d seconds (stale threshold: %d)",
+    KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Lock file age: %d seconds (stale threshold: %d)",
                (int)age.GetSeconds().ToLong(), aStaleTimeoutSec );
 
     return age.GetSeconds().ToLong() > aStaleTimeoutSec;
@@ -286,7 +287,7 @@ bool HISTORY_LOCK_MANAGER::BreakStaleLock( const wxString& aProjectPath )
     {
         result = wxRemoveFile( lockPath.GetFullPath() );
         if( result )
-            wxLogTrace( HISTORY_LOCK_TRACE, "Removed stale lock: %s", lockPath.GetFullPath() );
+            KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Removed stale lock: %s", lockPath.GetFullPath() );
         else
             wxLogError( "Failed to remove stale lock: %s", lockPath.GetFullPath() );
     }
@@ -295,7 +296,7 @@ bool HISTORY_LOCK_MANAGER::BreakStaleLock( const wxString& aProjectPath )
     {
         bool lockFileResult = wxRemoveFile( lockFilePath.GetFullPath() );
         if( lockFileResult )
-            wxLogTrace( HISTORY_LOCK_TRACE, "Removed stale lockfile: %s", lockFilePath.GetFullPath() );
+            KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Removed stale lockfile: %s", lockFilePath.GetFullPath() );
         result = result && lockFileResult;
     }
 

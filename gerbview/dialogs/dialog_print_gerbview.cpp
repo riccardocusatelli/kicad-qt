@@ -36,6 +36,7 @@
 #include <tools/gerbview_actions.h>
 #include <tools/gerbview_control.h>
 #include <wx/checklst.h>
+#include <core/ki_assert.h>
 
 // TODO(JE)
 #define OPTKEY_LAYERBASE             wxT( "PlotLayer_%d" )
@@ -50,7 +51,7 @@ public:
 private:
     BOARD_PRINTOUT_SETTINGS* settings() const
     {
-        wxASSERT( dynamic_cast<BOARD_PRINTOUT_SETTINGS*>( m_settings ) );
+        KI_ASSERT( dynamic_cast<BOARD_PRINTOUT_SETTINGS*>( m_settings ) );
         return static_cast<BOARD_PRINTOUT_SETTINGS*>( m_settings );
     }
 
@@ -122,7 +123,7 @@ bool DIALOG_PRINT_GERBVIEW::TransferDataToWindow()
 
         if( listIdx >= LAYER_LIST_COUNT )
         {
-            wxFAIL;
+            KI_FAIL();
             break;
         }
 
@@ -138,7 +139,7 @@ bool DIALOG_PRINT_GERBVIEW::TransferDataToWindow()
         if( settings()->m_LayerSet.test( ii) )
             listBox->Check( ii, true );
 
-        wxASSERT( m_layerToItemMap.count( ii ) == 0 );
+        KI_ASSERT( m_layerToItemMap.count( ii ) == 0 );
         m_layerToItemMap[ii] = itemIdx;
 
         ++itemIdx;
@@ -232,7 +233,7 @@ bool DIALOG_PRINT_GERBVIEW::isLayerEnabled( unsigned int aLayer ) const
     unsigned int itemNr = layerMapIt->second;
     unsigned int listIdx = itemNr / LAYER_PER_LIST;
     unsigned int itemIdx = itemNr % LAYER_PER_LIST;
-    wxCHECK( listIdx < LAYER_LIST_COUNT, false );
+    KI_CHECK( listIdx < LAYER_LIST_COUNT, false );
     wxCheckListBox* listBox = m_layerLists[listIdx];
 
     return itemIdx < listBox->GetCount() && listBox->IsChecked( itemIdx );

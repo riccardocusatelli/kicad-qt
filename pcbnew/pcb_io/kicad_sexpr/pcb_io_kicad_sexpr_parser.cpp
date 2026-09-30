@@ -76,6 +76,8 @@
 #include <board_stackup_manager/stackup_predefined_prms.h>
 #include <pgm_base.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 // For some reason wxWidgets is built with wxUSE_BASE64 unset so expose the wxWidgets
 // base64 code. Needed for PCB_REFERENCE_IMAGE
@@ -303,7 +305,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseNet( BOARD_CONNECTED_ITEM* aItem )
     {
         if( !aItem->SetNetCode( std::max( 0, getNetCode( parseInt() ) ), /* aNoAssert */ true ) )
         {
-            wxLogTrace( traceKicadPcbPlugin,
+            KI_LOG_TRACE( traceKicadPcbPlugin,
                         _( "Invalid net ID in\nfile: %s;\nline: %d\noffset: %d." ),
                         CurSource(), CurLineNumber(), CurOffset() );
         }
@@ -735,7 +737,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseTEARDROP_PARAMETERS( TEARDROP_PARAMETERS* t
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseEDA_TEXT( EDA_TEXT* aText )
 {
-    wxCHECK_RET( CurTok() == T_effects,
+    KI_CHECK_RET( CurTok() == T_effects,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as EDA_TEXT." ) );
 
     // These are not written out if center/center and/or no mirror,
@@ -911,7 +913,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseRenderCache( EDA_TEXT* text )
 
 FP_3DMODEL* PCB_IO_KICAD_SEXPR_PARSER::parse3DModel()
 {
-    wxCHECK_MSG( CurTok() == T_model, nullptr,
+    KI_CHECK_MSG( CurTok() == T_model, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as FP_3DMODEL." ) );
 
     T token;
@@ -1662,7 +1664,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::resolveGroups( BOARD_ITEM* aParent )
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseHeader()
 {
-    wxCHECK_RET( CurTok() == T_kicad_pcb,
+    KI_CHECK_RET( CurTok() == T_kicad_pcb,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a header." ) );
 
     NeedLEFT();
@@ -1691,7 +1693,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseHeader()
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseGeneralSection()
 {
-    wxCHECK_RET( CurTok() == T_general,
+    KI_CHECK_RET( CurTok() == T_general,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a general section." ) );
 
     T token;
@@ -1727,7 +1729,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseGeneralSection()
 
 void PCB_IO_KICAD_SEXPR_PARSER::parsePAGE_INFO()
 {
-    wxCHECK_RET( ( CurTok() == T_page && m_requiredVersion <= 20200119 ) || CurTok() == T_paper,
+    KI_CHECK_RET( ( CurTok() == T_page && m_requiredVersion <= 20200119 ) || CurTok() == T_paper,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a PAGE_INFO." ) );
 
     T token;
@@ -1783,7 +1785,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parsePAGE_INFO()
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseTITLE_BLOCK()
 {
-    wxCHECK_RET( CurTok() == T_title_block,
+    KI_CHECK_RET( CurTok() == T_title_block,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as TITLE_BLOCK." ) );
 
     T token;
@@ -2257,7 +2259,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::createOldLayerMapping( std::unordered_map< std::
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseLayers()
 {
-    wxCHECK_RET( CurTok() == T_layers,
+    KI_CHECK_RET( CurTok() == T_layers,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as layers." ) );
 
     T       token;
@@ -2436,7 +2438,7 @@ PCB_LAYER_ID PCB_IO_KICAD_SEXPR_PARSER::lookUpLayer( const LAYER_ID_MAP& aMap )
 
 PCB_LAYER_ID PCB_IO_KICAD_SEXPR_PARSER::parseBoardItemLayer()
 {
-    wxCHECK_MSG( CurTok() == T_layer, UNDEFINED_LAYER,
+    KI_CHECK_MSG( CurTok() == T_layer, UNDEFINED_LAYER,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as layer." ) );
 
     NextTok();
@@ -2451,7 +2453,7 @@ PCB_LAYER_ID PCB_IO_KICAD_SEXPR_PARSER::parseBoardItemLayer()
 
 LSET PCB_IO_KICAD_SEXPR_PARSER::parseBoardItemLayersAsMask()
 {
-    wxCHECK_MSG( CurTok() == T_layers, LSET(),
+    KI_CHECK_MSG( CurTok() == T_layers, LSET(),
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as item layers." ) );
 
     LSET layerMask;
@@ -2493,7 +2495,7 @@ LSET PCB_IO_KICAD_SEXPR_PARSER::parseLayersForCuItemWithSoldermask()
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseSetup()
 {
-    wxCHECK_RET( CurTok() == T_setup,
+    KI_CHECK_RET( CurTok() == T_setup,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as setup." ) );
 
     BOARD_DESIGN_SETTINGS&     bds = m_board->GetDesignSettings();
@@ -3094,7 +3096,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseDefaultTextDims( BOARD_DESIGN_SETTINGS& aSe
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseNETINFO_ITEM()
 {
-    wxCHECK_RET( CurTok() == T_net,
+    KI_CHECK_RET( CurTok() == T_net,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as net." ) );
 
     int netCode = parseInt( "net number" );
@@ -3125,7 +3127,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseNETINFO_ITEM()
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseNETCLASS()
 {
-    wxCHECK_RET( CurTok() == T_net_class,
+    KI_CHECK_RET( CurTok() == T_net_class,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as net class." ) );
 
     T token;
@@ -3229,7 +3231,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseNETCLASS()
 
 PCB_SHAPE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_SHAPE( BOARD_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_fp_arc || CurTok() == T_fp_circle || CurTok() == T_fp_curve ||
+    KI_CHECK_MSG( CurTok() == T_fp_arc || CurTok() == T_fp_circle || CurTok() == T_fp_curve ||
                  CurTok() == T_fp_rect || CurTok() == T_fp_line || CurTok() == T_fp_poly ||
                  CurTok() == T_gr_arc || CurTok() == T_gr_circle || CurTok() == T_gr_curve ||
                  CurTok() == T_gr_rect || CurTok() == T_gr_bbox || CurTok() == T_gr_line ||
@@ -3658,7 +3660,7 @@ PCB_SHAPE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_SHAPE( BOARD_ITEM* aParent )
 
 PCB_REFERENCE_IMAGE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_REFERENCE_IMAGE( BOARD_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_image, nullptr,
+    KI_CHECK_MSG( CurTok() == T_image, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a reference image." ) );
 
     T token;
@@ -3756,7 +3758,7 @@ PCB_REFERENCE_IMAGE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_REFERENCE_IMAGE( BOARD_
 
 PCB_TEXT* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TEXT( BOARD_ITEM* aParent, PCB_TEXT* aBaseText )
 {
-    wxCHECK_MSG( CurTok() == T_gr_text || CurTok() == T_fp_text, nullptr,
+    KI_CHECK_MSG( CurTok() == T_gr_text || CurTok() == T_fp_text, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_TEXT." ) );
 
     FOOTPRINT*                parentFP = dynamic_cast<FOOTPRINT*>( aParent );
@@ -3978,7 +3980,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TEXT_effects( PCB_TEXT* aText, PCB_TEXT
 
 PCB_BARCODE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_BARCODE( BOARD_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_barcode, nullptr,
+    KI_CHECK_MSG( CurTok() == T_barcode, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_BARCODE." ) );
 
     std::unique_ptr<PCB_BARCODE> barcode = std::make_unique<PCB_BARCODE>( aParent );
@@ -4121,7 +4123,7 @@ PCB_BARCODE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_BARCODE( BOARD_ITEM* aParent )
 
 PCB_TEXTBOX* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TEXTBOX( BOARD_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_gr_text_box || CurTok() == T_fp_text_box, nullptr,
+    KI_CHECK_MSG( CurTok() == T_gr_text_box || CurTok() == T_fp_text_box, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_TEXTBOX." ) );
 
     std::unique_ptr<PCB_TEXTBOX> textbox = std::make_unique<PCB_TEXTBOX>( aParent );
@@ -4134,7 +4136,7 @@ PCB_TEXTBOX* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TEXTBOX( BOARD_ITEM* aParent )
 
 PCB_TABLECELL* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TABLECELL( BOARD_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_table_cell, nullptr,
+    KI_CHECK_MSG( CurTok() == T_table_cell, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a table cell." ) );
 
     std::unique_ptr<PCB_TABLECELL> cell = std::make_unique<PCB_TABLECELL>( aParent );
@@ -4332,7 +4334,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseTextBoxContent( PCB_TEXTBOX* aTextBox )
 
 PCB_TABLE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TABLE( BOARD_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_table, nullptr,
+    KI_CHECK_MSG( CurTok() == T_table, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a table." ) );
 
     T             token;
@@ -4502,7 +4504,7 @@ PCB_TABLE* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TABLE( BOARD_ITEM* aParent )
 
 PCB_DIMENSION_BASE* PCB_IO_KICAD_SEXPR_PARSER::parseDIMENSION( BOARD_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_dimension, nullptr,
+    KI_CHECK_MSG( CurTok() == T_dimension, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as DIMENSION." ) );
 
     T token;
@@ -4547,7 +4549,7 @@ PCB_DIMENSION_BASE* PCB_IO_KICAD_SEXPR_PARSER::parseDIMENSION( BOARD_ITEM* aPare
         case T_leader:     dim = std::make_unique<PCB_DIM_LEADER>( aParent );     break;
         case T_center:     dim = std::make_unique<PCB_DIM_CENTER>( aParent );     break;
         case T_radial:     dim = std::make_unique<PCB_DIM_RADIAL>( aParent );     break;
-        default:           wxFAIL_MSG( wxT( "Cannot parse unknown dimension type " )
+        default:           KI_FAIL_MSG( wxT( "Cannot parse unknown dimension type " )
                                        + GetTokenString( CurTok() ) );
         }
 
@@ -4787,7 +4789,7 @@ PCB_DIMENSION_BASE* PCB_IO_KICAD_SEXPR_PARSER::parseDIMENSION( BOARD_ITEM* aPare
                 case T_extension_height:
                 {
                     PCB_DIM_ALIGNED* aligned = dynamic_cast<PCB_DIM_ALIGNED*>( dim.get() );
-                    wxCHECK_MSG( aligned, nullptr, wxT( "Invalid extension_height token" ) );
+                    KI_CHECK_MSG( aligned, nullptr, wxT( "Invalid extension_height token" ) );
                     aligned->SetExtensionHeight( parseBoardUnits( "extension height value" ) );
                     NeedRIGHT();
                     break;
@@ -4804,7 +4806,7 @@ PCB_DIMENSION_BASE* PCB_IO_KICAD_SEXPR_PARSER::parseDIMENSION( BOARD_ITEM* aPare
 
                 case T_text_frame:
                 {
-                    wxCHECK_MSG( dim->Type() == PCB_DIM_LEADER_T, nullptr,
+                    KI_CHECK_MSG( dim->Type() == PCB_DIM_LEADER_T, nullptr,
                                  wxT( "Invalid text_frame token" ) );
 
                     PCB_DIM_LEADER* leader = static_cast<PCB_DIM_LEADER*>( dim.get() );
@@ -4986,7 +4988,7 @@ FOOTPRINT* PCB_IO_KICAD_SEXPR_PARSER::parseFOOTPRINT( wxArrayString* aInitialCom
 
 FOOTPRINT* PCB_IO_KICAD_SEXPR_PARSER::parseFOOTPRINT_unchecked( wxArrayString* aInitialComments )
 {
-    wxCHECK_MSG( CurTok() == T_module || CurTok() == T_footprint, nullptr,
+    KI_CHECK_MSG( CurTok() == T_module || CurTok() == T_footprint, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as FOOTPRINT." ) );
 
     wxString name;
@@ -5712,7 +5714,7 @@ FOOTPRINT* PCB_IO_KICAD_SEXPR_PARSER::parseFOOTPRINT_unchecked( wxArrayString* a
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseFootprintStackup( FOOTPRINT& aFootprint )
 {
-    wxCHECK_RET( CurTok() == T_stackup, "Expected stackup token" );
+    KI_CHECK_RET( CurTok() == T_stackup, "Expected stackup token" );
 
     // If we have a stackup list at all, we must be in custom layer mode
     FOOTPRINT_STACKUP stackupMode = FOOTPRINT_STACKUP::CUSTOM_LAYERS;
@@ -5785,7 +5787,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseFootprintStackup( FOOTPRINT& aFootprint )
 
 PAD* PCB_IO_KICAD_SEXPR_PARSER::parsePAD( FOOTPRINT* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_pad, nullptr,
+    KI_CHECK_MSG( CurTok() == T_pad, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PAD." ) );
 
     VECTOR2I sz;
@@ -6076,7 +6078,7 @@ PAD* PCB_IO_KICAD_SEXPR_PARSER::parsePAD( FOOTPRINT* aParent )
             {
                 if( !pad->SetNetCode( getNetCode( parseInt() ), /* aNoAssert */ true ) )
                 {
-                    wxLogTrace( traceKicadPcbPlugin,
+                    KI_LOG_TRACE( traceKicadPcbPlugin,
                                 _( "Invalid net ID in\nfile: %s\nline: %d offset: %d" ),
                                 CurSource(), CurLineNumber(), CurOffset() );
                 }
@@ -6108,7 +6110,7 @@ PAD* PCB_IO_KICAD_SEXPR_PARSER::parsePAD( FOOTPRINT* aParent )
                     if( netName != m_board->FindNet( pad->GetNetCode() )->GetNetname() )
                     {
                         pad->SetNetCode( NETINFO_LIST::ORPHANED, /* aNoAssert */ true );
-                        wxLogTrace( traceKicadPcbPlugin,
+                        KI_LOG_TRACE( traceKicadPcbPlugin,
                                     _( "Net name doesn't match ID in\nfile: %s\nline: %d offset: %d" ),
                                     CurSource(), CurLineNumber(), CurOffset() );
                     }
@@ -6974,7 +6976,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseGROUP_members( GROUP_INFO& aGroupInfo )
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseGROUP( BOARD_ITEM* aParent )
 {
-    wxCHECK_RET( CurTok() == T_group,
+    KI_CHECK_RET( CurTok() == T_group,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_GROUP." ) );
 
     T token;
@@ -7061,7 +7063,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseGROUP( BOARD_ITEM* aParent )
 
 void PCB_IO_KICAD_SEXPR_PARSER::parseGENERATOR( BOARD_ITEM* aParent )
 {
-    wxCHECK_RET( CurTok() == T_generated,
+    KI_CHECK_RET( CurTok() == T_generated,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_GENERATOR." ) );
 
     T token;
@@ -7209,7 +7211,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseGENERATOR( BOARD_ITEM* aParent )
 
 PCB_ARC* PCB_IO_KICAD_SEXPR_PARSER::parseARC()
 {
-    wxCHECK_MSG( CurTok() == T_arc, nullptr,
+    KI_CHECK_MSG( CurTok() == T_arc, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as ARC." ) );
 
     VECTOR2I pt;
@@ -7311,7 +7313,7 @@ PCB_ARC* PCB_IO_KICAD_SEXPR_PARSER::parseARC()
 
 PCB_TRACK* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TRACK()
 {
-    wxCHECK_MSG( CurTok() == T_segment, nullptr,
+    KI_CHECK_MSG( CurTok() == T_segment, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_TRACK." ) );
 
     VECTOR2I pt;
@@ -7406,7 +7408,7 @@ PCB_TRACK* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TRACK()
 
 PCB_VIA* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_VIA()
 {
-    wxCHECK_MSG( CurTok() == T_via, nullptr,
+    KI_CHECK_MSG( CurTok() == T_via, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_VIA." ) );
 
     VECTOR2I pt;
@@ -7862,7 +7864,7 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseViastack( PCB_VIA* aVia )
 
 ZONE* PCB_IO_KICAD_SEXPR_PARSER::parseZONE( BOARD_ITEM_CONTAINER* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_zone, nullptr,
+    KI_CHECK_MSG( CurTok() == T_zone, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as ZONE." ) );
 
     ZONE_BORDER_DISPLAY_STYLE hatchStyle = ZONE_BORDER_DISPLAY_STYLE::NO_HATCH;
@@ -8581,7 +8583,7 @@ ZONE* PCB_IO_KICAD_SEXPR_PARSER::parseZONE( BOARD_ITEM_CONTAINER* aParent )
 
 PCB_POINT* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_POINT()
 {
-    wxCHECK_MSG( CurTok() == T_point, nullptr,
+    KI_CHECK_MSG( CurTok() == T_point, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_POINT." ) );
 
     std::unique_ptr<PCB_POINT> point = std::make_unique<PCB_POINT>( nullptr );
@@ -8631,7 +8633,7 @@ PCB_POINT* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_POINT()
 
 PCB_TARGET* PCB_IO_KICAD_SEXPR_PARSER::parsePCB_TARGET()
 {
-    wxCHECK_MSG( CurTok() == T_target, nullptr,
+    KI_CHECK_MSG( CurTok() == T_target, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_TARGET." ) );
 
     VECTOR2I pt;

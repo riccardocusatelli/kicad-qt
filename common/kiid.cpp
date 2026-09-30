@@ -29,6 +29,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/name_generator_sha1.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <core/ki_assert.h>
 
 #if BOOST_VERSION >= 106700
 #include <boost/uuid/entropy_error.hpp>
@@ -103,7 +104,7 @@ KIID::KIID()
 KIID::KIID( int null ) :
         m_uuid( nilGenerator() )
 {
-    wxASSERT( null == 0 );
+    KI_ASSERT( null == 0 );
 }
 
 

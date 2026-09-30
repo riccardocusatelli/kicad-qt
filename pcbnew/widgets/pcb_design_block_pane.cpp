@@ -38,6 +38,7 @@
 #include <tool/tool_manager.h>
 #include <tools/pcb_actions.h>
 #include <tools/pcb_design_block_control.h>
+#include <core/ki_assert.h>
 
 // Do not make these static wxStrings; they need to respond to language changes
 #define REPEATED_PLACEMENT _( "Place repeated copies" )
@@ -140,7 +141,7 @@ void PCB_DESIGN_BLOCK_PANE::UpdateCheckboxes()
 FILEDLG_IMPORT_BOARD_CONTENTS::FILEDLG_IMPORT_BOARD_CONTENTS( PCBNEW_SETTINGS* aSettings ) :
         m_cbRepeatedPlacement( nullptr ), m_cbPlaceAsGroup( nullptr ), m_cbKeepAnnotations( nullptr )
 {
-    wxASSERT( aSettings );
+    KI_ASSERT( aSettings );
     m_settings = aSettings;
 };
 

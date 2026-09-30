@@ -30,6 +30,7 @@
 #include "x3d_ops.h"
 #include "x3d_appearance.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
 
 
 X3DAPP::X3DAPP() : X3DNODE()
@@ -59,7 +60,7 @@ X3DAPP::X3DAPP( X3DNODE* aParent ) : X3DNODE()
 
 X3DAPP::~X3DAPP()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying Appearance" ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying Appearance" ) );
 
     if( !m_MatName.empty() && m_Dict )
         m_Dict->DelName( m_MatName, this );
@@ -234,14 +235,14 @@ SGNODE* X3DAPP::TranslateToSG( SGNODE* aParent )
 
     if( nullptr != aParent && ptype != S3D::SGTYPE_SHAPE )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( " * [BUG] Appearance does not have a Shape parent (parent ID: %d)" ),
                     ptype );
 
         return nullptr;
     }
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Appearance node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );

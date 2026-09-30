@@ -50,6 +50,7 @@
 #include <pcbnew_settings.h>
 #include <string_utils.h>
 #include <wx/log.h>
+#include <core/ki_assert.h>
 
 using namespace DSN;
 
@@ -336,13 +337,13 @@ PCB_VIA* SPECCTRA_DB::makeVIA( WIRE_VIA* aVia, PADSTACK* aPadstack, const POINT&
             via->SetViaType( VIATYPE::BLIND );
         }
 
-        wxCHECK2( topLayerNdx >= 0, topLayerNdx = 0 );
+        KI_CHECK2( topLayerNdx >= 0, topLayerNdx = 0 );
 
         via->SetWidth( ::PADSTACK::ALL_LAYERS, viaDiam );
         via->SetLayerPair( m_pcbLayer2kicad[ topLayerNdx ], m_pcbLayer2kicad[ botLayerNdx ] );
     }
 
-    wxASSERT( via );
+    KI_ASSERT( via );
 
     via->SetNetCode( aNetCode );
 
@@ -432,7 +433,7 @@ void SPECCTRA_DB::FromSESSION( BOARD* aBoard )
                     continue;
 
                 UNIT_RES* resolution = place.GetUnits();
-                wxASSERT( resolution );
+                KI_ASSERT( resolution );
 
                 VECTOR2I newPos = mapPt( place.m_vertex, resolution );
                 footprint->SetPosition( newPos );
@@ -465,7 +466,7 @@ void SPECCTRA_DB::FromSESSION( BOARD* aBoard )
                 else
                 {
                     // as I write this, the PARSER *is* catching this, so we should never see below:
-                    wxFAIL_MSG( wxT("DSN::PARSER did not catch an illegal side := 'back|front'") );
+                    KI_FAIL_MSG( wxT("DSN::PARSER did not catch an illegal side := 'back|front'") );
                 }
             }
         }

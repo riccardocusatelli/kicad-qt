@@ -34,6 +34,8 @@
 #include <pcb_track.h>
 #include <string_utils.h>
 #include <zone.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 // Constructor and destructor
@@ -105,7 +107,7 @@ void NETINFO_LIST::RemoveNet( NETINFO_ITEM* aNet )
     {
         if ( i->second == aNet )
         {
-            wxASSERT_MSG( removed, wxT( "NETINFO_LIST::RemoveNet: target net found in m_netNames "
+            KI_ASSERT_MSG( removed, wxT( "NETINFO_LIST::RemoveNet: target net found in m_netNames "
                                         "but not m_netCodes!" ) );
             m_netNames.erase(i);
             break;
@@ -254,7 +256,7 @@ void NETINFO_LIST::Show() const
 
     for( it = m_netNames.begin(), itEnd = m_netNames.end(); it != itEnd; ++it )
     {
-        wxLogDebug( wxT( "[%d]: netcode:%d  netname:<%s>\n" ),
+        KI_LOG_DEBUG( wxT( "[%d]: netcode:%d  netname:<%s>\n" ),
                     i++,
                     it->second->GetNetCode(),
                     TO_UTF8( it->second->GetNetname() ) );

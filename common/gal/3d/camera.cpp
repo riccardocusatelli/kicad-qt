@@ -30,6 +30,8 @@
 #include <wx/log.h>
 #include <algorithm>
 #include <3d_enums.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 // A helper function to normalize aAngle between -2PI and +2PI
 inline void normalise2PI( float& aAngle )
@@ -60,7 +62,7 @@ CAMERA::CAMERA( float aInitialDistance ) :
 
 CAMERA::CAMERA( SFVEC3F aInitPos, SFVEC3F aLookat, PROJECTION_TYPE aProjectionType )
 {
-    wxLogTrace( m_logTrace, wxT( "CAMERA::CAMERA" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "CAMERA::CAMERA" ) );
 
     m_camera_pos_init = aInitPos;
     m_board_lookat_pos_init = aLookat;
@@ -408,8 +410,8 @@ void CAMERA::updateFrustum()
 void CAMERA::MakeRay( const SFVEC2I& aWindowPos, SFVEC3F& aOutOrigin,
                        SFVEC3F& aOutDirection ) const
 {
-    wxASSERT( aWindowPos.x < m_windowSize.x );
-    wxASSERT( aWindowPos.y < m_windowSize.y );
+    KI_ASSERT( aWindowPos.x < m_windowSize.x );
+    KI_ASSERT( aWindowPos.y < m_windowSize.y );
 
     aOutOrigin = m_frustum.nc + m_up_nY[aWindowPos.y] + m_right_nX[aWindowPos.x];
 
@@ -430,8 +432,8 @@ void CAMERA::MakeRay( const SFVEC2I& aWindowPos, SFVEC3F& aOutOrigin,
 void CAMERA::MakeRay( const SFVEC2F& aWindowPos, SFVEC3F& aOutOrigin,
                        SFVEC3F& aOutDirection ) const
 {
-    wxASSERT( aWindowPos.x < (float)m_windowSize.x );
-    wxASSERT( aWindowPos.y < (float)m_windowSize.y );
+    KI_ASSERT( aWindowPos.x < (float)m_windowSize.x );
+    KI_ASSERT( aWindowPos.y < (float)m_windowSize.y );
 
     const SFVEC2F floorWinPos_f = glm::floor( aWindowPos );
     const SFVEC2I floorWinPos_i = (SFVEC2I)floorWinPos_f;
@@ -520,7 +522,7 @@ void CAMERA::SetViewMatrix( glm::mat4 aViewMatrix )
     // The look at position in the view frame.
     glm::vec4 lookat = aViewMatrix * glm::vec4( m_lookat_pos, 1.0f );
 
-    wxLogTrace( m_logTrace,
+    KI_LOG_TRACE( m_logTrace,
                 wxT( "CAMERA::SetViewMatrix   aViewMatrix[3].z =%f, old_zoom=%f, new_zoom=%f, "
                      "m[3].z=%f" ),
                 aViewMatrix[3].z, m_zoom, lookat.z / m_camera_pos_init.z, lookat.z );
@@ -711,7 +713,7 @@ void CAMERA::SetT0_and_T1_current_T()
 
 void CAMERA::Interpolate( float t )
 {
-    wxASSERT( t >= 0.0f );
+    KI_ASSERT( t >= 0.0f );
 
     const float t0 = 1.0f - t;
 

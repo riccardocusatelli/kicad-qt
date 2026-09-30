@@ -32,6 +32,7 @@
 #include "../ray.h"
 #include <wx/log.h>
 #include <wx/debug.h>   // For the wxASSERT
+#include <core/ki_assert.h>
 
 
 BBOX_3D::BBOX_3D()
@@ -79,7 +80,7 @@ void BBOX_3D::Set( const SFVEC3F& aPbMin, const SFVEC3F& aPbMax )
 
 void BBOX_3D::Set( const BBOX_3D& aBBox )
 {
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     Set( aBBox.Min(), aBBox.Max() );
 }
@@ -115,7 +116,7 @@ void BBOX_3D::Union( const SFVEC3F& aPoint )
 
 void BBOX_3D::Union( const BBOX_3D& aBBox )
 {
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     // get the minimum value between the added bounding box and the existent bounding box
     m_min.x =  fmin( m_min.x, aBBox.m_min.x );
@@ -137,7 +138,7 @@ SFVEC3F BBOX_3D::GetCenter() const
 
 float BBOX_3D::GetCenter( unsigned int aAxis ) const
 {
-    wxASSERT( aAxis < 3 );
+    KI_ASSERT( aAxis < 3 );
     return ( m_max[aAxis] + m_min[aAxis] ) * 0.5f;
 }
 
@@ -181,7 +182,7 @@ float BBOX_3D::SurfaceArea() const
 
 void BBOX_3D::Scale( float aScale )
 {
-    wxASSERT( IsInitialized() );
+    KI_ASSERT( IsInitialized() );
 
     SFVEC3F scaleV  = SFVEC3F( aScale, aScale, aScale );
     SFVEC3F centerV = GetCenter();
@@ -217,8 +218,8 @@ void BBOX_3D::ScaleNextDown()
 
 bool BBOX_3D::Intersects( const BBOX_3D& aBBox ) const
 {
-    wxASSERT( IsInitialized() );
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     bool x = ( m_max.x >= aBBox.m_min.x ) && ( m_min.x <= aBBox.m_max.x );
     bool y = ( m_max.y >= aBBox.m_min.y ) && ( m_min.y <= aBBox.m_max.y );
@@ -230,7 +231,7 @@ bool BBOX_3D::Intersects( const BBOX_3D& aBBox ) const
 
 bool BBOX_3D::Inside( const SFVEC3F& aPoint ) const
 {
-    wxASSERT( IsInitialized() );
+    KI_ASSERT( IsInitialized() );
 
     return ( aPoint.x >= m_min.x ) && ( aPoint.x <= m_max.x ) &&
            ( aPoint.y >= m_min.y ) && ( aPoint.y <= m_max.y ) &&
@@ -240,8 +241,8 @@ bool BBOX_3D::Inside( const SFVEC3F& aPoint ) const
 
 bool BBOX_3D::Inside( const BBOX_3D& aBBox ) const
 {
-    wxASSERT( IsInitialized() );
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     return Inside( aBBox.Min() ) &&
            Inside( aBBox.Max() );
@@ -250,7 +251,7 @@ bool BBOX_3D::Inside( const BBOX_3D& aBBox ) const
 
 float BBOX_3D::Volume() const
 {
-    wxASSERT( IsInitialized() );
+    KI_ASSERT( IsInitialized() );
 
     SFVEC3F extent = GetExtent();
 
@@ -267,8 +268,8 @@ SFVEC3F BBOX_3D::Offset( const SFVEC3F& p ) const
 // https://github.com/mmp/pbrt-v2/blob/master/src/accelerators/bvh.cpp#L126
 bool BBOX_3D::Intersect( const RAY& aRay, float* aOutHitt0, float* aOutHitt1 ) const
 {
-    wxASSERT( aOutHitt0 );
-    wxASSERT( aOutHitt1 );
+    KI_ASSERT( aOutHitt0 );
+    KI_ASSERT( aOutHitt1 );
 
     const SFVEC3F bounds[2] = {m_min, m_max};
 
@@ -305,7 +306,7 @@ bool BBOX_3D::Intersect( const RAY& aRay, float* aOutHitt0, float* aOutHitt1 ) c
 
 void BBOX_3D::ApplyTransformation( glm::mat4 aTransformMatrix )
 {
-    wxASSERT( IsInitialized() );
+    KI_ASSERT( IsInitialized() );
 
     const SFVEC3F v1 = SFVEC3F( aTransformMatrix * glm::vec4( m_min.x, m_min.y, m_min.z, 1.0f ) );
 

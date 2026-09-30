@@ -29,6 +29,7 @@
 #include <wx/webviewfshandler.h>
 #include <wx/utils.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 #if wxUSE_WEBVIEW_EDGE
     // note webview2 is available on Windows, but not on MINGW (only webview available)
@@ -126,7 +127,7 @@ void WEBVIEW_PANEL::BindLoadedEvent()
 
 void WEBVIEW_PANEL::LoadURL( const wxString& aURL )
 {
-    wxLogTrace( "webview", "Loading URL: %s", aURL );
+    KI_LOG_TRACE( "webview", "Loading URL: %s", aURL );
 
     if( aURL.starts_with( "file:/" ) && !aURL.starts_with( "file:///" ) )
     {
@@ -150,7 +151,7 @@ void WEBVIEW_PANEL::LoadURL( const wxString& aURL )
 
 void WEBVIEW_PANEL::SetPage( const wxString& aHtmlContent )
 {
-    wxLogTrace( "webview", "Setting page content" );
+    KI_LOG_TRACE( "webview", "Setting page content" );
 
     if( wxWebView* browser = GetWebView() )
         browser->SetPage( aHtmlContent, "file://" );
@@ -158,7 +159,7 @@ void WEBVIEW_PANEL::SetPage( const wxString& aHtmlContent )
 
 bool WEBVIEW_PANEL::AddMessageHandler( const wxString& aName, MESSAGE_HANDLER aHandler )
 {
-    wxLogTrace( "webview", "Adding message handler for: %s", aName );
+    KI_LOG_TRACE( "webview", "Adding message handler for: %s", aName );
     auto it = m_msgHandlers.find( aName );
 
     if( it != m_msgHandlers.end() )
@@ -185,7 +186,7 @@ bool WEBVIEW_PANEL::AddMessageHandler( const wxString& aName, MESSAGE_HANDLER aH
         else
         {
             if( !browser->AddScriptMessageHandler( aName ) )
-                wxLogTrace( "webview", "Could not add script message handler %s", aName );
+                KI_LOG_TRACE( "webview", "Could not add script message handler %s", aName );
         }
     }
 
@@ -194,7 +195,7 @@ bool WEBVIEW_PANEL::AddMessageHandler( const wxString& aName, MESSAGE_HANDLER aH
 
 void WEBVIEW_PANEL::ClearMessageHandlers()
 {
-    wxLogTrace( "webview", "Clearing all message handlers" );
+    KI_LOG_TRACE( "webview", "Clearing all message handlers" );
 
     if( wxWebView* browser = GetWebView() )
     {
@@ -208,13 +209,13 @@ void WEBVIEW_PANEL::ClearMessageHandlers()
 void WEBVIEW_PANEL::OnNavigationRequest( wxWebViewEvent& aEvt )
 {
     m_loadError = false;
-    wxLogTrace( "webview", "Navigation request to URL: %s", aEvt.GetURL() );
+    KI_LOG_TRACE( "webview", "Navigation request to URL: %s", aEvt.GetURL() );
     // Default behavior: open external links in the system browser
     bool isExternal = aEvt.GetURL().StartsWith( "http://" ) || aEvt.GetURL().StartsWith( "https://" );
 
     if( isExternal && !m_handleExternalLinks )
     {
-        wxLogTrace( "webview", "Opening external URL in system browser: %s", aEvt.GetURL() );
+        KI_LOG_TRACE( "webview", "Opening external URL in system browser: %s", aEvt.GetURL() );
         wxLaunchDefaultBrowser( aEvt.GetURL() );
         aEvt.Veto();
     }
@@ -243,7 +244,7 @@ void WEBVIEW_PANEL::DoInitHandlers()
     for( const auto& handler : m_msgHandlers )
     {
         if( !browser->AddScriptMessageHandler( handler.first ) )
-            wxLogTrace( "webview", "Could not add script message handler %s", handler.first );
+            KI_LOG_TRACE( "webview", "Could not add script message handler %s", handler.first );
     }
 
     browser->AddUserScript( R"(
@@ -294,15 +295,15 @@ void WEBVIEW_PANEL::OnNewWindow( wxWebViewEvent& aEvt )
         browser->LoadURL( aEvt.GetURL() );
 
     aEvt.Veto(); // Prevent default behavior of opening a new window
-    wxLogTrace( "webview", "New window requested for URL: %s", aEvt.GetURL() );
-    wxLogTrace( "webview", "Target: %s", aEvt.GetTarget() );
-    wxLogTrace( "webview", "Action flags: %d", static_cast<int>(aEvt.GetNavigationAction()) );
-    wxLogTrace( "webview", "Message handler: %s", aEvt.GetMessageHandler() );
+    KI_LOG_TRACE( "webview", "New window requested for URL: %s", aEvt.GetURL() );
+    KI_LOG_TRACE( "webview", "Target: %s", aEvt.GetTarget() );
+    KI_LOG_TRACE( "webview", "Action flags: %d", static_cast<int>(aEvt.GetNavigationAction()) );
+    KI_LOG_TRACE( "webview", "Message handler: %s", aEvt.GetMessageHandler() );
 }
 
 void WEBVIEW_PANEL::OnScriptMessage( wxWebViewEvent& aEvt )
 {
-    wxLogTrace( "webview", "Script message received: %s for handler %s", aEvt.GetString(), aEvt.GetMessageHandler() );
+    KI_LOG_TRACE( "webview", "Script message received: %s for handler %s", aEvt.GetString(), aEvt.GetMessageHandler() );
     wxString handler = aEvt.GetMessageHandler();
     handler.Trim(true).Trim(false);
 
@@ -310,7 +311,7 @@ void WEBVIEW_PANEL::OnScriptMessage( wxWebViewEvent& aEvt )
     {
         for( auto handlerPair : m_msgHandlers )
         {
-            wxLogTrace( "webview", "No handler specified, trying: %s", handlerPair.first );
+            KI_LOG_TRACE( "webview", "No handler specified, trying: %s", handlerPair.first );
             handlerPair.second( aEvt.GetString() );
         }
 
@@ -321,12 +322,12 @@ void WEBVIEW_PANEL::OnScriptMessage( wxWebViewEvent& aEvt )
 
     if( it == m_msgHandlers.end() )
     {
-        wxLogTrace( "webview", "No handler registered for message: %s", handler );
+        KI_LOG_TRACE( "webview", "No handler registered for message: %s", handler );
         return;
     }
 
     // Call the registered handler with the message
-    wxLogTrace( "webview", "Calling handler for message: %s", handler );
+    KI_LOG_TRACE( "webview", "Calling handler for message: %s", handler );
     it->second( aEvt.GetString() );
 }
 
@@ -334,11 +335,11 @@ void WEBVIEW_PANEL::OnScriptMessage( wxWebViewEvent& aEvt )
 void WEBVIEW_PANEL::OnScriptResult( wxWebViewEvent& aEvt )
 {
     if( aEvt.IsError() )
-        wxLogTrace( "webview", "Async script execution failed: %s", aEvt.GetString() );
+        KI_LOG_TRACE( "webview", "Async script execution failed: %s", aEvt.GetString() );
 }
 
 void WEBVIEW_PANEL::OnError( wxWebViewEvent& aEvt )
 {
     m_loadError = true;
-    wxLogTrace( "webview", "WebView error: %s", aEvt.GetString() );
+    KI_LOG_TRACE( "webview", "WebView error: %s", aEvt.GetString() );
 }

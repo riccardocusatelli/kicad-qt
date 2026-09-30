@@ -43,6 +43,7 @@
 #include "transline_ident.h"
 #include <properties/property_mgr.h>
 #include <properties/property.h>
+#include <core/ki_assert.h>
 
 
 TRANSLINE_PRM::TRANSLINE_PRM( PRM_TYPE aType, PRMS_ID aId, const char* aKeywordCfg, const wxString& aDlgLabel,
@@ -479,7 +480,7 @@ void TRANSLINE_IDENT::ReadConfig()
 
     if( cfg->m_TransLine.param_values.count( name ) )
     {
-        wxASSERT( cfg->m_TransLine.param_units.count( name ) );
+        KI_ASSERT( cfg->m_TransLine.param_units.count( name ) );
 
         for( auto& p : m_prms_List )
         {

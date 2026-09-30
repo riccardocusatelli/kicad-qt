@@ -38,6 +38,7 @@
 #include <bitmaps.h>
 #include <dialogs/dialog_group_properties.h>
 #include <eda_group.h>
+#include <core/ki_assert.h>
 
 class GROUP_CONTEXT_MENU : public ACTION_MENU
 {
@@ -126,7 +127,7 @@ bool GROUP_TOOL::Init()
 
     // Find the selection tool, so they can cooperate
     m_selectionTool = static_cast<SELECTION_TOOL*>( m_toolMgr->FindTool( "common.InteractiveSelection" ) );
-    wxCHECK( m_selectionTool, false );
+    KI_CHECK( m_selectionTool, false );
 
     TOOL_MENU& selToolMenu = m_selectionTool->GetToolMenu();
 

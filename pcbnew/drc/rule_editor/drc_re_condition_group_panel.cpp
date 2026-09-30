@@ -31,6 +31,7 @@
 #include <wx/bmpbuttn.h>
 #include <wx/stattext.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 static constexpr const wxChar* TRACE_COND = wxT( "KI_TRACE_DRC_RULE_EDITOR" );
 
@@ -42,7 +43,7 @@ DRC_RE_CONDITION_GROUP_PANEL::DRC_RE_CONDITION_GROUP_PANEL( wxWindow* aParent, B
         m_twoObjectConstraint( aTwoObjectConstraint ),
         m_suppressCallbacks( false )
 {
-    wxLogTrace( TRACE_COND, wxS( "[DRC_RE_CONDITION_GROUP_PANEL] ctor START" ) );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[DRC_RE_CONDITION_GROUP_PANEL] ctor START" ) );
     m_mainSizer = new wxBoxSizer( wxVERTICAL );
 
     // Label
@@ -72,7 +73,7 @@ DRC_RE_CONDITION_GROUP_PANEL::DRC_RE_CONDITION_GROUP_PANEL( wxWindow* aParent, B
 
 void DRC_RE_CONDITION_GROUP_PANEL::ParseCondition( const wxString& aConditionExpr )
 {
-    wxLogTrace( TRACE_COND, wxS( "[ParseCondition] expr='%s'" ), aConditionExpr );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[ParseCondition] expr='%s'" ), aConditionExpr );
 
     // Suppress change callbacks during parsing to avoid premature visibility updates
     m_suppressCallbacks = true;
@@ -83,7 +84,7 @@ void DRC_RE_CONDITION_GROUP_PANEL::ParseCondition( const wxString& aConditionExp
 
     if( aConditionExpr.IsEmpty() )
     {
-        wxLogTrace( TRACE_COND, wxS( "[ParseCondition] empty expression, setting to ANY" ) );
+        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseCondition] empty expression, setting to ANY" ) );
 
         if( m_conditions.empty() )
             addConditionRow();
@@ -98,7 +99,7 @@ void DRC_RE_CONDITION_GROUP_PANEL::ParseCondition( const wxString& aConditionExp
 
     if( !tokenizeCondition( aConditionExpr, parts ) )
     {
-        wxLogTrace( TRACE_COND, wxS( "[ParseCondition] tokenize failed, using single custom row" ) );
+        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseCondition] tokenize failed, using single custom row" ) );
 
         // Parsing failed - fall back to single custom query row
         if( m_conditions.empty() )
@@ -109,12 +110,12 @@ void DRC_RE_CONDITION_GROUP_PANEL::ParseCondition( const wxString& aConditionExp
         return;
     }
 
-    wxLogTrace( TRACE_COND, wxS( "[ParseCondition] tokenized into %zu parts" ), parts.size() );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[ParseCondition] tokenized into %zu parts" ), parts.size() );
 
     // Create rows for each part
     for( size_t i = 0; i < parts.size(); ++i )
     {
-        wxLogTrace( TRACE_COND, wxS( "[ParseCondition] part[%zu] op=%d expr='%s'" ),
+        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseCondition] part[%zu] op=%d expr='%s'" ),
                     i, static_cast<int>( parts[i].first ), parts[i].second );
 
         if( i == 0 )
@@ -138,7 +139,7 @@ void DRC_RE_CONDITION_GROUP_PANEL::ParseCondition( const wxString& aConditionExp
 
     m_suppressCallbacks = false;
 
-    wxLogTrace( TRACE_COND, wxS( "[ParseCondition] done, HasCustomQuerySelected=%d" ),
+    KI_LOG_TRACE( TRACE_COND, wxS( "[ParseCondition] done, HasCustomQuerySelected=%d" ),
                 HasCustomQuerySelected() ? 1 : 0 );
 }
 
@@ -178,7 +179,7 @@ bool DRC_RE_CONDITION_GROUP_PANEL::HasCustomQuerySelected() const
     {
         bool hasCustom = m_conditions[i].panel->HasCustomQuerySelected();
 
-        wxLogTrace( TRACE_COND, wxS( "[HasCustomQuerySelected] row[%zu] type=%d hasCustom=%d" ),
+        KI_LOG_TRACE( TRACE_COND, wxS( "[HasCustomQuerySelected] row[%zu] type=%d hasCustom=%d" ),
                     i, static_cast<int>( m_conditions[i].panel->GetConditionType() ), hasCustom ? 1 : 0 );
 
         if( hasCustom )
@@ -191,7 +192,7 @@ bool DRC_RE_CONDITION_GROUP_PANEL::HasCustomQuerySelected() const
 
 void DRC_RE_CONDITION_GROUP_PANEL::addConditionRow( BOOL_OPERATOR aOp )
 {
-    wxLogTrace( TRACE_COND, wxS( "[addConditionRow] START, existing rows=%zu" ), m_conditions.size() );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[addConditionRow] START, existing rows=%zu" ), m_conditions.size() );
 
     CONDITION_ENTRY entry;
     entry.boolOp = aOp;
@@ -232,9 +233,9 @@ void DRC_RE_CONDITION_GROUP_PANEL::addConditionRow( BOOL_OPERATOR aOp )
                 } );
     }
 
-    wxLogTrace( TRACE_COND, wxS( "[addConditionRow] creating row panel" ) );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[addConditionRow] creating row panel" ) );
     entry.panel = new DRC_RE_CONDITION_ROW_PANEL( this, m_board, m_twoObjectConstraint );
-    wxLogTrace( TRACE_COND, wxS( "[addConditionRow] adding row panel to rowSizer" ) );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[addConditionRow] adding row panel to rowSizer" ) );
     entry.rowSizer->Add( entry.panel, 1, wxEXPAND | wxALL, 0 );
 
     // Set up callbacks

@@ -74,6 +74,7 @@
 #include <wx/wfstream.h>
 #include <magic_enum.hpp>
 #include "sch_io_altium.h"
+#include <core/ki_assert.h>
 
 
 // Harness port object itself does not contain color information about itself
@@ -449,7 +450,7 @@ SCH_SHEET* SCH_IO_ALTIUM::LoadSchematicProject( SCHEMATIC* aSchematic, const std
         sheet->SetFileName( kicad_fn.GetFullName() );
         screen->SetFileName( kicad_fn.GetFullPath() );
 
-        wxCHECK2( sheet && screen, continue );
+        KI_CHECK2( sheet && screen, continue );
 
         wxString pageNo = wxString::Format( wxT( "%d" ), page++ );
 
@@ -475,7 +476,7 @@ SCH_SHEET* SCH_IO_ALTIUM::LoadSchematicProject( SCHEMATIC* aSchematic, const std
 
         SCH_SCREEN* currentScreen = m_rootSheet->GetScreen();
 
-        wxCHECK2( currentScreen, continue );
+        KI_CHECK2( currentScreen, continue );
 
         sheet->SetParent( m_sheetPath.Last() );
         SCH_SHEET* sheetPtr = sheet.release();
@@ -510,7 +511,7 @@ SCH_SHEET* SCH_IO_ALTIUM::LoadSchematicFile( const wxString& aFileName, SCHEMATI
                                              SCH_SHEET* aAppendToMe,
                                              const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK( ( !aFileName.IsEmpty() || !aProperties->empty() ) && aSchematic, nullptr );
+    KI_CHECK( ( !aFileName.IsEmpty() || !aProperties->empty() ) && aSchematic, nullptr );
 
     wxFileName fileName( aFileName );
     fileName.SetExt( FILEEXT::KiCadSchematicFileExtension );
@@ -524,7 +525,7 @@ SCH_SHEET* SCH_IO_ALTIUM::LoadSchematicFile( const wxString& aFileName, SCHEMATI
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         m_rootSheet = aAppendToMe;
     }
     else
@@ -565,7 +566,7 @@ SCH_SHEET* SCH_IO_ALTIUM::LoadSchematicFile( const wxString& aFileName, SCHEMATI
     m_sheetPath.push_back( m_rootSheet );
 
     SCH_SCREEN* rootScreen = m_rootSheet->GetScreen();
-    wxCHECK( rootScreen, nullptr );
+    KI_CHECK( rootScreen, nullptr );
 
     SCH_SHEET_INSTANCE sheetInstance;
 
@@ -812,7 +813,7 @@ SCH_SHEET* SCH_IO_ALTIUM::getCurrentSheet()
 void SCH_IO_ALTIUM::CreateAliases()
 {
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     std::vector<SCH_LINE*> busLines;
     std::map<VECTOR2I, std::vector<SCH_LINE*>> busLineMap;
@@ -1068,7 +1069,7 @@ wxString AltiumDeriveSheetName( const wxString& aFilename, const std::set<wxStri
 void SCH_IO_ALTIUM::PostProcessBusLabels()
 {
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     bool hasBusLines = false;
 
@@ -1117,7 +1118,7 @@ void SCH_IO_ALTIUM::PostProcessBusLabels()
 void SCH_IO_ALTIUM::EnsureSheetSymbolNames()
 {
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     std::set<wxString> existingNames;
 
@@ -1187,7 +1188,7 @@ wxFileName SCH_IO_ALTIUM::ResolveSheetFileName( const wxString& aParentPath,
 
 void SCH_IO_ALTIUM::NormalizeRepeatedSheetInstances()
 {
-    wxCHECK( m_schematic, /* void */ );
+    KI_CHECK( m_schematic, /* void */ );
 
     m_schematic->RefreshHierarchy();
 
@@ -1320,7 +1321,7 @@ void SCH_IO_ALTIUM::ParseAltiumSch( const wxString& aFileName )
     }
 
     SCH_SCREEN* currentScreen = getCurrentScreen();
-    wxCHECK( currentScreen, /* void */ );
+    KI_CHECK( currentScreen, /* void */ );
 
     // Descend the sheet hierarchy.
     for( SCH_ITEM* item : currentScreen->Items().OfType( SCH_SHEET_T ) )
@@ -1328,7 +1329,7 @@ void SCH_IO_ALTIUM::ParseAltiumSch( const wxString& aFileName )
         SCH_SCREEN* loadedScreen = nullptr;
         SCH_SHEET* sheet = dynamic_cast<SCH_SHEET*>( item );
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         wxFileName loadAltiumFileName = ResolveSheetFileName( parentFileName.GetPath(),
                                                               sheet->GetFileName() );
@@ -1387,7 +1388,7 @@ void SCH_IO_ALTIUM::ParseAltiumSch( const wxString& aFileName )
                 sheet->SetName( sheetName );
             }
 
-            wxCHECK2( screen, continue );
+            KI_CHECK2( screen, continue );
 
             m_sheetPath.push_back( sheet );
             m_sheets.clear();
@@ -1519,8 +1520,8 @@ void SCH_IO_ALTIUM::ParseFileHeader( const ALTIUM_COMPOUND_FILE& aAltiumSchFile 
     }
 
     // Prepare some local variables
-    wxCHECK( m_altiumPortsCurrentSheet.empty(), /* void */ );
-    wxCHECK( !m_currentTitleBlock, /* void */ );
+    KI_CHECK( m_altiumPortsCurrentSheet.empty(), /* void */ );
+    KI_CHECK( !m_currentTitleBlock, /* void */ );
 
     m_currentTitleBlock = std::make_unique<TITLE_BLOCK>();
 
@@ -1553,7 +1554,7 @@ void SCH_IO_ALTIUM::ParseFileHeader( const ALTIUM_COMPOUND_FILE& aAltiumSchFile 
     }
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     // Handle title blocks
     screen->SetTitleBlock( *m_currentTitleBlock );
@@ -1580,7 +1581,7 @@ void SCH_IO_ALTIUM::ParseFileHeader( const ALTIUM_COMPOUND_FILE& aAltiumSchFile 
     // Otherwise we cannot save the imported sheet?
     SCH_SHEET* sheet = getCurrentSheet();
 
-    wxCHECK( sheet, /* void */ );
+    KI_CHECK( sheet, /* void */ );
 
     sheet->SetModified();
 }
@@ -1620,8 +1621,8 @@ void SCH_IO_ALTIUM::ParseASCIISchematic( const wxString& aFileName )
     }
 
     // Prepare some local variables
-    wxCHECK( m_altiumPortsCurrentSheet.empty(), /* void */ );
-    wxCHECK( !m_currentTitleBlock, /* void */ );
+    KI_CHECK( m_altiumPortsCurrentSheet.empty(), /* void */ );
+    KI_CHECK( !m_currentTitleBlock, /* void */ );
 
     m_currentTitleBlock = std::make_unique<TITLE_BLOCK>();
 
@@ -1666,7 +1667,7 @@ void SCH_IO_ALTIUM::ParseASCIISchematic( const wxString& aFileName )
     }
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     // Handle title blocks
     screen->SetTitleBlock( *m_currentTitleBlock );
@@ -1701,7 +1702,7 @@ void SCH_IO_ALTIUM::ParseASCIISchematic( const wxString& aFileName )
     // Otherwise we cannot save the imported sheet?
     SCH_SHEET* sheet = getCurrentSheet();
 
-    wxCHECK( sheet, /* void */ );
+    KI_CHECK( sheet, /* void */ );
 
     sheet->SetModified();
 }
@@ -1949,7 +1950,7 @@ const ASCH_STORAGE_FILE* SCH_IO_ALTIUM::GetFileFromStorage( const wxString& aFil
 void SCH_IO_ALTIUM::ParseComponent( int aIndex, const std::map<wxString, wxString>& aProperties )
 {
     SCH_SHEET* currentSheet = m_sheetPath.Last();
-    wxCHECK( currentSheet, /* void */ );
+    KI_CHECK( currentSheet, /* void */ );
 
     wxString sheetName = currentSheet->GetName();
 
@@ -2050,7 +2051,7 @@ void SCH_IO_ALTIUM::ParseComponent( int aIndex, const std::map<wxString, wxStrin
     symbol->GetField( FIELD_T::DESCRIPTION )->SetText( elem.componentdescription );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     screen->Append( symbol );
 
@@ -2064,7 +2065,7 @@ void SCH_IO_ALTIUM::ParseComponent( int aIndex, const std::map<wxString, wxStrin
 void SCH_IO_ALTIUM::ParseTemplate( int aIndex, const std::map<wxString, wxString>& aProperties )
 {
     SCH_SHEET* currentSheet = m_sheetPath.Last();
-    wxCHECK( currentSheet, /* void */ );
+    KI_CHECK( currentSheet, /* void */ );
 
     wxString sheetName = currentSheet->GetName();
 
@@ -2496,7 +2497,7 @@ void SCH_IO_ALTIUM::ParseLabel( const std::map<wxString, wxString>& aProperties,
         textItem->SetFlags( IS_NEW );
 
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         screen->Append( textItem );
     }
@@ -2638,7 +2639,7 @@ void SCH_IO_ALTIUM::AddTextBox( const ASCH_TEXT_FRAME *aElem )
     textBox->SetFlags( IS_NEW );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     screen->Append( textBox );
 }
@@ -2737,7 +2738,7 @@ void SCH_IO_ALTIUM::ParseBezier( const std::map<wxString, wxString>& aProperties
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* currentScreen = getCurrentScreen();
-        wxCHECK( currentScreen, /* void */ );
+        KI_CHECK( currentScreen, /* void */ );
 
         for( size_t i = 0; i + 1 < elem.points.size(); i += 3 )
         {
@@ -2895,7 +2896,7 @@ void SCH_IO_ALTIUM::ParsePolyline( const std::map<wxString, wxString>& aProperti
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         for( size_t i = 1; i < elem.Points.size(); i++ )
         {
@@ -2968,7 +2969,7 @@ void SCH_IO_ALTIUM::ParsePolygon( const std::map<wxString, wxString>& aPropertie
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         SCH_SHAPE* poly = new SCH_SHAPE( SHAPE_T::POLY );
 
@@ -3050,7 +3051,7 @@ void SCH_IO_ALTIUM::ParseRoundRectangle( const std::map<wxString, wxString>& aPr
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         // TODO: misses rounded edges
         SCH_SHAPE* rect = new SCH_SHAPE( SHAPE_T::RECTANGLE );
@@ -3151,7 +3152,7 @@ void SCH_IO_ALTIUM::ParseArc( const std::map<wxString, wxString>& aProperties,
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* currentScreen = getCurrentScreen();
-        wxCHECK( currentScreen, /* void */ );
+        KI_CHECK( currentScreen, /* void */ );
 
         if( elem.m_StartAngle == 0 && ( elem.m_EndAngle == 0 || elem.m_EndAngle == 360 ) )
         {
@@ -3261,7 +3262,7 @@ void SCH_IO_ALTIUM::ParseEllipticalArc( const std::map<wxString, wxString>& aPro
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* currentScreen = getCurrentScreen();
-        wxCHECK( currentScreen, /* void */ );
+        KI_CHECK( currentScreen, /* void */ );
 
         ELLIPSE<int>             ellipse( elem.m_Center + m_sheetOffset, elem.m_Radius,
                                           KiROUND( elem.m_SecondaryRadius ), ANGLE_0,
@@ -3364,7 +3365,7 @@ void SCH_IO_ALTIUM::ParsePieChart( const std::map<wxString, wxString>& aProperti
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         // close polygon
         SCH_LINE* line = new SCH_LINE( center + m_sheetOffset, SCH_LAYER_ID::LAYER_NOTES );
@@ -3444,7 +3445,7 @@ void SCH_IO_ALTIUM::ParseEllipse( const std::map<wxString, wxString>& aPropertie
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         COLOR4D fillColor = GetColorFromInt( elem.AreaColor );
 
@@ -3579,7 +3580,7 @@ void SCH_IO_ALTIUM::ParseCircle( const std::map<wxString, wxString>& aProperties
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         SCH_SHAPE* circle = new SCH_SHAPE( SHAPE_T::CIRCLE );
 
@@ -3644,7 +3645,7 @@ void SCH_IO_ALTIUM::ParseLine( const std::map<wxString, wxString>& aProperties,
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         // close polygon
         SCH_LINE* line = new SCH_LINE( elem.point1 + m_sheetOffset, SCH_LAYER_ID::LAYER_NOTES );
@@ -3709,7 +3710,7 @@ void SCH_IO_ALTIUM::ParseSignalHarness( const std::map<wxString, wxString>& aPro
     if( ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         for( size_t ii = 0; ii < elem.points.size() - 1; ii++ )
         {
@@ -3819,7 +3820,7 @@ void SCH_IO_ALTIUM::ParseHarnessEntry( const std::map<wxString, wxString>& aProp
 
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     SCH_BUS_WIRE_ENTRY* entry = new SCH_BUS_WIRE_ENTRY( port.m_location, quadrant );
     port.m_entryLocation = entry->GetPosition() + entry->GetSize();
@@ -3859,7 +3860,7 @@ void SCH_IO_ALTIUM::ParseRectangle( const std::map<wxString, wxString>& aPropert
     if( aSymbol.empty() && ShouldPutItemOnSheet( elem.ownerindex ) )
     {
         SCH_SCREEN* screen = getCurrentScreen();
-        wxCHECK( screen, /* void */ );
+        KI_CHECK( screen, /* void */ );
 
         SCH_SHAPE* rect = new SCH_SHAPE( SHAPE_T::RECTANGLE );
 
@@ -3933,7 +3934,7 @@ void SCH_IO_ALTIUM::ParseSheetSymbol( int aIndex, const std::map<wxString, wxStr
     sheet->SetFlags( IS_NEW );
 
     SCH_SCREEN* currentScreen = getCurrentScreen();
-    wxCHECK( currentScreen, /* void */ );
+    KI_CHECK( currentScreen, /* void */ );
     currentScreen->Append( sheet );
 
     SCH_SHEET_PATH sheetpath = m_sheetPath;
@@ -3943,7 +3944,7 @@ void SCH_IO_ALTIUM::ParseSheetSymbol( int aIndex, const std::map<wxString, wxStr
     sheetpath.SetPageNumber( "#" );
 
     SCH_SCREEN* rootScreen = m_rootSheet->GetScreen();
-    wxCHECK( rootScreen, /* void */ );
+    KI_CHECK( rootScreen, /* void */ );
 
     SCH_SHEET_INSTANCE sheetInstance;
 
@@ -4292,7 +4293,7 @@ void SCH_IO_ALTIUM::ParsePowerPort( const std::map<wxString, wxString>& aPropert
     }
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     SCH_SYMBOL* symbol = new SCH_SYMBOL();
     symbol->SetRef( &m_sheetPath, "#PWR?" );
@@ -4386,7 +4387,7 @@ void SCH_IO_ALTIUM::ParsePortHelper( const ASCH_PORT& aElem )
 
     // Check which connection points exists in the schematic
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     bool startIsWireTerminal = screen->IsTerminalPoint( start, LAYER_WIRE );
     bool startIsBusTerminal  = screen->IsTerminalPoint( start, LAYER_BUS );
@@ -4519,7 +4520,7 @@ void SCH_IO_ALTIUM::ParseNoERC( const std::map<wxString, wxString>& aProperties 
     ASCH_NO_ERC elem( aProperties );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     if( elem.isActive )
     {
@@ -4538,7 +4539,7 @@ void SCH_IO_ALTIUM::ParseNetLabel( const std::map<wxString, wxString>& aProperti
     SCH_LABEL* label = new SCH_LABEL( elem.location + m_sheetOffset, elem.text );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     SetTextPositioning( label, elem.justification, elem.orientation );
 
@@ -4552,7 +4553,7 @@ void SCH_IO_ALTIUM::ParseBus( const std::map<wxString, wxString>& aProperties )
     ASCH_BUS elem( aProperties );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     for( size_t i = 0; i + 1 < elem.points.size(); i++ )
     {
@@ -4571,7 +4572,7 @@ void SCH_IO_ALTIUM::ParseWire( const std::map<wxString, wxString>& aProperties )
     ASCH_WIRE elem( aProperties );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     for( size_t i = 0; i + 1 < elem.points.size(); i++ )
     {
@@ -4588,7 +4589,7 @@ void SCH_IO_ALTIUM::ParseWire( const std::map<wxString, wxString>& aProperties )
 void SCH_IO_ALTIUM::ParseJunction( const std::map<wxString, wxString>& aProperties )
 {
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     ASCH_JUNCTION elem( aProperties );
 
@@ -4615,7 +4616,7 @@ void SCH_IO_ALTIUM::ParseImage( const std::map<wxString, wxString>& aProperties 
     REFERENCE_IMAGE&            refImage = bitmap->GetReferenceImage();
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     if( elem.embedimage )
     {
@@ -4682,7 +4683,7 @@ void SCH_IO_ALTIUM::ParseSheet( const std::map<wxString, wxString>& aProperties 
     m_altiumSheet = std::make_unique<ASCH_SHEET>( aProperties );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     PAGE_INFO pageInfo;
 
@@ -4731,7 +4732,7 @@ void SCH_IO_ALTIUM::ParseSheetName( const std::map<wxString, wxString>& aPropert
     ASCH_SHEET_NAME elem( aProperties );
     SCH_SCREEN*     currentScreen = getCurrentScreen();
 
-    wxCHECK( currentScreen, /* void */ );
+    KI_CHECK( currentScreen, /* void */ );
 
     const auto& sheetIt = m_sheets.find( elem.ownerindex );
 
@@ -4816,7 +4817,7 @@ void SCH_IO_ALTIUM::ParseDesignator( const std::map<wxString, wxString>& aProper
     SCH_SHEET_PATH sheetpath;
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     // Graphics symbols have no reference. '#GRAPHIC' allows them to not have footprint associated.
     // Note: not all unnamed imported symbols are necessarily graphics.
@@ -4875,7 +4876,7 @@ void SCH_IO_ALTIUM::ParseBusEntry( const std::map<wxString, wxString>& aProperti
     ASCH_BUS_ENTRY elem( aProperties );
 
     SCH_SCREEN* screen = getCurrentScreen();
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     SCH_BUS_WIRE_ENTRY* busWireEntry = new SCH_BUS_WIRE_ENTRY( elem.location + m_sheetOffset );
 
@@ -5409,7 +5410,7 @@ void SCH_IO_ALTIUM::ensureLoadedLibrary( const wxString& aLibraryPath,
 
     if( m_libCache.count( aLibraryPath ) )
     {
-        wxCHECK( m_timestamps.count( aLibraryPath ), /*void*/ );
+        KI_CHECK( m_timestamps.count( aLibraryPath ), /*void*/ );
 
         if( m_timestamps.at( aLibraryPath ) == getLibraryTimestamp( aLibraryPath ) )
             return;

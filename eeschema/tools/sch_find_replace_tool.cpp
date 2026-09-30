@@ -28,6 +28,7 @@
 #include <tools/sch_find_replace_tool.h>
 #include <sch_sheet_path.h>
 #include "sch_actions.h"
+#include <core/ki_assert.h>
 
 
 int SCH_FIND_REPLACE_TOOL::FindAndReplace( const TOOL_EVENT& aEvent )
@@ -488,7 +489,7 @@ int SCH_FIND_REPLACE_TOOL::ReplaceAll( const TOOL_EVENT& aEvent )
     auto doReplace =
             [&]( SCH_ITEM* aItem, SCH_SHEET_PATH* aSheet, EDA_SEARCH_DATA& aData )
             {
-                wxCHECK_RET( aSheet, wxT( "must have a sheetpath for undo" ) );
+                KI_CHECK_RET( aSheet, wxT( "must have a sheetpath for undo" ) );
 
                 commit.Modify( aItem, aSheet->LastScreen(), RECURSE_MODE::NO_RECURSE );
 

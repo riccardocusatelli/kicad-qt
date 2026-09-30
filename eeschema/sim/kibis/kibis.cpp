@@ -34,6 +34,7 @@
 #include "ibis_parser.h"
 #include <sstream>
 #include <sim/spice_simulator.h>
+#include <core/ki_assert.h>
 
 
 // _() is used here to mark translatable strings in IBIS_REPORTER::Report()
@@ -1544,7 +1545,7 @@ std::vector<std::pair<int, double>> KIBIS_WAVEFORM_PRBS::GenerateBitSequence() c
     double period = 1/m_bitrate;
     double t = 0;
 
-    wxASSERT( m_bits > 0 );
+    KI_ASSERT( m_bits > 0 );
 
     int bits = 0;
 

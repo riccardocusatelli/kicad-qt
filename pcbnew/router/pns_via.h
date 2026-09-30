@@ -34,6 +34,7 @@
 #include "pns_item.h"
 #include "pns_linked_item.h"
 #include "pns_hole.h"
+#include <core/ki_assert.h>
 
 namespace PNS {
 
@@ -227,7 +228,7 @@ public:
     int Diameter( int aLayer ) const
     {
         int layer = EffectiveLayer( aLayer );
-        wxCHECK( m_diameters.contains( layer ), m_diameters.begin()->second );
+        KI_CHECK( m_diameters.contains( layer ), m_diameters.begin()->second );
         return m_diameters.at( layer );
     }
 
@@ -302,7 +303,7 @@ public:
     const SHAPE* Shape( int aLayer ) const override
     {
         int layer = EffectiveLayer( aLayer );
-        wxCHECK( m_shapes.contains( layer ), nullptr );
+        KI_CHECK( m_shapes.contains( layer ), nullptr );
         return &m_shapes.at( layer );
     }
 

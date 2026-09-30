@@ -34,6 +34,7 @@
 #include <lset.h>
 #include <stroke_params.h>
 #include <geometry/eda_angle.h>
+#include <core/ki_assert.h>
 
 class BOARD;
 class BOARD_DESIGN_SETTINGS;
@@ -314,7 +315,7 @@ public:
             return;
         }
 
-        wxFAIL_MSG( wxT( "Attempted to SetLayerSet() on a single-layer object." ) );
+        KI_FAIL_MSG( wxT( "Attempted to SetLayerSet() on a single-layer object." ) );
 
         // Derived classes which support multiple layers must implement this
     }
@@ -389,7 +390,7 @@ public:
      */
     virtual void Move( const VECTOR2I& aMoveVector )
     {
-        wxFAIL_MSG( wxT( "virtual BOARD_ITEM::Move called for " ) + GetClass() );
+        KI_FAIL_MSG( wxT( "virtual BOARD_ITEM::Move called for " ) + GetClass() );
     }
 
     /**

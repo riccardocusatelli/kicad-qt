@@ -28,6 +28,7 @@
 
 #include "pns_item.h"
 #include "pns_via.h"
+#include <core/ki_assert.h>
 
 
 namespace PNS {
@@ -137,7 +138,7 @@ LOGGER::EVENT_ENTRY LOGGER::ParseEvent( const wxString& aLine )
 
     int n_uuids = 0;
 
-    wxCHECK_MSG( cmd == wxT( "event" ), EVENT_ENTRY(), "Line doesn't contain an event!" );
+    KI_CHECK_MSG( cmd == wxT( "event" ), EVENT_ENTRY(), "Line doesn't contain an event!" );
 
     EVENT_ENTRY evt;
     evt.p.x = wxAtoi( tokens.GetNextToken() );

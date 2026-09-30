@@ -24,6 +24,7 @@
 #include <atomic>
 #include <exception>
 #include <mutex>
+#include <core/ki_log.h>
 
 #if !defined( __WINDOWS__ )
 #include <signal.h>
@@ -95,14 +96,14 @@ bool SafeNavlibInit( const std::function<void()>& aInitFunc )
     catch( const std::exception& e )
     {
         sigaction( SIGABRT, &s_savedSigAbrtAction, nullptr );
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "3Dconnexion initialization failed: %s" ), e.what() );
         return false;
     }
     catch( ... )
     {
         sigaction( SIGABRT, &s_savedSigAbrtAction, nullptr );
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "3Dconnexion initialization failed with unknown exception" ) );
         return false;
     }
@@ -116,13 +117,13 @@ bool SafeNavlibInit( const std::function<void()>& aInitFunc )
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "3Dconnexion initialization failed: %s" ), e.what() );
         return false;
     }
     catch( ... )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "3Dconnexion initialization failed with unknown exception" ) );
         return false;
     }

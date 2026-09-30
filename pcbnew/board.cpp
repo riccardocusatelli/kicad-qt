@@ -83,6 +83,8 @@
 #include <advanced_config.h>
 #include <richio.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 // This is an odd place for this, but CvPcb won't link if it's in board_item.cpp like I first
 // tried it.
@@ -716,7 +718,7 @@ void BOARD::RunOnChildren( const std::function<void( BOARD_ITEM* )>& aFunction, 
     }
     catch( std::bad_function_call& )
     {
-        wxFAIL_MSG( wxT( "Error running BOARD::RunOnChildren" ) );
+        KI_FAIL_MSG( wxT( "Error running BOARD::RunOnChildren" ) );
     }
 }
 
@@ -1122,7 +1124,7 @@ bool BOARD::IsFootprintLayerVisible( PCB_LAYER_ID aLayer ) const
     {
     case F_Cu: return IsElementVisible( LAYER_FOOTPRINTS_FR );
     case B_Cu: return IsElementVisible( LAYER_FOOTPRINTS_BK );
-    default: wxFAIL_MSG( wxT( "BOARD::IsModuleLayerVisible(): bad layer" ) ); return true;
+    default: KI_FAIL_MSG( wxT( "BOARD::IsModuleLayerVisible(): bad layer" ) ); return true;
     }
 }
 
@@ -1322,7 +1324,7 @@ void BOARD::Add( BOARD_ITEM* aBoardItem, ADD_MODE aMode, bool aSkipConnectivity 
 {
     if( aBoardItem == nullptr )
     {
-        wxFAIL_MSG( wxT( "BOARD::Add() param error: aBoardItem nullptr" ) );
+        KI_FAIL_MSG( wxT( "BOARD::Add() param error: aBoardItem nullptr" ) );
         return;
     }
 
@@ -1356,7 +1358,7 @@ void BOARD::Add( BOARD_ITEM* aBoardItem, ADD_MODE aMode, bool aSkipConnectivity 
         {
             // The only current known source of these is SWIG (KICAD-BY7, et al).
             // N.B. This inserts a small memory leak as we lose the track/via/arc.
-            wxFAIL_MSG( wxString::Format( "BOARD::Add() Cannot place Track on non-copper layer: %d = %s",
+            KI_FAIL_MSG( wxString::Format( "BOARD::Add() Cannot place Track on non-copper layer: %d = %s",
                                           static_cast<int>( aBoardItem->GetLayer() ),
                                           GetLayerName( aBoardItem->GetLayer() ) ) );
             return;
@@ -1413,7 +1415,7 @@ void BOARD::Add( BOARD_ITEM* aBoardItem, ADD_MODE aMode, bool aSkipConnectivity 
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "BOARD::Add() item type %s not handled" ), aBoardItem->GetClass() ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "BOARD::Add() item type %s not handled" ), aBoardItem->GetClass() ) );
         return;
     }
 
@@ -1467,7 +1469,7 @@ void BOARD::BulkRemoveStaleTeardrops( BOARD_COMMIT& aCommit )
 void BOARD::Remove( BOARD_ITEM* aBoardItem, REMOVE_MODE aRemoveMode )
 {
     // find these calls and fix them!  Don't send me no stinking' nullptr.
-    wxASSERT( aBoardItem );
+    KI_ASSERT( aBoardItem );
 
     // This is redundant with BOARD_COMMIT::Push but necessary to support SWIG interaction
     // until the SWIG API is completely removed (since it doesn't use the commit system)
@@ -1548,7 +1550,7 @@ void BOARD::Remove( BOARD_ITEM* aBoardItem, REMOVE_MODE aRemoveMode )
 
     // other types may use linked list
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "BOARD::Remove() item type %s not handled" ), aBoardItem->GetClass() ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "BOARD::Remove() item type %s not handled" ), aBoardItem->GetClass() ) );
     }
 
     aBoardItem->SetFlags( STRUCT_DELETED );
@@ -1617,7 +1619,7 @@ void BOARD::RemoveAll( std::initializer_list<KICAD_T> aTypes )
             break;
 
         case PCB_ARC_T:
-        case PCB_VIA_T: wxFAIL_MSG( wxT( "Use PCB_TRACE_T to remove all tracks, arcs, and vias" ) ); break;
+        case PCB_VIA_T: KI_FAIL_MSG( wxT( "Use PCB_TRACE_T to remove all tracks, arcs, and vias" ) ); break;
 
         case PCB_SHAPE_T:
             std::copy( m_drawings.begin(), m_drawings.end(), std::back_inserter( removed ) );
@@ -1635,9 +1637,9 @@ void BOARD::RemoveAll( std::initializer_list<KICAD_T> aTypes )
         case PCB_TEXTBOX_T:
         case PCB_TABLE_T:
         case PCB_TARGET_T:
-        case PCB_BARCODE_T: wxFAIL_MSG( wxT( "Use PCB_SHAPE_T to remove all graphics and text" ) ); break;
+        case PCB_BARCODE_T: KI_FAIL_MSG( wxT( "Use PCB_SHAPE_T to remove all graphics and text" ) ); break;
 
-        default: wxFAIL_MSG( wxT( "BOARD::RemoveAll() needs more ::Type() support" ) );
+        default: KI_FAIL_MSG( wxT( "BOARD::RemoveAll() needs more ::Type() support" ) );
         }
     }
 
@@ -1909,7 +1911,7 @@ BOARD_ITEM* BOARD::ResolveItem( const KIID& aID, bool aAllowNullptrReturn ) cons
 
         for( PCB_FIELD* field : footprint->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             if( field && field->m_Uuid == aID )
                 return CacheAndReturnItemById( aID, field );
@@ -2141,7 +2143,7 @@ void BOARD::ClearItemByIdCache()
 
 void BOARD::RebindItemUuid( BOARD_ITEM* aItem, const KIID& aNewId )
 {
-    wxCHECK_RET( aItem, "BOARD::RebindItemUuid() requires a valid item" );
+    KI_CHECK_RET( aItem, "BOARD::RebindItemUuid() requires a valid item" );
 
     if( IsFootprintHolder() )
         return;
@@ -2154,7 +2156,7 @@ void BOARD::RebindItemUuid( BOARD_ITEM* aItem, const KIID& aNewId )
 
     if( BOARD_ITEM* existing = GetCachedItemById( aNewId ); existing && existing != aItem )
     {
-        wxFAIL_MSG( wxString::Format( "BOARD::RebindItemUuid() duplicate target UUID: %s",
+        KI_FAIL_MSG( wxString::Format( "BOARD::RebindItemUuid() duplicate target UUID: %s",
                                       aNewId.AsString() ) );
         return;
     }
@@ -2173,7 +2175,7 @@ int BOARD::RepairDuplicateItemUuids()
     auto processItem =
             [&]( BOARD_ITEM* aItem )
             {
-                wxCHECK2( aItem, return );
+                KI_CHECK2( aItem, return );
 
                 if( ids.count( aItem->m_Uuid ) )
                 {
@@ -4032,7 +4034,7 @@ void BOARD::SaveToHistory( const wxString& aProjectPath, std::vector<HISTORY_FIL
     // Verify we're saving for the correct project
     if( !projPath.IsSameAs( aProjectPath ) )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] pcb saver skipping - project path mismatch: %s vs %s" ), projPath,
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] pcb saver skipping - project path mismatch: %s vs %s" ), projPath,
                     aProjectPath );
         return;
     }
@@ -4045,7 +4047,7 @@ void BOARD::SaveToHistory( const wxString& aProjectPath, std::vector<HISTORY_FIL
     // Derive relative path from project root.
     if( !boardPath.StartsWith( projPath ) )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] pcb saver skipping - board not under project: %s" ), boardPath );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] pcb saver skipping - board not under project: %s" ), boardPath );
         return; // not under project
     }
 
@@ -4068,11 +4070,11 @@ void BOARD::SaveToHistory( const wxString& aProjectPath, std::vector<HISTORY_FIL
 
         aFileData.push_back( std::move( entry ) );
 
-        wxLogTrace( traceAutoSave, wxS( "[history] pcb saver serialized %zu bytes for '%s'" ),
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] pcb saver serialized %zu bytes for '%s'" ),
                     aFileData.back().content.size(), rel );
     }
     catch( const IO_ERROR& ioe )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] pcb saver serialize failed: %s" ), wxString::FromUTF8( ioe.What() ) );
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] pcb saver serialize failed: %s" ), wxString::FromUTF8( ioe.What() ) );
     }
 }

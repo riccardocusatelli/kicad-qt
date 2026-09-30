@@ -45,6 +45,7 @@
 #include <wx/debug.h>
 #include <wx/utils.h>
 #include <confirm.h>
+#include <core/ki_assert.h>
 
 std::array<KIFACE*, KIWAY::FACE_T::KIWAY_FACE_COUNT> KIWAY::m_kiface;
 std::array<int, KIWAY::FACE_T::KIWAY_FACE_COUNT>     KIWAY::m_kiface_version;
@@ -127,7 +128,7 @@ const wxString KIWAY::dso_search_path( FACE_T aFaceId )
     case FACE_PYTHON:           name = KIFACE_PREFIX "kipython";            break;
 
     default:
-        wxASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFaceId" ) );
+        KI_ASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFaceId" ) );
         return wxEmptyString;
     }
 
@@ -216,7 +217,7 @@ KIFACE* KIWAY::KiFACE( FACE_T aFaceId, bool doLoad )
     // not pass a bad aFaceId.
     if( (unsigned) aFaceId >= m_kiface.size() )
     {
-        wxASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFaceId" ) );
+        KI_ASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFaceId" ) );
         return nullptr;
     }
 
@@ -299,7 +300,7 @@ KIFACE* KIWAY::KiFACE( FACE_T aFaceId, bool doLoad )
             KIFACE* kiface = ki_getter( &m_kiface_version[aFaceId], KIFACE_VERSION, &Pgm() );
 
             // KIFACE_GETTER_FUNC function comment (API) says the non-NULL is unconditional.
-            wxASSERT_MSG( kiface,
+            KI_ASSERT_MSG( kiface,
                           wxT( "attempted DSO has a bug, failed to return a KIFACE*" ) );
 
             wxDllType dsoHandle = dso.Detach();
@@ -410,7 +411,7 @@ KIWAY_PLAYER* KIWAY::Player( FRAME_T aFrameType, bool doCreate, wxTopLevelWindow
     // not pass a bad aFrameType.
     if( (unsigned) aFrameType >= KIWAY_PLAYER_COUNT )
     {
-        wxASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFrameType" ) );
+        KI_ASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFrameType" ) );
         return nullptr;
     }
 
@@ -463,7 +464,7 @@ bool KIWAY::PlayerClose( FRAME_T aFrameType, bool doForce )
     // not pass a bad aFrameType.
     if( (unsigned) aFrameType >= KIWAY_PLAYER_COUNT )
     {
-        wxASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFrameType" ) );
+        KI_ASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFrameType" ) );
         return false;
     }
 

@@ -71,6 +71,8 @@
 #include "common.h"
 
 #include "symb_transforms_utils.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 namespace KIGFX
 {
@@ -367,7 +369,7 @@ COLOR4D SCH_PAINTER::getRenderColor( const SCH_ITEM* aItem, int aLayer, bool aDr
                     break;
 
                 default:
-                    wxFAIL_MSG( wxT( "Unsupported fill type" ) );
+                    KI_FAIL_MSG( wxT( "Unsupported fill type" ) );
                 }
 
                 // A filled shape means filled; if they didn't specify a fill colour then use
@@ -496,7 +498,7 @@ COLOR4D SCH_PAINTER::getRenderColor( const SCH_ITEM* aItem, int aLayer, bool aDr
 float SCH_PAINTER::getLineWidth( const SCH_ITEM* aItem, bool aDrawingShadows,
                                  bool aDrawingWireColorHighlights ) const
 {
-    wxCHECK( aItem, static_cast<float>( schIUScale.MilsToIU( DEFAULT_LINE_WIDTH_MILS ) ) );
+    KI_CHECK( aItem, static_cast<float>( schIUScale.MilsToIU( DEFAULT_LINE_WIDTH_MILS ) ) );
 
     int   pen = aItem->GetEffectivePenWidth( &m_schSettings );
     float width = pen;
@@ -592,7 +594,7 @@ static BOX2I GetTextExtents( const wxString& aText, const VECTOR2D& aPosition, K
     case GR_TEXT_H_ALIGN_LEFT:                                                        break;
     case GR_TEXT_H_ALIGN_CENTER:        box.SetX( box.GetX() - box.GetWidth() / 2 );  break;
     case GR_TEXT_H_ALIGN_RIGHT:         box.SetX( box.GetX() - box.GetWidth() );      break;
-    case GR_TEXT_H_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Legal only in dialogs" ) ); break;
+    case GR_TEXT_H_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Legal only in dialogs" ) ); break;
     }
 
     switch( aAttrs.m_Valign )
@@ -600,7 +602,7 @@ static BOX2I GetTextExtents( const wxString& aText, const VECTOR2D& aPosition, K
     case GR_TEXT_V_ALIGN_TOP:                                                         break;
     case GR_TEXT_V_ALIGN_CENTER:        box.SetY( box.GetY() - box.GetHeight() / 2 ); break;
     case GR_TEXT_V_ALIGN_BOTTOM:        box.SetY( box.GetY() - box.GetHeight() );     break;
-    case GR_TEXT_V_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Legal only in dialogs" ) ); break;
+    case GR_TEXT_V_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Legal only in dialogs" ) ); break;
     }
 
     box.Normalize(); // Make h and v sizes always >= 0
@@ -2131,7 +2133,7 @@ void SCH_PAINTER::draw( const SCH_SHAPE* aShape, int aLayer, bool aDimmed )
             break;
 
         default:
-            wxFAIL_MSG( wxT( "Unsupported fill type" ) );
+            KI_FAIL_MSG( wxT( "Unsupported fill type" ) );
         }
     }
     else if( aLayer == LAYER_DEVICE || aLayer == LAYER_NOTES || aLayer == LAYER_PRIVATE_NOTES
@@ -2299,7 +2301,7 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
                 pos.y = bBox.GetTop() - shadowOffset;
                 break;
             case GR_TEXT_H_ALIGN_INDETERMINATE:
-                wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+                KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
                 break;
             }
         }
@@ -2317,7 +2319,7 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
                 pos.x = bBox.GetRight() + shadowOffset;
                 break;
             case GR_TEXT_H_ALIGN_INDETERMINATE:
-                wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+                KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
                 break;
             }
         }
@@ -2682,7 +2684,7 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
     {
         optSheetPath = m_schematic->CurrentSheet();
         variantName = m_schematic->GetCurrentVariant();
-        wxLogTrace( traceSchPainter,
+        KI_LOG_TRACE( traceSchPainter,
                     "SCH_PAINTER::draw symbol %s: Current sheet path='%s', variant='%s', size=%zu, empty=%d",
                     aSymbol->m_Uuid.AsString(),
                     variantName.IsEmpty() ? GetDefaultVariantName() : variantName,
@@ -2729,7 +2731,7 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
 
     if( std::chrono::duration_cast<std::chrono::microseconds>( tCopy2 - tCopy1 ).count() > 100 )
     {
-        wxLogTrace( traceSchPainter, "SCH_PAINTER::draw symbol copy %s: %lld us", aSymbol->m_Uuid.AsString(),
+        KI_LOG_TRACE( traceSchPainter, "SCH_PAINTER::draw symbol copy %s: %lld us", aSymbol->m_Uuid.AsString(),
                     std::chrono::duration_cast<std::chrono::microseconds>( tCopy2 - tCopy1 ).count() );
     }
 
@@ -2872,7 +2874,7 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
 
     if( std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count() > 100 )
     {
-        wxLogTrace( traceSchPainter, "SCH_PAINTER::draw symbol %s: %lld us", aSymbol->m_Uuid.AsString(),
+        KI_LOG_TRACE( traceSchPainter, "SCH_PAINTER::draw symbol %s: %lld us", aSymbol->m_Uuid.AsString(),
                     std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count() );
     }
 }
@@ -3640,7 +3642,7 @@ void SCH_PAINTER::draw( const SCH_BITMAP* aBitmap, int aLayer )
 
     if( std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count() > 100 )
     {
-        wxLogTrace( traceSchPainter, "SCH_PAINTER::draw bitmap %s: %lld us", aBitmap->m_Uuid.AsString(),
+        KI_LOG_TRACE( traceSchPainter, "SCH_PAINTER::draw bitmap %s: %lld us", aBitmap->m_Uuid.AsString(),
                     std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count() );
     }
 }

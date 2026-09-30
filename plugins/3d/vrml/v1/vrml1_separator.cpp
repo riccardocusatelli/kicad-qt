@@ -29,6 +29,8 @@
 #include "vrml1_base.h"
 #include "vrml1_separator.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL1SEPARATOR::WRL1SEPARATOR( NAMEREGISTER* aDictionary ) : WRL1NODE( aDictionary )
@@ -50,7 +52,7 @@ WRL1SEPARATOR::WRL1SEPARATOR( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1SEPARATOR::~WRL1SEPARATOR()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Separator with %zu children %zu references, and %zu "
                      "back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -59,13 +61,13 @@ WRL1SEPARATOR::~WRL1SEPARATOR()
 
 bool WRL1SEPARATOR::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 {
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -74,7 +76,7 @@ bool WRL1SEPARATOR::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -94,7 +96,7 @@ bool WRL1SEPARATOR::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !aTopNode->ReadNode( proc, this, nullptr ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               " * [INFO] bad file format; unexpected eof %s." ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -112,9 +114,9 @@ bool WRL1SEPARATOR::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
 SGNODE* WRL1SEPARATOR::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 {
-    wxCHECK_MSG( m_Parent, nullptr, wxT( "Separator has no parent." )  );
+    KI_CHECK_MSG( m_Parent, nullptr, wxT( "Separator has no parent." )  );
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Separator with %zu children, %zu references, and "
                      "%zu back pointers (%zu total items)." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size(), m_Items.size() );
@@ -126,7 +128,7 @@ SGNODE* WRL1SEPARATOR::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
+    KI_CHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
                  wxString::Format( wxT( "Separator does not have a Transform parent (parent "
                                         "ID: %d)." ), ptype ) );
 

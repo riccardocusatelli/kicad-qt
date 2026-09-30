@@ -36,6 +36,7 @@
 #include "altium_parser_pcb.h"
 #include "io/altium/altium_binary_parser.h"
 #include "io/altium/altium_props_utils.h"
+#include <core/ki_log.h>
 
 
 /**
@@ -1442,16 +1443,16 @@ ATEXT6::ATEXT6( ALTIUM_BINARY_PARSER& aReader, std::map<uint32_t, wxString>& aSt
     if( remaining >= 93 )
     {
         VECTOR2I unk_vec = aReader.ReadVector2ISize();
-        wxLogTrace( traceAltiumImport, " Unk vec: %d, %d\n", unk_vec.x, unk_vec.y );
+        KI_LOG_TRACE( traceAltiumImport, " Unk vec: %d, %d\n", unk_vec.x, unk_vec.y );
 
         barcode_margin = aReader.ReadVector2ISize();
 
         int32_t unk32 = aReader.ReadKicadUnit();
-        wxLogTrace( traceAltiumImport, " Unk32: %d\n", unk32 );
+        KI_LOG_TRACE( traceAltiumImport, " Unk32: %d\n", unk32 );
 
         barcode_type = static_cast<ALTIUM_BARCODE_TYPE>( aReader.Read<uint8_t>() );
         uint8_t unk8 = aReader.Read<uint8_t>();
-        wxLogTrace( traceAltiumImport, " Unk8: %u\n", unk8 );
+        KI_LOG_TRACE( traceAltiumImport, " Unk8: %u\n", unk8 );
 
         barcode_inverted = aReader.Read<uint8_t>() != 0;
         fonttype = static_cast<ALTIUM_TEXT_TYPE>( aReader.Read<uint8_t>() );
@@ -1460,7 +1461,7 @@ ATEXT6::ATEXT6( ALTIUM_BINARY_PARSER& aReader, std::map<uint32_t, wxString>& aSt
         barcode_fontname = wxString( fontData, wxMBConvUTF16LE(), sizeof( fontData ) ).BeforeFirst( '\0' );
 
         aReader.Read<uint8_t>();
-        wxLogTrace( traceAltiumImport, " Unk8_2: %u\n", unk8 );
+        KI_LOG_TRACE( traceAltiumImport, " Unk8_2: %u\n", unk8 );
 
         layer_v7 = static_cast<ALTIUM_LAYER>( aReader.Read<uint32_t>() );
     }
@@ -1477,7 +1478,7 @@ ATEXT6::ATEXT6( ALTIUM_BINARY_PARSER& aReader, std::map<uint32_t, wxString>& aSt
         {
             uint8_t temp = aReader.Peek<uint8_t>();
             uint32_t temp32 = ii < 3 ? ALTIUM_PROPS_UTILS::ConvertToKicadUnit( aReader.Peek<uint32_t>() ) : 0;
-            wxLogTrace( traceAltiumImport, "3ATEXT6 %zu:\t Byte:%u, Kicad:%u\n", ii, temp, temp32 );
+            KI_LOG_TRACE( traceAltiumImport, "3ATEXT6 %zu:\t Byte:%u, Kicad:%u\n", ii, temp, temp32 );
             aReader.Skip( 1 );
         }
     }

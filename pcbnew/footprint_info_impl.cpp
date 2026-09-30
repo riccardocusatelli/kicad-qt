@@ -31,12 +31,13 @@
 #include <progress_reporter.h>
 #include <string_utils.h>
 #include <thread_pool.h>
+#include <core/ki_assert.h>
 
 
 void FOOTPRINT_INFO_IMPL::load()
 {
     FOOTPRINT_LIBRARY_ADAPTER* adapter = m_owner->GetAdapter();
-    wxCHECK( adapter, /* void */ );
+    KI_CHECK( adapter, /* void */ );
 
     try
     {

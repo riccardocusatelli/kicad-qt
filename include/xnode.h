@@ -29,6 +29,7 @@
 
 // quiet the deprecated warnings with 3 lines:
 #include <wx/defs.h>
+#include <core/ki_assert.h>
 #undef wxDEPRECATED
 #define wxDEPRECATED(x) x
 
@@ -94,7 +95,7 @@ public:
 
     void AddAttribute( wxXmlAttribute* aAttr ) override
     {
-        wxASSERT_MSG( dynamic_cast<XATTR*>( aAttr ), "use XATTR instead of wxXmlAttribute!" );
+        KI_ASSERT_MSG( dynamic_cast<XATTR*>( aAttr ), "use XATTR instead of wxXmlAttribute!" );
         return wxXmlNode::AddAttribute( aAttr );
     }
 

@@ -30,6 +30,8 @@
 #include "vrml1_base.h"
 #include "vrml1_material.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL1MATERIAL::WRL1MATERIAL( NAMEREGISTER* aDictionary ) : WRL1NODE( aDictionary )
@@ -55,7 +57,7 @@ WRL1MATERIAL::WRL1MATERIAL( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1MATERIAL::~WRL1MATERIAL()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying Material node." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying Material node." ) );
 
     // destroy any orphaned color nodes
     for( int i = 0; i < 2; ++i )
@@ -65,7 +67,7 @@ WRL1MATERIAL::~WRL1MATERIAL()
             if( nullptr == S3D::GetSGNodeParent( colors[i] ) )
                 S3D::DestroyNode( colors[i] );
 
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] destroyed SGCOLOR #%d" ), i );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] destroyed SGCOLOR #%d" ), i );
         }
     }
 }
@@ -74,26 +76,26 @@ WRL1MATERIAL::~WRL1MATERIAL()
 bool WRL1MATERIAL::AddRefNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL1MATERIAL::AddChildNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
 bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 {
-    wxCHECK_MSG( aTopNode, false, wxT( "aTopNode is nullptr." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "aTopNode is nullptr." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -102,7 +104,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s" ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -123,7 +125,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetError() );
 
@@ -142,7 +144,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFVec3f( specularColor ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid specularColor %s\n"
                                  " * [INFO] file: '%s'\n"
@@ -157,7 +159,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFVec3f( diffuseColor ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid diffuseColor %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   " * [INFO] error: '%s'." ),
@@ -171,7 +173,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFVec3f( emissiveColor ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid emissiveColor %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -185,7 +187,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFFloat( shininess ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid shininess %s\n"
                                  " * [INFO] file: '%s'\n"
@@ -200,7 +202,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFFloat( transparency ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid transparency %s\n"
                                  " * [INFO] file: '%s'\n"
@@ -215,7 +217,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFVec3f( ambientColor ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid ambientColor %s\n"
                                  " * [INFO] file: '%s'\n"
@@ -228,7 +230,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "* [INFO] bad Material %s.\n"
                                               "* [INFO] file: '%s'." ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(),
@@ -244,7 +246,7 @@ bool WRL1MATERIAL::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
 SGNODE* WRL1MATERIAL::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 {
-    wxCHECK_MSG( sp, nullptr, wxT( "Bad model: no base data given." ) );
+    KI_CHECK_MSG( sp, nullptr, wxT( "Bad model: no base data given." ) );
 
     sp->mat = this;
 

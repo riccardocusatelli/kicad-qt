@@ -38,6 +38,7 @@
 #include <drc/drc_rtree.h>
 #include <set>
 #include <tuple>
+#include <core/ki_assert.h>
 
 /*
     Board edge clearance test. Checks all items for their mechanical clearances against the board
@@ -321,7 +322,7 @@ bool DRC_TEST_PROVIDER_EDGE_CLEARANCE::Run()
                             }
                             else
                             {
-                                wxFAIL_MSG(
+                                KI_FAIL_MSG(
                                         wxString::Format( "Unexpected effective shape type %d for rounded rectangle",
                                                           (int) subshape->Type() ) );
                                 continue;

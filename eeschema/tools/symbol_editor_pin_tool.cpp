@@ -33,6 +33,7 @@
 #include <symbol_editor/symbol_editor_settings.h>
 #include <pgm_base.h>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 static ELECTRICAL_PINTYPE g_LastPinType            = ELECTRICAL_PINTYPE::PT_INPUT;
@@ -397,7 +398,7 @@ void SYMBOL_EDITOR_PIN_TOOL::CreateImagePins( SCH_COMMIT* aCommit, SCH_PIN* aPin
         }
         catch( const boost::bad_pointer& e )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ), e.what() ));
+            KI_FAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ), e.what() ));
             delete newPin;
             return;
         }

@@ -46,6 +46,7 @@
 #include <tools/edit_tool.h>
 #include <dialogs/dialog_enum_pads.h>
 #include <widgets/wx_infobar.h>
+#include <core/ki_assert.h>
 
 
 using KIGFX::PCB_RENDER_SETTINGS;
@@ -508,7 +509,7 @@ int PAD_TOOL::EnumeratePads( const TOOL_EVENT& aEvent )
                 else if( pad->IsSelected() && evt->IsClick( BUT_LEFT ) )
                 {
                     auto it = oldNumbers.find( pad->GetNumber() );
-                    wxASSERT( it != oldNumbers.end() );
+                    KI_ASSERT( it != oldNumbers.end() );
 
                     if( it != oldNumbers.end() )
                     {

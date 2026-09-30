@@ -44,6 +44,7 @@
 #include <callback_gal.h>
 #include <math/util.h>      // for KiROUND
 #include <convert_basic_shapes_to_polygon.h>
+#include <core/ki_assert.h>
 
 PLOTTER::PLOTTER( const PROJECT* aProject ) :
     m_project( aProject )
@@ -78,7 +79,7 @@ bool PLOTTER::OpenFile( const wxString& aFullFilename )
 {
     m_filename = aFullFilename;
 
-    wxASSERT( !m_outputFile );
+    KI_ASSERT( !m_outputFile );
 
     // Open the file in text mode (not suitable for all plotters but only for most of them.
     m_outputFile = wxFopen( m_filename, wxT( "wt" ) );
@@ -558,7 +559,7 @@ void PLOTTER::ThickSegment( const VECTOR2I& start, const VECTOR2I& end, int widt
             diameter = GetCurrentLineWidth();
         }
 
-        wxCHECK2_MSG( diameter >= 0, return,
+        KI_CHECK2_MSG( diameter >= 0, return,
                       wxT( "Plotter called with unresolved line width sentinel" ) );
 
         Circle( start, diameter, FILL_T::FILLED_SHAPE, 0 );

@@ -29,6 +29,7 @@
 #include <board_item.h>
 #include <board_item_container.h>
 #include <algorithm>
+#include <core/ki_assert.h>
 
 namespace KIGFX
 {
@@ -201,12 +202,12 @@ public:
     void Add( BOARD_ITEM* aItem, ADD_MODE aMode = ADD_MODE::INSERT,
               bool aSkipConnectivity = false ) override
     {
-        wxFAIL_MSG( wxT( "Use AddCell()/InsertCell() instead." ) );
+        KI_FAIL_MSG( wxT( "Use AddCell()/InsertCell() instead." ) );
     }
 
     void Remove( BOARD_ITEM* aItem, REMOVE_MODE aMode = REMOVE_MODE::NORMAL ) override
     {
-        wxFAIL_MSG( wxT( "Use DeleteMarkedCells() instead." ) );
+        KI_FAIL_MSG( wxT( "Use DeleteMarkedCells() instead." ) );
     }
 
     void Normalize() override;

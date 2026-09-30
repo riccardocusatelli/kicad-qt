@@ -97,6 +97,8 @@
 // a dummy to quiet linking with EDA_BASE_FRAME::config();
 #include <kiface_base.h>
 #include <thread_pool.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 KIFACE_BASE& Kiface()
@@ -578,7 +580,7 @@ void PGM_KICAD::OnPgmExit()
 void PGM_KICAD::MacOpenFile( const wxString& aFileName )
 {
 #if defined( __WXMAC__ )
-    wxFAIL_MSG( "kicad-cli should not call MacOpenFile" );
+    KI_FAIL_MSG( "kicad-cli should not call MacOpenFile" );
 #endif
 }
 
@@ -686,7 +688,7 @@ struct APP_KICAD_CLI : public wxAppConsole
 
             if( keyEvent )
             {
-                wxLogTrace( kicadTraceKeyEvent, "APP_KICAD::ProcessEvent %s", dump( *keyEvent ) );
+                KI_LOG_TRACE( kicadTraceKeyEvent, "APP_KICAD::ProcessEvent %s", dump( *keyEvent ) );
             }
         }
 

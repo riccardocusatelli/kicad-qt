@@ -61,6 +61,8 @@
 #include <kiplatform/ui.h>
 #include <project_pcb.h>
 #include <toolbars_3d.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #if defined(__linux__) || defined(__FreeBSD__)
 #include <spacenav/libspnav_driver.h>
@@ -102,7 +104,7 @@ EDA_3D_VIEWER_FRAME::EDA_3D_VIEWER_FRAME( KIWAY* aKiway, PCB_BASE_FRAME* aParent
         m_currentCamera( m_trackBallCamera ),
         m_trackBallCamera( 2 * RANGE_SCALE_3D )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::EDA_3D_VIEWER_FRAME %s" ), aTitle );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::EDA_3D_VIEWER_FRAME %s" ), aTitle );
 
     m_disable_ray_tracing = false;
     m_aboutTitle = _HKI( "KiCad 3D Viewer" );
@@ -206,11 +208,11 @@ EDA_3D_VIEWER_FRAME::EDA_3D_VIEWER_FRAME( KIWAY* aKiway, PCB_BASE_FRAME* aParent
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ), wxS( "%s" ), e.what() );
     }
     catch( ... )
     {
-        wxLogTrace( wxT( "KI_TRACE_NAVLIB" ),
+        KI_LOG_TRACE( wxT( "KI_TRACE_NAVLIB" ),
                     wxT( "Unknown exception during SpaceMouse initialization" ) );
     }
 
@@ -460,7 +462,7 @@ void EDA_3D_VIEWER_FRAME::refreshRender()
 
 void EDA_3D_VIEWER_FRAME::Exit3DFrame( wxCommandEvent &event )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::Exit3DFrame" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::Exit3DFrame" ) );
 
     Close( true );
 }
@@ -468,7 +470,7 @@ void EDA_3D_VIEWER_FRAME::Exit3DFrame( wxCommandEvent &event )
 
 void EDA_3D_VIEWER_FRAME::OnCloseWindow( wxCloseEvent &event )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::OnCloseWindow" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::OnCloseWindow" ) );
 
     // Do not show the layer manager during closing to avoid flicker on some platforms (Windows)
     // that generate useless redraw of items in the Layer Manager
@@ -506,7 +508,7 @@ void EDA_3D_VIEWER_FRAME::Process_Special_Functions( wxCommandEvent &event )
     }
 
     default:
-        wxFAIL_MSG( wxT( "Invalid event in EDA_3D_VIEWER_FRAME::Process_Special_Functions()" ) );
+        KI_FAIL_MSG( wxT( "Invalid event in EDA_3D_VIEWER_FRAME::Process_Special_Functions()" ) );
         return;
     }
 }
@@ -514,7 +516,7 @@ void EDA_3D_VIEWER_FRAME::Process_Special_Functions( wxCommandEvent &event )
 
 void EDA_3D_VIEWER_FRAME::onDisableRayTracing( wxCommandEvent& aEvent )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::%s disabling ray tracing." ), __WXFUNCTION__ );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::%s disabling ray tracing." ), __WXFUNCTION__ );
 
     m_disable_ray_tracing = true;
     m_boardAdapter.m_Cfg->m_Render.engine = RENDER_ENGINE::OPENGL;
@@ -523,7 +525,7 @@ void EDA_3D_VIEWER_FRAME::onDisableRayTracing( wxCommandEvent& aEvent )
 
 void EDA_3D_VIEWER_FRAME::OnActivate( wxActivateEvent &aEvent )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::OnActivate" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::OnActivate" ) );
 
     if( aEvent.GetActive() && m_canvas )
     {
@@ -560,7 +562,7 @@ void EDA_3D_VIEWER_FRAME::LoadSettings( APP_SETTINGS_BASE *aCfg )
     // Dynamic_cast here will fail on Mac when called from CvPCB.
     EDA_3D_VIEWER_SETTINGS* cfg = static_cast<EDA_3D_VIEWER_SETTINGS*>( aCfg );
 
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::LoadSettings" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::LoadSettings" ) );
 
     if( cfg )
     {
@@ -614,7 +616,7 @@ void EDA_3D_VIEWER_FRAME::SaveSettings( APP_SETTINGS_BASE *aCfg )
 
 void EDA_3D_VIEWER_FRAME::CommonSettingsChanged( int aFlags )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::CommonSettingsChanged" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::CommonSettingsChanged" ) );
 
     // Regen menu bars, etc
     EDA_BASE_FRAME::CommonSettingsChanged( aFlags );
@@ -1012,7 +1014,7 @@ void EDA_3D_VIEWER_FRAME::saveImageToFile( const wxImage& aScreenshotImage, EDA_
 
 void EDA_3D_VIEWER_FRAME::RenderEngineChanged()
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::RenderEngineChanged()" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::RenderEngineChanged()" ) );
 
     if( m_canvas )
         m_canvas->RenderEngineChanged();
@@ -1021,7 +1023,7 @@ void EDA_3D_VIEWER_FRAME::RenderEngineChanged()
 
 void EDA_3D_VIEWER_FRAME::loadCommonSettings()
 {
-    wxCHECK_RET( m_canvas, wxT( "Cannot load settings to null canvas" ) );
+    KI_CHECK_RET( m_canvas, wxT( "Cannot load settings to null canvas" ) );
 
     COMMON_SETTINGS* settings = Pgm().GetCommonSettings();
 

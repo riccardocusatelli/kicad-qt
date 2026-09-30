@@ -26,6 +26,8 @@
 #include <libraries/library_table_grammar.h>
 #include <trace_helpers.h>
 #include <boost/locale/boundary/types.hpp>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 using namespace LIBRARY_TABLE_GRAMMAR;
@@ -86,7 +88,7 @@ struct LIBRARY_TABLE_PARSER_ACTION<TOKEN>
     template <typename ActionInput>
     static void apply( const ActionInput& in, LIBRARY_TABLE_PARSER_STATE& s )
     {
-        wxCHECK2( s.target_string, return );
+        KI_CHECK2( s.target_string, return );
         *s.target_string = in.string();
     }
 };
@@ -98,8 +100,8 @@ struct LIBRARY_TABLE_PARSER_ACTION<QUOTED_TEXT>
     template <typename ActionInput>
     static void apply( const ActionInput& in, LIBRARY_TABLE_PARSER_STATE& s )
     {
-        wxCHECK2( s.target_string, return );
-        wxCHECK2( in.string().size() >= 2, return );
+        KI_CHECK2( s.target_string, return );
+        KI_CHECK2( in.string().size() >= 2, return );
         *s.target_string = in.string().substr( 1, in.string().size() - 2 );
     }
 };
@@ -161,13 +163,13 @@ tl::expected<LIBRARY_TABLE_IR, LIBRARY_PARSE_ERROR> LIBRARY_TABLE_PARSER::Parse(
         file_input in( aPath );
 
         LIBRARY_TABLE_PARSER_STATE state;
-        wxLogTrace( traceLibraries, "LIBRARY_TABLE_PARSER::Parse %s", aPath.string().c_str() );
+        KI_LOG_TRACE( traceLibraries, "LIBRARY_TABLE_PARSER::Parse %s", aPath.string().c_str() );
 
         try
         {
             if( !parse<LIB_TABLE_FILE, LIBRARY_TABLE_PARSER_ACTION>( in, state ) )
             {
-                wxLogTrace( traceLibraries, "Parsing failed without throwing" );
+                KI_LOG_TRACE( traceLibraries, "Parsing failed without throwing" );
                 wxString msg = wxString::Format( _( "An unexpected error occurred while reading library table %s "),
                                                  aPath.string().c_str() );
                 return tl::unexpected( LIBRARY_PARSE_ERROR( { .description = msg } ) );
@@ -180,7 +182,7 @@ tl::expected<LIBRARY_TABLE_IR, LIBRARY_PARSE_ERROR> LIBRARY_TABLE_PARSER::Parse(
                                            p.line, p.column, in.line_at( p ), "^", p.column,
                                            e.message() );
 
-            wxLogTrace( traceLibraries, "%s", msg.c_str() );
+            KI_LOG_TRACE( traceLibraries, "%s", msg.c_str() );
 
             return tl::unexpected( LIBRARY_PARSE_ERROR( {
                                        .description = wxString::Format( _( "Syntax error at line %zu, column %zu" ),
@@ -194,7 +196,7 @@ tl::expected<LIBRARY_TABLE_IR, LIBRARY_PARSE_ERROR> LIBRARY_TABLE_PARSER::Parse(
     }
     catch( std::filesystem::filesystem_error& e )
     {
-        wxLogTrace( traceLibraries, "LIBRARY_TABLE_PARSER::Parse loading '%s' error: %s", aPath.string(), e.what() );
+        KI_LOG_TRACE( traceLibraries, "LIBRARY_TABLE_PARSER::Parse loading '%s' error: %s", aPath.string(), e.what() );
 
         return tl::unexpected( LIBRARY_PARSE_ERROR( {
                                    .description = e.what()
@@ -207,13 +209,13 @@ tl::expected<LIBRARY_TABLE_IR, LIBRARY_PARSE_ERROR> LIBRARY_TABLE_PARSER::ParseB
 {
     memory_input in( aBuffer, "" );
     LIBRARY_TABLE_PARSER_STATE state;
-    wxLogTrace( traceLibraries, "LIBRARY_TABLE_PARSER::Parse from string buffer" );
+    KI_LOG_TRACE( traceLibraries, "LIBRARY_TABLE_PARSER::Parse from string buffer" );
 
     try
     {
         if( !parse<LIB_TABLE_FILE, LIBRARY_TABLE_PARSER_ACTION>( in, state ) )
         {
-            wxLogTrace( traceLibraries, "Parsing failed without throwing" );
+            KI_LOG_TRACE( traceLibraries, "Parsing failed without throwing" );
 
             return tl::unexpected( LIBRARY_PARSE_ERROR( {
                                        .description = _( "An unexpected error occurred while reading library table" )
@@ -227,7 +229,7 @@ tl::expected<LIBRARY_TABLE_IR, LIBRARY_PARSE_ERROR> LIBRARY_TABLE_PARSER::ParseB
                                        p.line, p.column, in.line_at( p ), "^", p.column,
                                        e.message() );
 
-        wxLogTrace( traceLibraries, "%s", msg.c_str() );
+        KI_LOG_TRACE( traceLibraries, "%s", msg.c_str() );
 
         return tl::unexpected( LIBRARY_PARSE_ERROR( {
                                    .description = wxString::Format( _( "Syntax error at line %zu, column %zu" ),

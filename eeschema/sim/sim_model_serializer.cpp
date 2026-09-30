@@ -31,6 +31,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <string_utils.h>
+#include <core/ki_assert.h>
 
 
 namespace SIM_MODEL_SERIALIZER_PARSER
@@ -240,7 +241,7 @@ bool SIM_MODEL_SERIALIZER::ParseParams( const std::string& aParams )
         }
         else if( node->is_type<SIM_MODEL_SERIALIZER_PARSER::quotedStringContent>() )
         {
-            wxASSERT( paramName != "" );
+            KI_ASSERT( paramName != "" );
 
             m_model.SetParamValue( paramName, unescapeQuoted( node->string() ), SIM_VALUE_GRAMMAR::NOTATION::SI );
 
@@ -249,7 +250,7 @@ bool SIM_MODEL_SERIALIZER::ParseParams( const std::string& aParams )
         }
         else if( node->is_type<SIM_MODEL_SERIALIZER_PARSER::unquotedString>() )
         {
-            wxASSERT( paramName != "" );
+            KI_ASSERT( paramName != "" );
 
             m_model.SetParamValue( paramName, node->string(), SIM_VALUE_GRAMMAR::NOTATION::SI );
 
@@ -264,7 +265,7 @@ bool SIM_MODEL_SERIALIZER::ParseParams( const std::string& aParams )
         }
         else
         {
-            wxFAIL;
+            KI_FAIL();
         }
     }
 

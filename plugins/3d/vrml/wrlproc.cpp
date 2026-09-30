@@ -28,6 +28,7 @@
 #include <wx/log.h>
 #include "wrlproc.h"
 #include <wx_filename.h>
+#include <core/ki_log.h>
 
 #define GETLINE                                                                                \
     do                                                                                         \
@@ -393,7 +394,7 @@ bool WRLPROC::DiscardNode( void )
         ostr << ", column " << m_bufpos;
         m_error = ostr.str();
 
-        wxLogTrace( traceVrmlPlugin, "%s\n", m_error.c_str() );
+        KI_LOG_TRACE( traceVrmlPlugin, "%s\n", m_error.c_str() );
 
         return false;
     }

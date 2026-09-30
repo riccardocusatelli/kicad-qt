@@ -30,6 +30,7 @@
 #include "x3d_ops.h"
 #include "x3d_shape.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
 
 
 X3DSHAPE::X3DSHAPE() : X3DNODE()
@@ -61,7 +62,7 @@ X3DSHAPE::X3DSHAPE( X3DNODE* aParent ) : X3DNODE()
 
 X3DSHAPE::~X3DSHAPE()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Shape with %zu children, %zu references, "
                      "%and ul back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -245,7 +246,7 @@ SGNODE* X3DSHAPE::TranslateToSG( SGNODE* aParent )
     if( nullptr == geometry || nullptr == appearance )
         return nullptr;
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Shape with %zu children, %zu references, "
                      "and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -254,7 +255,7 @@ SGNODE* X3DSHAPE::TranslateToSG( SGNODE* aParent )
 
     if( nullptr != aParent && ptype != S3D::SGTYPE_TRANSFORM )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( " * [BUG] Shape does not have a Transform parent (parent ID: %d)" ),
                     ptype );
 

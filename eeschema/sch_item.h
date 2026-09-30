@@ -37,6 +37,7 @@
 #include <layer_ids.h>
 #include <sch_render_settings.h>
 #include <plotters/plotter.h>
+#include <core/ki_assert.h>
 
 class CONNECTION_GRAPH;
 class SCH_CONNECTION;
@@ -369,7 +370,7 @@ public:
      */
     virtual double Similarity( const SCH_ITEM& aItem ) const
     {
-        wxCHECK_MSG( false, 0.0, wxT( "Similarity not implemented in " ) + GetClass() );
+        KI_CHECK_MSG( false, 0.0, wxT( "Similarity not implemented in " ) + GetClass() );
     }
 
     /**
@@ -398,7 +399,7 @@ public:
      */
     virtual void Move( const VECTOR2I& aMoveVector )
     {
-        wxCHECK_MSG( false, /*void*/, wxT( "Move not implemented in " ) + GetClass() );
+        KI_CHECK_MSG( false, /*void*/, wxT( "Move not implemented in " ) + GetClass() );
     }
 
     /**
@@ -406,7 +407,7 @@ public:
      */
     virtual void MirrorHorizontally( int aCenter )
     {
-        wxCHECK_MSG( false, /*void*/, wxT( "MirrorHorizontally not implemented in " ) + GetClass() );
+        KI_CHECK_MSG( false, /*void*/, wxT( "MirrorHorizontally not implemented in " ) + GetClass() );
     }
 
     /**
@@ -414,7 +415,7 @@ public:
      */
     virtual void MirrorVertically( int aCenter )
     {
-        wxCHECK_MSG( false, /*void*/, wxT( "MirrorVertically not implemented in " ) + GetClass() );
+        KI_CHECK_MSG( false, /*void*/, wxT( "MirrorVertically not implemented in " ) + GetClass() );
     }
 
     /**
@@ -422,7 +423,7 @@ public:
      */
     virtual void Rotate( const VECTOR2I& aCenter, bool aRotateCCW )
     {
-        wxCHECK_MSG( false, /*void*/, wxT( "Rotate not implemented in " ) + GetClass() );
+        KI_CHECK_MSG( false, /*void*/, wxT( "Rotate not implemented in " ) + GetClass() );
     }
 
     /**
@@ -641,9 +642,9 @@ public:
      */
     virtual bool HasLineStroke() const { return false; }
 
-    virtual STROKE_PARAMS GetStroke() const { wxCHECK( false, STROKE_PARAMS() ); }
+    virtual STROKE_PARAMS GetStroke() const { KI_CHECK( false, STROKE_PARAMS() ); }
 
-    virtual void SetStroke( const STROKE_PARAMS& aStroke ) { wxCHECK( false, /* void */ ); }
+    virtual void SetStroke( const STROKE_PARAMS& aStroke ) { KI_CHECK( false, /* void */ ); }
 
     void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
@@ -660,7 +661,7 @@ public:
     virtual void Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& aPlotOpts,
                        int aUnit, int aBodyStyle, const VECTOR2I& aOffset, bool aDimmed)
     {
-        wxCHECK_MSG( false, /*void*/, wxT( "Plot not implemented in " ) + GetClass() );
+        KI_CHECK_MSG( false, /*void*/, wxT( "Plot not implemented in " ) + GetClass() );
     }
 
     /**

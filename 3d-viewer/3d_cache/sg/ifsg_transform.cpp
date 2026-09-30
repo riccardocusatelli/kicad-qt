@@ -29,6 +29,8 @@
 
 #include "plugins/3dapi/ifsg_transform.h"
 #include "3d_cache/sg/scenegraph.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 extern char WrongParent[];
@@ -56,7 +58,7 @@ IFSG_TRANSFORM::IFSG_TRANSFORM( SGNODE* aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -97,7 +99,7 @@ bool IFSG_TRANSFORM::NewNode( SGNODE* aParent )
 
     if( aParent != m_node->GetParent() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid SGNODE parent (%s) to SCENEGRAPH" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid SGNODE parent (%s) to SCENEGRAPH" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeTypeName( aParent->GetNodeType() ) );
 
@@ -116,7 +118,7 @@ bool IFSG_TRANSFORM::NewNode( IFSG_NODE& aParent )
 {
     SGNODE* np = aParent.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return NewNode( np );
 }
@@ -124,7 +126,7 @@ bool IFSG_TRANSFORM::NewNode( IFSG_NODE& aParent )
 
 bool IFSG_TRANSFORM::SetRotation( const SGVECTOR& aRotationAxis, double aAngle )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SCENEGRAPH*) m_node )->rotation_axis  = aRotationAxis;
     ( (SCENEGRAPH*) m_node )->rotation_angle = aAngle;
@@ -135,7 +137,7 @@ bool IFSG_TRANSFORM::SetRotation( const SGVECTOR& aRotationAxis, double aAngle )
 
 bool IFSG_TRANSFORM::SetScale( const SGPOINT& aScale ) noexcept
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SCENEGRAPH*) m_node )->scale = aScale;
 
@@ -145,11 +147,11 @@ bool IFSG_TRANSFORM::SetScale( const SGPOINT& aScale ) noexcept
 
 bool IFSG_TRANSFORM::SetScale( double aScale )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     if( aScale < 1e-8 && aScale > -1e-8 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] |scale| is < 1e-8 - this seems strange" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] |scale| is < 1e-8 - this seems strange" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -163,7 +165,7 @@ bool IFSG_TRANSFORM::SetScale( double aScale )
 
 bool IFSG_TRANSFORM::SetTranslation( const SGPOINT& aTranslation ) noexcept
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SCENEGRAPH*) m_node )->translation = aTranslation;
 
@@ -173,7 +175,7 @@ bool IFSG_TRANSFORM::SetTranslation( const SGPOINT& aTranslation ) noexcept
 
 bool IFSG_TRANSFORM::SetScaleOrientation( const SGVECTOR& aScaleAxis, double aAngle )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SCENEGRAPH*) m_node )->scale_axis  = aScaleAxis;
     ( (SCENEGRAPH*) m_node )->scale_angle = aAngle;
@@ -184,7 +186,7 @@ bool IFSG_TRANSFORM::SetScaleOrientation( const SGVECTOR& aScaleAxis, double aAn
 
 bool IFSG_TRANSFORM::SetCenter( const SGPOINT& aCenter ) noexcept
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SCENEGRAPH*) m_node )->center = aCenter;
 

@@ -40,6 +40,7 @@
 #include <cmath>    // isnan
 #include <board.h>
 #include "common.h"
+#include <core/ki_assert.h>
 
 
 /*
@@ -159,7 +160,7 @@ bool DXF_IMPORT_PLUGIN::LoadFromMemory( const wxMemoryBuffer& aMemBuffer )
 
 bool DXF_IMPORT_PLUGIN::Import()
 {
-    wxCHECK( m_importer, false );
+    KI_CHECK( m_importer, false );
     m_internalImporter.ImportTo( *m_importer );
 
     return true;

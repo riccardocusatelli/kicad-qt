@@ -67,6 +67,8 @@
 #include <libraries/library_table.h>
 #include <wx/filename.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 /* Execute a remote command sent via a socket on port KICAD_PCB_PORT_SERVICE_NUMBER
  *
@@ -564,7 +566,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
             for( PCB_FIELD* field : footprint->GetFields() )
             {
-                wxCHECK2( field, continue );
+                KI_CHECK2( field, continue );
 
                 fields[field->GetCanonicalName()] = field->GetText();
             }
@@ -627,7 +629,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::FOOTPRINT,
                                                                 LIBRARY_TABLE_SCOPE::PROJECT );
 
-        wxCHECK_RET( optTable.has_value(), "Could not load footprint lib table." );
+        KI_CHECK_RET( optTable.has_value(), "Could not load footprint lib table." );
         LIBRARY_TABLE* table = optTable.value();
 
         wxString projectPath = Prj().GetProjectPath();
@@ -649,7 +651,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
             if( type == PCB_IO_MGR::FILE_TYPE_NONE )
             {
-                wxLogTrace( "KIWAY", "Unknown file type: %s", fn.GetFullPath() );
+                KI_LOG_TRACE( "KIWAY", "Unknown file type: %s", fn.GetFullPath() );
                 continue;
             }
 
@@ -755,7 +757,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             }
             catch( std::invalid_argument& )
             {
-                wxFAIL;
+                KI_FAIL();
             }
 
             std::vector<BOARD_ITEM*> items =
@@ -775,10 +777,10 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
             if( GetPcbNewSettings()->m_CrossProbing.flash_selection )
             {
-                wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash enabled, items=%zu", items.size() );
+                KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash enabled, items=%zu", items.size() );
                 if( items.empty() )
                 {
-                    wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: nothing to flash" );
+                    KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: nothing to flash" );
                 }
                 else
                 {
@@ -789,7 +791,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             }
             else
             {
-                wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash disabled" );
+                KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash disabled" );
             }
         }
 
@@ -807,11 +809,11 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         char              delim = '\n';
 
         std::string formatStr;
-        wxCHECK( std::getline( ss, formatStr, delim ), /* void */ );
+        KI_CHECK( std::getline( ss, formatStr, delim ), /* void */ );
 
         std::string fnameStr;
-        wxCHECK( std::getline( ss, fnameStr, delim ), /* void */ );
-        wxASSERT( !fnameStr.empty() );
+        KI_CHECK( std::getline( ss, fnameStr, delim ), /* void */ );
+        KI_ASSERT( !fnameStr.empty() );
 
         int importFormat;
 
@@ -821,7 +823,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         }
         catch( std::invalid_argument& )
         {
-            wxFAIL;
+            KI_FAIL();
             importFormat = -1;
         }
 

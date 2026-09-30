@@ -31,6 +31,7 @@
 
 #include <functional>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 
@@ -39,7 +40,7 @@ SELECTION_CONDITION SCH_EDITOR_CONDITIONS::LineMode( LINE_MODE aMode )
 {
     SCH_BASE_FRAME* schFrame = dynamic_cast<SCH_BASE_FRAME*>( m_frame );
 
-    wxASSERT( schFrame );
+    KI_ASSERT( schFrame );
 
     return std::bind( &SCH_EDITOR_CONDITIONS::lineModeFunc, _1, schFrame, aMode );
 }
@@ -48,7 +49,7 @@ SELECTION_CONDITION SCH_EDITOR_CONDITIONS::LineMode( LINE_MODE aMode )
 bool SCH_EDITOR_CONDITIONS::lineModeFunc( const SELECTION& aSelection, SCH_BASE_FRAME* aFrame,
                                           LINE_MODE aMode )
 {
-    wxCHECK( aFrame && aFrame->eeconfig(), false );
+    KI_CHECK( aFrame && aFrame->eeconfig(), false );
 
     return aFrame->eeconfig()->m_Drawing.line_mode == aMode;
 }

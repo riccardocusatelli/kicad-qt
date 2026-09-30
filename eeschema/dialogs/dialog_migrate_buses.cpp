@@ -27,6 +27,7 @@
 #include <dialog_migrate_buses.h>
 #include <sch_label.h>
 #include <view/view_controls.h>
+#include <core/ki_assert.h>
 
 /**
  * Migrates buses using legacy multi-label joining behavior.
@@ -92,7 +93,7 @@ void DIALOG_MIGRATE_BUSES::loadGraphData()
         status.approved = false;
 
         std::vector<SCH_ITEM*> labels = subgraph->GetVectorBusLabels();
-        wxASSERT( labels.size() > 1 );
+        KI_ASSERT( labels.size() > 1 );
 
         for( SCH_ITEM* label : labels )
             status.labels.push_back( static_cast<SCH_LABEL_BASE*>( label )->GetText() );
@@ -174,7 +175,7 @@ std::vector<wxString> DIALOG_MIGRATE_BUSES::getProposedLabels( const std::vector
 void DIALOG_MIGRATE_BUSES::onItemSelected( wxListEvent& aEvent )
 {
     unsigned sel = aEvent.GetIndex();
-    wxASSERT( sel < m_items.size() );
+    KI_ASSERT( sel < m_items.size() );
 
     m_selected_index = sel;
 
@@ -205,7 +206,7 @@ void DIALOG_MIGRATE_BUSES::onItemSelected( wxListEvent& aEvent )
 
 void DIALOG_MIGRATE_BUSES::onAcceptClicked( wxCommandEvent& aEvent )
 {
-    wxASSERT( m_selected_index < m_items.size() );
+    KI_ASSERT( m_selected_index < m_items.size() );
 
     unsigned sel = m_selected_index;
 

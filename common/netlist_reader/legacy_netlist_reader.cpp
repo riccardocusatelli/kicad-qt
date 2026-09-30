@@ -29,6 +29,7 @@
 #include <netlist_reader/netlist.h>
 #include <netlist_reader/netlist_reader.h>
 #include <config.h>     // to define strncasecmp for some platforms
+#include <core/ki_assert.h>
 
 void LEGACY_NETLIST_READER::LoadNetlist()
 {
@@ -78,7 +79,7 @@ void LEGACY_NETLIST_READER::LoadNetlist()
 
         if( state >= 3 ) // Pad descriptions are read here.
         {
-            wxASSERT( component != nullptr );
+            KI_ASSERT( component != nullptr );
 
             loadNet( line, component );
             state--;
@@ -217,7 +218,7 @@ void LEGACY_NETLIST_READER::loadFootprintFilters()
     {
         if( strncasecmp( line, "$endlist", 8 ) == 0 )   // end of list for the current component
         {
-            wxASSERT( component != nullptr );
+            KI_ASSERT( component != nullptr );
             component->SetFootprintFilters( filters );
             component = nullptr;
             filters.Clear();

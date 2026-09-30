@@ -25,6 +25,7 @@
 #include <settings/layer_settings_utils.h>
 #include <settings/json_settings_internals.h>
 #include <settings/parameters.h>
+#include <core/ki_assert.h>
 
 const int projectLocalSettingsVersion = 5;
 
@@ -536,7 +537,7 @@ bool PROJECT_LOCAL_SETTINGS::MigrateFromLegacy( wxConfigBase* aLegacyConfig )
 
 bool PROJECT_LOCAL_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
 {
-    wxASSERT( m_project );
+    KI_ASSERT( m_project );
 
     Set( "meta.filename",
          m_project->GetProjectName() + "." + FILEEXT::ProjectLocalSettingsFileExtension );

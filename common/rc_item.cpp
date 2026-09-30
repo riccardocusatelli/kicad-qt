@@ -33,6 +33,7 @@
 #include <eda_item.h>
 #include <base_units.h>
 #include <units_provider.h>
+#include <core/ki_assert.h>
 
 #define WX_DATAVIEW_WINDOW_PADDING 6
 
@@ -827,7 +828,7 @@ void RC_TREE_MODEL::NextMarker()
 
 void RC_TREE_MODEL::SelectMarker( const MARKER_BASE* aMarker )
 {
-    wxCHECK( !m_view->IsFrozen(), /* void */ );
+    KI_CHECK( !m_view->IsFrozen(), /* void */ );
 
     for( RC_TREE_NODE* candidate : m_tree )
     {
@@ -842,7 +843,7 @@ void RC_TREE_MODEL::SelectMarker( const MARKER_BASE* aMarker )
 
 void RC_TREE_MODEL::CenterMarker( const MARKER_BASE* aMarker )
 {
-    wxCHECK( !m_view->IsFrozen(), /* void */ );
+    KI_CHECK( !m_view->IsFrozen(), /* void */ );
 
     for( RC_TREE_NODE* candidate : m_tree )
     {

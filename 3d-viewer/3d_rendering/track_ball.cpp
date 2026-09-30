@@ -37,11 +37,13 @@
 
 // stdlib
 #include <algorithm>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 TRACK_BALL::TRACK_BALL( float aInitialDistance ) : CAMERA( aInitialDistance )
 {
-    wxLogTrace( m_logTrace, wxT( "TRACK_BALL::TRACK_BALL" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "TRACK_BALL::TRACK_BALL" ) );
     initQuat();
 }
 
@@ -49,7 +51,7 @@ TRACK_BALL::TRACK_BALL( float aInitialDistance ) : CAMERA( aInitialDistance )
 TRACK_BALL::TRACK_BALL( SFVEC3F aInitPos, SFVEC3F aLookat, PROJECTION_TYPE aProjectionType ) :
         CAMERA( aInitPos, aLookat, aProjectionType )
 {
-    wxLogTrace( m_logTrace, wxT( "TRACK_BALL::TRACK_BALL" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "TRACK_BALL::TRACK_BALL" ) );
     initQuat();
 }
 
@@ -151,7 +153,7 @@ void TRACK_BALL::SetT0_and_T1_current_T()
 
 void TRACK_BALL::Interpolate( float t )
 {
-    wxASSERT( t >= 0.0f );
+    KI_ASSERT( t >= 0.0f );
 
     // Limit t o 1.0
     t = ( t > 1.0f ) ? 1.0f : t;

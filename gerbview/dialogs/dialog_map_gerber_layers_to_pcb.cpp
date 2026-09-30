@@ -37,6 +37,7 @@
 
 #include <wx/msgdlg.h>
 #include <gestfich.h>
+#include <core/ki_assert.h>
 
 
 enum swap_layer_id {
@@ -355,7 +356,7 @@ void DIALOG_MAP_GERBER_LAYERS_TO_PCB::OnSelectLayer( wxCommandEvent& event )
 
     if( ii < 0 || ii >= GERBER_DRAWLAYERS_COUNT )
     {
-        wxFAIL_MSG( wxT( "Bad layer id" ) );
+        KI_FAIL_MSG( wxT( "Bad layer id" ) );
         return;
     }
 
@@ -792,7 +793,7 @@ int DIALOG_MAP_GERBER_LAYERS_TO_PCB::findNumX2GerbersLoaded( std::vector<int>& a
 
             if( images->GetGbrImage( ii )->m_IsX2_file )
             {
-                wxCHECK( x2, numKicadMatches );
+                KI_CHECK( x2, numKicadMatches );
 
                 if( x2->IsCopper() )
                 {

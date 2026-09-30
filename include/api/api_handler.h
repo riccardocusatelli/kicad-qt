@@ -35,6 +35,7 @@
 #include <kicommon.h>
 #include <api/common/envelope.pb.h>
 #include <core/typeinfo.h>
+#include <core/ki_assert.h>
 
 using kiapi::common::ApiRequest, kiapi::common::ApiResponse;
 using kiapi::common::ApiResponseStatus, kiapi::common::ApiStatusCode;
@@ -95,7 +96,7 @@ protected:
     {
         std::string typeName { RequestType().GetTypeName() };
 
-        wxASSERT_MSG( !m_handlers.contains( typeName ),
+        KI_ASSERT_MSG( !m_handlers.contains( typeName ),
                       wxString::Format( "Duplicate API handler for type %s", typeName ) );
 
         m_handlers[typeName] =

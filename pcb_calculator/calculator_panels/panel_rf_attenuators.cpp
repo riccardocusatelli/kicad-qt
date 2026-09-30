@@ -29,6 +29,7 @@
 #include <string_utils.h>
 #include <widgets/ui_common.h>
 #include <widgets/std_bitmap_button.h>
+#include <core/ki_assert.h>
 
 extern double DoubleFromString( const wxString& TextValue );
 
@@ -97,7 +98,7 @@ void PANEL_RF_ATTENUATORS::UpdateUI()
 
 void PANEL_RF_ATTENUATORS::LoadSettings( PCB_CALCULATOR_SETTINGS* aCfg )
 {
-    wxASSERT( aCfg );
+    KI_ASSERT( aCfg );
 
     for( ATTENUATOR* attenuator : m_AttenuatorList )
         attenuator->ReadConfig();
@@ -109,7 +110,7 @@ void PANEL_RF_ATTENUATORS::LoadSettings( PCB_CALCULATOR_SETTINGS* aCfg )
 
 void PANEL_RF_ATTENUATORS::SaveSettings( PCB_CALCULATOR_SETTINGS* aCfg )
 {
-    wxASSERT( aCfg );
+    KI_ASSERT( aCfg );
 
     aCfg->m_Attenuators.type = m_AttenuatorsSelection->GetSelection();
 

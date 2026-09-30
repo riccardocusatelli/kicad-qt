@@ -65,6 +65,8 @@
 #include <sch_io/sch_io.h>
 
 #include <wx/log.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 bool SCHEMATIC::m_IsSchematicExists = false;
 
@@ -211,7 +213,7 @@ void SCHEMATIC::SetProject( PROJECT* aPrj )
 
 void SCHEMATIC::CacheExistingAnnotation()
 {
-    wxASSERT( m_project );
+    KI_ASSERT( m_project );
 
     // Cache all existing annotations in the REFDES_TRACKER
     std::shared_ptr<REFDES_TRACKER> refdesTracker = m_project->GetProjectFile().m_SchematicSettings->m_refDesTracker;
@@ -343,7 +345,7 @@ void SCHEMATIC::rebuildHierarchyState( bool aResetConnectionGraph )
 
 void SCHEMATIC::SetTopLevelSheets( const std::vector<SCH_SHEET*>& aSheets )
 {
-    wxCHECK_RET( !aSheets.empty(), wxS( "Cannot set empty top-level sheets!" ) );
+    KI_CHECK_RET( !aSheets.empty(), wxS( "Cannot set empty top-level sheets!" ) );
 
     // Set the recursion guard early before any calls to ensureDefaultTopLevelSheet()
     bool wasAlreadySetting = m_settingTopLevelSheets;
@@ -419,7 +421,7 @@ SCH_SCREEN* SCHEMATIC::RootScreen() const
 
 SCH_SHEET_LIST SCHEMATIC::Hierarchy() const
 {
-    wxCHECK( !m_hierarchy.empty(), m_hierarchy );
+    KI_CHECK( !m_hierarchy.empty(), m_hierarchy );
 
     return m_hierarchy;
 }
@@ -460,7 +462,7 @@ void SCHEMATIC::GetContextualTextVars( wxArrayString* aVars ) const
 
 bool SCHEMATIC::ResolveTextVar( const SCH_SHEET_PATH* aSheetPath, wxString* token, int aDepth ) const
 {
-    wxCHECK( aSheetPath, false );
+    KI_CHECK( aSheetPath, false );
 
     if( token->IsSameAs( wxT( "#" ) ) )
     {
@@ -542,14 +544,14 @@ SCHEMATIC_SETTINGS& SCHEMATIC::Settings() const
         static SCHEMATIC_SETTINGS defaultSettings( nullptr, "schematic" );
         return defaultSettings;
     }
-    wxASSERT( m_project );
+    KI_ASSERT( m_project );
     return *m_project->GetProjectFile().m_SchematicSettings;
 }
 
 
 ERC_SETTINGS& SCHEMATIC::ErcSettings() const
 {
-    wxASSERT( m_project );
+    KI_ASSERT( m_project );
     return *m_project->GetProjectFile().m_ErcSettings;
 }
 
@@ -1460,7 +1462,7 @@ void SCHEMATIC::EmbedFonts()
 
         if( !file )
         {
-            wxLogTrace( "EMBED", "Failed to add font file: %s", font->GetFileName() );
+            KI_LOG_TRACE( "EMBED", "Failed to add font file: %s", font->GetFileName() );
             continue;
         }
 
@@ -1473,7 +1475,7 @@ std::set<const SCH_SCREEN*> SCHEMATIC::GetSchematicsSharedByMultipleProjects() c
 {
     std::set<const SCH_SCREEN*> retv;
 
-    wxCHECK( m_rootSheet, retv );
+    KI_CHECK( m_rootSheet, retv );
 
     SCH_SHEET_LIST hierarchy( m_rootSheet );
     SCH_SCREENS    screens( m_rootSheet );
@@ -1506,13 +1508,13 @@ std::set<const SCH_SCREEN*> SCHEMATIC::GetSchematicsSharedByMultipleProjects() c
 
 bool SCHEMATIC::IsComplexHierarchy() const
 {
-    wxCHECK( m_rootSheet, false );
+    KI_CHECK( m_rootSheet, false );
 
     SCH_SCREENS screens( m_rootSheet );
 
     for( const SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
     {
-        wxCHECK2( screen, continue );
+        KI_CHECK2( screen, continue );
 
         if( screen->GetRefCount() > 1 )
             return true;
@@ -1744,7 +1746,7 @@ void SCHEMATIC::RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS a
     }
 
     timer.Stop();
-    wxLogTrace( "CONN_PROFILE", "SchematicCleanUp() %0.4f ms", timer.msecs() );
+    KI_LOG_TRACE( "CONN_PROFILE", "SchematicCleanUp() %0.4f ms", timer.msecs() );
 
     if( settings.m_IntersheetRefsShow )
         RecomputeIntersheetRefs();
@@ -1943,7 +1945,7 @@ void SCHEMATIC::RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS a
                 {
                     SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
 
-                    wxCHECK2( sheet, continue );
+                    KI_CHECK2( sheet, continue );
 
                     std::vector<SCH_SHEET_PIN*> sheetPins = sheet->GetPins();
                     changed_items.insert( sheetPins.begin(), sheetPins.end() );
@@ -1982,7 +1984,7 @@ void SCHEMATIC::RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS a
 
         for( auto& [path, item] : all_items )
         {
-            wxCHECK2( item, continue );
+            KI_CHECK2( item, continue );
             item->SetConnectivityDirty();
             SCH_CONNECTION* conn = item->Connection();
 
@@ -2069,8 +2071,8 @@ SCH_SHEET* SCHEMATIC::GetTopLevelSheet( int aIndex ) const
 
 void SCHEMATIC::AddTopLevelSheet( SCH_SHEET* aSheet )
 {
-    wxCHECK_RET( aSheet, wxS( "Cannot add null sheet!" ) );
-    wxCHECK_RET( aSheet->GetScreen(), wxS( "Cannot add virtual root as top-level sheet!" ) );
+    KI_CHECK_RET( aSheet, wxS( "Cannot add null sheet!" ) );
+    KI_CHECK_RET( aSheet->GetScreen(), wxS( "Cannot add virtual root as top-level sheet!" ) );
 
     ensureVirtualRoot();
 
@@ -2130,7 +2132,7 @@ SCH_SHEET_LIST SCHEMATIC::BuildSheetListSortedByPageNumbers() const
 {
     SCH_SHEET_LIST hierarchy;
 
-    wxLogTrace( traceSchSheetPaths, "BuildSheetListSortedByPageNumbers: %zu top-level sheets",
+    KI_LOG_TRACE( traceSchSheetPaths, "BuildSheetListSortedByPageNumbers: %zu top-level sheets",
                 m_topLevelSheets.size() );
 
     // Can't build hierarchy without top-level sheets
@@ -2142,7 +2144,7 @@ SCH_SHEET_LIST SCHEMATIC::BuildSheetListSortedByPageNumbers() const
     {
         if( sheet )
         {
-            wxLogTrace( traceSchSheetPaths, "  Top-level sheet: '%s' (UUID=%s, isVirtualRoot=%d)", sheet->GetName(),
+            KI_LOG_TRACE( traceSchSheetPaths, "  Top-level sheet: '%s' (UUID=%s, isVirtualRoot=%d)", sheet->GetName(),
                         sheet->m_Uuid.AsString(), sheet->m_Uuid == niluuid ? 1 : 0 );
 
             // Build the sheet list for this top-level sheet
@@ -2256,7 +2258,7 @@ void SCHEMATIC::AddVariant( const wxString& aVariantName )
 
 void SCHEMATIC::DeleteVariant( const wxString& aVariantName, SCH_COMMIT* aCommit )
 {
-    wxCHECK( m_rootSheet, /* void */ );
+    KI_CHECK( m_rootSheet, /* void */ );
 
     SCH_SCREENS allScreens( m_rootSheet );
 
@@ -2270,9 +2272,9 @@ void SCHEMATIC::DeleteVariant( const wxString& aVariantName, SCH_COMMIT* aCommit
 void SCHEMATIC::RenameVariant( const wxString& aOldName, const wxString& aNewName,
                                SCH_COMMIT* aCommit )
 {
-    wxCHECK( m_rootSheet, /* void */ );
-    wxCHECK( !aOldName.IsEmpty() && !aNewName.IsEmpty(), /* void */ );
-    wxCHECK( m_variantNames.contains( aOldName ), /* void */ );
+    KI_CHECK( m_rootSheet, /* void */ );
+    KI_CHECK( !aOldName.IsEmpty() && !aNewName.IsEmpty(), /* void */ );
+    KI_CHECK( m_variantNames.contains( aOldName ), /* void */ );
 
     m_variantNames.erase( aOldName );
     m_variantNames.insert( aNewName );
@@ -2296,10 +2298,10 @@ void SCHEMATIC::RenameVariant( const wxString& aOldName, const wxString& aNewNam
 void SCHEMATIC::CopyVariant( const wxString& aSourceVariant, const wxString& aNewVariant,
                              SCH_COMMIT* aCommit )
 {
-    wxCHECK( m_rootSheet, /* void */ );
-    wxCHECK( !aSourceVariant.IsEmpty() && !aNewVariant.IsEmpty(), /* void */ );
-    wxCHECK( m_variantNames.contains( aSourceVariant ), /* void */ );
-    wxCHECK( !m_variantNames.contains( aNewVariant ), /* void */ );
+    KI_CHECK( m_rootSheet, /* void */ );
+    KI_CHECK( !aSourceVariant.IsEmpty() && !aNewVariant.IsEmpty(), /* void */ );
+    KI_CHECK( m_variantNames.contains( aSourceVariant ), /* void */ );
+    KI_CHECK( !m_variantNames.contains( aNewVariant ), /* void */ );
 
     AddVariant( aNewVariant );
 
@@ -2374,7 +2376,7 @@ void SCHEMATIC::SaveToHistory( const wxString& aProjectPath, std::vector<HISTORY
     // Verify we're saving for the correct project
     if( !projPath.IsSameAs( aProjectPath ) )
     {
-        wxLogTrace( traceAutoSave, wxS( "[history] sch saver skipping - project path mismatch: %s vs %s" ), projPath,
+        KI_LOG_TRACE( traceAutoSave, wxS( "[history] sch saver skipping - project path mismatch: %s vs %s" ), projPath,
                     aProjectPath );
         return;
     }
@@ -2432,13 +2434,13 @@ void SCHEMATIC::SaveToHistory( const wxString& aProjectPath, std::vector<HISTORY
             entry.formatMode = mode;
             aFileData.push_back( std::move( entry ) );
 
-            wxLogTrace( traceAutoSave,
+            KI_LOG_TRACE( traceAutoSave,
                         wxS( "[history] sch saver serialized %zu bytes for '%s' -> '%s'" ),
                         aFileData.back().content.size(), absPath, rel );
         }
         catch( const IO_ERROR& ioe )
         {
-            wxLogTrace( traceAutoSave, wxS( "[history] sch saver serialize failed for '%s': %s" ),
+            KI_LOG_TRACE( traceAutoSave, wxS( "[history] sch saver serialize failed for '%s': %s" ),
                         absPath, wxString::FromUTF8( ioe.What() ) );
         }
     }

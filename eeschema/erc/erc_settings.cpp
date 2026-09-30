@@ -27,6 +27,7 @@
 #include <sch_screen.h>
 #include <settings/json_settings_internals.h>
 #include <settings/parameters.h>
+#include <core/ki_assert.h>
 
 
 const int ercSettingsSchemaVersion = 0;
@@ -279,7 +280,7 @@ SEVERITY ERC_SETTINGS::GetSeverity( int aErrorCode ) const
     // Warning-or-error is controlled by which errorCode it is
     else if( aErrorCode == ERCE_PIN_TO_PIN_ERROR )
     {
-        wxASSERT( m_ERCSeverities.count( ERCE_PIN_TO_PIN_WARNING ) );
+        KI_ASSERT( m_ERCSeverities.count( ERCE_PIN_TO_PIN_WARNING ) );
 
         if( m_ERCSeverities.at( ERCE_PIN_TO_PIN_WARNING ) == RPT_SEVERITY_IGNORE )
             return RPT_SEVERITY_IGNORE;
@@ -288,7 +289,7 @@ SEVERITY ERC_SETTINGS::GetSeverity( int aErrorCode ) const
     }
     else if( aErrorCode == ERCE_PIN_TO_PIN_WARNING )
     {
-        wxASSERT( m_ERCSeverities.count( ERCE_PIN_TO_PIN_WARNING ) );
+        KI_ASSERT( m_ERCSeverities.count( ERCE_PIN_TO_PIN_WARNING ) );
 
         if( m_ERCSeverities.at( ERCE_PIN_TO_PIN_WARNING ) == RPT_SEVERITY_IGNORE )
             return RPT_SEVERITY_IGNORE;
@@ -304,7 +305,7 @@ SEVERITY ERC_SETTINGS::GetSeverity( int aErrorCode ) const
         return RPT_SEVERITY_ERROR;
     }
 
-    wxCHECK_MSG( m_ERCSeverities.count( aErrorCode ), RPT_SEVERITY_IGNORE,
+    KI_CHECK_MSG( m_ERCSeverities.count( aErrorCode ), RPT_SEVERITY_IGNORE,
             wxS( "Missing severity from map in ERC_SETTINGS!" ) );
 
     return m_ERCSeverities.at( aErrorCode );
@@ -327,7 +328,7 @@ struct CompareMarkers
 {
     bool operator()( const SCH_MARKER* item1, const SCH_MARKER* item2 ) const
     {
-        wxCHECK( item1 && item2, false );
+        KI_CHECK( item1 && item2, false );
 
         const VECTOR2I& p1 = item1->GetPosition();
         const VECTOR2I& p2 = item2->GetPosition();

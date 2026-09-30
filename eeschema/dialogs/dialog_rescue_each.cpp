@@ -36,6 +36,7 @@
 
 #include <wx/msgdlg.h>
 #include <wx/dcclient.h>
+#include <core/ki_assert.h>
 
 
 class DIALOG_RESCUE_EACH: public DIALOG_RESCUE_EACH_BASE
@@ -85,7 +86,7 @@ DIALOG_RESCUE_EACH::DIALOG_RESCUE_EACH( wxWindow* aParent, RESCUER& aRescuer, SC
         m_currentSheet( aCurrentSheet ),
         m_askShowAgain( aAskShowAgain )
 {
-    wxASSERT( aCurrentSheet );
+    KI_ASSERT( aCurrentSheet );
 
     m_previewOldWidget = new SYMBOL_PREVIEW_WIDGET( m_previewOldPanel, &Kiway(), false, aGalBackEndType );
 	m_SizerOldPanel->Add( m_previewOldWidget, 1, wxEXPAND | wxALL, 5 );

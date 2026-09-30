@@ -48,6 +48,8 @@
 #include <map>
 #include <set>
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 static bool sortPinsByNumber( SCH_PIN* aPin1, SCH_PIN* aPin2 );
 
@@ -1070,7 +1072,7 @@ XNODE* NETLIST_EXPORTER_XML::makeLibParts()
             }
         }
 
-        wxLogTrace( "CVPCB_PINCOUNT",
+        KI_LOG_TRACE( "CVPCB_PINCOUNT",
                 wxString::Format( "makeLibParts: lib='%s' part='%s' pinList(size)=%zu",
                           libNickname, lcomp->GetName(), pinList.size() ) );
 
@@ -1098,7 +1100,7 @@ XNODE* NETLIST_EXPORTER_XML::makeLibParts()
                         pin->AddAttribute( wxT( "name" ), basePin->GetShownName() );
                         pin->AddAttribute( wxT( "type" ), basePin->GetCanonicalElectricalTypeName() );
 
-                        wxLogTrace( "CVPCB_PINCOUNT",
+                        KI_LOG_TRACE( "CVPCB_PINCOUNT",
                                     wxString::Format( "makeLibParts: -> pin num='%s' name='%s' (expanded)",
                                                       num, basePin->GetShownName() ) );
                     }
@@ -1111,7 +1113,7 @@ XNODE* NETLIST_EXPORTER_XML::makeLibParts()
                     pin->AddAttribute( wxT( "name" ), basePin->GetShownName() );
                     pin->AddAttribute( wxT( "type" ), basePin->GetCanonicalElectricalTypeName() );
 
-                    wxLogTrace( "CVPCB_PINCOUNT",
+                    KI_LOG_TRACE( "CVPCB_PINCOUNT",
                                 wxString::Format( "makeLibParts: -> pin num='%s' name='%s'",
                                                   basePin->GetShownNumber(),
                                                   basePin->GetShownName() ) );
@@ -1308,7 +1310,7 @@ XNODE* NETLIST_EXPORTER_XML::makeListOfNets( unsigned aCtl )
             wxString              baseName = netNode.m_Pin->GetShownName();
             wxString              pinType = netNode.m_Pin->GetCanonicalElectricalTypeName();
 
-            wxLogTrace( traceStackedPins,
+            KI_LOG_TRACE( traceStackedPins,
                         wxString::Format( "XML: net='%s' ref='%s' base='%s' shownNum='%s' expand=%zu",
                                           net_record->m_Name, refText, baseName,
                                           netNode.m_Pin->GetShownNumber(), nums.size() ) );
@@ -1330,7 +1332,7 @@ XNODE* NETLIST_EXPORTER_XML::makeListOfNets( unsigned aCtl )
                     && ( net_record->m_Nodes.size() == 1 || allNetPinsStacked ) )
                 {
                     typeAttr += wxT( "+no_connect" );
-                    wxLogTrace( traceStackedPins,
+                    KI_LOG_TRACE( traceStackedPins,
                                 wxString::Format( "XML: marking node ref='%s' pin='%s' as no_connect",
                                                   refText, num ) );
                 }
@@ -1406,7 +1408,7 @@ void NETLIST_EXPORTER_XML::getSheetComponentClasses()
 
             SCH_SHEET_PATH newPath = sheet;
             newPath.push_back( sheetItem );
-            wxASSERT( !m_sheetComponentClasses.contains( newPath ) );
+            KI_ASSERT( !m_sheetComponentClasses.contains( newPath ) );
 
             m_sheetComponentClasses[newPath] = sheetComponentClasses;
         }

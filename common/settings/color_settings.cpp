@@ -27,6 +27,8 @@
 #include <wx/translation.h>
 
 #include "builtin_color_themes.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 ///! Update the schema version whenever a migration is required
@@ -49,7 +51,7 @@ COLOR_SETTINGS::COLOR_SETTINGS( const wxString& aFilename, bool aAbsolutePath ) 
                                             &m_overrideSchItemColors, false ) );
 
 #define CLR( x, y ) \
-    wxASSERT( s_defaultTheme.count( y ) ); \
+    KI_ASSERT( s_defaultTheme.count( y ) ); \
     m_params.emplace_back( new COLOR_MAP_PARAM( x, y, s_defaultTheme.at( y ), &m_colors ) );
 
     CLR( "schematic.anchor",            LAYER_SCHEMATIC_ANCHOR       );
@@ -113,7 +115,7 @@ COLOR_SETTINGS::COLOR_SETTINGS( const wxString& aFilename, bool aAbsolutePath ) 
     {
         if( !s_defaultTheme.count( id ) )
         {
-            wxLogTrace( "colors", "Missing default color for gerbview layer %d", id );
+            KI_LOG_TRACE( "colors", "Missing default color for gerbview layer %d", id );
             continue;
         }
 
@@ -364,13 +366,13 @@ bool COLOR_SETTINGS::migrateSchema0to1()
 
     if( !m_manager )
     {
-        wxLogTrace( traceSettings, wxT( "Error: COLOR_SETTINGS migration cannot run unmanaged!" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "Error: COLOR_SETTINGS migration cannot run unmanaged!" ) );
         return false;
     }
 
     if( !Contains( "fpedit" ) )
     {
-        wxLogTrace( traceSettings,
+        KI_LOG_TRACE( traceSettings,
                     wxT( "migrateSchema0to1: %s doesn't have fpedit settings; skipping." ),
                     m_filename );
         return true;

@@ -37,6 +37,8 @@
 
 #include <functional>
 #include <wx/log.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SCH_COMMIT::SCH_COMMIT( TOOL_MANAGER* aToolMgr ) :
@@ -71,7 +73,7 @@ SCH_COMMIT::~SCH_COMMIT()
 COMMIT& SCH_COMMIT::Stage( EDA_ITEM *aItem, CHANGE_TYPE aChangeType, BASE_SCREEN *aScreen,
                            RECURSE_MODE aRecurse )
 {
-    wxCHECK( aItem, *this );
+    KI_CHECK( aItem, *this );
 
     if( aRecurse == RECURSE_MODE::RECURSE )
     {
@@ -223,7 +225,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
         SCH_ITEM* schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
         int       changeType = entry.m_type & CHT_TYPE;
 
-        wxCHECK2( schItem, continue );
+        KI_CHECK2( schItem, continue );
 
         if( changeType == CHT_REMOVE && schItem->GetParentGroup() )
             removedItemGroups.emplace_back( schItem->GetParentGroup(), entry.m_screen );
@@ -239,8 +241,8 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
         SCH_ITEM*   schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
         SCH_SCREEN* screen = dynamic_cast<SCH_SCREEN*>( entry.m_screen );
 
-        wxCHECK2( schItem, continue );
-        wxCHECK2( screen, continue );
+        KI_CHECK2( schItem, continue );
+        KI_CHECK2( screen, continue );
 
         if( !schematic )
             schematic = schItem->Schematic();
@@ -391,7 +393,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
             {
                 const SCH_SHEET* modifiedSheet = static_cast<const SCH_SHEET*>( schItem );
                 const SCH_SHEET* originalSheet = static_cast<const SCH_SHEET*>( itemCopy );
-                wxCHECK2( modifiedSheet && originalSheet, continue );
+                KI_CHECK2( modifiedSheet && originalSheet, continue );
 
                 if( originalSheet->HasPageNumberChanges( *modifiedSheet ) )
                     refreshHierarchy = true;
@@ -407,7 +409,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
         }
 
         default:
-            wxASSERT( false );
+            KI_ASSERT( false );
             break;
         }
 
@@ -460,7 +462,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
 
             if( dirtyConnectivity )
             {
-                wxLogTrace( wxS( "CONN_PROFILE" ),
+                KI_LOG_TRACE( wxS( "CONN_PROFILE" ),
                             wxS( "SCH_COMMIT::pushSchEdit() %s clean up connectivity rebuild." ),
                             connectivityCleanUp == LOCAL_CLEANUP ? wxS( "local" ) : wxS( "global" ) );
                 frame->RecalculateConnections( this, connectivityCleanUp );
@@ -598,7 +600,7 @@ void SCH_COMMIT::Revert()
         SCH_ITEM*   copy = dynamic_cast<SCH_ITEM*>( ent.m_copy );
         SCH_SCREEN* screen = dynamic_cast<SCH_SCREEN*>( ent.m_screen );
 
-        wxCHECK2( item && screen, continue );
+        KI_CHECK2( item && screen, continue );
 
         if( !schematic )
             schematic = item->Schematic();
@@ -631,7 +633,7 @@ void SCH_COMMIT::Revert()
 
         case CHT_MODIFY:
         {
-            wxCHECK2( copy, break );
+            KI_CHECK2( copy, break );
 
             if( view )
                 view->Remove( item );
@@ -696,7 +698,7 @@ void SCH_COMMIT::Revert()
         }
 
         default:
-            wxASSERT( false );
+            KI_ASSERT( false );
             break;
         }
     }

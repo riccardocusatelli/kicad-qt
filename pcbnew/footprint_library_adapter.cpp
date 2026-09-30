@@ -30,6 +30,8 @@
 #include <magic_enum.hpp>
 #include <wx/hash.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 using namespace std::chrono_literals;
 
@@ -104,7 +106,7 @@ void FOOTPRINT_LIBRARY_ADAPTER::enumerateLibrary( LIB_DATA* aLib, const wxString
         }
         catch( IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "FP: %s:%s enumeration error: %s",
+            KI_LOG_TRACE( traceLibraries, "FP: %s:%s enumeration error: %s",
                         nickname, footprintName, e.What() );
         }
     }
@@ -139,7 +141,7 @@ std::optional<LIB_STATUS> FOOTPRINT_LIBRARY_ADAPTER::LoadOne( LIB_DATA* aLib )
     {
         aLib->status.load_status = LOAD_STATUS::LOAD_ERROR;
         aLib->status.error = LIBRARY_ERROR( { e.What() } );
-        wxLogTrace( traceLibraries, "FP: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
+        KI_LOG_TRACE( traceLibraries, "FP: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
     }
 
     return aLib->status;
@@ -199,7 +201,7 @@ std::vector<wxString> FOOTPRINT_LIBRARY_ADAPTER::GetFootprintNames( const wxStri
         }
         catch( IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "FP: Exception enumerating library %s: %s", lib->row->Nickname(), e.What() );
+            KI_LOG_TRACE( traceLibraries, "FP: Exception enumerating library %s: %s", lib->row->Nickname(), e.What() );
         }
     }
 
@@ -216,12 +218,12 @@ long long FOOTPRINT_LIBRARY_ADAPTER::GenerateTimestamp( const wxString* aNicknam
 
     if( aNickname )
     {
-        wxCHECK( HasLibrary( *aNickname, true ), hash );
+        KI_CHECK( HasLibrary( *aNickname, true ), hash );
 
         if( std::optional<const LIB_DATA*> r = fetchIfLoaded( *aNickname ); r.has_value() )
         {
             PCB_IO* plugin = dynamic_cast<PCB_IO*>( ( *r )->plugin.get() );
-            wxCHECK( plugin, hash );
+            KI_CHECK( plugin, hash );
             return plugin->GetLibraryTimestamp( LIBRARY_MANAGER::GetFullURI( ( *r )->row, true ) )
                     + wxHashTable::MakeKey( *aNickname );
         }
@@ -231,7 +233,7 @@ long long FOOTPRINT_LIBRARY_ADAPTER::GenerateTimestamp( const wxString* aNicknam
     {
         if( std::optional<const LIB_DATA*> r = fetchIfLoaded( nickname ); r.has_value() )
         {
-            wxCHECK2( ( *r )->plugin->IsPCB_IO(), continue );
+            KI_CHECK2( ( *r )->plugin->IsPCB_IO(), continue );
             PCB_IO* plugin = static_cast<PCB_IO*>( ( *r )->plugin.get() );
             hash += plugin->GetLibraryTimestamp( LIBRARY_MANAGER::GetFullURI( ( *r )->row, true ) )
                         + wxHashTable::MakeKey( nickname );
@@ -265,7 +267,7 @@ void FOOTPRINT_LIBRARY_ADAPTER::RefreshLibraryIfChanged( const wxString& aNickna
         if( tsIt != PreloadedTimestamps.Get().end() && tsIt->second == currentTimestamp )
             return;
 
-        wxLogTrace( traceLibraries, "FP: %s changed on disk, re-enumerating", aNickname );
+        KI_LOG_TRACE( traceLibraries, "FP: %s changed on disk, re-enumerating", aNickname );
     }
 
     enumerateLibrary( lib, uri );
@@ -283,7 +285,7 @@ void FOOTPRINT_LIBRARY_ADAPTER::RefreshChangedLibraries()
         }
         catch( const IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "FP: %s: refresh failed: %s", nickname, e.What() );
+            KI_LOG_TRACE( traceLibraries, "FP: %s: refresh failed: %s", nickname, e.What() );
         }
     }
 }
@@ -351,12 +353,12 @@ FOOTPRINT* FOOTPRINT_LIBRARY_ADAPTER::LoadFootprint( const wxString& aNickname, 
         }
         catch( const IO_ERROR& ioe )
         {
-            wxLogTrace( traceLibraries, "LoadFootprint: error loading %s:%s: %s", aNickname, aName, ioe.What() );
+            KI_LOG_TRACE( traceLibraries, "LoadFootprint: error loading %s:%s: %s", aNickname, aName, ioe.What() );
         }
     }
     else
     {
-        wxLogTrace( traceLibraries, "LoadFootprint: requested library %s not loaded", aNickname );
+        KI_LOG_TRACE( traceLibraries, "LoadFootprint: requested library %s not loaded", aNickname );
     }
 
     return nullptr;
@@ -388,7 +390,7 @@ FOOTPRINT_LIBRARY_ADAPTER::SAVE_T FOOTPRINT_LIBRARY_ADAPTER::SaveFootprint( cons
                                                                             const FOOTPRINT* aFootprint,
                                                                             bool aOverwrite )
 {
-    wxCHECK( aFootprint, SAVE_SKIPPED );
+    KI_CHECK( aFootprint, SAVE_SKIPPED );
 
     if( std::optional<const LIB_DATA*> lib = fetchIfLoaded( aNickname ) )
     {
@@ -411,7 +413,7 @@ FOOTPRINT_LIBRARY_ADAPTER::SAVE_T FOOTPRINT_LIBRARY_ADAPTER::SaveFootprint( cons
             }
             catch( IO_ERROR& e )
             {
-                wxLogTrace( traceLibraries, "SaveFootprint: error checking for existing footprint %s: %s",
+                KI_LOG_TRACE( traceLibraries, "SaveFootprint: error checking for existing footprint %s: %s",
                             aFootprint->GetFPIDAsString(), e.What() );
                 return SAVE_SKIPPED;
             }
@@ -423,7 +425,7 @@ FOOTPRINT_LIBRARY_ADAPTER::SAVE_T FOOTPRINT_LIBRARY_ADAPTER::SaveFootprint( cons
         }
         catch( IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "SaveFootprint: error saving %s: %s",
+            KI_LOG_TRACE( traceLibraries, "SaveFootprint: error saving %s: %s",
                         aFootprint->GetFPIDAsString(), e.What() );
             return SAVE_SKIPPED;
         }
@@ -462,7 +464,7 @@ FOOTPRINT_LIBRARY_ADAPTER::SAVE_T FOOTPRINT_LIBRARY_ADAPTER::SaveFootprint( cons
     }
     else
     {
-        wxLogTrace( traceLibraries, "SaveFootprint: requested library %s not loaded", aNickname );
+        KI_LOG_TRACE( traceLibraries, "SaveFootprint: requested library %s not loaded", aNickname );
         return SAVE_SKIPPED;
     }
 }
@@ -480,7 +482,7 @@ void FOOTPRINT_LIBRARY_ADAPTER::DeleteFootprint( const wxString& aNickname, cons
         }
         catch( IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "DeleteFootprint: error deleting %s:%s: %s", aNickname,
+            KI_LOG_TRACE( traceLibraries, "DeleteFootprint: error deleting %s:%s: %s", aNickname,
                         aFootprintName, e.What() );
             return;
         }
@@ -503,7 +505,7 @@ void FOOTPRINT_LIBRARY_ADAPTER::DeleteFootprint( const wxString& aNickname, cons
     }
     else
     {
-        wxLogTrace( traceLibraries, "DeleteFootprint: requested library %s not loaded", aNickname );
+        KI_LOG_TRACE( traceLibraries, "DeleteFootprint: requested library %s not loaded", aNickname );
     }
 }
 
@@ -541,15 +543,15 @@ LIBRARY_RESULT<IO_BASE*> FOOTPRINT_LIBRARY_ADAPTER::createPlugin( const LIBRARY_
     }
     else if( type == PCB_IO_MGR::PCB_FILE_UNKNOWN )
     {
-        wxLogTrace( traceLibraries, "FP: Plugin type %s is unknown!", row->Type() );
+        KI_LOG_TRACE( traceLibraries, "FP: Plugin type %s is unknown!", row->Type() );
         wxString msg = wxString::Format( _( "Unknown library type %s " ), row->Type() );
         return tl::unexpected( LIBRARY_ERROR( msg ) );
     }
 
     PCB_IO* plugin = PCB_IO_MGR::FindPlugin( type );
-    wxCHECK( plugin, tl::unexpected( LIBRARY_ERROR( _( "Internal error" ) ) ) );
+    KI_CHECK( plugin, tl::unexpected( LIBRARY_ERROR( _( "Internal error" ) ) ) );
 
-    wxLogTrace( traceLibraries, "FP: Library %s (%s) plugin created", row->Nickname(),
+    KI_LOG_TRACE( traceLibraries, "FP: Library %s (%s) plugin created", row->Nickname(),
                 magic_enum::enum_name( row->Scope() ) );
 
     return plugin;
@@ -559,7 +561,7 @@ LIBRARY_RESULT<IO_BASE*> FOOTPRINT_LIBRARY_ADAPTER::createPlugin( const LIBRARY_
 PCB_IO* FOOTPRINT_LIBRARY_ADAPTER::pcbplugin( const LIB_DATA* aRow )
 {
     // Note: can't use dynamic_cast across compile units on Mac
-    wxCHECK( aRow->plugin->IsPCB_IO(), nullptr );
+    KI_CHECK( aRow->plugin->IsPCB_IO(), nullptr );
     PCB_IO* ret = static_cast<PCB_IO*>( aRow->plugin.get() );
     return ret;
 }

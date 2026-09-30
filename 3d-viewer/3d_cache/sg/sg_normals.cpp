@@ -28,6 +28,8 @@
 
 #include "3d_cache/sg/sg_normals.h"
 #include "3d_cache/sg/sg_helpers.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SGNORMALS::SGNORMALS( SGNODE* aParent ) : SGNODE( aParent )
@@ -38,7 +40,7 @@ SGNORMALS::SGNORMALS( SGNODE* aParent ) : SGNODE( aParent )
     {
         m_Parent = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] inappropriate parent to SGNORMALS "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] inappropriate parent to SGNORMALS "
                                      "(type %d)" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeType() );
@@ -100,19 +102,19 @@ SGNODE* SGNORMALS::FindNode( const char* aNodeName, const SGNODE* aCaller ) noex
 
 void SGNORMALS::unlinkChildNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK( false, /* void */ );
+    KI_CHECK( false, /* void */ );
 }
 
 
 void SGNORMALS::unlinkRefNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK( false, /* void */ );
+    KI_CHECK( false, /* void */ );
 }
 
 
 bool SGNORMALS::AddRefNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK( false, false );
+    KI_CHECK( false, false );
 
     return false;
 }
@@ -120,7 +122,7 @@ bool SGNORMALS::AddRefNode( SGNODE* aNode ) noexcept
 
 bool SGNORMALS::AddChildNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK( false, false );
+    KI_CHECK( false, false );
 
     return false;
 }
@@ -235,7 +237,7 @@ bool SGNORMALS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 {
     if( nullptr == parentNode )
     {
-        wxCHECK( m_Parent, false );
+        KI_CHECK( m_Parent, false );
 
         SGNODE* np = m_Parent;
 
@@ -251,11 +253,11 @@ bool SGNORMALS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
         return false;
     }
 
-    wxCHECK( parentNode == m_Parent, false );
+    KI_CHECK( parentNode == m_Parent, false );
 
     if( !aFile.good() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -278,7 +280,7 @@ bool SGNORMALS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 
 bool SGNORMALS::ReadCache( std::istream& aFile, SGNODE* parentNode )
 {
-    wxCHECK( norms.empty(), false );
+    KI_CHECK( norms.empty(), false );
 
     size_t npts;
     aFile.read( (char*) &npts, sizeof( size_t ) );

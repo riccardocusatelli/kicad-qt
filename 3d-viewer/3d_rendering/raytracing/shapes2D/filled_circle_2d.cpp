@@ -30,13 +30,14 @@
 #include "filled_circle_2d.h"
 #include "../ray.h"
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 FILLED_CIRCLE_2D::FILLED_CIRCLE_2D( const SFVEC2F& aCenter, float aRadius,
                                     const BOARD_ITEM& aBoardItem ) :
         OBJECT_2D( OBJECT_2D_TYPE::FILLED_CIRCLE, aBoardItem )
 {
-    wxASSERT( aRadius > 0.0f ); // If that happens, it should be handled before create this circle
+    KI_ASSERT( aRadius > 0.0f ); // If that happens, it should be handled before create this circle
 
     m_center = aCenter;
     m_radius = aRadius;
@@ -48,7 +49,7 @@ FILLED_CIRCLE_2D::FILLED_CIRCLE_2D( const SFVEC2F& aCenter, float aRadius,
     m_bbox.ScaleNextUp();
     m_centroid = m_bbox.GetCenter();
 
-    wxASSERT( m_bbox.IsInitialized() );
+    KI_ASSERT( m_bbox.IsInitialized() );
 }
 
 
@@ -104,7 +105,7 @@ bool FILLED_CIRCLE_2D::Intersect( const RAYSEG2D& aSegRay, float* aOutT, SFVEC2F
             return false; // Neither intersection was in the ray's half line.
     }
 
-    wxASSERT( ( t > 0.0f ) && ( t <= aSegRay.m_Length ) );
+    KI_ASSERT( ( t > 0.0f ) && ( t <= aSegRay.m_Length ) );
 
     // Convert the intersection to a normalized 0.0 .. 1.0
     if( aOutT )

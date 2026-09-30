@@ -32,6 +32,7 @@
 #define MACROS_H
 
 #include <wx/string.h>
+#include <core/ki_assert.h>
 
 #if defined( __has_attribute )
     #define KI_HAS_ATTRIBUTE( x ) __has_attribute( x )
@@ -94,6 +95,6 @@
 #define TO_STR(x) TO_STR2(x)
 
 #define UNIMPLEMENTED_FOR( type ) \
-        wxFAIL_MSG( wxString::Format( wxT( "%s: unimplemented for %s" ), __FUNCTION__, type ) )
+        KI_FAIL_MSG( wxString::Format( wxT( "%s: unimplemented for %s" ), __FUNCTION__, type ) )
 
 #endif // MACROS_H

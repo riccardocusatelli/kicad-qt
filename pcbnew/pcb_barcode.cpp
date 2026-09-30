@@ -56,6 +56,7 @@
 #include <google/protobuf/any.pb.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 constexpr int ECI_UTF8 = 26;
 
@@ -797,7 +798,7 @@ EDA_ITEM* PCB_BARCODE::Clone() const
 
 void PCB_BARCODE::swapData( BOARD_ITEM* aImage )
 {
-    wxCHECK_RET( aImage && aImage->Type() == PCB_BARCODE_T,
+    KI_CHECK_RET( aImage && aImage->Type() == PCB_BARCODE_T,
                  wxT( "Cannot swap data with non-barcode item." ) );
 
     PCB_BARCODE* other = static_cast<PCB_BARCODE*>( aImage );

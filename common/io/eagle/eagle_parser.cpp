@@ -40,6 +40,7 @@
 #include <functional>
 #include <cstdio>
 #include <array>
+#include <core/ki_log.h>
 
 constexpr auto DEFAULT_ALIGNMENT = ETEXT::BOTTOM_LEFT;
 
@@ -214,7 +215,7 @@ size_t GetNodeCount( const wxXmlNode* aNode )
 
     timer.Stop();
 
-    wxLogTrace( traceEagleIo, wxS( "XML node '%s' count = %zu took %0.4f ms." ),
+    KI_LOG_TRACE( traceEagleIo, wxS( "XML node '%s' count = %zu took %0.4f ms." ),
                 aNode->GetName(), cnt, timer.msecs() );
 
     return cnt;

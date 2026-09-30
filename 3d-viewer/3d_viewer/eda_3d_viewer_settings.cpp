@@ -28,6 +28,7 @@
 #include <wx/config.h>
 
 #include "eda_3d_viewer_settings.h"
+#include <core/ki_assert.h>
 
 using KIGFX::COLOR4D;
 
@@ -83,7 +84,7 @@ PARAM_LAYER_PRESET_3D::PARAM_LAYER_PRESET_3D( const std::string& aPath,
                                       {} ),
         m_presets( aPresetList )
 {
-    wxASSERT( aPresetList );
+    KI_ASSERT( aPresetList );
 
 #define LAYER( n, l ) m_layerToLayerNameMap[l] = n; m_layerNameToLayerMap[n] = l;
 

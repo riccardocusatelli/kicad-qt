@@ -49,6 +49,7 @@
 #include <pad.h>
 #include <zone.h>
 #include <advanced_config.h>
+#include <core/ki_assert.h>
 
 /*
     Checks for copper connections that are less than the specified minimum width
@@ -193,7 +194,7 @@ public:
             ++checked;
         }
 
-        wxCHECK_MSG( checked < total_pts, false, wxT( "Invalid polygon detected.  Missing points to check" ) );
+        KI_CHECK_MSG( checked < total_pts, false, wxT( "Invalid polygon detected.  Missing points to check" ) );
 
         if( !same_point( p, aA ) && ( !x_change || !y_change ) )
             return false;
@@ -226,7 +227,7 @@ public:
             ++checked;
         }
 
-        wxCHECK_MSG( checked < total_pts, false, wxT( "Invalid polygon detected.  Missing points to check" ) );
+        KI_CHECK_MSG( checked < total_pts, false, wxT( "Invalid polygon detected.  Missing points to check" ) );
 
         return ( same_point( p, aA ) || ( x_change && y_change ) );
     }

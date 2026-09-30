@@ -65,6 +65,8 @@
 #include <eeschema_id.h>       // for MAX_UNIT_COUNT_PER_PACKAGE definition
 #include <tool/selection.h>
 #include <wildcards_and_files_ext.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 // Tokens to read/save graphic lines style
@@ -127,7 +129,7 @@ SCH_SHEET* SCH_IO_KICAD_LEGACY::LoadSchematicFile( const wxString& aFileName, SC
                                                    SCH_SHEET*             aAppendToMe,
                                                    const std::map<std::string, UTF8>* aProperties )
 {
-    wxASSERT( !aFileName || aSchematic != nullptr );
+    KI_ASSERT( !aFileName || aSchematic != nullptr );
 
     SCH_SHEET*  sheet;
     wxFileName fn = aFileName;
@@ -135,11 +137,11 @@ SCH_SHEET* SCH_IO_KICAD_LEGACY::LoadSchematicFile( const wxString& aFileName, SC
     // Unfortunately child sheet file names the legacy schematic file format are not fully
     // qualified and are always appended to the project path.  The aFileName attribute must
     // always be an absolute path so the project path can be used for load child sheet files.
-    wxASSERT( fn.IsAbsolute() );
+    KI_ASSERT( fn.IsAbsolute() );
 
     if( aAppendToMe )
     {
-        wxLogTrace( traceSchLegacyPlugin, "Append \"%s\" to sheet \"%s\".",
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Append \"%s\" to sheet \"%s\".",
                     aFileName, aAppendToMe->GetFileName() );
 
         wxFileName normedFn = aAppendToMe->GetFileName();
@@ -153,7 +155,7 @@ SCH_SHEET* SCH_IO_KICAD_LEGACY::LoadSchematicFile( const wxString& aFileName, SC
         if( m_path.IsEmpty() )
             m_path = aSchematic->Project().GetProjectPath();
 
-        wxLogTrace( traceSchLegacyPlugin, "Normalized append path \"%s\".", m_path );
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Normalized append path \"%s\".", m_path );
     }
     else
     {
@@ -178,13 +180,13 @@ SCH_SHEET* SCH_IO_KICAD_LEGACY::LoadSchematicFile( const wxString& aFileName, SC
     else
     {
         m_appending = true;
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         m_rootSheet = &aSchematic->Root();
         sheet = aAppendToMe;
         loadHierarchy( sheet );
     }
 
-    wxASSERT( m_currentPath.size() == 1 );  // only the project path should remain
+    KI_ASSERT( m_currentPath.size() == 1 );  // only the project path should remain
 
     return sheet;
 }
@@ -212,10 +214,10 @@ void SCH_IO_KICAD_LEGACY::loadHierarchy( SCH_SHEET* aSheet )
         // Save the current path so that it gets restored when descending and ascending the
         // sheet hierarchy which allows for sheet schematic files to be nested in folders
         // relative to the last path a schematic was loaded from.
-        wxLogTrace( traceSchLegacyPlugin, "Saving path    '%s'", m_currentPath.top() );
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Saving path    '%s'", m_currentPath.top() );
         m_currentPath.push( fileName.GetPath() );
-        wxLogTrace( traceSchLegacyPlugin, "Current path   '%s'", m_currentPath.top() );
-        wxLogTrace( traceSchLegacyPlugin, "Loading        '%s'", fileName.GetFullPath() );
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Current path   '%s'", m_currentPath.top() );
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Loading        '%s'", fileName.GetFullPath() );
 
         m_rootSheet->SearchHierarchy( fileName.GetFullPath(), &screen );
 
@@ -255,7 +257,7 @@ void SCH_IO_KICAD_LEGACY::loadHierarchy( SCH_SHEET* aSheet )
 
             for( SCH_ITEM* aItem : aSheet->GetScreen()->Items().OfType( SCH_SHEET_T ) )
             {
-                wxCHECK2( aItem->Type() == SCH_SHEET_T, continue );
+                KI_CHECK2( aItem->Type() == SCH_SHEET_T, continue );
                 auto sheet = static_cast<SCH_SHEET*>( aItem );
 
                 // Set the parent to aSheet.  This effectively creates a method to find
@@ -271,7 +273,7 @@ void SCH_IO_KICAD_LEGACY::loadHierarchy( SCH_SHEET* aSheet )
         }
 
         m_currentPath.pop();
-        wxLogTrace( traceSchLegacyPlugin, "Restoring path \"%s\"", m_currentPath.top() );
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Restoring path \"%s\"", m_currentPath.top() );
     }
 }
 
@@ -320,7 +322,7 @@ void SCH_IO_KICAD_LEGACY::LoadContent( LINE_READER& aReader, SCH_SCREEN* aScreen
     m_version = version;
 
     // We cannot safely load content without a set root level.
-    wxCHECK_RET( m_rootSheet,
+    KI_CHECK_RET( m_rootSheet,
             "Cannot call SCH_IO_KICAD_LEGACY::LoadContent() without setting root sheet." );
 
     while( aReader.ReadLine() )
@@ -406,7 +408,7 @@ void SCH_IO_KICAD_LEGACY::loadHeader( LINE_READER& aReader, SCH_SCREEN* aScreen 
 
 void SCH_IO_KICAD_LEGACY::loadPageSettings( LINE_READER& aReader, SCH_SCREEN* aScreen )
 {
-    wxASSERT( aScreen != nullptr );
+    KI_ASSERT( aScreen != nullptr );
 
     wxString    buf;
     const char* line = aReader.Line();
@@ -414,7 +416,7 @@ void SCH_IO_KICAD_LEGACY::loadPageSettings( LINE_READER& aReader, SCH_SCREEN* aS
     PAGE_INFO   pageInfo;
     TITLE_BLOCK tb;
 
-    wxCHECK_RET( strCompare( "$Descr", line, &line ), "Invalid sheet description" );
+    KI_CHECK_RET( strCompare( "$Descr", line, &line ), "Invalid sheet description" );
 
     parseUnquotedString( buf, aReader, line, &line );
 
@@ -650,7 +652,7 @@ SCH_BITMAP* SCH_IO_KICAD_LEGACY::loadBitmap( LINE_READER& aReader )
 
     const char* line = aReader.Line();
 
-    wxCHECK( strCompare( "$Bitmap", line, &line ), nullptr );
+    KI_CHECK( strCompare( "$Bitmap", line, &line ), nullptr );
 
     line = aReader.ReadLine();
 
@@ -741,7 +743,7 @@ SCH_JUNCTION* SCH_IO_KICAD_LEGACY::loadJunction( LINE_READER& aReader )
 
     const char* line = aReader.Line();
 
-    wxCHECK( strCompare( "Connection", line, &line ), nullptr );
+    KI_CHECK( strCompare( "Connection", line, &line ), nullptr );
 
     wxString name;
 
@@ -763,7 +765,7 @@ SCH_NO_CONNECT* SCH_IO_KICAD_LEGACY::loadNoConnect( LINE_READER& aReader )
 
     const char* line = aReader.Line();
 
-    wxCHECK( strCompare( "NoConn", line, &line ), nullptr );
+    KI_CHECK( strCompare( "NoConn", line, &line ), nullptr );
 
     wxString name;
 
@@ -785,7 +787,7 @@ SCH_LINE* SCH_IO_KICAD_LEGACY::loadWire( LINE_READER& aReader )
 
     const char* line = aReader.Line();
 
-    wxCHECK( strCompare( "Wire", line, &line ), nullptr );
+    KI_CHECK( strCompare( "Wire", line, &line ), nullptr );
 
     if( strCompare( "Wire", line, &line ) )
         wire->SetLayer( LAYER_WIRE );
@@ -893,7 +895,7 @@ SCH_BUS_ENTRY_BASE* SCH_IO_KICAD_LEGACY::loadBusEntry( LINE_READER& aReader )
 {
     const char* line = aReader.Line();
 
-    wxCHECK( strCompare( "Entry", line, &line ), nullptr );
+    KI_CHECK( strCompare( "Entry", line, &line ), nullptr );
 
     std::unique_ptr<SCH_BUS_ENTRY_BASE> busEntry;
 
@@ -953,7 +955,7 @@ SCH_TEXT* SCH_IO_KICAD_LEGACY::loadText( LINE_READER& aReader )
     const char* line = aReader.Line();
     KICAD_T     textType = TYPE_NOT_INIT;
 
-    wxCHECK( strCompare( "Text", line, &line ), nullptr );
+    KI_CHECK( strCompare( "Text", line, &line ), nullptr );
 
     if( strCompare( "Notes", line, &line ) )
     {
@@ -1117,7 +1119,7 @@ SCH_SYMBOL* SCH_IO_KICAD_LEGACY::loadSymbol( LINE_READER& aReader )
 {
     const char* line = aReader.Line();
 
-    wxCHECK( strCompare( "$Comp", line, &line ), nullptr );
+    KI_CHECK( strCompare( "$Comp", line, &line ), nullptr );
 
     std::unique_ptr<SCH_SYMBOL> symbol = std::make_unique<SCH_SYMBOL>();
 
@@ -1475,7 +1477,7 @@ std::shared_ptr<BUS_ALIAS> SCH_IO_KICAD_LEGACY::loadBusAlias( LINE_READER& aRead
     auto busAlias = std::make_shared<BUS_ALIAS>();
     const char* line = aReader.Line();
 
-    wxCHECK( strCompare( "BusAlias", line, &line ), nullptr );
+    KI_CHECK( strCompare( "BusAlias", line, &line ), nullptr );
 
     wxString buf;
     parseUnquotedString( buf, aReader, line, &line );
@@ -1498,8 +1500,8 @@ void SCH_IO_KICAD_LEGACY::SaveSchematicFile( const wxString& aFileName, SCH_SHEE
                                              SCHEMATIC*             aSchematic,
                                              const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_RET( aSheet != nullptr, "NULL SCH_SHEET object." );
-    wxCHECK_RET( !aFileName.IsEmpty(), "No schematic file name defined." );
+    KI_CHECK_RET( aSheet != nullptr, "NULL SCH_SHEET object." );
+    KI_CHECK_RET( !aFileName.IsEmpty(), "No schematic file name defined." );
 
     init( aSchematic, aProperties );
 
@@ -1507,7 +1509,7 @@ void SCH_IO_KICAD_LEGACY::SaveSchematicFile( const wxString& aFileName, SCH_SHEE
 
     // File names should be absolute.  Don't assume everything relative to the project path
     // works properly.
-    wxASSERT( fn.IsAbsolute() );
+    KI_ASSERT( fn.IsAbsolute() );
 
     FILE_OUTPUTFORMATTER formatter( fn.GetFullPath() );
 
@@ -1521,12 +1523,12 @@ void SCH_IO_KICAD_LEGACY::SaveSchematicFile( const wxString& aFileName, SCH_SHEE
 
 void SCH_IO_KICAD_LEGACY::Format( SCH_SHEET* aSheet )
 {
-    wxCHECK_RET( aSheet != nullptr, "NULL SCH_SHEET* object." );
-    wxCHECK_RET( m_schematic != nullptr, "NULL SCHEMATIC* object." );
+    KI_CHECK_RET( aSheet != nullptr, "NULL SCH_SHEET* object." );
+    KI_CHECK_RET( m_schematic != nullptr, "NULL SCHEMATIC* object." );
 
     SCH_SCREEN* screen = aSheet->GetScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     // Write the header
     m_out->Print( 0, "%s %s %d\n", "EESchema", SCHEMATIC_HEAD_STRING, EESCHEMA_VERSION );
@@ -1605,7 +1607,7 @@ void SCH_IO_KICAD_LEGACY::Format( SCH_SHEET* aSheet )
             saveText( static_cast<SCH_TEXT*>( item ) );
             break;
         default:
-            wxASSERT( "Unexpected schematic object type in SCH_IO_KICAD_LEGACY::Format()" );
+            KI_ASSERT( "Unexpected schematic object type in SCH_IO_KICAD_LEGACY::Format()" );
         }
     }
 
@@ -1652,7 +1654,7 @@ void SCH_IO_KICAD_LEGACY::Format( SELECTION* aSelection, OUTPUTFORMATTER* aForma
             saveText( static_cast< SCH_TEXT* >( item ) );
             break;
         default:
-            wxASSERT( "Unexpected schematic object type in SCH_IO_KICAD_LEGACY::Format()" );
+            KI_ASSERT( "Unexpected schematic object type in SCH_IO_KICAD_LEGACY::Format()" );
         }
     }
 }
@@ -1792,7 +1794,7 @@ void SCH_IO_KICAD_LEGACY::saveBitmap( const SCH_BITMAP& aBitmap )
 
     const wxImage* image = refImage.GetImage().GetImageData();
 
-    wxCHECK_RET( image != nullptr, "wxImage* is NULL" );
+    KI_CHECK_RET( image != nullptr, "wxImage* is NULL" );
 
     m_out->Print( 0, "$Bitmap\n" );
     m_out->Print( 0, "Pos %-4d %-4d\n",
@@ -1828,7 +1830,7 @@ void SCH_IO_KICAD_LEGACY::saveBitmap( const SCH_BITMAP& aBitmap )
 
 void SCH_IO_KICAD_LEGACY::saveSheet( SCH_SHEET* aSheet )
 {
-    wxCHECK_RET( aSheet != nullptr, "SCH_SHEET* is NULL" );
+    KI_CHECK_RET( aSheet != nullptr, "SCH_SHEET* is NULL" );
 
     m_out->Print( 0, "$Sheet\n" );
     m_out->Print( 0, "S %-4d %-4d %-4d %-4d\n",
@@ -1896,7 +1898,7 @@ void SCH_IO_KICAD_LEGACY::saveSheet( SCH_SHEET* aSheet )
 
 void SCH_IO_KICAD_LEGACY::saveJunction( SCH_JUNCTION* aJunction )
 {
-    wxCHECK_RET( aJunction != nullptr, "SCH_JUNCTION* is NULL" );
+    KI_CHECK_RET( aJunction != nullptr, "SCH_JUNCTION* is NULL" );
 
     m_out->Print( 0, "Connection ~ %-4d %-4d\n",
                   schIUScale.IUToMils( aJunction->GetPosition().x ),
@@ -1906,7 +1908,7 @@ void SCH_IO_KICAD_LEGACY::saveJunction( SCH_JUNCTION* aJunction )
 
 void SCH_IO_KICAD_LEGACY::saveNoConnect( SCH_NO_CONNECT* aNoConnect )
 {
-    wxCHECK_RET( aNoConnect != nullptr, "SCH_NOCONNECT* is NULL" );
+    KI_CHECK_RET( aNoConnect != nullptr, "SCH_NOCONNECT* is NULL" );
 
     m_out->Print( 0, "NoConn ~ %-4d %-4d\n",
                   schIUScale.IUToMils( aNoConnect->GetPosition().x ),
@@ -1916,7 +1918,7 @@ void SCH_IO_KICAD_LEGACY::saveNoConnect( SCH_NO_CONNECT* aNoConnect )
 
 void SCH_IO_KICAD_LEGACY::saveBusEntry( SCH_BUS_ENTRY_BASE* aBusEntry )
 {
-    wxCHECK_RET( aBusEntry != nullptr, "SCH_BUS_ENTRY_BASE* is NULL" );
+    KI_CHECK_RET( aBusEntry != nullptr, "SCH_BUS_ENTRY_BASE* is NULL" );
 
     if( aBusEntry->GetLayer() == LAYER_WIRE )
     {
@@ -1939,7 +1941,7 @@ void SCH_IO_KICAD_LEGACY::saveBusEntry( SCH_BUS_ENTRY_BASE* aBusEntry )
 
 void SCH_IO_KICAD_LEGACY::saveLine( SCH_LINE* aLine )
 {
-    wxCHECK_RET( aLine != nullptr, "SCH_LINE* is NULL" );
+    KI_CHECK_RET( aLine != nullptr, "SCH_LINE* is NULL" );
 
     const char* layer = "Notes";
     const char* width = "Line";
@@ -1981,7 +1983,7 @@ void SCH_IO_KICAD_LEGACY::saveLine( SCH_LINE* aLine )
 
 void SCH_IO_KICAD_LEGACY::saveText( SCH_TEXT* aText )
 {
-    wxCHECK_RET( aText != nullptr, "SCH_TEXT* is NULL" );
+    KI_CHECK_RET( aText != nullptr, "SCH_TEXT* is NULL" );
 
     const char* italics  = "~";
     const char* textType = "Notes";
@@ -2046,7 +2048,7 @@ void SCH_IO_KICAD_LEGACY::saveText( SCH_TEXT* aText )
 
         SCH_LABEL_BASE* label = static_cast<SCH_LABEL_BASE*>( aText );
         auto            shapeLabelIt = sheetLabelNames.find( label->GetShape() );
-        wxCHECK_RET( shapeLabelIt != sheetLabelNames.end(), "Shape not found in names list" );
+        KI_CHECK_RET( shapeLabelIt != sheetLabelNames.end(), "Shape not found in names list" );
 
         m_out->Print( 0, "Text %s %-4d %-4d %-4d %-4d %s %s %d\n%s\n", textType,
                       schIUScale.IUToMils( aText->GetPosition().x ),
@@ -2062,7 +2064,7 @@ void SCH_IO_KICAD_LEGACY::saveText( SCH_TEXT* aText )
 
 void SCH_IO_KICAD_LEGACY::saveBusAlias( std::shared_ptr<BUS_ALIAS> aAlias )
 {
-    wxCHECK_RET( aAlias != nullptr, "BUS_ALIAS* is NULL" );
+    KI_CHECK_RET( aAlias != nullptr, "BUS_ALIAS* is NULL" );
 
     wxString members = boost::algorithm::join( aAlias->Members(), " " );
 

@@ -76,6 +76,7 @@
 #include <drawing_sheet/ds_proxy_view_item.h>
 
 #include "../scripting/python_scripting.h"
+#include <core/ki_assert.h>
 
 
 /* Data to build the layer pair indicator button */
@@ -613,7 +614,7 @@ static wxString ComboBoxUnits( EDA_UNITS aUnits, double aValue, bool aIncludeLab
     switch( aUnits )
     {
     default:
-        wxASSERT_MSG( false, wxT( "Invalid unit" ) );
+        KI_ASSERT_MSG( false, wxT( "Invalid unit" ) );
         KI_FALLTHROUGH;
     case EDA_UNITS::UNSCALED: format = wxT( "%.0f" ); break;
     case EDA_UNITS::MM:       format = wxT( "%.3f" ); break;
@@ -889,7 +890,7 @@ void PCB_EDIT_FRAME::ToggleLibraryTree()
 {
     PCBNEW_SETTINGS* cfg = GetPcbNewSettings();
 
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     wxAuiPaneInfo& db_library_pane = m_auimgr.GetPane( DesignBlocksPaneName() );
 

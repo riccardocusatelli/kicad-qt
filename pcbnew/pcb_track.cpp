@@ -58,6 +58,7 @@
 #include <api/api_utils.h>
 #include <api/api_pcb_utils.h>
 #include <api/board/board_types.pb.h>
+#include <core/ki_assert.h>
 
 using KIGFX::PCB_PAINTER;
 using KIGFX::PCB_RENDER_SETTINGS;
@@ -78,7 +79,7 @@ EDA_ITEM* PCB_TRACK::Clone() const
 
 void PCB_TRACK::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_TRACE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_TRACE_T, /* void */ );
     *this = *static_cast<const PCB_TRACK*>( aOther );
 }
 
@@ -100,7 +101,7 @@ EDA_ITEM* PCB_ARC::Clone() const
 
 void PCB_ARC::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_ARC_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_ARC_T, /* void */ );
     *this = *static_cast<const PCB_ARC*>( aOther );
 }
 
@@ -157,7 +158,7 @@ PCB_VIA& PCB_VIA::operator=( const PCB_VIA &aOther )
 
 void PCB_VIA::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_VIA_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_VIA_T, /* void */ );
     *this = *static_cast<const PCB_VIA*>( aOther );
 }
 
@@ -384,7 +385,7 @@ void PCB_VIA::SetWidth( int aWidth )
 int PCB_VIA::GetWidth() const
 {
     // This is present because of the parent class.  It should never be actually called on a via.
-    wxCHECK_MSG( false, m_padStack.Size( PADSTACK::ALL_LAYERS ).x, "Warning: PCB_VIA::GetWidth called without a layer argument" );
+    KI_CHECK_MSG( false, m_padStack.Size( PADSTACK::ALL_LAYERS ).x, "Warning: PCB_VIA::GetWidth called without a layer argument" );
 }
 
 
@@ -1409,7 +1410,7 @@ FILLING_MODE PCB_VIA::GetFillingMode() const
 
 bool PCB_VIA::IsTented( PCB_LAYER_ID aLayer ) const
 {
-    wxCHECK_MSG( IsFrontLayer( aLayer ) || IsBackLayer( aLayer ), true, "Invalid layer passed to IsTented" );
+    KI_CHECK_MSG( IsFrontLayer( aLayer ) || IsBackLayer( aLayer ), true, "Invalid layer passed to IsTented" );
 
     bool front = IsFrontLayer( aLayer );
 
@@ -2839,7 +2840,7 @@ void PCB_TRACK::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID a
                                          int aClearance, int aError, ERROR_LOC aErrorLoc,
                                          bool ignoreLineWidth ) const
 {
-    wxASSERT_MSG( !ignoreLineWidth, wxT( "IgnoreLineWidth has no meaning for tracks." ) );
+    KI_ASSERT_MSG( !ignoreLineWidth, wxT( "IgnoreLineWidth has no meaning for tracks." ) );
 
 
     switch( Type() )

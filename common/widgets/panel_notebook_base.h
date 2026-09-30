@@ -24,6 +24,7 @@
 #include <wx/aui/auibook.h>
 #include <widgets/wx_grid.h>
 #include <widgets/wx_aui_art_providers.h>
+#include <core/ki_assert.h>
 
 
 class PANEL_NOTEBOOK_BASE : public wxPanel
@@ -44,7 +45,7 @@ public:
         {
             if( !dynamic_cast<WX_AUI_TAB_ART*>( notebook->GetArtProvider() ) )
             {
-                wxFAIL_MSG( "Set wxAuiNotebook WX_AUI_TAB_ART before adding pages" );
+                KI_FAIL_MSG( "Set wxAuiNotebook WX_AUI_TAB_ART before adding pages" );
             }
         }
 

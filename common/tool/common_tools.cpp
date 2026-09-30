@@ -45,6 +45,7 @@
 #include <view/view.h>
 #include <view/view_controls.h>
 #include "macros.h"
+#include <core/ki_assert.h>
 
 
 COMMON_TOOLS::COMMON_TOOLS() :
@@ -91,7 +92,7 @@ void COMMON_TOOLS::SetLastUnits( EDA_UNITS aUnit )
     else if( EDA_UNIT_UTILS::IsMetricUnit( aUnit ) )
         m_metricUnit = aUnit;
     else
-        wxASSERT_MSG( false, wxS( "Invalid unit" ) );
+        KI_ASSERT_MSG( false, wxS( "Invalid unit" ) );
 }
 
 
@@ -181,7 +182,7 @@ int COMMON_TOOLS::CursorControl( const TOOL_EVENT& aEvent )
         return 0;
     }
     default:
-        wxFAIL_MSG( wxS( "CursorControl(): unexpected request" ) );
+        KI_FAIL_MSG( wxS( "CursorControl(): unexpected request" ) );
     }
 
     getViewControls()->SetCursorPosition( cursor, true, true, type );
@@ -218,7 +219,7 @@ int COMMON_TOOLS::PanControl( const TOOL_EVENT& aEvent )
         break;
 
     default:
-        wxFAIL;
+        KI_FAIL();
         break;
     }
 
@@ -627,7 +628,7 @@ int COMMON_TOOLS::GridProperties( const TOOL_EVENT& aEvent )
     case FRAME_FOOTPRINT_VIEWER:  showGridPrefs( _( "Footprint Browser" ) );    break;
     case FRAME_PL_EDITOR:         showGridPrefs( _( "Drawing Sheet Editor" ) ); break;
     case FRAME_GERBER:            showGridPrefs( _( "Gerber Viewer" ) );        break;
-    default:                      wxFAIL_MSG( "Unknown frame: " + GetName() );  break;
+    default:                      KI_FAIL_MSG( "Unknown frame: " + GetName() );  break;
     }
 
     return 0;
@@ -661,7 +662,7 @@ int COMMON_TOOLS::SwitchUnits( const TOOL_EVENT& aEvent )
     else if( EDA_UNIT_UTILS::IsImperialUnit( newUnit ) )
         m_imperialUnit = newUnit;
     else
-        wxASSERT_MSG( false, wxS( "Invalid unit for the frame" ) );
+        KI_ASSERT_MSG( false, wxS( "Invalid unit for the frame" ) );
 
     m_frame->ChangeUserUnits( newUnit );
     return 0;

@@ -64,6 +64,8 @@
 #include <wx/ffile.h>
 #include <wx/mstream.h>
 #include <wx/dcmemory.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 namespace
@@ -387,7 +389,7 @@ bool SYMBOL_EDITOR_EDIT_TOOL::Init()
     SYMBOL_EDITOR_DRAWING_TOOLS* drawingTools = m_toolMgr->GetTool<SYMBOL_EDITOR_DRAWING_TOOLS>();
     SYMBOL_EDITOR_MOVE_TOOL*     moveTool = m_toolMgr->GetTool<SYMBOL_EDITOR_MOVE_TOOL>();
 
-    wxASSERT_MSG( drawingTools, "eeschema.SymbolDrawing tool is not available" );
+    KI_ASSERT_MSG( drawingTools, "eeschema.SymbolDrawing tool is not available" );
 
     auto haveSymbolCondition =
             [&]( const SELECTION& sel )
@@ -934,7 +936,7 @@ int SYMBOL_EDITOR_EDIT_TOOL::Properties( const TOOL_EVENT& aEvent )
             break;
 
         default:
-            wxFAIL_MSG( wxT( "Unhandled item <" ) + item->GetClass() + wxT( ">" ) );
+            KI_FAIL_MSG( wxT( "Unhandled item <" ) + item->GetClass() + wxT( ">" ) );
             break;
         }
     }
@@ -1132,7 +1134,7 @@ int SYMBOL_EDITOR_EDIT_TOOL::PinTable( const TOOL_EVENT& aEvent )
     commit.Modify( symbol, m_frame->GetScreen() );
 
     SCH_SELECTION_TOOL* selTool = m_toolMgr->GetTool<SCH_SELECTION_TOOL>();
-    wxCHECK( selTool, -1 );
+    KI_CHECK( selTool, -1 );
 
     std::vector<SCH_PIN*> selectedPins;
 
@@ -1172,7 +1174,7 @@ int SYMBOL_EDITOR_EDIT_TOOL::ConvertStackedPins( const TOOL_EVENT& aEvent )
         return 0;
 
     SCH_SELECTION_TOOL* selTool = m_toolMgr->GetTool<SCH_SELECTION_TOOL>();
-    wxCHECK( selTool, -1 );
+    KI_CHECK( selTool, -1 );
 
     SCH_SELECTION& selection = selTool->GetSelection();
 
@@ -1371,7 +1373,7 @@ int SYMBOL_EDITOR_EDIT_TOOL::ConvertStackedPins( const TOOL_EVENT& aEvent )
     masterPin->SetNumber( stackedNotation );
 
     // Log information about pins being removed before we remove them
-    wxLogTrace( traceStackedPins,
+    KI_LOG_TRACE( traceStackedPins,
                wxString::Format( "Converting %zu pins to stacked notation '%s'",
                                pinsToConvert.size(), stackedNotation ) );
 
@@ -1383,7 +1385,7 @@ int SYMBOL_EDITOR_EDIT_TOOL::ConvertStackedPins( const TOOL_EVENT& aEvent )
         SCH_PIN* pinToRemove = pinsToConvert[i];
 
         // Log the pin before removing it
-    wxLogTrace( traceStackedPins,
+    KI_LOG_TRACE( traceStackedPins,
            wxString::Format( "Will remove pin '%s' at position (%d, %d)",
                    pinToRemove->GetNumber(),
                    pinToRemove->GetPosition().x,
@@ -1414,7 +1416,7 @@ int SYMBOL_EDITOR_EDIT_TOOL::ExplodeStackedPin( const TOOL_EVENT& aEvent )
         return 0;
 
     SCH_SELECTION_TOOL* selTool = m_toolMgr->GetTool<SCH_SELECTION_TOOL>();
-    wxCHECK( selTool, -1 );
+    KI_CHECK( selTool, -1 );
 
     SCH_SELECTION& selection = selTool->GetSelection();
 
@@ -1571,7 +1573,7 @@ int SYMBOL_EDITOR_EDIT_TOOL::Copy( const TOOL_EVENT& aEvent )
         if( item.Type() == SCH_FIELD_T )
             continue;
 
-        wxASSERT( !item.HasFlag( STRUCT_DELETED ) );
+        KI_ASSERT( !item.HasFlag( STRUCT_DELETED ) );
 
         if( !item.IsSelected() )
             item.SetFlags( STRUCT_DELETED );

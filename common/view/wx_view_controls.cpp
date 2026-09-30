@@ -43,6 +43,8 @@
 #include <kiway.h>
 #include <kiplatform/ui.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #ifdef __WXMSW__
 #define USE_MOUSE_CAPTURE
@@ -382,7 +384,7 @@ void WX_VIEW_CONTROLS::onMotion( wxMouseEvent& aEvent )
 
                 double scale = exp( d.y * m_settings.m_zoomSpeed * 0.001 );
 
-                wxLogTrace( traceZoomScroll, wxString::Format( "dy: %f  scale: %f", d.y, scale ) );
+                KI_LOG_TRACE( traceZoomScroll, wxString::Format( "dy: %f  scale: %f", d.y, scale ) );
 
                 m_view->SetScale( m_view->GetScale() * scale, m_view->ToWorld( m_zoomStartPoint ) );
                 aEvent.StopPropagation();
@@ -794,7 +796,7 @@ void WX_VIEW_CONTROLS::onScroll( wxScrollWinEvent& aEvent )
         }
         else
         {
-            wxCHECK_MSG( false, /* void */, wxT( "Unhandled event type" ) );
+            KI_CHECK_MSG( false, /* void */, wxT( "Unhandled event type" ) );
         }
 
         VECTOR2D scroll = m_view->ToWorld( m_view->GetScreenPixelSize(), false ) * dist;
@@ -1094,7 +1096,7 @@ bool WX_VIEW_CONTROLS::handleAutoPanning( const wxMouseEvent& aEvent )
     case DRAG_ZOOMING: return false;
     }
 
-    wxCHECK_MSG( false, false, wxT( "This line should never be reached" ) );
+    KI_CHECK_MSG( false, false, wxT( "This line should never be reached" ) );
 
     return false;
 }

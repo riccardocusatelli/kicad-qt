@@ -41,6 +41,7 @@
 #include <refdes_tracker.h>
 #include <sch_symbol.h>
 #include <sch_edit_frame.h>
+#include <core/ki_assert.h>
 
 
 void SCH_REFERENCE_LIST::RemoveItem( unsigned int aIndex )
@@ -335,7 +336,7 @@ void SCH_REFERENCE_LIST::ReannotateByOptions( ANNOTATE_ORDER_T             aSort
         if( aHierarchy )
         {
             SCH_SHEET_PATH* path = aHierarchy->FindSheetForPath( &ref.GetSheetPath() );
-            wxCHECK2_MSG( path, continue,
+            KI_CHECK2_MSG( path, continue,
                           wxS( "Attempting to annotate item on sheet not part of the "
                                "hierarchy?" ) );
 
@@ -511,7 +512,7 @@ void SCH_REFERENCE_LIST::Annotate( bool aUseSheetNum, int aSheetIntervalId, int 
         if( aStartAtCurrent && ref_unit.m_numRef > 0 )
             minRefId = ref_unit.m_numRef;
 
-        wxCHECK( ref_unit.GetLibPart(), /* void */ );
+        KI_CHECK( ref_unit.GetLibPart(), /* void */ );
 
         // Annotation of one part per package symbols (trivial case).
         if( ref_unit.GetLibPart()->GetUnitCount() <= 1 )
@@ -605,7 +606,7 @@ void SCH_REFERENCE_LIST::Annotate( bool aUseSheetNum, int aSheetIntervalId, int 
     // Remove aAdditionalRefs references
     m_flatList.erase( m_flatList.begin() + originalSize, m_flatList.end() );
 
-    wxASSERT( originalSize == GetCount() ); // Make sure we didn't make a mistake
+    KI_ASSERT( originalSize == GetCount() ); // Make sure we didn't make a mistake
 }
 
 
@@ -763,7 +764,7 @@ int SCH_REFERENCE_LIST::CheckAnnotation( ANNOTATION_ERROR_HANDLER aHandler )
 
 SCH_REFERENCE::SCH_REFERENCE( SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aSheetPath )
 {
-    wxASSERT( aSymbol != nullptr );
+    KI_ASSERT( aSymbol != nullptr );
 
     m_rootSymbol = aSymbol;
 
@@ -825,7 +826,7 @@ void SCH_REFERENCE::Annotate()
 
 bool SCH_REFERENCE::AlwaysAnnotate() const
 {
-    wxCHECK( m_rootSymbol && m_rootSymbol->GetLibSymbolRef()
+    KI_CHECK( m_rootSymbol && m_rootSymbol->GetLibSymbolRef()
           && !m_rootSymbol->GetRef( &m_sheetPath ).IsEmpty(), false );
 
     return m_rootSymbol->GetLibSymbolRef()->IsPower()
@@ -949,7 +950,7 @@ wxString SCH_REFERENCE_LIST::Shorthand( std::vector<SCH_REFERENCE> aList,
 
 bool SCH_REFERENCE::GetSymbolDNP( const wxString& aVariant ) const
 {
-    wxCHECK( m_rootSymbol, false );
+    KI_CHECK( m_rootSymbol, false );
 
     return m_rootSymbol->GetDNP( &m_sheetPath, aVariant );
 }
@@ -957,7 +958,7 @@ bool SCH_REFERENCE::GetSymbolDNP( const wxString& aVariant ) const
 
 bool SCH_REFERENCE::GetSymbolExcludedFromBOM( const wxString& aVariant ) const
 {
-    wxCHECK( m_rootSymbol, false );
+    KI_CHECK( m_rootSymbol, false );
 
     return m_rootSymbol->GetExcludedFromBOM( &m_sheetPath, aVariant );
 }
@@ -965,7 +966,7 @@ bool SCH_REFERENCE::GetSymbolExcludedFromBOM( const wxString& aVariant ) const
 
 bool SCH_REFERENCE::GetSymbolExcludedFromSim( const wxString& aVariant ) const
 {
-    wxCHECK( m_rootSymbol, false );
+    KI_CHECK( m_rootSymbol, false );
 
     return m_rootSymbol->GetExcludedFromSim( &m_sheetPath, aVariant );
 }
@@ -973,7 +974,7 @@ bool SCH_REFERENCE::GetSymbolExcludedFromSim( const wxString& aVariant ) const
 
 bool SCH_REFERENCE::GetSymbolExcludedFromBoard() const
 {
-    wxCHECK( m_rootSymbol, false );
+    KI_CHECK( m_rootSymbol, false );
 
     return m_rootSymbol->GetExcludedFromBoard();
 }
@@ -981,7 +982,7 @@ bool SCH_REFERENCE::GetSymbolExcludedFromBoard() const
 
 bool SCH_REFERENCE::GetSymbolExcludedFromPosFiles( const wxString& aVariant ) const
 {
-    wxCHECK( m_rootSymbol, false );
+    KI_CHECK( m_rootSymbol, false );
 
     return m_rootSymbol->GetExcludedFromPosFiles( &m_sheetPath, aVariant );
 }
@@ -1000,7 +1001,7 @@ wxString SCH_REFERENCE::formatRefStr( int aNumber ) const
 
 void SCH_REFERENCE::SetSymbolDNP( bool aEnable, const wxString& aVariant )
 {
-    wxCHECK( m_rootSymbol, /* void */ );
+    KI_CHECK( m_rootSymbol, /* void */ );
 
     m_rootSymbol->SetDNP( aEnable, &m_sheetPath, aVariant );
 }
@@ -1008,7 +1009,7 @@ void SCH_REFERENCE::SetSymbolDNP( bool aEnable, const wxString& aVariant )
 
 void SCH_REFERENCE::SetSymbolExcludedFromBOM( bool aEnable, const wxString& aVariant )
 {
-    wxCHECK( m_rootSymbol, /* void */ );
+    KI_CHECK( m_rootSymbol, /* void */ );
 
     m_rootSymbol->SetExcludedFromBOM( aEnable, &m_sheetPath, aVariant );
 }
@@ -1016,7 +1017,7 @@ void SCH_REFERENCE::SetSymbolExcludedFromBOM( bool aEnable, const wxString& aVar
 
 void SCH_REFERENCE::SetSymbolExcludedFromSim( bool aEnable, const wxString& aVariant )
 {
-    wxCHECK( m_rootSymbol, /* void */ );
+    KI_CHECK( m_rootSymbol, /* void */ );
 
     m_rootSymbol->SetExcludedFromSim( aEnable, &m_sheetPath, aVariant );
 }
@@ -1024,7 +1025,7 @@ void SCH_REFERENCE::SetSymbolExcludedFromSim( bool aEnable, const wxString& aVar
 
 void SCH_REFERENCE::SetSymbolExcludedFromBoard( bool aEnable )
 {
-    wxCHECK( m_rootSymbol, /* void */ );
+    KI_CHECK( m_rootSymbol, /* void */ );
 
     m_rootSymbol->SetExcludedFromBoard( aEnable );
 }
@@ -1032,7 +1033,7 @@ void SCH_REFERENCE::SetSymbolExcludedFromBoard( bool aEnable )
 
 void SCH_REFERENCE::SetSymbolExcludedFromPosFiles( bool aEnable, const wxString& aVariant )
 {
-    wxCHECK( m_rootSymbol, /* void */ );
+    KI_CHECK( m_rootSymbol, /* void */ );
 
     m_rootSymbol->SetExcludedFromPosFiles( aEnable, &m_sheetPath, aVariant );
 }

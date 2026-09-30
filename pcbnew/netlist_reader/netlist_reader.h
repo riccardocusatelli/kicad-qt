@@ -29,6 +29,7 @@
 
 #include <macros.h>
 #include <lib_id.h>
+#include <core/ki_assert.h>
 
 
 class COMPONENT;
@@ -115,7 +116,7 @@ public:
                     NETLIST*      aNetlist,
                     CMP_READER*   aFootprintLinkReader = nullptr )
     {
-        wxASSERT( aLineReader != nullptr );
+        KI_ASSERT( aLineReader != nullptr );
 
         m_lineReader           = aLineReader;
         m_footprintReader      = aFootprintLinkReader;

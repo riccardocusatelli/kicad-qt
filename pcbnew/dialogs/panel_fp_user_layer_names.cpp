@@ -34,6 +34,7 @@
 #include <board_design_settings.h>
 #include <bitmaps.h>
 #include <confirm.h>
+#include <core/ki_assert.h>
 
 
 class LAYER_NAMES_GRID_TABLE : public wxGridTableBase
@@ -62,7 +63,7 @@ public:
         {
         case 0:  return aTypeName == wxGRID_VALUE_NUMBER;
         case 1:  return aTypeName == wxGRID_VALUE_STRING;
-        default: wxFAIL; return false;
+        default: KI_FAIL(); return false;
         }
     }
 

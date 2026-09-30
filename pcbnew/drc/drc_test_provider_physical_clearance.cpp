@@ -36,6 +36,7 @@
 #include <drc/drc_rtree.h>
 #include <drc/drc_item.h>
 #include <drc/drc_test_provider.h>
+#include <core/ki_assert.h>
 
 /*
     Physical clearance tests.
@@ -652,7 +653,7 @@ int DRC_TEST_PROVIDER_PHYSICAL_CLEARANCE::testItemAgainstItem( BOARD_ITEM* aItem
             if( layers.Contains( F_Cu ) && layers.Contains( B_Cu ) )
                 layers |= boardCopperLayers;
 
-            wxCHECK_MSG( layers.Contains( aLayer ), violations,
+            KI_CHECK_MSG( layers.Contains( aLayer ), violations,
                          wxT( "Bug!  Vias should only be checked for layers on which they exist" ) );
 
             itemHoleShape = aItem->GetEffectiveHoleShape();
@@ -675,7 +676,7 @@ int DRC_TEST_PROVIDER_PHYSICAL_CLEARANCE::testItemAgainstItem( BOARD_ITEM* aItem
             if( layers.Contains( F_Cu ) && layers.Contains( B_Cu ) )
                 layers |= boardCopperLayers;
 
-            wxCHECK_MSG( layers.Contains( aLayer ), violations,
+            KI_CHECK_MSG( layers.Contains( aLayer ), violations,
                          wxT( "Bug!  Vias should only be checked for layers on which they exist" ) );
 
             otherHoleShape = aOther->GetEffectiveHoleShape();

@@ -29,6 +29,7 @@
 #include <kiway.h>
 #include <widgets/search_pane_tab.h>
 #include <widgets/bitmap_button.h>
+#include <core/ki_assert.h>
 
 
 #define ID_TOGGLE_ZOOM_TO_SELECTION    14000
@@ -158,7 +159,7 @@ void SEARCH_PANE::OnLanguageChange( wxCommandEvent& aEvent )
         wxWindow* page = m_notebook->GetPage( i );
         SEARCH_PANE_TAB* tab = dynamic_cast<SEARCH_PANE_TAB*>( page );
 
-        wxCHECK( tab, /* void */ );
+        KI_CHECK( tab, /* void */ );
 
         tab->RefreshColumnNames();
         m_notebook->SetPageText( i, wxGetTranslation( tab->GetSearchHandler()->GetName() ) );

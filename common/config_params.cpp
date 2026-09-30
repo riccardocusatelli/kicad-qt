@@ -29,11 +29,12 @@
 #include <math/util.h>             // for KiROUND
 #include <wx/config.h>           // for wxConfigBase
 #include <wx/debug.h>            // for wxASSERT
+#include <core/ki_assert.h>
 
 void wxConfigLoadParams( wxConfigBase* aCfg, const std::vector<std::unique_ptr<PARAM_CFG>>& aList,
                          const wxString& aGroup )
 {
-    wxASSERT( aCfg );
+    KI_ASSERT( aCfg );
 
     for( const auto& param : aList )
     {
@@ -52,7 +53,7 @@ void wxConfigLoadParams( wxConfigBase* aCfg, const std::vector<std::unique_ptr<P
 
 void wxConfigLoadSetups( wxConfigBase* aCfg, const std::vector<std::unique_ptr<PARAM_CFG>>& aList )
 {
-    wxASSERT( aCfg );
+    KI_ASSERT( aCfg );
 
     for( const auto& param : aList )
     {
@@ -67,7 +68,7 @@ void wxConfigLoadSetups( wxConfigBase* aCfg, const std::vector<std::unique_ptr<P
 void wxConfigSaveParams( wxConfigBase* aCfg, const std::vector<std::unique_ptr<PARAM_CFG>>& aList,
                          const wxString& aGroup )
 {
-    wxASSERT( aCfg );
+    KI_ASSERT( aCfg );
 
     for( const auto& param : aList )
     {
@@ -94,7 +95,7 @@ void wxConfigSaveParams( wxConfigBase* aCfg, const std::vector<std::unique_ptr<P
 
 void wxConfigSaveSetups( wxConfigBase* aCfg, const std::vector<std::unique_ptr<PARAM_CFG>>& aList )
 {
-    wxASSERT( aCfg );
+    KI_ASSERT( aCfg );
 
     for( const auto& param : aList )
     {

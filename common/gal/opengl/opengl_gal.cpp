@@ -60,6 +60,8 @@
 #include <memory>
 #include <list>
 #include <vector>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 using namespace std::placeholders;
 using namespace KIGFX;
 
@@ -455,7 +457,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
 OPENGL_GAL::~OPENGL_GAL()
 {
     GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
-    wxASSERT( gl_mgr );
+    KI_ASSERT( gl_mgr );
 
     if( gl_mgr )
     {
@@ -603,10 +605,10 @@ void OPENGL_GAL::BeginDrawing()
     PROF_TIMER totalRealTime( "OPENGL_GAL::beginDrawing()", true );
 #endif /* KICAD_GAL_PROFILE */
 
-    wxASSERT_MSG( m_isContextLocked, "GAL_DRAWING_CONTEXT RAII object should have locked context. "
+    KI_ASSERT_MSG( m_isContextLocked, "GAL_DRAWING_CONTEXT RAII object should have locked context. "
                                      "Calling GAL::beginDrawing() directly is not allowed." );
 
-    wxASSERT_MSG( IsVisible(), "GAL::beginDrawing() must not be entered when GAL is not visible. "
+    KI_ASSERT_MSG( IsVisible(), "GAL::beginDrawing() must not be entered when GAL is not visible. "
                                "Other drawing routines will expect everything to be initialized "
                                "which will not be the case." );
 
@@ -753,7 +755,7 @@ void OPENGL_GAL::BeginDrawing()
 
 #ifdef KICAD_GAL_PROFILE
     totalRealTime.Stop();
-    wxLogTrace( traceGalProfile, wxT( "OPENGL_GAL::beginDrawing(): %.1f ms" ),
+    KI_LOG_TRACE( traceGalProfile, wxT( "OPENGL_GAL::beginDrawing(): %.1f ms" ),
                 totalRealTime.msecs() );
 #endif /* KICAD_GAL_PROFILE */
 }
@@ -773,7 +775,7 @@ void OPENGL_GAL::SetMinLineWidth( float aLineWidth )
 
 void OPENGL_GAL::EndDrawing()
 {
-    wxASSERT_MSG( m_isContextLocked, "What happened to the context lock?" );
+    KI_ASSERT_MSG( m_isContextLocked, "What happened to the context lock?" );
 
     PROF_TIMER cntTotal( "gl-end-total" );
     PROF_TIMER cntEndCached( "gl-end-cached" );
@@ -887,7 +889,7 @@ bool OPENGL_GAL::GetScreenshot( wxImage& aDstImage )
 
 void OPENGL_GAL::LockContext( int aClientCookie )
 {
-    wxASSERT_MSG( !m_isContextLocked, "Context already locked." );
+    KI_ASSERT_MSG( !m_isContextLocked, "Context already locked." );
     m_isContextLocked = true;
     m_lockClientCookie = aClientCookie;
 
@@ -902,10 +904,10 @@ void OPENGL_GAL::LockContext( int aClientCookie )
 
 void OPENGL_GAL::UnlockContext( int aClientCookie )
 {
-    wxASSERT_MSG( m_isContextLocked, "Context not locked.  A GAL_CONTEXT_LOCKER RAII object must "
+    KI_ASSERT_MSG( m_isContextLocked, "Context not locked.  A GAL_CONTEXT_LOCKER RAII object must "
                                      "be stacked rather than making separate lock/unlock calls." );
 
-    wxASSERT_MSG( m_lockClientCookie == aClientCookie,
+    KI_ASSERT_MSG( m_lockClientCookie == aClientCookie,
                   "Context was locked by a different client. "
                   "Should not be possible with RAII objects." );
 
@@ -922,10 +924,10 @@ void OPENGL_GAL::UnlockContext( int aClientCookie )
 
 void OPENGL_GAL::beginUpdate()
 {
-    wxASSERT_MSG( m_isContextLocked, "GAL_UPDATE_CONTEXT RAII object should have locked context. "
+    KI_ASSERT_MSG( m_isContextLocked, "GAL_UPDATE_CONTEXT RAII object should have locked context. "
                                      "Calling this from anywhere else is not allowed." );
 
-    wxASSERT_MSG( IsVisible(), "GAL::beginUpdate() must not be entered when GAL is not visible. "
+    KI_ASSERT_MSG( IsVisible(), "GAL::beginUpdate() must not be entered when GAL is not visible. "
                                "Other update routines will expect everything to be initialized "
                                "which will not be the case." );
 
@@ -1476,7 +1478,7 @@ void OPENGL_GAL::DrawPolylines( const std::vector<std::vector<VECTOR2D>>& aPoint
 
 void OPENGL_GAL::DrawPolygon( const std::deque<VECTOR2D>& aPointList )
 {
-    wxCHECK( aPointList.size() >= 2, /* void */ );
+    KI_CHECK( aPointList.size() >= 2, /* void */ );
     auto      points = std::unique_ptr<GLdouble[]>( new GLdouble[3 * aPointList.size()] );
     GLdouble* ptr = points.get();
 
@@ -1493,7 +1495,7 @@ void OPENGL_GAL::DrawPolygon( const std::deque<VECTOR2D>& aPointList )
 
 void OPENGL_GAL::DrawPolygon( const VECTOR2D aPointList[], int aListSize )
 {
-    wxCHECK( aListSize >= 2, /* void */ );
+    KI_CHECK( aListSize >= 2, /* void */ );
     auto            points = std::unique_ptr<GLdouble[]>( new GLdouble[3 * aListSize] );
     GLdouble*       target = points.get();
     const VECTOR2D* src = aPointList;
@@ -1779,7 +1781,7 @@ void OPENGL_GAL::BitmapText( const wxString& aText, const VECTOR2I& aPosition,
         break;
 
     case GR_TEXT_H_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -1799,7 +1801,7 @@ void OPENGL_GAL::BitmapText( const wxString& aText, const VECTOR2I& aPosition,
         break;
 
     case GR_TEXT_V_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -1813,7 +1815,7 @@ void OPENGL_GAL::BitmapText( const wxString& aText, const VECTOR2I& aPosition,
             {
                 for( UTF8::uni_iter chIt = text.ubegin(), end = text.uend(); chIt < end; ++chIt )
                 {
-                    wxASSERT_MSG( *chIt != '\n' && *chIt != '\r',
+                    KI_ASSERT_MSG( *chIt != '\n' && *chIt != '\r',
                                   "No support for multiline bitmap text yet" );
 
                     if( *chIt == '~' && overbarDepth == -1 )
@@ -2271,44 +2273,44 @@ bool OPENGL_GAL::HasTarget( RENDER_TARGET aTarget )
 
 void OPENGL_GAL::StartDiffLayer()
 {
-    wxLogTrace( traceGalXorMode, wxT( "OPENGL_GAL::StartDiffLayer() called" ) );
-    wxLogTrace( traceGalXorMode, wxT( "StartDiffLayer(): m_tempBuffer=%u" ), m_tempBuffer );
+    KI_LOG_TRACE( traceGalXorMode, wxT( "OPENGL_GAL::StartDiffLayer() called" ) );
+    KI_LOG_TRACE( traceGalXorMode, wxT( "StartDiffLayer(): m_tempBuffer=%u" ), m_tempBuffer );
 
     m_currentManager->EndDrawing();
 
     if( m_tempBuffer )
     {
-        wxLogTrace( traceGalXorMode, wxT( "StartDiffLayer(): setting target to TARGET_TEMP" ) );
+        KI_LOG_TRACE( traceGalXorMode, wxT( "StartDiffLayer(): setting target to TARGET_TEMP" ) );
         SetTarget( TARGET_TEMP );
         ClearTarget( TARGET_TEMP );
 
         // ClearTarget restores the previous compositor buffer, so we need to explicitly
         // set the compositor to render to m_tempBuffer for the layer drawing
         m_compositor->SetBuffer( m_tempBuffer );
-        wxLogTrace( traceGalXorMode, wxT( "StartDiffLayer(): TARGET_TEMP set and cleared, compositor buffer=%u" ),
+        KI_LOG_TRACE( traceGalXorMode, wxT( "StartDiffLayer(): TARGET_TEMP set and cleared, compositor buffer=%u" ),
                     m_tempBuffer );
     }
     else
     {
-        wxLogTrace( traceGalXorMode, wxT( "StartDiffLayer(): WARNING - no temp buffer!" ) );
+        KI_LOG_TRACE( traceGalXorMode, wxT( "StartDiffLayer(): WARNING - no temp buffer!" ) );
     }
 }
 
 
 void OPENGL_GAL::EndDiffLayer()
 {
-    wxLogTrace( traceGalXorMode, wxT( "OPENGL_GAL::EndDiffLayer() called" ) );
-    wxLogTrace( traceGalXorMode, wxT( "EndDiffLayer(): m_tempBuffer=%u, m_mainBuffer=%u" ),
+    KI_LOG_TRACE( traceGalXorMode, wxT( "OPENGL_GAL::EndDiffLayer() called" ) );
+    KI_LOG_TRACE( traceGalXorMode, wxT( "EndDiffLayer(): m_tempBuffer=%u, m_mainBuffer=%u" ),
                 m_tempBuffer, m_mainBuffer );
 
     if( m_tempBuffer )
     {
-        wxLogTrace( traceGalXorMode, wxT( "EndDiffLayer(): using temp buffer path" ) );
+        KI_LOG_TRACE( traceGalXorMode, wxT( "EndDiffLayer(): using temp buffer path" ) );
 
         // End drawing to the temp buffer
         m_currentManager->EndDrawing();
 
-        wxLogTrace( traceGalXorMode, wxT( "EndDiffLayer(): calling DrawBufferDifference" ) );
+        KI_LOG_TRACE( traceGalXorMode, wxT( "EndDiffLayer(): calling DrawBufferDifference" ) );
 
         // Use difference compositing for true XOR/difference mode:
         // - Where only one layer has content: shows that layer's color
@@ -2316,11 +2318,11 @@ void OPENGL_GAL::EndDiffLayer()
         // - Where layers overlap with different content: shows the absolute difference
         m_compositor->DrawBufferDifference( m_tempBuffer, m_mainBuffer );
 
-        wxLogTrace( traceGalXorMode, wxT( "EndDiffLayer(): DrawBufferDifference returned" ) );
+        KI_LOG_TRACE( traceGalXorMode, wxT( "EndDiffLayer(): DrawBufferDifference returned" ) );
     }
     else
     {
-        wxLogTrace( traceGalXorMode, wxT( "EndDiffLayer(): NO temp buffer, using fallback path" ) );
+        KI_LOG_TRACE( traceGalXorMode, wxT( "EndDiffLayer(): NO temp buffer, using fallback path" ) );
 
         // Fall back to imperfect alpha blending on single buffer
         glBlendFunc( GL_SRC_ALPHA, GL_ONE );
@@ -2328,7 +2330,7 @@ void OPENGL_GAL::EndDiffLayer()
         glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     }
 
-    wxLogTrace( traceGalXorMode, wxT( "OPENGL_GAL::EndDiffLayer() complete" ) );
+    KI_LOG_TRACE( traceGalXorMode, wxT( "OPENGL_GAL::EndDiffLayer() complete" ) );
 }
 
 
@@ -2551,7 +2553,7 @@ void OPENGL_GAL::drawPolygon( GLdouble* aPoints, int aPointCount )
 void OPENGL_GAL::drawPolyline( const std::function<VECTOR2D( int )>& aPointGetter, int aPointCount,
                                bool aReserve )
 {
-    wxCHECK( aPointCount > 0, /* return */ );
+    KI_CHECK( aPointCount > 0, /* return */ );
 
     m_currentManager->Color( m_strokeColor.r, m_strokeColor.g, m_strokeColor.b, m_strokeColor.a );
 
@@ -2579,7 +2581,7 @@ void OPENGL_GAL::drawPolyline( const std::function<VECTOR2D( int )>& aPointGette
 void OPENGL_GAL::drawSegmentChain( const std::function<VECTOR2D( int )>& aPointGetter,
                                    int aPointCount, double aWidth, bool aReserve )
 {
-    wxCHECK( aPointCount >= 2, /* return */ );
+    KI_CHECK( aPointCount >= 2, /* return */ );
 
     m_currentManager->Color( m_strokeColor.r, m_strokeColor.g, m_strokeColor.b, m_strokeColor.a );
 
@@ -2637,7 +2639,7 @@ int OPENGL_GAL::drawBitmapChar( unsigned long aChar, bool aReserve )
     if( aChar == ' ' )
     {
         const FONT_GLYPH_TYPE* g = LookupGlyph( 'x' );
-        wxCHECK( g, 0 );
+        KI_CHECK( g, 0 );
 
         // Match stroke font as well as possible
         double spaceWidth = g->advance * 0.74;
@@ -2711,7 +2713,7 @@ void OPENGL_GAL::drawBitmapOverbar( double aLength, double aHeight, bool aReserv
 {
     // To draw an overbar, simply draw an overbar
     const FONT_GLYPH_TYPE* glyph = LookupGlyph( '_' );
-    wxCHECK( glyph, /* void */ );
+    KI_CHECK( glyph, /* void */ );
 
     const float H = glyph->maxy - glyph->miny;
 
@@ -2912,7 +2914,7 @@ void OPENGL_GAL::blitCursor()
 
 unsigned int OPENGL_GAL::getNewGroupNumber()
 {
-    wxASSERT_MSG( m_groups.size() < std::numeric_limits<unsigned int>::max(),
+    KI_ASSERT_MSG( m_groups.size() < std::numeric_limits<unsigned int>::max(),
                   wxT( "There are no free slots to store a group" ) );
 
     while( m_groups.find( m_groupCounter ) != m_groups.end() )
@@ -2924,7 +2926,7 @@ unsigned int OPENGL_GAL::getNewGroupNumber()
 
 void OPENGL_GAL::init()
 {
-    wxASSERT_MSG( m_isContextLocked, "This should only be called from within a locked context." );
+    KI_ASSERT_MSG( m_isContextLocked, "This should only be called from within a locked context." );
 
     // Check correct initialization from the constructor
     if( m_tesselator == nullptr )

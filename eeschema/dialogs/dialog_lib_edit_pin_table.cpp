@@ -52,6 +52,7 @@
 #include <tool/tool_manager.h>
 #include <tools/sch_selection_tool.h>
 #include <string_utils.h>
+#include <core/ki_assert.h>
 
 #define BOOL_TRUE _HKI( "True" )
 #define BOOL_FALSE _HKI( "False" )
@@ -80,7 +81,7 @@ static wxString GetPinTableColLabel( int aCol )
     case COL_VISIBLE:      return _HKI( "Visible" );
     case COL_UNIT:         return _HKI( "Unit" );
     case COL_BODY_STYLE:   return _HKI( "Body Style" );
-    default:               wxFAIL; return wxEmptyString;
+    default:               KI_FAIL(); return wxEmptyString;
     }
 }
 
@@ -193,7 +194,7 @@ public:
                 return aPin.GetBodyStyleDescription( aPin.GetBodyStyle(), true );
 
         default:
-            wxFAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
+            KI_FAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
             return wxEmptyString;
         }
     }
@@ -309,7 +310,7 @@ public:
             break;
 
         default:
-            wxFAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
+            KI_FAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
             break;
         }
     }
@@ -324,7 +325,7 @@ private:
         case BOOL_FORMAT::TRUE_FALSE:
             return wxGetTranslation( aValue ? BOOL_TRUE : BOOL_FALSE );
         default:
-            wxFAIL_MSG( "Invalid BOOL_FORMAT" );
+            KI_FAIL_MSG( "Invalid BOOL_FORMAT" );
             return wxEmptyString;
         }
 

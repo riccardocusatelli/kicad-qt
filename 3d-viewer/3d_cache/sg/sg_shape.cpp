@@ -35,6 +35,8 @@
 #include "3d_cache/sg/sg_coords.h"
 #include "3d_cache/sg/sg_colors.h"
 #include "3d_cache/sg/sg_normals.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SGSHAPE::SGSHAPE( SGNODE* aParent ) : SGNODE( aParent )
@@ -49,7 +51,7 @@ SGSHAPE::SGSHAPE( SGNODE* aParent ) : SGNODE( aParent )
     {
         m_Parent = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] inappropriate parent to SGSHAPE (type %d)" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] inappropriate parent to SGSHAPE (type %d)" ),
                     __FILE__, __FUNCTION__, __LINE__, aParent->GetNodeType() );
     }
     else if( nullptr != aParent && S3D::SGTYPE_TRANSFORM == aParent->GetNodeType() )
@@ -195,7 +197,7 @@ void SGSHAPE::unlinkNode( const SGNODE* aNode, bool isChild )
         }
     }
 
-    wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] unlinkNode() did not find its target" ),
+    KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] unlinkNode() did not find its target" ),
                 __FILE__, __FUNCTION__, __LINE__ );
 }
 
@@ -214,7 +216,7 @@ void SGSHAPE::unlinkRefNode( const SGNODE* aNode )
 
 bool SGSHAPE::addNode( SGNODE* aNode, bool isChild )
 {
-    wxCHECK( aNode, false );
+    KI_CHECK( aNode, false );
 
     if( S3D::SGTYPE_APPEARANCE == aNode->GetNodeType() )
     {
@@ -222,7 +224,7 @@ bool SGSHAPE::addNode( SGNODE* aNode, bool isChild )
         {
             if( aNode != m_Appearance && aNode != m_RAppearance )
             {
-                wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] assigning multiple Appearance "
+                KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] assigning multiple Appearance "
                                              "nodes" ),
                             __FILE__, __FUNCTION__, __LINE__ );
 
@@ -252,7 +254,7 @@ bool SGSHAPE::addNode( SGNODE* aNode, bool isChild )
         {
             if( aNode != m_FaceSet && aNode != m_RFaceSet )
             {
-                wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] assigning multiple FaceSet nodes" ),
+                KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] assigning multiple FaceSet nodes" ),
                             __FILE__, __FUNCTION__, __LINE__ );
 
                 return false;
@@ -275,7 +277,7 @@ bool SGSHAPE::addNode( SGNODE* aNode, bool isChild )
         return true;
     }
 
-    wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] object %s is not a valid type for this "
+    KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] object %s is not a valid type for this "
                                  "object (%d)" ),
                 __FILE__, __FUNCTION__, __LINE__, aNode->GetName(), aNode->GetNodeType() );
 
@@ -360,7 +362,7 @@ bool SGSHAPE::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 {
     if( nullptr == parentNode )
     {
-        wxCHECK( m_Parent, false );
+        KI_CHECK( m_Parent, false );
 
         SGNODE* np = m_Parent;
 
@@ -376,11 +378,11 @@ bool SGSHAPE::WriteCache( std::ostream& aFile, SGNODE* parentNode )
         return false;
     }
 
-    wxCHECK( parentNode == m_Parent, false );
+    KI_CHECK( parentNode == m_Parent, false );
 
     if( !aFile.good() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] bad stream" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] bad stream" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -446,7 +448,7 @@ bool SGSHAPE::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 
 bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 {
-    wxCHECK( m_Appearance == nullptr && m_RAppearance == nullptr && m_FaceSet == nullptr &&
+    KI_CHECK( m_Appearance == nullptr && m_RAppearance == nullptr && m_FaceSet == nullptr &&
              m_RFaceSet == nullptr, false );
 
     #define NITEMS 4
@@ -457,7 +459,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 
     if( ( items[0] && items[1] ) || ( items[2] && items[3] ) )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; multiple item definitions "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; multiple item definitions "
                                      "at position %ul" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     static_cast<unsigned long>( aFile.tellg() ) );
@@ -471,7 +473,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
     {
         if( S3D::SGTYPE_APPEARANCE != S3D::ReadTag( aFile, name ) )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad child appearance "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad child appearance "
                                          "tag at position %ul" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         static_cast<unsigned long>( aFile.tellg() ) );
@@ -484,7 +486,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 
         if( !m_Appearance->ReadCache( aFile, this ) )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data while reading appearance "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data while reading appearance "
                                          "'%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, name );
 
@@ -496,7 +498,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
     {
         if( S3D::SGTYPE_APPEARANCE != S3D::ReadTag( aFile, name ) )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad ref appearance tag "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad ref appearance tag "
                                          "at position %ul" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         static_cast<unsigned long>( aFile.tellg() ) );
@@ -508,7 +510,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 
         if( !np )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: cannot find ref "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: cannot find ref "
                                          "appearance '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         name );
@@ -518,7 +520,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 
         if( S3D::SGTYPE_APPEARANCE != np->GetNodeType() )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: type is not "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: type is not "
                                          "SGAPPEARANCE '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         name );
@@ -534,7 +536,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
     {
         if( S3D::SGTYPE_FACESET != S3D::ReadTag( aFile, name ) )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad child face set tag "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad child face set tag "
                                          "at position %ul" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         static_cast<unsigned long>( aFile.tellg() ) );
@@ -547,7 +549,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 
         if( !m_FaceSet->ReadCache( aFile, this ) )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data while reading face set "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data while reading face set "
                                          "'%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, name );
 
@@ -559,7 +561,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
     {
         if( S3D::SGTYPE_FACESET != S3D::ReadTag( aFile, name ) )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad ref face set tag at "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; bad ref face set tag at "
                                          "position %ul" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         static_cast<unsigned long>( aFile.tellg() ) );
@@ -571,7 +573,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 
         if( !np )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: cannot find ref face "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: cannot find ref face "
                                          "set '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         name );
@@ -581,7 +583,7 @@ bool SGSHAPE::ReadCache( std::istream& aFile, SGNODE* parentNode )
 
         if( S3D::SGTYPE_FACESET != np->GetNodeType() )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: type is not SGFACESET "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data: type is not SGFACESET "
                                          "'%s'" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         name );
@@ -621,7 +623,7 @@ bool SGSHAPE::Prepare( const glm::dmat4* aTransform, S3D::MATLIST& materials,
 
     if( !pf->validate() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad model; inconsistent data" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad model; inconsistent data" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return true;
@@ -674,7 +676,7 @@ bool SGSHAPE::Prepare( const glm::dmat4* aTransform, S3D::MATLIST& materials,
 
         if( nColors < nCoords )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad model; not enough colors per "
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad model; not enough colors per "
                                          "vertex (%ul vs %ul)" ),
                         __FILE__, __FUNCTION__, __LINE__, static_cast<unsigned long>( nColors ),
                         static_cast<unsigned long>( nCoords ) );
@@ -706,7 +708,7 @@ bool SGSHAPE::Prepare( const glm::dmat4* aTransform, S3D::MATLIST& materials,
 
     if( vertices.size() < 3 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad model; not enough vertices" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad model; not enough vertices" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return true;

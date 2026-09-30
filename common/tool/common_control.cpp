@@ -50,6 +50,7 @@
 #include <confirm.h>
 #include <reporter.h>
 #include <widgets/kistatusbar.h>
+#include <core/ki_assert.h>
 
 #define URL_GET_INVOLVED wxS( "https://go.kicad.org/contribute/" )
 #define URL_DONATE wxS( "https://go.kicad.org/app-donate" )
@@ -187,7 +188,7 @@ int COMMON_CONTROL::ShowPlayer( const TOOL_EVENT& aEvent )
     KIWAY_PLAYER* editor = m_frame->Kiway().Player( playerType, true );
 
     // editor can be null if Player() fails:
-    wxCHECK_MSG( editor != nullptr, 0, wxT( "Cannot open/create the editor frame" ) );
+    KI_CHECK_MSG( editor != nullptr, 0, wxT( "Cannot open/create the editor frame" ) );
 
     showFrame( editor );
 
@@ -267,7 +268,7 @@ int COMMON_CONTROL::Execute( const TOOL_EVENT& aEvent )
     if( aEvent.IsAction( &ACTIONS::showCalculatorTools ) )
         execFile = PCB_CALCULATOR_EXE;
     else
-        wxFAIL_MSG( "Execute(): unexpected request" );
+        KI_FAIL_MSG( "Execute(): unexpected request" );
 
     if( execFile.IsEmpty() )
         return 0;

@@ -28,6 +28,7 @@
 #include <widgets/tab_traversal.h>
 #include <pcb_edit_frame.h>
 #include <trigo.h>
+#include <core/ki_assert.h>
 
 
 
@@ -253,7 +254,7 @@ bool DIALOG_MOVE_EXACT::TransferDataFromWindow()
     m_rotation = m_rotate.GetAngleValue();
 
     const int anchorSelection = m_anchorOptions->GetSelection();
-    wxCHECK_MSG( anchorSelection >= 0 && anchorSelection < static_cast<int>( m_menuIDs.size() ), false,
+    KI_CHECK_MSG( anchorSelection >= 0 && anchorSelection < static_cast<int>( m_menuIDs.size() ), false,
                  wxString::Format( "Invalid rotation anchor selection: %d", anchorSelection ) );
 
     m_rotationAnchor = m_menuIDs[anchorSelection];

@@ -57,11 +57,13 @@
 #include <libraries/symbol_library_adapter.h>
 
 #include "printing/sch_printout.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 bool SCH_EDIT_FRAME::CheckSheetForRecursion( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurrentSheet )
 {
-    wxASSERT( aSheet && aCurrentSheet );
+    KI_ASSERT( aSheet && aCurrentSheet );
 
     wxString msg;
     SCH_SHEET_LIST schematicSheets = Schematic().Hierarchy();
@@ -77,7 +79,7 @@ bool SCH_EDIT_FRAME::CheckSheetForRecursion( SCH_SHEET* aSheet, SCH_SHEET_PATH* 
 
     // SCH_SCREEN object file paths are expected to be absolute.  If this assert fires,
     // something is seriously broken.
-    wxASSERT( wxFileName( destFilePath ).IsAbsolute() );
+    KI_ASSERT( wxFileName( destFilePath ).IsAbsolute() );
 
     if( schematicSheets.TestForRecursion( loadedSheets, destFilePath ) )
     {
@@ -95,7 +97,7 @@ bool SCH_EDIT_FRAME::CheckSheetForRecursion( SCH_SHEET* aSheet, SCH_SHEET_PATH* 
 
 bool SCH_EDIT_FRAME::checkForNoFullyDefinedLibIds( SCH_SHEET* aSheet )
 {
-    wxASSERT( aSheet && aSheet->GetScreen() );
+    KI_ASSERT( aSheet && aSheet->GetScreen() );
 
     wxString msg;
     SCH_SCREENS newScreens( aSheet );
@@ -123,7 +125,7 @@ void SCH_EDIT_FRAME::InitSheet( SCH_SHEET* aSheet, const wxString& aNewFilename 
     aSheet->GetScreen()->SetFileName( aNewFilename );
 
     EESCHEMA_SETTINGS* cfg = eeconfig();
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     if( cfg->m_PageSettings.export_paper )
         newScreen->SetPageSettings( GetScreen()->GetPageSettings() );
@@ -185,7 +187,7 @@ bool SCH_EDIT_FRAME::ChangeSheetFile( SCH_SHEET* aSheet, const wxString& aNewFil
     wxFileName  sheetFileName( ExpandTextVars( aNewFilename, &schematic.Project() ) );
     SCH_SCREEN* currentScreen = GetCurrentSheet().LastScreen();
 
-    wxCHECK( currentScreen, false );
+    KI_CHECK( currentScreen, false );
 
     // SCH_SCREEN file names are always absolute.
     wxFileName currentScreenFileName = currentScreen->GetFileName();
@@ -224,7 +226,7 @@ bool SCH_EDIT_FRAME::ChangeSheetFile( SCH_SHEET* aSheet, const wxString& aNewFil
     {
         loadFromFile = wxFileExists( newAbsoluteFilename );
 
-        wxLogTrace( tracePathsAndFiles, "\n    Sheet requested file '%s', %s",
+        KI_LOG_TRACE( tracePathsAndFiles, "\n    Sheet requested file '%s', %s",
                                         newAbsoluteFilename,
                                         loadFromFile ? "found" : "not found" );
     }
@@ -413,7 +415,7 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
                                         const wxString& aFileName, bool aSkipRecursionCheck,
                                         bool aSkipLibCheck )
 {
-    wxASSERT( aSheet && aCurrentSheet );
+    KI_ASSERT( aSheet && aCurrentSheet );
 
     wxString    msg;
     wxFileName  currentSheetFileName;
@@ -436,7 +438,7 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
 
     if( !fileName.IsAbsolute() && !fileName.MakeAbsolute() )
     {
-        wxFAIL_MSG( wxString::Format( "Cannot make file name '%s' path absolute.", aFileName ) );
+        KI_FAIL_MSG( wxString::Format( "Cannot make file name '%s' path absolute.", aFileName ) );
         return false;
     }
 
@@ -501,14 +503,14 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
             for( unsigned i = 1; i < sheetPath.size(); i++ )
             {
                 SCH_SHEET* sheet = sheetPath.at( i );
-                wxCHECK2( sheet, continue );
+                KI_CHECK2( sheet, continue );
 
                 SCH_SCREEN* screen = sheet->GetScreen();
-                wxCHECK2( screen, continue );
+                KI_CHECK2( screen, continue );
 
                 // Use the screen file name which should always be absolute.
                 wxFileName loadedSheetFileName = screen->GetFileName();
-                wxCHECK2( loadedSheetFileName.IsAbsolute(), continue );
+                KI_CHECK2( loadedSheetFileName.IsAbsolute(), continue );
 
                 wxFileName tmp = loadedSheetFileName;
                 wxString sheetFileName;
@@ -799,7 +801,7 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
     }
 
     SCH_SCREEN* newScreen = tmpSheet->GetScreen();
-    wxCHECK_MSG( newScreen, false, "No screen defined for sheet." );
+    KI_CHECK_MSG( newScreen, false, "No screen defined for sheet." );
 
     if( libTableChanged && projectTable )
     {
@@ -971,7 +973,7 @@ bool SCH_EDIT_FRAME::AllowCaseSensitiveFileNameClashes( const wxString& aOldName
     SCH_SHEET_LIST sheets = Schematic().Hierarchy();
     wxFileName     fn = aSchematicFileName;
 
-    wxCHECK( fn.IsAbsolute(), false );
+    KI_CHECK( fn.IsAbsolute(), false );
 
     auto can_cause_issues = [&]() -> bool
     {
@@ -984,7 +986,7 @@ bool SCH_EDIT_FRAME::AllowCaseSensitiveFileNameClashes( const wxString& aOldName
 
         size_t     count = 0;
 
-        wxCHECK( rhs.IsAbsolute(), false );
+        KI_CHECK( rhs.IsAbsolute(), false );
 
         for( SCH_SHEET_PATH& sheet : sheets )
         {

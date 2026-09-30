@@ -40,6 +40,7 @@
 #include <wx/msgdlg.h>
 #include <wx/textdlg.h>
 #include <wx/choicdlg.h>
+#include <core/ki_assert.h>
 
 
 GERBVIEW_INSPECTION_TOOL::GERBVIEW_INSPECTION_TOOL() :
@@ -93,7 +94,7 @@ int GERBVIEW_INSPECTION_TOOL::ShowDCodes( const TOOL_EVENT& aEvent )
         break;
 
     default:
-        wxASSERT_MSG( false, wxT( "Invalid units" ) );
+        KI_ASSERT_MSG( false, wxT( "Invalid units" ) );
     }
 
     for( unsigned int layer = 0; layer < m_frame->ImagesMaxCount(); ++layer )

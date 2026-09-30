@@ -36,6 +36,7 @@
 #include <drc/drc_engine.h>
 #include <component_classes/component_class.h>
 #include <string_utils.h>
+#include <core/ki_assert.h>
 
 
 /* --------------------------------------------------------------------------------------------
@@ -44,7 +45,7 @@
 
 BOARD_ITEM* PCBEXPR_VAR_REF::GetObject( const LIBEVAL::CONTEXT* aCtx ) const
 {
-    wxASSERT( dynamic_cast<const PCBEXPR_CONTEXT*>( aCtx ) );
+    KI_ASSERT( dynamic_cast<const PCBEXPR_CONTEXT*>( aCtx ) );
 
     const PCBEXPR_CONTEXT* ctx = static_cast<const PCBEXPR_CONTEXT*>( aCtx );
     BOARD_ITEM*            item  = ctx->GetItem( m_itemIndex );
@@ -696,7 +697,7 @@ std::unique_ptr<LIBEVAL::VAR_REF> PCBEXPR_UCODE::CreateVarRef( const wxString& a
                                                           "property type %s from %s." ),
                                                      cls.name,
                                                      field );
-                    wxFAIL_MSG( msg );
+                    KI_FAIL_MSG( msg );
                 }
             }
         }

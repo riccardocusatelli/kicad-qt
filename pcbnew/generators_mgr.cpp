@@ -23,6 +23,7 @@
  */
 
 #include "generators_mgr.h"
+#include <core/ki_assert.h>
 
 
 GENERATORS_MGR& GENERATORS_MGR::Instance()
@@ -35,9 +36,9 @@ GENERATORS_MGR& GENERATORS_MGR::Instance()
 void GENERATORS_MGR::Register( const wxString& aTypeStr, const wxString& aName,
                                std::function<PCB_GENERATOR*( void )> aCreateFunc )
 {
-    wxASSERT( !aName.empty() );
-    wxASSERT( !aTypeStr.empty() );
-    wxASSERT( aCreateFunc );
+    KI_ASSERT( !aName.empty() );
+    KI_ASSERT( !aTypeStr.empty() );
+    KI_ASSERT( aCreateFunc );
 
     ENTRY ent;
     ent.m_createFunc = aCreateFunc;

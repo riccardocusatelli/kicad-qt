@@ -42,6 +42,8 @@
 #include <algorithm>
 
 #include <core/profile.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #ifdef KICAD_GAL_PROFILE
 #include <wx/log.h>
@@ -178,7 +180,7 @@ private:
 
         for( int layer : aLayers )
         {
-            wxCHECK2_MSG( layer >= 0 && layer < VIEW::VIEW_MAX_LAYERS, continue,
+            KI_CHECK2_MSG( layer >= 0 && layer < VIEW::VIEW_MAX_LAYERS, continue,
                           wxString::Format( wxT( "Invalid layer number: %d" ), layer ) );
             m_layers.push_back( layer );
         }
@@ -356,7 +358,7 @@ void VIEW::unlinkItem( VIEW_ITEM* aItem )
     {
         if( aItem->m_viewPrivData->m_view != nullptr && aItem->m_viewPrivData->m_view != this )
         {
-            wxLogDebug( wxT( "VIEW::Remove: item %s belongs to a different view" ), aItem->GetClass() );
+            KI_LOG_DEBUG( wxT( "VIEW::Remove: item %s belongs to a different view" ), aItem->GetClass() );
             return;
         }
 
@@ -421,8 +423,8 @@ void VIEW::unlinkItem( VIEW_ITEM* aItem )
 
 void VIEW::SetRequired( int aLayerId, int aRequiredId, bool aRequired )
 {
-    wxCHECK( (unsigned) aLayerId < m_layers.size(), /*void*/ );
-    wxCHECK( (unsigned) aRequiredId < m_layers.size(), /*void*/ );
+    KI_CHECK( (unsigned) aLayerId < m_layers.size(), /*void*/ );
+    KI_CHECK( (unsigned) aRequiredId < m_layers.size(), /*void*/ );
 
     if( aRequired )
         m_layers[aLayerId].requiredLayers.insert( aRequiredId );
@@ -518,7 +520,7 @@ double VIEW::ToScreen( double aSize ) const
 
 void VIEW::CopySettings( const VIEW* aOtherView )
 {
-    wxASSERT_MSG( false, wxT( "This is not implemented" ) );
+    KI_ASSERT_MSG( false, wxT( "This is not implemented" ) );
 }
 
 
@@ -557,7 +559,7 @@ void VIEW::SetViewport( const BOX2D& aViewport )
 {
     VECTOR2D ssize = ToWorld( m_gal->GetScreenPixelSize(), false );
 
-    wxCHECK( fabs(ssize.x) > 0 && fabs(ssize.y) > 0, /*void*/ );
+    KI_CHECK( fabs(ssize.x) > 0 && fabs(ssize.y) > 0, /*void*/ );
 
     VECTOR2D centre = aViewport.Centre();
     VECTOR2D vsize  = aViewport.GetSize();
@@ -570,7 +572,7 @@ void VIEW::SetViewport( const BOX2D& aViewport )
 
 void VIEW::SetMirror( bool aMirrorX, bool aMirrorY )
 {
-    wxASSERT_MSG( !aMirrorY, _( "Mirroring for Y axis is not supported yet" ) );
+    KI_ASSERT_MSG( !aMirrorY, _( "Mirroring for Y axis is not supported yet" ) );
 
     m_mirrorX = aMirrorX;
     m_mirrorY = aMirrorY;
@@ -964,7 +966,7 @@ struct VIEW::DRAW_ITEM_VISITOR
 
     bool operator()( VIEW_ITEM* aItem )
     {
-        wxCHECK( aItem->viewPrivData(), false );
+        KI_CHECK( aItem->viewPrivData(), false );
 
         if( aItem->m_forcedTransparency > 0 && !drawForcedTransparent )
         {
@@ -1219,7 +1221,7 @@ void VIEW::Redraw()
 
 #ifdef KICAD_GAL_PROFILE
     totalRealTime.Stop();
-    wxLogTrace( traceGalProfile, wxS( "VIEW::Redraw(): %.1f ms" ), totalRealTime.msecs() );
+    KI_LOG_TRACE( traceGalProfile, wxS( "VIEW::Redraw(): %.1f ms" ), totalRealTime.msecs() );
 #endif /* KICAD_GAL_PROFILE */
 }
 
@@ -1326,7 +1328,7 @@ void VIEW::recolorGroup( VIEW_ITEM* aItem, int aLayer, int aGroup )
 void VIEW::updateItemColor( VIEW_ITEM* aItem, int aLayer )
 {
     VIEW_ITEM_DATA* viewData = aItem->viewPrivData();
-    wxCHECK( IsCached( aLayer ), /*void*/ ); // This will check if the layer exists
+    KI_CHECK( IsCached( aLayer ), /*void*/ ); // This will check if the layer exists
 
     if( !viewData )
         return;
@@ -1379,7 +1381,7 @@ void VIEW::updateBbox( VIEW_ITEM* aItem )
 {
     std::vector<int> layers = aItem->ViewGetLayers();
 
-    wxASSERT( aItem->m_viewPrivData ); //must have a viewPrivData
+    KI_ASSERT( aItem->m_viewPrivData ); //must have a viewPrivData
 
     const BOX2I  new_bbox = aItem->ViewBBox();
 
@@ -1565,7 +1567,7 @@ void VIEW::UpdateItems()
             {
                 auto it = m_layers.find( layer );
 
-                wxCHECK2_MSG( it != m_layers.end(), continue, wxS( "Invalid layer" ) );
+                KI_CHECK2_MSG( it != m_layers.end(), continue, wxS( "Invalid layer" ) );
 
                 VIEW_LAYER& l = it->second;
                 l.items->Insert( item, bbox );

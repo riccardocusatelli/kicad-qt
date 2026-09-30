@@ -31,6 +31,7 @@
 #include "post_shader.h"
 #include "buffers_debug.h"
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 POST_SHADER::POST_SHADER( const CAMERA& aCamera ) :
@@ -80,9 +81,9 @@ void POST_SHADER::SetPixelData( unsigned int x, unsigned int y, const SFVEC3F& a
                                 const SFVEC4F& aColor, const SFVEC3F& aHitPosition,
                                 float aDepth, float aShadowAttFactor )
 {
-    wxASSERT( x < m_size.x );
-    wxASSERT( y < m_size.y );
-    wxASSERT( ( aShadowAttFactor >= 0.0f ) && ( aShadowAttFactor <= 1.0f ) );
+    KI_ASSERT( x < m_size.x );
+    KI_ASSERT( y < m_size.y );
+    KI_ASSERT( ( aShadowAttFactor >= 0.0f ) && ( aShadowAttFactor <= 1.0f ) );
 
     const unsigned int idx = x + y * m_size.x;
 

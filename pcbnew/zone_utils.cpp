@@ -37,12 +37,13 @@
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
+#include <core/ki_assert.h>
 
 
 static bool RuleAreasHaveSameProps( const ZONE& a, const ZONE& b )
 {
     // This function is only used to compare rule areas, so we can assume that both a and b are rule areas
-    wxASSERT( a.GetIsRuleArea() && b.GetIsRuleArea() );
+    KI_ASSERT( a.GetIsRuleArea() && b.GetIsRuleArea() );
 
     return a.GetDoNotAllowZoneFills() == b.GetDoNotAllowZoneFills()
            && a.GetDoNotAllowFootprints() == b.GetDoNotAllowFootprints()

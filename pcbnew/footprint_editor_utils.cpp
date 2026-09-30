@@ -50,6 +50,7 @@
 #include <view/view_controls.h>
 #include <dialogs/dialog_dimension_properties.h>
 #include <dialogs/dialog_table_properties.h>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 
@@ -116,7 +117,7 @@ class BASIC_FOOTPRINT_INFO : public FOOTPRINT_INFO
 public:
     BASIC_FOOTPRINT_INFO( FOOTPRINT* aFootprint )
     {
-        wxASSERT( aFootprint );
+        KI_ASSERT( aFootprint );
 
         m_nickname = aFootprint->GetFPID().GetLibNickname().wx_str();
         m_fpname = aFootprint->GetFPID().GetLibItemName().wx_str();
@@ -132,7 +133,7 @@ public:
 void FOOTPRINT_EDIT_FRAME::UpdateLibraryTree( const wxDataViewItem& aTreeItem,
                                               FOOTPRINT* aFootprint )
 {
-    wxCHECK( aFootprint, /* void */ );
+    KI_CHECK( aFootprint, /* void */ );
 
     BASIC_FOOTPRINT_INFO footprintInfo( aFootprint );
 
@@ -259,7 +260,7 @@ void FOOTPRINT_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
         break;
 
     default:
-        wxFAIL_MSG( wxT( "FOOTPRINT_EDIT_FRAME::OnEditItemRequest: unsupported item type " )
+        KI_FAIL_MSG( wxT( "FOOTPRINT_EDIT_FRAME::OnEditItemRequest: unsupported item type " )
                     + aItem->GetClass() );
         break;
     }

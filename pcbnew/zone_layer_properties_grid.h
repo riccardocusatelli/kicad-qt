@@ -32,6 +32,7 @@
 #include <lset.h>
 #include <widgets/wx_grid.h>
 #include <zone_settings.h>
+#include <core/ki_assert.h>
 
 class PCB_BASE_FRAME;
 
@@ -63,7 +64,7 @@ public:
         case 0: return aTypeName == wxGRID_VALUE_NUMBER;
         case 1: return aTypeName == wxGRID_VALUE_STRING;
         case 2: return aTypeName == wxGRID_VALUE_STRING;
-        default: wxFAIL; return false;
+        default: KI_FAIL(); return false;
         }
     }
 

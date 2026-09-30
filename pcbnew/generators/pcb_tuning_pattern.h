@@ -29,6 +29,7 @@
 #include <router/pns_meander_placer_base.h>
 #include <router/pns_router.h>
 #include <router/pns_routing_settings.h>
+#include <core/ki_assert.h>
 
 
 namespace KIGFX
@@ -542,7 +543,7 @@ public:
 protected:
     void swapData( BOARD_ITEM* aImage ) override
     {
-        wxASSERT( aImage->Type() == PCB_GENERATOR_T );
+        KI_ASSERT( aImage->Type() == PCB_GENERATOR_T );
 
         std::swap( *this, *static_cast<PCB_TUNING_PATTERN*>( aImage ) );
     }

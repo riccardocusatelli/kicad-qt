@@ -30,6 +30,7 @@
 #include "../ray.h"
 #include "3d_fastmath.h"
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 LAYER_ITEM_2D::LAYER_ITEM_2D( const OBJECT_2D* aObjectA, std::vector<const OBJECT_2D*>* aObjectB,
@@ -39,14 +40,14 @@ LAYER_ITEM_2D::LAYER_ITEM_2D( const OBJECT_2D* aObjectA, std::vector<const OBJEC
         m_objectB( aObjectB ),
         m_objectC( aObjectC )
 {
-    wxASSERT( aObjectA );
+    KI_ASSERT( aObjectA );
 
     m_bbox.Reset();
     m_bbox.Set( aObjectA->GetBBox() );
     m_bbox.ScaleNextUp();
     m_centroid = m_bbox.GetCenter();
 
-    wxASSERT( m_bbox.IsInitialized() );
+    KI_ASSERT( m_bbox.IsInitialized() );
 }
 
 
@@ -118,7 +119,7 @@ bool LAYER_ITEM_2D::Intersect( const RAYSEG2D& aSegRay, float* aOutT, SFVEC2F* a
                                  ->Intersect( currentRay, &hitDist, &tmpNormal ) )
                         return false; // ray hit main object but did not leave subtracted volume
 
-                    wxASSERT( hitDist <= 1.0f );
+                    KI_ASSERT( hitDist <= 1.0f );
 
                     if( hitDist > FLT_EPSILON )
                     {

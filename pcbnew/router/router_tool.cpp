@@ -29,6 +29,7 @@
 #include <iomanip>
 #include <utility>
 #include <sstream>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 #include <tool/action_manager.h>
@@ -532,7 +533,7 @@ bool ROUTER_TOOL::Init()
 
     PCB_EDIT_FRAME* frame = getEditFrame<PCB_EDIT_FRAME>();
 
-    wxASSERT( frame );
+    KI_ASSERT( frame );
 
     auto& menu = m_menu->GetMenu();
     menu.SetUntranslatedTitle( _HKI( "Interactive Router" ) );
@@ -745,7 +746,7 @@ void ROUTER_TOOL::saveRouterDebugLog()
 
     for( auto item : removed )
     {
-        wxASSERT_MSG( item->Parent() != nullptr, "removed an item with no parent uuid?" );
+        KI_ASSERT_MSG( item->Parent() != nullptr, "removed an item with no parent uuid?" );
 
         if( item->Parent() )
             removedKIIDs.insert( item->Parent()->m_Uuid );
@@ -1013,7 +1014,7 @@ static VIATYPE getViaTypeFromFlags( int aFlags )
     case VIA_ACTION_FLAGS::MICROVIA:
         return VIATYPE::MICROVIA;
     default:
-        wxASSERT_MSG( false, wxT( "Unhandled via type" ) );
+        KI_ASSERT_MSG( false, wxT( "Unhandled via type" ) );
         return VIATYPE::THROUGH;
     }
 }
@@ -1050,7 +1051,7 @@ int ROUTER_TOOL::onViaCommand( const TOOL_EVENT& aEvent )
 
 int ROUTER_TOOL::handleLayerSwitch( const TOOL_EVENT& aEvent, bool aForceVia )
 {
-    wxCHECK( m_router, 0 );
+    KI_CHECK( m_router, 0 );
 
     if( !IsToolActive() )
         return 0;
@@ -1668,7 +1669,7 @@ void ROUTER_TOOL::performRouting( VECTOR2D aStartPosition )
         else if( evt->IsUndoRedo() )
         {
             // We're in an UndoRedoBlock.  If we get here, something's broken.
-            wxFAIL;
+            KI_FAIL();
             break;
         }
         else if( evt->IsClick( BUT_RIGHT ) )
@@ -2167,7 +2168,7 @@ void ROUTER_TOOL::performDragging( int aMode )
         else if( evt->IsUndoRedo() )
         {
             // We're in an UndoRedoBlock.  If we get here, something's broken.
-            wxFAIL;
+            KI_FAIL();
             break;
         }
         else if( evt->Category() == TC_COMMAND )
@@ -2717,7 +2718,7 @@ int ROUTER_TOOL::InlineDrag( const TOOL_EVENT& aEvent )
         else if( evt->IsUndoRedo() )
         {
             // We're in an UndoRedoBlock.  If we get here, something's broken.
-            wxFAIL;
+            KI_FAIL();
             break;
         }
         else if( evt->Category() == TC_COMMAND )
@@ -2926,12 +2927,12 @@ void ROUTER_TOOL::UpdateMessagePanel()
 
         if( m_router->Mode() == PNS::ROUTER_MODE::PNS_MODE_ROUTE_DIFF_PAIR )
         {
-            wxASSERT( nets.size() >= 2 );
+            KI_ASSERT( nets.size() >= 2 );
 
             NETINFO_ITEM* netA = static_cast<NETINFO_ITEM*>( nets[0] );
             NETINFO_ITEM* netB = static_cast<NETINFO_ITEM*>( nets[1] );
-            wxASSERT( netA );
-            wxASSERT( netB );
+            KI_ASSERT( netA );
+            KI_ASSERT( netB );
 
             description = wxString::Format( _( "Routing Diff Pair: %s" ),
                                             netA->GetNetname() + wxT( ", " ) + netB->GetNetname() );
@@ -3018,7 +3019,7 @@ void ROUTER_TOOL::UpdateMessagePanel()
                                                   sizes.GetDiffPairGapSource() ) );
 
             const PNS::ITEM_SET& traces = m_router->Placer()->Traces();
-            wxASSERT( traces.Count() == 2 );
+            KI_ASSERT( traces.Count() == 2 );
 
             if( resolver->QueryConstraint( PNS::CONSTRAINT_TYPE::CT_MAX_UNCOUPLED, traces[0],
                                            traces[1], m_router->GetCurrentLayer(), &constraint ) )

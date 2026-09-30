@@ -30,6 +30,7 @@
 #include <eda_item.h>
 #include <eda_group.h>
 #include <macros.h>
+#include <core/ki_assert.h>
 
 COMMIT::COMMIT()
 {
@@ -58,7 +59,7 @@ COMMIT& COMMIT::Stage( EDA_ITEM* aItem, CHANGE_TYPE aChangeType, BASE_SCREEN* aS
         flags &= ~CHT_DONE;
     }
 
-    wxASSERT( changeType != CHT_MODIFY || ( flags & CHT_DONE ) == 0 );
+    KI_ASSERT( changeType != CHT_MODIFY || ( flags & CHT_DONE ) == 0 );
 
     switch( changeType )
     {
@@ -145,7 +146,7 @@ void COMMIT::Unstage( EDA_ITEM* aItem, BASE_SCREEN* aScreen )
                        if( line.m_item == aItem && line.m_screen == aScreen )
                        {
                            // Only new items which have never been committed can be unstaged
-                           wxASSERT( line.m_item->IsNew() );
+                           KI_ASSERT( line.m_item->IsNew() );
 
                            delete line.m_item;
                            delete line.m_copy;
@@ -160,7 +161,7 @@ void COMMIT::Unstage( EDA_ITEM* aItem, BASE_SCREEN* aScreen )
 COMMIT& COMMIT::Modified( EDA_ITEM* aItem, EDA_ITEM* aCopy, BASE_SCREEN *aScreen )
 {
     if( undoLevelItem( aItem ) != aItem )
-        wxFAIL_MSG( "We've no way to get a copy of the undo level item at this point" );
+        KI_FAIL_MSG( "We've no way to get a copy of the undo level item at this point" );
     else
         makeEntry( aItem, CHT_MODIFY, aCopy, aScreen );
 
@@ -193,7 +194,7 @@ void COMMIT::makeEntry( EDA_ITEM* aItem, CHANGE_TYPE aType, EDA_ITEM* aCopy, BAS
     case CHT_ADD:    m_addedItems.insert( { aItem, aScreen } );   break;
     case CHT_REMOVE: m_deletedItems.insert( { aItem, aScreen } ); break;
     case CHT_MODIFY: m_changedItems.insert( { aItem, aScreen } ); break;
-    default:         wxFAIL;                                      break;
+    default:         KI_FAIL();                                      break;
     }
 
     m_entries.push_back( ent );
@@ -219,7 +220,7 @@ CHANGE_TYPE COMMIT::convert( UNDO_REDO aType ) const
     case UNDO_REDO::NEWITEM: return CHT_ADD;
     case UNDO_REDO::DELETED: return CHT_REMOVE;
     case UNDO_REDO::CHANGED: return CHT_MODIFY;
-    default:     wxFAIL;     return CHT_MODIFY;
+    default:     KI_FAIL();     return CHT_MODIFY;
     }
 }
 
@@ -231,7 +232,7 @@ UNDO_REDO COMMIT::convert( CHANGE_TYPE aType ) const
     case CHT_ADD:    return UNDO_REDO::NEWITEM;
     case CHT_REMOVE: return UNDO_REDO::DELETED;
     case CHT_MODIFY: return UNDO_REDO::CHANGED;
-    default: wxFAIL; return UNDO_REDO::CHANGED;
+    default: KI_FAIL(); return UNDO_REDO::CHANGED;
     }
 }
 

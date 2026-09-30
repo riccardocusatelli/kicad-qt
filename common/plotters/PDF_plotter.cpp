@@ -57,6 +57,8 @@
 #include <plotters/plotters_pslike.h>
 #include <geometry/shape_rect.h>
 #include <text_eval/text_eval_wrapper.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 PDF_PLOTTER::~PDF_PLOTTER() = default;
@@ -188,7 +190,7 @@ bool PDF_PLOTTER::OpenFile( const wxString& aFullFilename )
 {
     m_filename = aFullFilename;
 
-    wxASSERT( !m_outputFile );
+    KI_ASSERT( !m_outputFile );
 
     // Open the PDF file in binary mode
     m_outputFile = wxFopen( m_filename, wxT( "wb" ) );
@@ -217,7 +219,7 @@ void PDF_PLOTTER::SetViewport( const VECTOR2I& aOffset, double aIusPerDecimil, d
 
 void PDF_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     if( aWidth == DO_NOT_SET_LINE_WIDTH )
         return;
@@ -227,7 +229,7 @@ void PDF_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
     if( aWidth == 0 )
         aWidth = 1;
 
-    wxASSERT_MSG( aWidth > 0, "Plotter called to set negative pen width" );
+    KI_ASSERT_MSG( aWidth > 0, "Plotter called to set negative pen width" );
 
     if( aWidth != m_currentPenWidth )
         fmt::println( m_workFile, "{} w", encodeDoubleForPlotter( userToDeviceSize( aWidth ) ) );
@@ -238,7 +240,7 @@ void PDF_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
 
 void PDF_PLOTTER::emitSetRGBColor( double r, double g, double b, double a )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     // PDF treats all colors as opaque, so the best we can do with alpha is generate an
     // appropriate blended color assuming white paper.
@@ -257,7 +259,7 @@ void PDF_PLOTTER::emitSetRGBColor( double r, double g, double b, double a )
 
 void PDF_PLOTTER::SetDash( int aLineWidth, LINE_STYLE aLineStyle )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     std::vector<int> pattern;
 
@@ -304,7 +306,7 @@ void PDF_PLOTTER::SetDash( int aLineWidth, LINE_STYLE aLineStyle )
 
 void PDF_PLOTTER::Rect( const VECTOR2I& p1, const VECTOR2I& p2, FILL_T fill, int width, int aCornerRadius )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     if( fill == FILL_T::NO_FILL && width == 0 )
         return;
@@ -369,7 +371,7 @@ void PDF_PLOTTER::Rect( const VECTOR2I& p1, const VECTOR2I& p2, FILL_T fill, int
 
 void PDF_PLOTTER::Circle( const VECTOR2I& pos, int diametre, FILL_T aFill, int width )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     if( aFill == FILL_T::NO_FILL && width == 0 )
         return;
@@ -464,7 +466,7 @@ std::vector<VECTOR2D> PDF_PLOTTER::arcPath( const VECTOR2D& aCenter, const EDA_A
 void PDF_PLOTTER::Arc( const VECTOR2D& aCenter, const EDA_ANGLE& aStartAngle,
                        const EDA_ANGLE& aAngle, double aRadius, FILL_T aFill, int aWidth )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     SetCurrentLineWidth( aWidth );
 
@@ -506,7 +508,7 @@ void PDF_PLOTTER::Arc( const VECTOR2D& aCenter, const EDA_ANGLE& aStartAngle,
 void PDF_PLOTTER::PlotPoly( const std::vector<VECTOR2I>& aCornerList, FILL_T aFill, int aWidth,
                             void* aData )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     if( aCornerList.size() <= 1 )
         return;
@@ -591,7 +593,7 @@ void PDF_PLOTTER::PlotPoly( const SHAPE_LINE_CHAIN& aLineChain, FILL_T aFill, in
 
 void PDF_PLOTTER::PenTo( const VECTOR2I& pos, char plume )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     if( plume == 'Z' )
     {
@@ -622,7 +624,7 @@ void PDF_PLOTTER::PenTo( const VECTOR2I& pos, char plume )
 
 void PDF_PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double aScaleFactor )
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
     VECTOR2I pix_size( aImage.GetWidth(), aImage.GetHeight() );
 
     // Requested size (in IUs)
@@ -713,8 +715,8 @@ int PDF_PLOTTER::allocPdfObject()
 
 int PDF_PLOTTER::startPdfObject( int aHandle )
 {
-    wxASSERT( m_outputFile );
-    wxASSERT( !m_workFile );
+    KI_ASSERT( m_outputFile );
+    KI_ASSERT( !m_workFile );
 
     if( aHandle < 0 )
         aHandle = allocPdfObject();
@@ -727,16 +729,16 @@ int PDF_PLOTTER::startPdfObject( int aHandle )
 
 void PDF_PLOTTER::closePdfObject()
 {
-    wxASSERT( m_outputFile );
-    wxASSERT( !m_workFile );
+    KI_ASSERT( m_outputFile );
+    KI_ASSERT( !m_workFile );
     fmt::println( m_outputFile, "endobj" );
 }
 
 
 int PDF_PLOTTER::startPdfStream( int aHandle )
 {
-    wxASSERT( m_outputFile );
-    wxASSERT( !m_workFile );
+    KI_ASSERT( m_outputFile );
+    KI_ASSERT( !m_workFile );
     int handle = startPdfObject( aHandle );
 
     // This is guaranteed to be handle+1 but needs to be allocated since
@@ -759,20 +761,20 @@ int PDF_PLOTTER::startPdfStream( int aHandle )
     // Open a temporary file to accumulate the stream
     m_workFilename = wxFileName::CreateTempFileName( "" );
     m_workFile = wxFopen( m_workFilename, wxT( "w+b" ) );
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
     return handle;
 }
 
 
 void PDF_PLOTTER::closePdfStream()
 {
-    wxASSERT( m_workFile );
+    KI_ASSERT( m_workFile );
 
     long stream_len = ftell( m_workFile );
 
     if( stream_len < 0 )
     {
-        wxASSERT( false );
+        KI_ASSERT( false );
         return;
     }
 
@@ -781,7 +783,7 @@ void PDF_PLOTTER::closePdfStream()
     unsigned char *inbuf = new unsigned char[stream_len];
 
     int rc = fread( inbuf, 1, stream_len, m_workFile );
-    wxASSERT( rc == stream_len );
+    KI_ASSERT( rc == stream_len );
     ignore_unused( rc );
 
     // We are done with the temporary file, junk it
@@ -834,8 +836,8 @@ void PDF_PLOTTER::closePdfStream()
 void PDF_PLOTTER::StartPage( const wxString& aPageNumber, const wxString& aPageName,
                              const wxString& aParentPageNumber, const wxString& aParentPageName )
 {
-    wxASSERT( m_outputFile );
-    wxASSERT( !m_workFile );
+    KI_ASSERT( m_outputFile );
+    KI_ASSERT( !m_workFile );
 
     m_pageNumbers.push_back( aPageNumber );
     m_pageName = aPageName.IsEmpty() ? wxString::Format( _( "Page %s" ),
@@ -953,7 +955,7 @@ void PDF_PLOTTER::ClosePage()
     // non 3d exports need this
     if( m_pageStreamHandle != -1 )
     {
-        wxASSERT( m_workFile );
+        KI_ASSERT( m_workFile );
 
         // Close the page stream (and compress it)
         closePdfStream();
@@ -1183,7 +1185,7 @@ bool PDF_PLOTTER::StartPlot( const wxString& aPageNumber )
 
 bool PDF_PLOTTER::StartPlot( const wxString& aPageNumber, const wxString& aPageName )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     // First things first: the customary null object
     m_xrefTable.clear();
@@ -2306,7 +2308,7 @@ void PDF_PLOTTER::Text( const VECTOR2I&        aPos,
 
     if( !markupTree )
     {
-        wxLogTrace( tracePdfPlotter, "PDF_PLOTTER::Text: Markup parsing failed, falling back to plain text." );
+        KI_LOG_TRACE( tracePdfPlotter, "PDF_PLOTTER::Text: Markup parsing failed, falling back to plain text." );
         // Fallback to simple text rendering if parsing fails
         wxStringTokenizer str_tok( text, " ", wxTOKEN_RET_DELIMS );
         VECTOR2I pos = computeAlignedStartPos();
@@ -2347,7 +2349,7 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
                 styleFlags = (int) face->style_flags;
         }
 
-        wxLogTrace( tracePdfPlotter, "renderWord enter word='%s' bold=%d italic=%d textStyle=%u styleFlags=%d",
+        KI_LOG_TRACE( tracePdfPlotter, "renderWord enter word='%s' bold=%d italic=%d textStyle=%u styleFlags=%d",
                     TO_UTF8( aWord ), (int) aBold, (int) aItalic, (unsigned) aTextStyle, styleFlags );
     }
 
@@ -2571,7 +2573,7 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
             }
 
             // Trace after we know style flags
-            wxLogTrace( tracePdfPlotter,
+            KI_LOG_TRACE( tracePdfPlotter,
                         "Outline path word='%s' runs=%zu wantItalic=%d fontIsItalic=%d fontIsFakeItalic=%d wantBold=%d fontIsBold=%d fontIsFakeBold=%d forceSyn=%d",
                         TO_UTF8( aWord ), outlineRuns.size(), (int) wantItalic, (int) fontIsItalic,
                         (int) fontIsFakeItalic, (int) wantBold, (int) fontIsBold, (int) fontIsFakeBold,
@@ -2604,7 +2606,7 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
                 appliedTilt = tilt;
                 syntheticItalicApplied = true;
 
-                wxLogTrace( tracePdfPlotter, "Synthetic italic shear applied: tilt=%f a=%f b=%f c->%f d->%f",
+                KI_LOG_TRACE( tracePdfPlotter, "Synthetic italic shear applied: tilt=%f a=%f b=%f c->%f d->%f",
                             tilt, syn_a, syn_b, syn_c, syn_d );
             }
 
@@ -2652,7 +2654,7 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
         if( !m_strokeFontManager )
             return nextPos;
 
-        wxLogTrace( tracePdfPlotter, "Stroke path word='%s' wantItalic=%d aItalic=%d aBold=%d",
+        KI_LOG_TRACE( tracePdfPlotter, "Stroke path word='%s' wantItalic=%d aItalic=%d aBold=%d",
                     TO_UTF8( aWord ), (int) ( aItalic || ( aTextStyle & TEXT_STYLE::ITALIC ) ), (int) aItalic, (int) aBold );
 
         std::vector<PDF_STROKE_FONT_RUN> runs;
@@ -2923,7 +2925,7 @@ void PDF_PLOTTER::Plot3DModel( const wxString& aSourcePath, const std::vector<PD
     for( const PDF_3D_VIEW& view : a3DViews )
     {
         // this is a strict need
-        wxASSERT( view.m_cameraMatrix.size() == 12 );
+        KI_ASSERT( view.m_cameraMatrix.size() == 12 );
 
         int fovHandle = -1;
         if( !m_fovMap.contains( view.m_fov ) )

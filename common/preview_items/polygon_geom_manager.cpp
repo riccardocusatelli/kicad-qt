@@ -27,6 +27,7 @@
 
 #include <geometry/geometry_utils.h>
 #include <geometry/shape_line_chain.h>
+#include <core/ki_assert.h>
 
 
 POLYGON_GEOM_MANAGER::POLYGON_GEOM_MANAGER( CLIENT& aClient ):
@@ -245,7 +246,7 @@ static SHAPE_LINE_CHAIN build90DegLeader( const VECTOR2I& aEndPoint, const SHAPE
 
 void POLYGON_GEOM_MANAGER::updateTemporaryLines( const VECTOR2I& aEndPoint, LEADER_MODE aModifier )
 {
-    wxCHECK( m_lockedPoints.PointCount() > 0, /*void*/ );
+    KI_CHECK( m_lockedPoints.PointCount() > 0, /*void*/ );
     const VECTOR2I& last_pt = m_lockedPoints.CLastPoint();
 
     if( m_leaderMode == LEADER_MODE::DEG45 || aModifier == LEADER_MODE::DEG45 )

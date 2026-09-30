@@ -21,6 +21,7 @@
 #include "pcm_data.h"
 
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 static const wxChar tracePcm[] = wxT( "KICAD_PCM" );
 
@@ -127,7 +128,7 @@ void from_json( const json& j, PCM_PACKAGE& p )
 
     if( p.type == PT_INVALID )
     {
-        wxLogTrace( tracePcm, wxS( "Skipping package '%s' with unrecognized type '%s'" ),
+        KI_LOG_TRACE( tracePcm, wxS( "Skipping package '%s' with unrecognized type '%s'" ),
                     p.identifier, wxString( j.at( "type" ).get<std::string>() ) );
     }
 

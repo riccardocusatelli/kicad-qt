@@ -145,6 +145,8 @@
 #include <StlAPI_Writer.hxx>
 
 #include "glb_utils.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #if OCC_VERSION_HEX >= 0x070700
 #include <VrmlAPI_CafReader.hxx>
@@ -1206,13 +1208,13 @@ bool STEP_PCB_MODEL::AddBackdrill( const SHAPE_SEGMENT& aShape, PCB_LAYER_ID aLa
 bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, int aDepth,
                                      bool aFrontSide, const VECTOR2D& aOrigin )
 {
-    wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: pos=(%d,%d) diameter=%d depth=%d frontSide=%d origin=(%f,%f)" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: pos=(%d,%d) diameter=%d depth=%d frontSide=%d origin=(%f,%f)" ),
                 aPosition.x, aPosition.y, aDiameter, aDepth, aFrontSide ? 1 : 0, aOrigin.x, aOrigin.y );
 
     // A counterbore is a cylindrical recess from the top or bottom of the board
     if( aDiameter <= 0 || aDepth <= 0 )
     {
-        wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: REJECTED - invalid diameter=%d or depth=%d" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: REJECTED - invalid diameter=%d or depth=%d" ),
                     aDiameter, aDepth );
         return false;
     }
@@ -1237,7 +1239,7 @@ bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, i
     double topOuterSurface = std::max( f_pos, f_pos + f_thickness );
     double bottomOuterSurface = std::min( b_pos, b_pos + b_thickness );
 
-    wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: boardZpos=%f boardThickness=%f f_pos=%f f_thickness=%f topOuter=%f bottomOuter=%f" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: boardZpos=%f boardThickness=%f f_pos=%f f_thickness=%f topOuter=%f bottomOuter=%f" ),
                 boardZpos, boardThickness, f_pos, f_thickness, topOuterSurface, bottomOuterSurface );
 
     // Convert dimensions to mm
@@ -1245,7 +1247,7 @@ bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, i
     double depth_mm = pcbIUScale.IUTomm( aDepth );
     double radius_mm = diameter_mm / 2.0;
 
-    wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: diameter_mm=%f depth_mm=%f radius_mm=%f" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: diameter_mm=%f depth_mm=%f radius_mm=%f" ),
                 diameter_mm, depth_mm, radius_mm );
 
     // Calculate cylinder position based on which side
@@ -1272,7 +1274,7 @@ bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, i
     double posX_mm = pcbIUScale.IUTomm( aPosition.x - aOrigin.x );
     double posY_mm = -pcbIUScale.IUTomm( aPosition.y - aOrigin.y );
 
-    wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: posX_mm=%f posY_mm=%f cylinderZpos=%f cylinderHeight=%f" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: posX_mm=%f posY_mm=%f cylinderZpos=%f cylinderHeight=%f" ),
                 posX_mm, posY_mm, cylinderZpos, cylinderHeight );
 
     try
@@ -1285,7 +1287,7 @@ bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, i
 
         if( cylinder.IsNull() )
         {
-            wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: FAILED - cylinder shape is null" ) );
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: FAILED - cylinder shape is null" ) );
             m_reporter->Report( _( "Failed to create counterbore cylinder shape" ),
                                 RPT_SEVERITY_ERROR );
             return false;
@@ -1295,12 +1297,12 @@ bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, i
         m_boardCutouts.push_back( cylinder );
         m_copperCutouts.push_back( cylinder );
 
-        wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: SUCCESS - added cylinder. boardCutouts=%zu copperCutouts=%zu" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: SUCCESS - added cylinder. boardCutouts=%zu copperCutouts=%zu" ),
                     m_boardCutouts.size(), m_copperCutouts.size() );
     }
     catch( const Standard_Failure& e )
     {
-        wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: EXCEPTION - %s" ), e.GetMessageString() );
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: EXCEPTION - %s" ), e.GetMessageString() );
         m_reporter->Report( wxString::Format( _( "OCC exception creating counterbore: %s" ),
                                               e.GetMessageString() ),
                             RPT_SEVERITY_ERROR );
@@ -1314,7 +1316,7 @@ bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, i
 bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, int aDepth,
                                      int aAngle, bool aFrontSide, const VECTOR2D& aOrigin )
 {
-    wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: pos=(%d,%d) diameter=%d depth=%d angle=%d frontSide=%d origin=(%f,%f)" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: pos=(%d,%d) diameter=%d depth=%d angle=%d frontSide=%d origin=(%f,%f)" ),
                 aPosition.x, aPosition.y, aDiameter, aDepth, aAngle, aFrontSide ? 1 : 0, aOrigin.x, aOrigin.y );
 
     // A countersink is a conical recess from the top or bottom of the board
@@ -1322,7 +1324,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
     // (angle between opposite sides of the cone)
     if( aDiameter <= 0 || aAngle <= 0 )
     {
-        wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: REJECTED - invalid diameter=%d or angle=%d" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: REJECTED - invalid diameter=%d or angle=%d" ),
                     aDiameter, aAngle );
         return false;
     }
@@ -1345,7 +1347,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
     double topOuterSurface = std::max( f_pos, f_pos + f_thickness );
     double bottomOuterSurface = std::min( b_pos, b_pos + b_thickness );
 
-    wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: boardZpos=%f boardThickness=%f f_pos=%f f_thickness=%f topOuter=%f bottomOuter=%f" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: boardZpos=%f boardThickness=%f f_pos=%f f_thickness=%f topOuter=%f bottomOuter=%f" ),
                 boardZpos, boardThickness, f_pos, f_thickness, topOuterSurface, bottomOuterSurface );
 
     // Convert dimensions to mm
@@ -1363,7 +1365,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
     {
         // Calculate depth from diameter and angle
         depth_mm = radius_mm / tan( halfAngleRad );
-        wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: depth not specified, calculated depth_mm=%f from radius=%f and angle" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: depth not specified, calculated depth_mm=%f from radius=%f and angle" ),
                     depth_mm, radius_mm );
     }
     else
@@ -1371,7 +1373,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
         depth_mm = pcbIUScale.IUTomm( aDepth );
     }
 
-    wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: diameter_mm=%f depth_mm=%f radius_mm=%f halfAngleRad=%f (deg=%f)" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: diameter_mm=%f depth_mm=%f radius_mm=%f halfAngleRad=%f (deg=%f)" ),
                 diameter_mm, depth_mm, radius_mm, halfAngleRad, halfAngleRad * 180.0 / M_PI );
 
     // Calculate the cone geometry
@@ -1385,7 +1387,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
     // R1 = R2 - depth * tan(halfAngle)
     double bottomRadius_mm = radius_mm - depth_mm * tan( halfAngleRad );
 
-    wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: bottomRadius_mm=%f (before clamp), tan(halfAngle)=%f" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: bottomRadius_mm=%f (before clamp), tan(halfAngle)=%f" ),
                 bottomRadius_mm, tan( halfAngleRad ) );
 
     if( bottomRadius_mm < 0 )
@@ -1415,7 +1417,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
             // Extend the top radius to account for the copperMargin extension above the surface
             r2 = radius_mm + ( copperMargin + margin ) * tan( halfAngleRad );
 
-            wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: FRONT - coneZpos=%f r1=%f r2=%f coneHeight=%f" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: FRONT - coneZpos=%f r1=%f r2=%f coneHeight=%f" ),
                         coneZpos, r1, r2, coneHeight );
 
             gp_Ax2 axis( gp_Pnt( posX_mm, posY_mm, coneZpos ), gp::DZ() );
@@ -1431,7 +1433,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
             r1 = radius_mm + ( copperMargin + margin ) * tan( halfAngleRad );
             r2 = bottomRadius_mm;  // smaller radius at top (deeper into board)
 
-            wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: BACK - coneZpos=%f r1=%f r2=%f coneHeight=%f" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: BACK - coneZpos=%f r1=%f r2=%f coneHeight=%f" ),
                         coneZpos, r1, r2, coneHeight );
 
             gp_Ax2 axis( gp_Pnt( posX_mm, posY_mm, coneZpos ), gp::DZ() );
@@ -1440,7 +1442,7 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
 
         if( cone.IsNull() )
         {
-            wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: FAILED - cone shape is null" ) );
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: FAILED - cone shape is null" ) );
             m_reporter->Report( _( "Failed to create countersink cone shape" ),
                                 RPT_SEVERITY_ERROR );
             return false;
@@ -1450,12 +1452,12 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
         m_boardCutouts.push_back( cone );
         m_copperCutouts.push_back( cone );
 
-        wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: SUCCESS - added cone. boardCutouts=%zu copperCutouts=%zu" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: SUCCESS - added cone. boardCutouts=%zu copperCutouts=%zu" ),
                     m_boardCutouts.size(), m_copperCutouts.size() );
     }
     catch( const Standard_Failure& e )
     {
-        wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: EXCEPTION - %s" ), e.GetMessageString() );
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: EXCEPTION - %s" ), e.GetMessageString() );
         m_reporter->Report( wxString::Format( _( "OCC exception creating countersink: %s" ),
                                               e.GetMessageString() ),
                             RPT_SEVERITY_ERROR );
@@ -1518,7 +1520,7 @@ std::map<PCB_LAYER_ID, int> STEP_PCB_MODEL::GetCopperLayerKnockouts( int aDiamet
         featureTop = bottomOuterSurface + depth_mm;
     }
 
-    wxLogTrace( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: featureTop=%f featureBottom=%f depth_mm=%f frontSide=%d" ),
+    KI_LOG_TRACE( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: featureTop=%f featureBottom=%f depth_mm=%f frontSide=%d" ),
                 featureTop, featureBottom, depth_mm, aFrontSide ? 1 : 0 );
 
     // Iterate through all copper layers and check if they fall within the feature range
@@ -1539,7 +1541,7 @@ std::map<PCB_LAYER_ID, int> STEP_PCB_MODEL::GetCopperLayerKnockouts( int aDiamet
         // A layer is affected if any part of it is within the feature range
         bool layerInRange = ( layerTop >= featureBottom && layerBottom <= featureTop );
 
-        wxLogTrace( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d Z=[%f, %f] feature=[%f, %f] inRange=%d" ),
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d Z=[%f, %f] feature=[%f, %f] inRange=%d" ),
                     static_cast<int>( layer ), layerBottom, layerTop, featureBottom, featureTop, layerInRange ? 1 : 0 );
 
         if( !layerInRange )
@@ -1575,20 +1577,20 @@ std::map<PCB_LAYER_ID, int> STEP_PCB_MODEL::GetCopperLayerKnockouts( int aDiamet
 
             if( radiusAtLayer_mm <= 0 )
             {
-                wxLogTrace( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d - countersink tapers to point before this layer" ),
+                KI_LOG_TRACE( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d - countersink tapers to point before this layer" ),
                             static_cast<int>( layer ) );
                 continue;  // Cone tapers to a point before reaching this layer
             }
 
             knockoutDiameter = pcbIUScale.mmToIU( radiusAtLayer_mm * 2.0 );
-            wxLogTrace( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d (countersink) - distFromSurface=%f radiusAtLayer=%f diameter=%d" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d (countersink) - distFromSurface=%f radiusAtLayer=%f diameter=%d" ),
                         static_cast<int>( layer ), distanceFromSurface, radiusAtLayer_mm, knockoutDiameter );
         }
         else
         {
             // Counterbore - constant diameter
             knockoutDiameter = aDiameter;
-            wxLogTrace( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d (counterbore) - diameter=%d" ),
+            KI_LOG_TRACE( traceKiCad2Step, wxT( "GetCopperLayerKnockouts: layer %d (counterbore) - diameter=%d" ),
                         static_cast<int>( layer ), knockoutDiameter );
         }
 
@@ -1710,7 +1712,7 @@ void STEP_PCB_MODEL::getBoardBodyZPlacement( double& aZPos, double& aThickness )
     aThickness = ( top - bottom );
     aZPos = bottom;
 
-    wxASSERT( aZPos == 0.0 );
+    KI_ASSERT( aZPos == 0.0 );
 }
 
 

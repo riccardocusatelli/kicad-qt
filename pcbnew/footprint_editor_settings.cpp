@@ -36,6 +36,7 @@
 
 #include <wx/config.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 ///! Update the schema version whenever a migration is required
@@ -516,7 +517,7 @@ bool FOOTPRINT_EDITOR_SETTINGS::migrateSchema0to1()
 
     if( !m_manager )
     {
-        wxLogTrace( traceSettings,
+        KI_LOG_TRACE( traceSettings,
                     wxT( "Error: FOOTPRINT_EDITOR_SETTINGS migration cannot run unmanaged!" ) );
         return false;
     }
@@ -533,7 +534,7 @@ bool FOOTPRINT_EDITOR_SETTINGS::migrateSchema0to1()
     {
         if( settings->GetFilename() == search )
         {
-            wxLogTrace( traceSettings, wxT( "Updating footprint editor theme from %s to %s" ),
+            KI_LOG_TRACE( traceSettings, wxT( "Updating footprint editor theme from %s to %s" ),
                         selected, search );
             Set( theme_ptr, search );
             return true;

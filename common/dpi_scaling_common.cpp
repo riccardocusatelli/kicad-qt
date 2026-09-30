@@ -31,6 +31,8 @@
 
 #include <wx/log.h>
 #include <wx/window.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -123,7 +125,7 @@ double DPI_SCALING_COMMON::GetScaleFactor() const
         src = wxS( "default" );
     }
 
-    wxLogTrace( traceHiDpi, wxS( "Scale factor (%s): %f" ), src, *val );
+    KI_LOG_TRACE( traceHiDpi, wxS( "Scale factor (%s): %f" ), src, *val );
 
     return *val;
 }
@@ -162,7 +164,7 @@ double DPI_SCALING_COMMON::GetContentScaleFactor() const
         src = wxS( "default" );
     }
 
-    wxLogTrace( traceHiDpi, wxS( "Content scale factor (%s): %f" ), src, *val );
+    KI_LOG_TRACE( traceHiDpi, wxS( "Content scale factor (%s): %f" ), src, *val );
 
     return *val;
 }
@@ -177,14 +179,14 @@ bool DPI_SCALING_COMMON::GetCanvasIsAutoScaled() const
     }
 
     const bool automatic = getKiCadConfiguredScale( *m_config ) == std::nullopt;
-    wxLogTrace( traceHiDpi, wxS( "Scale is automatic: %d" ), automatic );
+    KI_LOG_TRACE( traceHiDpi, wxS( "Scale is automatic: %d" ), automatic );
     return automatic;
 }
 
 
 void DPI_SCALING_COMMON::SetDpiConfig( bool aAuto, double aValue )
 {
-    wxCHECK_RET( m_config != nullptr, wxS( "Setting DPI config without a config store." ) );
+    KI_CHECK_RET( m_config != nullptr, wxS( "Setting DPI config without a config store." ) );
 
     const double value = aAuto ? 0.0 : aValue;
 

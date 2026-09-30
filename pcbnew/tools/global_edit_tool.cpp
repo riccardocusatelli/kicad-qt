@@ -38,6 +38,7 @@
 #include <dialogs/dialog_migrate_3d_models.h>
 #include <board_design_settings.h>
 #include <pcb_edit_frame.h>
+#include <core/ki_assert.h>
 
 
 GLOBAL_EDIT_TOOL::GLOBAL_EDIT_TOOL() :
@@ -99,7 +100,7 @@ int GLOBAL_EDIT_TOOL::ExchangeFootprints( const TOOL_EVENT& aEvent )
     }
     else
     {
-        wxFAIL_MSG( wxT( "ExchangeFootprints: unexpected action" ) );
+        KI_FAIL_MSG( wxT( "ExchangeFootprints: unexpected action" ) );
     }
 
     DIALOG_EXCHANGE_FOOTPRINTS dialog( editFrame, footprint, updateMode, currentMode );

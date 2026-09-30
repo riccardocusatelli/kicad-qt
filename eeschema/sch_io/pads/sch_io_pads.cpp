@@ -54,6 +54,7 @@
 #include <set>
 #include <wx/filename.h>
 #include <wx/log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -313,7 +314,7 @@ SCH_SHEET* SCH_IO_PADS::LoadSchematicFile( const wxString&                    aF
                                            SCH_SHEET*                         aAppendToMe,
                                            const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
+    KI_CHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
 
     LOCALE_IO setlocale;
 
@@ -321,7 +322,7 @@ SCH_SHEET* SCH_IO_PADS::LoadSchematicFile( const wxString&                    aF
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         rootSheet = aAppendToMe;
     }
     else
@@ -344,7 +345,7 @@ SCH_SHEET* SCH_IO_PADS::LoadSchematicFile( const wxString&                    aF
     rootPath.push_back( rootSheet );
 
     SCH_SCREEN* rootScreen = rootSheet->GetScreen();
-    wxCHECK( rootScreen, nullptr );
+    KI_CHECK( rootScreen, nullptr );
 
     SCH_SHEET_INSTANCE sheetInstance;
     sheetInstance.m_Path = rootPath.Path();

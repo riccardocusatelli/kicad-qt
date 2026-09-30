@@ -93,7 +93,7 @@ unset( S3DSG_VERSION_FILE CACHE )
 # Define a flag to expose the appropriate EXPORT macro at build time
 target_compile_definitions( kicad_3dsg PRIVATE COMPILE_SGLIB )
 
-target_link_libraries( kicad_3dsg ${wxWidgets_LIBRARIES} )
+target_link_libraries( kicad_3dsg kicore_rt ${wxWidgets_LIBRARIES} )
 
 # Don't specify the ARCHIVE DESTINATION parameter to prevent
 # the install of the import library on Windows

@@ -29,6 +29,7 @@
 #include <wx/printdlg.h>
 
 #include <dialogs/panel_printer_list.h>
+#include <core/ki_assert.h>
 
 // Define min and max reasonable values for print scale
 static constexpr double MIN_SCALE = 0.01;
@@ -164,14 +165,14 @@ double DIALOG_PRINT_GENERIC::getScaleValue()
         return scale;
     }
 
-    wxFAIL_MSG( wxT( "No scale option selected." ) );
+    KI_FAIL_MSG( wxT( "No scale option selected." ) );
     return 1.0;
 }
 
 
 void DIALOG_PRINT_GENERIC::setScaleValue( double aValue )
 {
-    wxASSERT( aValue >= 0.0 );
+    KI_ASSERT( aValue >= 0.0 );
 
     if( aValue == 0.0 )     // fit to page
     {

@@ -39,6 +39,7 @@
 #include <plotters/gbr_plotter_aperture_macros.h>
 
 #include <gbr_metadata.h>
+#include <core/ki_assert.h>
 
 
 // if GBR_USE_MACROS is defined, pads having a shape that is not a Gerber primitive
@@ -124,10 +125,10 @@ GERBER_PLOTTER::GERBER_PLOTTER()
 void GERBER_PLOTTER::SetViewport( const VECTOR2I& aOffset, double aIusPerDecimil,
                                   double aScale, bool aMirror )
 {
-    wxASSERT( aMirror == false );
+    KI_ASSERT( aMirror == false );
     m_plotMirror = false;
     m_plotOffset = aOffset;
-    wxASSERT( aScale == 1 );              // aScale parameter is not used in Gerber
+    KI_ASSERT( aScale == 1 );              // aScale parameter is not used in Gerber
     m_plotScale = 1;                      // Plot scale is *always* 1.0
 
     m_IUsPerDecimil = aIusPerDecimil;
@@ -247,7 +248,7 @@ bool GERBER_PLOTTER::StartPlot( const wxString& aPageNumber )
     m_hasApertureChamferedRect = false; // true is at least one chamfered rect is in use
     m_am_freepoly_list.ClearList();
 
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     finalFile = m_outputFile;     // the actual gerber file will be created later
 
@@ -256,7 +257,7 @@ bool GERBER_PLOTTER::StartPlot( const wxString& aPageNumber )
     m_workFilename = wxFileName::CreateTempFileName( "" );
     workFile = wxFopen( m_workFilename, wxT( "wt" ) );
     m_outputFile = workFile;
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     if( m_outputFile == nullptr )
         return false;
@@ -321,7 +322,7 @@ bool GERBER_PLOTTER::EndPlot()
 {
     char     line[1024];
 
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     /* Outfile is actually a temporary file i.e. workFile */
     fmt::println( m_outputFile, "M02*" );
@@ -329,7 +330,7 @@ bool GERBER_PLOTTER::EndPlot()
 
     fclose( workFile );
     workFile   = wxFopen( m_workFilename, wxT( "rt" ));
-    wxASSERT( workFile );
+    KI_ASSERT( workFile );
     m_outputFile = finalFile;
 
     // Placement of apertures in RS274X
@@ -404,7 +405,7 @@ void GERBER_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
     else if( aWidth == USE_DEFAULT_LINE_WIDTH )
         aWidth =  m_renderSettings->GetDefaultPenWidth();
 
-    wxASSERT_MSG( aWidth >= 0, "Plotter called to set negative pen width" );
+    KI_ASSERT_MSG( aWidth >= 0, "Plotter called to set negative pen width" );
 
     GBR_METADATA* gbr_metadata = static_cast<GBR_METADATA*>( aData );
     int           aperture_attribute = 0;
@@ -605,7 +606,7 @@ void GERBER_PLOTTER::selectApertureWithAttributes( const VECTOR2I& aPos, GBR_MET
 
 void GERBER_PLOTTER::writeApertureList()
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     bool useX1StructuredComment = false;
 
@@ -827,7 +828,7 @@ void GERBER_PLOTTER::writeApertureList()
 
 void GERBER_PLOTTER::PenTo( const VECTOR2I& aPos, char plume )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
     VECTOR2D pos_dev = userToDeviceCoordinates( aPos );
 
     switch( plume )
@@ -851,7 +852,7 @@ void GERBER_PLOTTER::Rect( const VECTOR2I& p1, const VECTOR2I& p2, FILL_T fill, 
                            int aCornerRadius )
 {
     if( aCornerRadius > 0 )
-        wxFAIL_MSG( wxT( "GERBER_PLOTTER must use PlotPolyAsRegion() for rounded-corner rectangles!" ) );
+        KI_FAIL_MSG( wxT( "GERBER_PLOTTER must use PlotPolyAsRegion() for rounded-corner rectangles!" ) );
 
     std::vector<VECTOR2I> cornerList;
 
@@ -1275,7 +1276,7 @@ void GERBER_PLOTTER::FlashPadCircle( const VECTOR2I& pos, int diametre, void* aD
 void GERBER_PLOTTER::FlashPadOval( const VECTOR2I& aPos, const VECTOR2I& aSize,
                                    const EDA_ANGLE& aOrient, void* aData )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     VECTOR2I      size( aSize );
     EDA_ANGLE     orient( aOrient );
@@ -1326,7 +1327,7 @@ void GERBER_PLOTTER::FlashPadOval( const VECTOR2I& aPos, const VECTOR2I& aSize,
 void GERBER_PLOTTER::FlashPadRect( const VECTOR2I& pos, const VECTOR2I& aSize,
                                    const EDA_ANGLE& aOrient, void* aData )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     VECTOR2I      size( aSize );
     GBR_METADATA* gbr_metadata = static_cast<GBR_METADATA*>( aData );
@@ -1796,7 +1797,7 @@ void GERBER_PLOTTER::FlashRegularPolygon( const VECTOR2I& aShapePos, int aDiamet
     APERTURE::APERTURE_TYPE apert_type =
             ( APERTURE::APERTURE_TYPE )( APERTURE::AT_REGULAR_POLY3 + aCornerCount - 3 );
 
-    wxASSERT( apert_type >= APERTURE::APERTURE_TYPE::AT_REGULAR_POLY3
+    KI_ASSERT( apert_type >= APERTURE::APERTURE_TYPE::AT_REGULAR_POLY3
               && apert_type <= APERTURE::APERTURE_TYPE::AT_REGULAR_POLY12 );
 
     selectApertureWithAttributes( aShapePos, gbr_metadata, VECTOR2I( 0, 0 ), aDiameter / 2,

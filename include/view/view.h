@@ -37,6 +37,7 @@
 #include <gal/definitions.h>
 
 #include <view/view_overlay.h>
+#include <core/ki_assert.h>
 
 namespace KIGFX
 {
@@ -316,7 +317,7 @@ public:
      */
     void SetScaleLimits( double aMaximum, double aMinimum )
     {
-        wxASSERT_MSG( aMaximum > aMinimum, wxT( "I guess you passed parameters in wrong order" ) );
+        KI_ASSERT_MSG( aMaximum > aMinimum, wxT( "I guess you passed parameters in wrong order" ) );
 
         m_minScale = aMinimum;
         m_maxScale = aMaximum;
@@ -636,7 +637,7 @@ public:
      */
     bool IsTargetDirty( int aTarget ) const
     {
-        wxCHECK( aTarget < TARGETS_NUMBER, false );
+        KI_CHECK( aTarget < TARGETS_NUMBER, false );
         return m_dirtyTargets[aTarget];
     }
 
@@ -647,7 +648,7 @@ public:
      */
     inline void MarkTargetDirty( int aTarget )
     {
-        wxCHECK( aTarget < TARGETS_NUMBER, /* void */ );
+        KI_CHECK( aTarget < TARGETS_NUMBER, /* void */ );
         m_dirtyTargets[aTarget] = true;
     }
 
@@ -805,7 +806,7 @@ protected:
 
     inline void markTargetClean( int aTarget )
     {
-        wxCHECK( aTarget < TARGETS_NUMBER, /* void */ );
+        KI_CHECK( aTarget < TARGETS_NUMBER, /* void */ );
         m_dirtyTargets[aTarget] = false;
     }
 

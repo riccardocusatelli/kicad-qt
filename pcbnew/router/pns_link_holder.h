@@ -31,6 +31,8 @@
 
 #include "pns_item.h"
 #include "pns_linked_item.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 namespace PNS
@@ -47,7 +49,7 @@ public:
     {
         if( alg::contains( m_links, aLink ) )
         {
-            wxLogDebug( wxT( "PNS LINK_HOLDER::Link: item %p already linked to %p" ), aLink, this );
+            KI_LOG_DEBUG( wxT( "PNS LINK_HOLDER::Link: item %p already linked to %p" ), aLink, this );
             return;
         }
 
@@ -56,7 +58,7 @@ public:
 
     void Unlink( const LINKED_ITEM* aLink )
     {
-        wxCHECK_MSG( alg::contains( m_links, aLink ), /* void */,
+        KI_CHECK_MSG( alg::contains( m_links, aLink ), /* void */,
                      "Trying to unlink an item that is not linked" );
         std::erase( m_links, aLink );
     }
@@ -102,14 +104,14 @@ public:
 #if 0 /// @todo move outside header.
         if( !IsLinked() )
         {
-            wxLogTrace( wxT( "PNS" ), wxT( "item %p: no links" ), this );
+            KI_LOG_TRACE( wxT( "PNS" ), wxT( "item %p: no links" ), this );
             return;
         }
 
-        wxLogTrace( wxT( "PNS" ), wxT( "item %p: %d links" ), this, (int) m_links.size() );
+        KI_LOG_TRACE( wxT( "PNS" ), wxT( "item %p: %d links" ), this, (int) m_links.size() );
 
         for( int i = 0; i < (int) m_links.size(); i++ )
-            wxLogTrace( wxT( "PNS" ), wxT( "item %d: %p\n" ), i, m_links[i] );
+            KI_LOG_TRACE( wxT( "PNS" ), wxT( "item %d: %p\n" ), i, m_links[i] );
 #endif
     }
 

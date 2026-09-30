@@ -49,6 +49,8 @@
 #include <wx/log.h>
 
 #include "board_netlist_updater.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 BOARD_NETLIST_UPDATER::BOARD_NETLIST_UPDATER( PCB_EDIT_FRAME* aFrame, BOARD* aBoard ) :
@@ -276,7 +278,7 @@ bool BOARD_NETLIST_UPDATER::updateComponentClass( FOOTPRINT* aFootprint, COMPONE
     }
     else
     {
-        wxASSERT_MSG( newClass != nullptr, "Component class should not be nullptr" );
+        KI_ASSERT_MSG( newClass != nullptr, "Component class should not be nullptr" );
 
         aFootprint->SetStaticComponentClass( newClass );
 
@@ -1060,7 +1062,7 @@ bool BOARD_NETLIST_UPDATER::updateComponentPadConnections( FOOTPRINT* aFootprint
     {
         const COMPONENT_NET& net = aNewComponent->GetNet( pad->GetNumber() );
 
-        wxLogTrace( wxT( "NETLIST_UPDATE" ),
+        KI_LOG_TRACE( wxT( "NETLIST_UPDATE" ),
                     wxT( "Processing pad %s of component %s" ),
                     pad->GetNumber(),
                     aNewComponent->GetReference() );
@@ -1070,7 +1072,7 @@ bool BOARD_NETLIST_UPDATER::updateComponentPadConnections( FOOTPRINT* aFootprint
 
         if( net.IsValid() )     // i.e. the pad has a name
         {
-            wxLogTrace( wxT( "NETLIST_UPDATE" ),
+            KI_LOG_TRACE( wxT( "NETLIST_UPDATE" ),
                         wxT( "  Found valid net: %s" ),
                         net.GetNetName() );
             pinFunction = net.GetPinFunction();
@@ -1078,7 +1080,7 @@ bool BOARD_NETLIST_UPDATER::updateComponentPadConnections( FOOTPRINT* aFootprint
         }
         else
         {
-            wxLogTrace( wxT( "NETLIST_UPDATE" ),
+            KI_LOG_TRACE( wxT( "NETLIST_UPDATE" ),
                         wxT( "  No net found for pad %s" ),
                         pad->GetNumber() );
         }

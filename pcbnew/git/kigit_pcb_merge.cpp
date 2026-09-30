@@ -33,6 +33,7 @@
 #include <trace_helpers.h>
 
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 void KIGIT_PCB_MERGE::findSetDifferences( const BOARD_ITEM_SET& aAncestorSet, const BOARD_ITEM_SET& aOtherSet,
                                           std::vector<BOARD_ITEM*>& aAdded, std::vector<BOARD_ITEM*>& aRemoved,
@@ -96,7 +97,7 @@ int KIGIT_PCB_MERGE::Merge()
 
     if( git_blob_lookup( &ancestor_blob, repo, &ancestor->id ) != 0 )
     {
-        wxLogTrace( traceGit, "Could not find ancestor blob: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Could not find ancestor blob: %s", KIGIT_COMMON::GetLastGitError() );
         return GIT_ENOTFOUND;
     }
 
@@ -104,7 +105,7 @@ int KIGIT_PCB_MERGE::Merge()
 
     if( git_blob_lookup( &ours_blob, repo, &ours->id ) != 0 )
     {
-        wxLogTrace( traceGit, "Could not find ours blob: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Could not find ours blob: %s", KIGIT_COMMON::GetLastGitError() );
         return GIT_ENOTFOUND;
     }
 
@@ -112,7 +113,7 @@ int KIGIT_PCB_MERGE::Merge()
 
     if( git_blob_lookup( &theirs_blob, repo, &theirs->id ) != 0 )
     {
-        wxLogTrace( traceGit, "Could not find theirs blob: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Could not find theirs blob: %s", KIGIT_COMMON::GetLastGitError() );
         return GIT_ENOTFOUND;
     }
 
@@ -138,12 +139,12 @@ int KIGIT_PCB_MERGE::Merge()
     }
     catch(const IO_ERROR& e)
     {
-        wxLogTrace( traceGit, "Could not parse board: %s", e.What() );
+        KI_LOG_TRACE( traceGit, "Could not parse board: %s", e.What() );
         return GIT_EUSER;
     }
     catch( ... )
     {
-        wxLogTrace( traceGit, "Could not parse board: unknown error" );
+        KI_LOG_TRACE( traceGit, "Could not parse board: unknown error" );
         return GIT_EUSER;
     }
 

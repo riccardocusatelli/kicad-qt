@@ -71,6 +71,8 @@
 #include <libraries/symbol_library_adapter.h>
 
 #include "eda_pattern_match.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 // Save previous symbol library viewer state.
 LIB_ID SYMBOL_VIEWER_FRAME::m_currentSymbol;
@@ -301,7 +303,7 @@ void SYMBOL_VIEWER_FRAME::setupUIConditions()
     ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
     EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )
@@ -524,7 +526,7 @@ bool SYMBOL_VIEWER_FRAME::ReCreateLibList()
                 }
 
                 LIBRARY_TABLE_ROW* row = adapter->GetRow( aLib ).value_or( nullptr );
-                wxCHECK( row, /* void */ );
+                KI_CHECK( row, /* void */ );
 
                 if( row->Hidden() )
                     return;
@@ -843,7 +845,7 @@ WINDOW_SETTINGS* SYMBOL_VIEWER_FRAME::GetWindowSettings( APP_SETTINGS_BASE* aCfg
     if( EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( aCfg ) )
         return &cfg->m_LibViewPanel.window;
 
-    wxFAIL_MSG( wxT( "SYMBOL_VIEWER not running with EESCHEMA_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "SYMBOL_VIEWER not running with EESCHEMA_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 
@@ -1076,7 +1078,7 @@ void SYMBOL_VIEWER_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
     case MAIL_REFRESH_SYMBOL:
     {
         LIB_SYMBOL* symbol = GetSelectedSymbol();
-        wxCHECK2( symbol, break );
+        KI_CHECK2( symbol, break );
 
         SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &Prj() );
         LIBRARY_TABLE_ROW*      row = adapter->GetRow( symbol->GetLibId().GetLibNickname() ).value_or( nullptr );
@@ -1087,11 +1089,11 @@ void SYMBOL_VIEWER_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         wxString libfullname = LIBRARY_MANAGER::GetFullURI( row, true );
 
         wxString lib( mail.GetPayload() );
-        wxLogTrace( traceLibWatch, "Received refresh symbol request for %s, current symbols is %s", lib, libfullname );
+        KI_LOG_TRACE( traceLibWatch, "Received refresh symbol request for %s, current symbols is %s", lib, libfullname );
 
         if( lib == libfullname )
         {
-            wxLogTrace( traceLibWatch, "Refreshing symbol %s", symbol->GetName() );
+            KI_LOG_TRACE( traceLibWatch, "Refreshing symbol %s", symbol->GetName() );
             updatePreviewSymbol();
             GetCanvas()->GetView()->UpdateAllItems( KIGFX::ALL );
         }

@@ -35,6 +35,7 @@
 #include "raytracing/shapes2D/round_segment_2d.h"
 #include "raytracing/shapes3D/bbox_3d.h"
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 //#ifdef DEBUG
 #if 0
@@ -54,166 +55,166 @@ void Run_3d_viewer_test_cases()
     // Test a not initialized box conditions
     bbox2d_A.Set( SFVEC2F( 1.0f, -1.0f ), SFVEC2F( -1.0f, 1.0f ) );
 
-    wxASSERT( bbox2d_A.IsInitialized() == true );
-    wxASSERT( bbox2d_A.Area() == 4.0f );
-    wxASSERT( bbox2d_A.GetCenter() == SFVEC2F( 0.0f, 0.0f ) );
-    wxASSERT( bbox2d_A.GetExtent() == SFVEC2F( 2.0f, 2.0f ) );
-    wxASSERT( bbox2d_A.Inside( SFVEC2F( 0.0f, 0.0f ) ) == true );
-    wxASSERT( bbox2d_A.Max() == SFVEC2F( 1.0f, 1.0f ) );
-    wxASSERT( bbox2d_A.Min() == SFVEC2F(-1.0f,-1.0f ) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_A ) == true );
-    wxASSERT( bbox2d_A.MaxDimension() == 0 );
-    wxASSERT( bbox2d_A.Perimeter() == 8.0f );
+    KI_ASSERT( bbox2d_A.IsInitialized() == true );
+    KI_ASSERT( bbox2d_A.Area() == 4.0f );
+    KI_ASSERT( bbox2d_A.GetCenter() == SFVEC2F( 0.0f, 0.0f ) );
+    KI_ASSERT( bbox2d_A.GetExtent() == SFVEC2F( 2.0f, 2.0f ) );
+    KI_ASSERT( bbox2d_A.Inside( SFVEC2F( 0.0f, 0.0f ) ) == true );
+    KI_ASSERT( bbox2d_A.Max() == SFVEC2F( 1.0f, 1.0f ) );
+    KI_ASSERT( bbox2d_A.Min() == SFVEC2F(-1.0f,-1.0f ) );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( bbox2d_A.MaxDimension() == 0 );
+    KI_ASSERT( bbox2d_A.Perimeter() == 8.0f );
 
     bbox2d_A.Scale( 2.0f );
 
-    wxASSERT( bbox2d_A.IsInitialized() == true );
-    wxASSERT( bbox2d_A.Area() == 16.0f );
-    wxASSERT( bbox2d_A.GetCenter() == SFVEC2F( 0.0f, 0.0f ) );
-    wxASSERT( bbox2d_A.GetExtent() == SFVEC2F( 4.0f, 4.0f ) );
-    wxASSERT( bbox2d_A.Inside( SFVEC2F( 0.0f, 0.0f ) ) == true );
-    wxASSERT( bbox2d_A.Max() == SFVEC2F( 2.0f, 2.0f ) );
-    wxASSERT( bbox2d_A.Min() == SFVEC2F(-2.0f,-2.0f ) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_A ) == true );
-    wxASSERT( bbox2d_A.MaxDimension() == 0 );
-    wxASSERT( bbox2d_A.Perimeter() == 16.0f );
+    KI_ASSERT( bbox2d_A.IsInitialized() == true );
+    KI_ASSERT( bbox2d_A.Area() == 16.0f );
+    KI_ASSERT( bbox2d_A.GetCenter() == SFVEC2F( 0.0f, 0.0f ) );
+    KI_ASSERT( bbox2d_A.GetExtent() == SFVEC2F( 4.0f, 4.0f ) );
+    KI_ASSERT( bbox2d_A.Inside( SFVEC2F( 0.0f, 0.0f ) ) == true );
+    KI_ASSERT( bbox2d_A.Max() == SFVEC2F( 2.0f, 2.0f ) );
+    KI_ASSERT( bbox2d_A.Min() == SFVEC2F(-2.0f,-2.0f ) );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( bbox2d_A.MaxDimension() == 0 );
+    KI_ASSERT( bbox2d_A.Perimeter() == 16.0f );
 
     bbox2d_B.Set( SFVEC2F(2.1f, 2.0f), SFVEC2F( 3.0f, 3.0f) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == false );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == false );
     bbox2d_B.Set( SFVEC2F(2.0f, 2.1f), SFVEC2F( 3.0f, 3.0f) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == false );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == false );
     bbox2d_B.Set( SFVEC2F(2.1f, 2.1f), SFVEC2F( 3.0f, 3.0f) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == false );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == false );
 
     bbox2d_B.Set( SFVEC2F(2.0f, 2.0f), SFVEC2F( 3.0f, 3.0f) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
 
     bbox2d_A.Union( bbox2d_B );
 
-    wxASSERT( bbox2d_A.IsInitialized() == true );
-    wxASSERT( bbox2d_A.Area() == 25.0f );
-    wxASSERT( bbox2d_A.GetCenter() == SFVEC2F( 0.5f, 0.5f ) );
-    wxASSERT( bbox2d_A.GetExtent() == SFVEC2F( 5.0f, 5.0f ) );
-    wxASSERT( bbox2d_A.Inside( SFVEC2F( 0.0f, 0.0f ) ) == true );
-    wxASSERT( bbox2d_A.Inside( SFVEC2F( 3.0f, 3.0f ) ) == true );
-    wxASSERT( bbox2d_A.Inside( SFVEC2F(-2.0f,-2.0f ) ) == true );
-    wxASSERT( bbox2d_A.Max() == SFVEC2F( 3.0f, 3.0f ) );
-    wxASSERT( bbox2d_A.Min() == SFVEC2F(-2.0f,-2.0f ) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_A ) == true );
-    wxASSERT( bbox2d_A.MaxDimension() == 0 );
-    wxASSERT( bbox2d_A.Perimeter() == 20.0f );
+    KI_ASSERT( bbox2d_A.IsInitialized() == true );
+    KI_ASSERT( bbox2d_A.Area() == 25.0f );
+    KI_ASSERT( bbox2d_A.GetCenter() == SFVEC2F( 0.5f, 0.5f ) );
+    KI_ASSERT( bbox2d_A.GetExtent() == SFVEC2F( 5.0f, 5.0f ) );
+    KI_ASSERT( bbox2d_A.Inside( SFVEC2F( 0.0f, 0.0f ) ) == true );
+    KI_ASSERT( bbox2d_A.Inside( SFVEC2F( 3.0f, 3.0f ) ) == true );
+    KI_ASSERT( bbox2d_A.Inside( SFVEC2F(-2.0f,-2.0f ) ) == true );
+    KI_ASSERT( bbox2d_A.Max() == SFVEC2F( 3.0f, 3.0f ) );
+    KI_ASSERT( bbox2d_A.Min() == SFVEC2F(-2.0f,-2.0f ) );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( bbox2d_A.MaxDimension() == 0 );
+    KI_ASSERT( bbox2d_A.Perimeter() == 20.0f );
 
     bbox2d_A.Set( SFVEC2F( -1.0f, -1.0f ), SFVEC2F( 1.0f, 1.0f ) );
     bbox2d_B.Set( SFVEC2F( -2.0f, -2.0f ), SFVEC2F( 2.0f, 2.0f ) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
-    wxASSERT( bbox2d_B.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( bbox2d_B.Intersects( bbox2d_A ) == true );
 
     bbox2d_B.Set( SFVEC2F( 1.0f, 1.0f ), SFVEC2F( 1.0f, 1.0f ) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
 
     bbox2d_B.Set( SFVEC2F( 1.1f, 1.1f ), SFVEC2F( 2.0f, 2.0f ) );
-    wxASSERT(  bbox2d_A.Intersects( bbox2d_B ) == false );
+    KI_ASSERT(  bbox2d_A.Intersects( bbox2d_B ) == false );
 
     bbox2d_B.Set( SFVEC2F(-0.5f, -0.5f ), SFVEC2F( 0.5f, 0.5f ) );
-    wxASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( bbox2d_A.Intersects( bbox2d_B ) == true );
 
     // Test FILLED_CIRCLE_2D
     FILLED_CIRCLE_2D filledCircle2d( SFVEC2F( 2.0f, 2.0f ), 1.0f );
 
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.0f, 2.0f ) ) == true );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.0f, 2.0f ) ) == true );
 
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.0f, 3.0f ) ) == true );
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 3.0f, 2.0f ) ) == true );
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 1.0f, 2.0f ) ) == true );
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.0f, 1.0f ) ) == true );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.0f, 3.0f ) ) == true );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 3.0f, 2.0f ) ) == true );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 1.0f, 2.0f ) ) == true );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.0f, 1.0f ) ) == true );
 
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.8f, 2.8f ) ) == false );
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.6f, 2.6f ) ) == true );
-    wxASSERT( filledCircle2d.IsPointInside( SFVEC2F( 1.2f, 1.2f ) ) == false );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.8f, 2.8f ) ) == false );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 2.6f, 2.6f ) ) == true );
+    KI_ASSERT( filledCircle2d.IsPointInside( SFVEC2F( 1.2f, 1.2f ) ) == false );
 
     bbox2d_B.Set( SFVEC2F( 0.0f, 0.0f ), SFVEC2F( 4.0f, 4.0f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
 
     bbox2d_B.Set( SFVEC2F( 1.5f, 1.5f ), SFVEC2F( 2.5f, 2.5f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
 
     // A box that does not intersect the sphere but still intersect the bbox of the sphere
     bbox2d_B.Set( SFVEC2F( 0.0f, 0.0f ), SFVEC2F( 1.2f, 1.2f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == false );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == false );
 
     bbox2d_B.Set( SFVEC2F(-1.0f, -1.0f ), SFVEC2F( 0.5f, 0.5f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == false );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == false );
 
     bbox2d_B.Set( SFVEC2F( 0.0f, 0.0f ), SFVEC2F( 2.0f, 2.0f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
 
     bbox2d_B.Set( SFVEC2F( 0.0f, 0.0f ), SFVEC2F( 2.0f, 4.0f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
 
     bbox2d_B.Set( SFVEC2F( 2.0f, 0.0f ), SFVEC2F( 4.0f, 4.0f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
 
     bbox2d_B.Set( SFVEC2F( 0.0f, 2.0f ), SFVEC2F( 4.0f, 4.0f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
 
     bbox2d_B.Set( SFVEC2F( 0.0f, 0.0f ), SFVEC2F( 4.0f, 2.0f ) );
-    wxASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
+    KI_ASSERT( filledCircle2d.Intersects( bbox2d_B ) == true );
 
 
     // Test ROUND_SEGMENT_2D
     ROUND_SEGMENT_2D roundSegment2d( SFVEC2F( -1.0f, 0.0f ), SFVEC2F( 1.0f, 0.0f ), 2.0f );
 
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f, 0.0f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.0f, 0.0f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F(-1.0f, 0.0f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F(-2.0f, 0.0f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 2.0f, 0.0f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f, 1.0f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f,-1.0f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f, 1.1f ) ) == false );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f,-1.1f ) ) == false );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 2.1f, 0.0f ) ) == false );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 2.1f, 0.0f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f, 0.0f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.0f, 0.0f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F(-1.0f, 0.0f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F(-2.0f, 0.0f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 2.0f, 0.0f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f, 1.0f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f,-1.0f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f, 1.1f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 0.0f,-1.1f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 2.1f, 0.0f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 2.1f, 0.0f ) ) == false );
 
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.8f, 0.8f ) ) == false );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.8f,-0.8f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.8f, 0.8f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.8f,-0.8f ) ) == false );
 
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.8f, 0.8f ) ) == false );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.8f,-0.8f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.8f, 0.8f ) ) == false );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.8f,-0.8f ) ) == false );
 
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.6f, 0.6f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.6f,-0.6f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.6f, 0.6f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( 1.6f,-0.6f ) ) == true );
 
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.6f, 0.6f ) ) == true );
-    wxASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.6f,-0.6f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.6f, 0.6f ) ) == true );
+    KI_ASSERT( roundSegment2d.IsPointInside( SFVEC2F( -1.6f,-0.6f ) ) == true );
 
     bbox2d_A.Set( SFVEC2F(-2.0f,-1.0f), SFVEC2F( 2.0f, 1.0f) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
 
     bbox2d_A.Set( SFVEC2F(-2.1f,-1.1f ), SFVEC2F( 2.1f, 1.1f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
 
     bbox2d_A.Set( SFVEC2F( -1.9f,-0.9f ), SFVEC2F( 1.9f, 0.9f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
 
     bbox2d_A.Set( SFVEC2F( -1.0f,-1.0f ), SFVEC2F( 1.0f, 1.0f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
 
     bbox2d_A.Set( SFVEC2F( -1.0f,-0.5f ), SFVEC2F( 1.0f, 0.5f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == true );
 
     bbox2d_A.Set( SFVEC2F( -4.0f,-0.5f ), SFVEC2F( -3.0f, 0.5f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
 
     bbox2d_A.Set( SFVEC2F( 1.8f, 0.8f ), SFVEC2F( 2.0f, 1.0f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
 
     bbox2d_A.Set( SFVEC2F( -2.0f, 0.8f ), SFVEC2F( -1.8f, 1.0f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
 
     bbox2d_A.Set( SFVEC2F( -2.0f, -1.0f ), SFVEC2F( -1.8f, -0.8f ) );
-    wxASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
+    KI_ASSERT( roundSegment2d.Intersects( bbox2d_A ) == false );
 
     // Test CPOLYGON2D
     Polygon2d_TestModule();
@@ -236,34 +237,34 @@ void Run_3d_viewer_test_cases()
     BBOX_3D bbox3d;
 
     bbox3d.Set( SFVEC3F( -1.0f, -1.0f, z ), SFVEC3F( +1.0f, +1.0f, z + 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( -1.0f, -1.0f,  z + z ), SFVEC3F( +1.0f, +1.0f, z + z + 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( -1.0f, -1.0f, 1.0f ), SFVEC3F( 0.0f, 0.0f, 2.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( -1.0f, -1.0f, -z - 1.0f ), SFVEC3F( +1.0f, +1.0f, -z ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == false );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == false );
 
     bbox3d.Set( SFVEC3F( z - 1.0f, z - 1.0f, 0.0 ), SFVEC3F( z + 1.0f, z + 1.0f, 1.0 ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == false );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == false );
 
     bbox3d.Set( SFVEC3F( -z, -z, 0.0), SFVEC3F( -1.0f, -1.0f, 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == false );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == false );
 
     bbox3d.Set( SFVEC3F( -z, -z, -1.0f ), SFVEC3F( +z, +z, 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( -z, -z, z-1 ), SFVEC3F( +z, +z, z + 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( 0.5, 0.5, 0.0 ), SFVEC3F( 2.0, 2.0, z ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( 1.1, 1.0, 0.0 ), SFVEC3F( 2.0, 2.0, z ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == false );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == false );
     }
     {
     FRUSTUM frustum;
@@ -282,35 +283,35 @@ void Run_3d_viewer_test_cases()
     BBOX_3D bbox3d;
 
     bbox3d.Set( SFVEC3F( -1.0f, -1.0f, -z), SFVEC3F( +1.0f, +1.0f, -z + 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( -1.0f, -1.0f, -( z + z ) ), SFVEC3F( +1.0f, +1.0f, -( z + z + 1.0f ) ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F(- 1.0f, -1.0f, 1.0f ), SFVEC3F( 0.0f, 0.0f, 2.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     // !TODO: The frustum alg does not exclude all the situations
     //bbox3d.Set( SFVEC3F(-1.0f, -1.0f, z+1.0f), SFVEC3F(+1.0f,+1.0f, +z+2.0f) );
-    //wxASSERT( frustum.Intersect( bbox3d ) == false );
+    //KI_ASSERT( frustum.Intersect( bbox3d ) == false );
 
     bbox3d.Set( SFVEC3F( z - 1.0f, z - 1.0f, 0.0), SFVEC3F( z + 1.0f, z + 1.0f, 1.0 ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == false );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == false );
 
     bbox3d.Set( SFVEC3F( -z, -z, 0.0 ), SFVEC3F( -1.0f,-1.0f, 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == false );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == false );
 
     bbox3d.Set( SFVEC3F( -z, -z, -1.0f ), SFVEC3F( +z, +z, 1.0f ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( -z, -z, -( z - 1 ) ), SFVEC3F( +z, +z, -( z + 1.0f ) ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( 0.5, 0.5, 0.0 ), SFVEC3F( 2.0, 2.0, z ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == true );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == true );
 
     bbox3d.Set( SFVEC3F( 1.1, 1.0, 0.0 ), SFVEC3F( 2.0, 2.0, z ) );
-    wxASSERT( frustum.Intersect( bbox3d ) == false );
+    KI_ASSERT( frustum.Intersect( bbox3d ) == false );
     }
 #endif
 }

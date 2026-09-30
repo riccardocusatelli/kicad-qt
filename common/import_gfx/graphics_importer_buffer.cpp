@@ -29,6 +29,7 @@
 #include <geometry/shape_poly_set.h>
 
 #include "graphics_importer_buffer.h"
+#include <core/ki_assert.h>
 
 using namespace std;
 
@@ -222,7 +223,7 @@ static void convertPolygon( std::list<std::unique_ptr<IMPORTED_SHAPE>>& aShapes,
     double origH = ( maxY - minY );
     double upscaledW, upscaledH;
 
-    wxCHECK( origH && origW, /* void */ );
+    KI_CHECK( origH && origW, /* void */ );
 
     if( origW > origH )
     {

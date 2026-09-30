@@ -46,6 +46,8 @@
 #include <advanced_config.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -78,7 +80,7 @@ static std::shared_ptr<LIB_SYMBOL> GetSafeRootSymbol( const LIB_SYMBOL* aSymbol,
 
             chain += wxT( " -> " ) + parent->GetName() + wxT( " (CYCLE)" );
 
-            wxLogTrace( traceSymbolInheritance,
+            KI_LOG_TRACE( traceSymbolInheritance,
                         wxT( "%s: Circular inheritance detected in symbol '%s' (lib: %s). Chain: %s" ),
                         aCallerName,
                         aSymbol->GetName(),
@@ -298,7 +300,7 @@ LIB_SYMBOL::LIB_SYMBOL( const LIB_SYMBOL& aSymbol, LEGACY_SYMBOL_LIB* aLibrary, 
         }
         catch( ... )
         {
-            wxFAIL_MSG( "Failed to clone SCH_ITEM." );
+            KI_FAIL_MSG( "Failed to clone SCH_ITEM." );
             return;
         }
     }
@@ -404,7 +406,7 @@ unsigned LIB_SYMBOL::GetInheritanceDepth() const
         // Cycle detected - parent chain points back to an already visited symbol
         if( visited.count( parent.get() ) )
         {
-            wxLogTrace( traceSymbolInheritance,
+            KI_LOG_TRACE( traceSymbolInheritance,
                         wxT( "GetInheritanceDepth: Circular inheritance detected in symbol '%s' "
                              "(lib: %s)" ),
                         m_name, m_libId.GetLibNickname().wx_str() );
@@ -433,7 +435,7 @@ std::shared_ptr<LIB_SYMBOL> LIB_SYMBOL::GetRootSymbol() const
         // Cycle detected - parent chain points back to an already visited symbol
         if( visited.count( parent.get() ) )
         {
-            wxLogTrace( traceSymbolInheritance,
+            KI_LOG_TRACE( traceSymbolInheritance,
                         wxT( "GetRootSymbol: Circular inheritance detected in symbol '%s' "
                              "(lib: %s)" ),
                         m_name, m_libId.GetLibNickname().wx_str() );
@@ -517,7 +519,7 @@ void LIB_SYMBOL::SetParent( LIB_SYMBOL* aParent )
         {
             if( visited.count( ancestor.get() ) )
             {
-                wxLogTrace( traceSymbolInheritance,
+                KI_LOG_TRACE( traceSymbolInheritance,
                             wxT( "SetParent: Rejecting parent '%s' for symbol '%s' - would create "
                                  "circular inheritance (lib: %s)" ),
                             aParent->GetName(), m_name, m_libId.GetLibNickname().wx_str() );
@@ -561,14 +563,14 @@ std::unique_ptr<LIB_SYMBOL> LIB_SYMBOL::Flatten() const
 
         std::shared_ptr<LIB_SYMBOL> parent = m_parent.lock();
 
-        wxCHECK_MSG( parent, retv, wxString::Format( "Parent of derived symbol '%s' undefined", m_name ) );
+        KI_CHECK_MSG( parent, retv, wxString::Format( "Parent of derived symbol '%s' undefined", m_name ) );
 
         while( parent )
         {
             // Cycle detected - parent chain points back to an already visited symbol
             if( visited.count( parent.get() ) )
             {
-                wxLogTrace( traceSymbolInheritance,
+                KI_LOG_TRACE( traceSymbolInheritance,
                             wxT( "Flatten: Circular inheritance detected in symbol '%s' (lib: %s)" ),
                             m_name, m_libId.GetLibNickname().wx_str() );
                 break;
@@ -942,7 +944,7 @@ bool LIB_SYMBOL::ResolveTextVar( wxString* token, int aDepth ) const
 void LIB_SYMBOL::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& aPlotOpts, int aUnit, int aBodyStyle,
                        const VECTOR2I& aOffset, bool aDimmed )
 {
-    wxASSERT( aPlotter != nullptr );
+    KI_ASSERT( aPlotter != nullptr );
 
     SCH_RENDER_SETTINGS* renderSettings = getRenderSettings( aPlotter );
     COLOR4D              color = renderSettings->GetLayerColor( LAYER_DEVICE );
@@ -987,7 +989,7 @@ void LIB_SYMBOL::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS&
 void LIB_SYMBOL::PlotFields( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& aPlotOpts, int aUnit,
                              int aBodyStyle, const VECTOR2I& aOffset, bool aDimmed )
 {
-    wxASSERT( aPlotter != nullptr );
+    KI_ASSERT( aPlotter != nullptr );
 
     SCH_RENDER_SETTINGS* renderSettings = getRenderSettings( aPlotter );
     COLOR4D              color = renderSettings->GetLayerColor( LAYER_FIELDS );
@@ -1067,7 +1069,7 @@ void LIB_SYMBOL::FixupDrawItems()
 
 void LIB_SYMBOL::RemoveDrawItem( SCH_ITEM* aItem )
 {
-    wxASSERT( aItem != nullptr );
+    KI_ASSERT( aItem != nullptr );
 
     // none of the MANDATORY_FIELDS may be removed in RAM, but they may be
     // omitted when saving to disk.
@@ -1253,13 +1255,13 @@ std::vector<LIB_SYMBOL::LOGICAL_PIN> LIB_SYMBOL::GetLogicalPins( int aUnit, int 
             for( const wxString& num : expanded )
             {
                 out.push_back( LOGICAL_PIN{ pin, num } );
-                wxLogTrace( traceStackedPins, "GetLogicalPins: base='%s' -> '%s'", pin->GetShownNumber(), num );
+                KI_LOG_TRACE( traceStackedPins, "GetLogicalPins: base='%s' -> '%s'", pin->GetShownNumber(), num );
             }
         }
         else
         {
             out.push_back( LOGICAL_PIN{ pin, pin->GetShownNumber() } );
-            wxLogTrace( traceStackedPins, "GetLogicalPins: base='%s' (no expansion)", pin->GetShownNumber() );
+            KI_LOG_TRACE( traceStackedPins, "GetLogicalPins: base='%s' (no expansion)", pin->GetShownNumber() );
         }
     }
 
@@ -1334,12 +1336,12 @@ bool LIB_SYMBOL::PinsConflictWith( const LIB_SYMBOL& aOtherPart, bool aTestNums,
 {
     for( const SCH_PIN* pin : GetGraphicalPins() )
     {
-        wxASSERT( pin );
+        KI_ASSERT( pin );
         bool foundMatch = false;
 
         for( const SCH_PIN* otherPin : aOtherPart.GetGraphicalPins() )
         {
-            wxASSERT( otherPin );
+            KI_ASSERT( otherPin );
 
             // Same unit?
             if( pin->GetUnit() != otherPin->GetUnit() )
@@ -1754,7 +1756,7 @@ const SCH_FIELD* LIB_SYMBOL::FindFieldCaseInsensitive( const wxString& aFieldNam
 const SCH_FIELD& LIB_SYMBOL::GetValueField() const
 {
     const SCH_FIELD* field = GetField( FIELD_T::VALUE );
-    wxASSERT( field != nullptr );
+    KI_ASSERT( field != nullptr );
     return *field;
 }
 
@@ -1762,7 +1764,7 @@ const SCH_FIELD& LIB_SYMBOL::GetValueField() const
 const SCH_FIELD& LIB_SYMBOL::GetReferenceField() const
 {
     const SCH_FIELD* field = GetField( FIELD_T::REFERENCE );
-    wxASSERT( field != nullptr );
+    KI_ASSERT( field != nullptr );
     return *field;
 }
 
@@ -1770,7 +1772,7 @@ const SCH_FIELD& LIB_SYMBOL::GetReferenceField() const
 const SCH_FIELD& LIB_SYMBOL::GetFootprintField() const
 {
     const SCH_FIELD* field = GetField( FIELD_T::FOOTPRINT );
-    wxASSERT( field != nullptr );
+    KI_ASSERT( field != nullptr );
     return *field;
 }
 
@@ -1778,7 +1780,7 @@ const SCH_FIELD& LIB_SYMBOL::GetFootprintField() const
 const SCH_FIELD& LIB_SYMBOL::GetDatasheetField() const
 {
     const SCH_FIELD* field = GetField( FIELD_T::DATASHEET );
-    wxASSERT( field != nullptr );
+    KI_ASSERT( field != nullptr );
     return *field;
 }
 
@@ -1786,7 +1788,7 @@ const SCH_FIELD& LIB_SYMBOL::GetDatasheetField() const
 const SCH_FIELD& LIB_SYMBOL::GetDescriptionField() const
 {
     const SCH_FIELD* field = GetField( FIELD_T::DESCRIPTION );
-    wxASSERT( field != nullptr );
+    KI_ASSERT( field != nullptr );
     return *field;
 }
 
@@ -1958,7 +1960,7 @@ void LIB_SYMBOL::SetUnitCount( int aCount, bool aDuplicateDrawItems )
     // A LIB_SYMBOL must always have at least one unit. Passing a value less than 1 would
     // erase the mandatory fields (which all have m_unit == 0), leaving the symbol in a
     // broken state that crashes later when callers dereference GetReferenceField() etc.
-    wxCHECK_RET( aCount >= 1,
+    KI_CHECK_RET( aCount >= 1,
                  wxString::Format( wxT( "Invalid unit count %d, ignoring." ), aCount ) );
 
     if( m_unitCount == aCount )
@@ -2027,7 +2029,7 @@ int LIB_SYMBOL::GetUnitCount() const
 
 void LIB_SYMBOL::SetBodyStyleCount( int aCount, bool aDuplicateDrawItems, bool aDuplicatePins )
 {
-    wxCHECK_RET( aCount >= 1,
+    KI_CHECK_RET( aCount >= 1,
                  wxString::Format( wxT( "Invalid body style count %d, ignoring." ), aCount ) );
 
     int prevCount = GetBodyStyleCount();
@@ -2481,7 +2483,7 @@ int LIB_SYMBOL::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 
 double LIB_SYMBOL::Similarity( const SCH_ITEM& aOther ) const
 {
-    wxCHECK( aOther.Type() == LIB_SYMBOL_T, 0.0 );
+    KI_CHECK( aOther.Type() == LIB_SYMBOL_T, 0.0 );
 
     const LIB_SYMBOL& other = static_cast<const LIB_SYMBOL&>( aOther );
     double            similarity = 0.0;
@@ -2589,7 +2591,7 @@ void LIB_SYMBOL::AppendParentEmbeddedFiles( std::vector<EMBEDDED_FILES*>& aStack
         // Cycle detected - parent chain points back to an already visited symbol
         if( visited.count( parent.get() ) )
         {
-            wxLogTrace( traceSymbolInheritance,
+            KI_LOG_TRACE( traceSymbolInheritance,
                         wxT( "AppendParentEmbeddedFiles: Circular inheritance detected in "
                              "symbol '%s' (lib: %s)" ),
                         m_name, m_libId.GetLibNickname().wx_str() );

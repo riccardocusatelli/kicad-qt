@@ -36,6 +36,7 @@
 
 #include <ratsnest/ratsnest_data.h>
 #include <functional>
+#include <core/ki_assert.h>
 using namespace std::placeholders;
 
 #include <algorithm>
@@ -124,7 +125,7 @@ void RN_NET::kruskalMST( const std::vector<CN_EDGE> &aEdges )
         const std::shared_ptr<const CN_ANCHOR>& source = tmp.GetSourceNode();
         const std::shared_ptr<const CN_ANCHOR>& target = tmp.GetTargetNode();
 
-        wxCHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
+        KI_CHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
 
         if( dset.unite( source->GetTag(), target->GetTag() ) )
         {
@@ -504,7 +505,7 @@ void RN_NET::OptimizeRNEdges()
         const std::shared_ptr<const CN_ANCHOR>& source = edge.GetSourceNode();
         const std::shared_ptr<const CN_ANCHOR>& target = edge.GetTargetNode();
 
-        wxCHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
+        KI_CHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
 
         if( source->ConnectedItemsCount() == 0 )
         {

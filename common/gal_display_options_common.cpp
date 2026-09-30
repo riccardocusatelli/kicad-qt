@@ -29,6 +29,7 @@
 
 #include <config_map.h>
 #include <dpi_scaling_common.h>
+#include <core/ki_log.h>
 
 using namespace KIGFX;
 
@@ -63,7 +64,7 @@ GAL_DISPLAY_OPTIONS_IMPL::GAL_DISPLAY_OPTIONS_IMPL() :
 
 void GAL_DISPLAY_OPTIONS_IMPL::ReadWindowSettings( WINDOW_SETTINGS& aCfg )
 {
-    wxLogTrace( traceGalDispOpts, wxS( "Reading app-specific options" ) );
+    KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading app-specific options" ) );
 
     m_gridStyle = UTIL::GetValFromConfig( gridStyleConfigVals, aCfg.grid.style );
     m_gridSnapping = UTIL::GetValFromConfig( gridSnapConfigVals, aCfg.grid.snap );
@@ -80,7 +81,7 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadWindowSettings( WINDOW_SETTINGS& aCfg )
 
 void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings, wxWindow* aWindow )
 {
-    wxLogTrace( traceGalDispOpts, wxS( "Reading common config" ) );
+    KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading common config" ) );
 
     antialiasing_mode =
             static_cast<KIGFX::GAL_ANTIALIASING_MODE>( aSettings.m_Graphics.aa_mode );
@@ -95,7 +96,7 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings, wxW
 void GAL_DISPLAY_OPTIONS_IMPL::ReadConfig( COMMON_SETTINGS& aCommonConfig,
                                            WINDOW_SETTINGS& aWindowConfig, wxWindow* aWindow )
 {
-    wxLogTrace( traceGalDispOpts, wxS( "Reading common and app config" ) );
+    KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading common and app config" ) );
 
     ReadWindowSettings( aWindowConfig );
 
@@ -105,7 +106,7 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadConfig( COMMON_SETTINGS& aCommonConfig,
 
 void GAL_DISPLAY_OPTIONS_IMPL::WriteConfig( WINDOW_SETTINGS& aCfg )
 {
-    wxLogTrace( traceGalDispOpts, wxS( "Writing window settings" ) );
+    KI_LOG_TRACE( traceGalDispOpts, wxS( "Writing window settings" ) );
 
     aCfg.grid.style = UTIL::GetConfigForVal( gridStyleConfigVals, m_gridStyle );
     aCfg.grid.snap = UTIL::GetConfigForVal( gridSnapConfigVals, m_gridSnapping );

@@ -46,6 +46,8 @@
 #include "3d_rendering/opengl/opengl_utils.h"
 #include "3d_cache/3d_cache.h"
 #include "eda_3d_model_viewer.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 /**
  * Scale conversion from 3d model units to pcb units
@@ -98,7 +100,7 @@ EDA_3D_MODEL_VIEWER::EDA_3D_MODEL_VIEWER( wxWindow* aParent, const wxGLAttribute
         m_trackBallCamera( RANGE_SCALE_3D * 4.0f ),
         m_cacheManager( aCacheManager )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::EDA_3D_MODEL_VIEWER" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::EDA_3D_MODEL_VIEWER" ) );
 
     m_ogl_initialized = false;
     m_reload_is_needed = false;
@@ -112,9 +114,9 @@ EDA_3D_MODEL_VIEWER::EDA_3D_MODEL_VIEWER( wxWindow* aParent, const wxGLAttribute
 
 EDA_3D_MODEL_VIEWER::~EDA_3D_MODEL_VIEWER()
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::~EDA_3D_MODEL_VIEWER" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::~EDA_3D_MODEL_VIEWER" ) );
     GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
-    wxASSERT( gl_mgr );
+    KI_ASSERT( gl_mgr );
 
     if( m_glRC && gl_mgr )
     {
@@ -131,13 +133,13 @@ EDA_3D_MODEL_VIEWER::~EDA_3D_MODEL_VIEWER()
 
 void EDA_3D_MODEL_VIEWER::Set3DModel( const S3DMODEL& a3DModel )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::Set3DModel with a S3DMODEL" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::Set3DModel with a S3DMODEL" ) );
 
     // Validate a3DModel pointers
-    wxASSERT( a3DModel.m_Materials != nullptr );
-    wxASSERT( a3DModel.m_Meshes != nullptr );
-    wxASSERT( a3DModel.m_MaterialsSize > 0 );
-    wxASSERT( a3DModel.m_MeshesSize > 0 );
+    KI_ASSERT( a3DModel.m_Materials != nullptr );
+    KI_ASSERT( a3DModel.m_Meshes != nullptr );
+    KI_ASSERT( a3DModel.m_MaterialsSize > 0 );
+    KI_ASSERT( a3DModel.m_MeshesSize > 0 );
 
     // Delete the old model
     delete m_ogl_3dmodel;
@@ -158,7 +160,7 @@ void EDA_3D_MODEL_VIEWER::Set3DModel( const S3DMODEL& a3DModel )
 
 void EDA_3D_MODEL_VIEWER::Set3DModel( const wxString& aModelPathName)
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::Set3DModel with a wxString" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::Set3DModel with a wxString" ) );
 
     if( m_cacheManager )
     {
@@ -198,7 +200,7 @@ void EDA_3D_MODEL_VIEWER::ogl_initialize()
     }
     else
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::ogl_initialize Using OpenGL version %s" ),
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::ogl_initialize Using OpenGL version %s" ),
                     From_UTF8( (char*) glGetString( GL_VERSION ) ) );
     }
 
@@ -254,7 +256,7 @@ void EDA_3D_MODEL_VIEWER::OnPaint( wxPaintEvent& event )
     // SwapBuffer requires the window to be shown before calling
     if( !IsShownOnScreen() )
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnPaint !IsShown" ) );
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnPaint !IsShown" ) );
         return;
     }
 
@@ -272,7 +274,7 @@ void EDA_3D_MODEL_VIEWER::OnPaint( wxPaintEvent& event )
     // CreateCtx could and does fail per sentry crash events, lets be graceful
     if( m_glRC == nullptr )
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnPaint creating gl context failed" ) );
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnPaint creating gl context failed" ) );
         return;
     }
 
@@ -294,7 +296,7 @@ void EDA_3D_MODEL_VIEWER::OnPaint( wxPaintEvent& event )
 
     if( m_reload_is_needed )
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnPaint m_reload_is_needed" ) );
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnPaint m_reload_is_needed" ) );
 
         m_reload_is_needed = false;
         m_ogl_3dmodel      = new MODEL_3D( *m_3d_model, MATERIAL_MODE::NORMAL );
@@ -400,14 +402,14 @@ void EDA_3D_MODEL_VIEWER::OnPaint( wxPaintEvent& event )
 
 void EDA_3D_MODEL_VIEWER::OnEraseBackground( wxEraseEvent& event )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnEraseBackground" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnEraseBackground" ) );
     // Do nothing, to avoid flashing.
 }
 
 
 void EDA_3D_MODEL_VIEWER::OnMouseWheel( wxMouseEvent& event )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnMouseWheel" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnMouseWheel" ) );
 
     if( event.ShiftDown() )
     {

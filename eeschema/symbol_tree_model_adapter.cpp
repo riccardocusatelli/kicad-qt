@@ -36,6 +36,8 @@
 #include <string_utils.h>
 #include <trace_helpers.h>
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER>
@@ -142,7 +144,7 @@ void SYMBOL_TREE_MODEL_ADAPTER::AddLibraries( SCH_BASE_FRAME* aFrame )
 
         std::optional<const LIBRARY_TABLE_ROW*> rowResult = manager.GetRow( LIBRARY_TABLE_TYPE::SYMBOL, lib );
 
-        wxCHECK2( rowResult, continue );
+        KI_CHECK2( rowResult, continue );
 
         wxString libDescription = ( *rowResult )->Description();
 
@@ -191,7 +193,7 @@ void SYMBOL_TREE_MODEL_ADAPTER::AddLibraries( SCH_BASE_FRAME* aFrame )
     {
         m_check_pending_libraries_timer = std::make_unique<wxTimer>( aFrame );
 
-        wxLogTrace( traceLibraries, "%zu pending libraries, starting lazy load...", m_pending_load_libraries.size() );
+        KI_LOG_TRACE( traceLibraries, "%zu pending libraries, starting lazy load...", m_pending_load_libraries.size() );
 
         aFrame->Bind( wxEVT_TIMER,
                 [&, aFrame]( wxTimerEvent& )
@@ -202,7 +204,7 @@ void SYMBOL_TREE_MODEL_ADAPTER::AddLibraries( SCH_BASE_FRAME* aFrame )
                     {
                         m_check_pending_libraries_timer->Stop();
                         m_check_pending_libraries_timer.reset();
-                        wxLogTrace( traceLibraries, "Done lazy-loading libraries" );
+                        KI_LOG_TRACE( traceLibraries, "Done lazy-loading libraries" );
                     }
                 },
                 m_check_pending_libraries_timer->GetId() );

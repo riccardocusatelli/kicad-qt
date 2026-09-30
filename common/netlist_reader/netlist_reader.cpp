@@ -31,6 +31,7 @@
 #include <netlist_reader/netlist_reader.h>
 
 #include <wx/regex.h>
+#include <core/ki_assert.h>
 
 
 NETLIST_READER::~NETLIST_READER()
@@ -45,15 +46,15 @@ NETLIST_READER::NETLIST_FILE_T NETLIST_READER::GuessNetlistFileType( LINE_READER
     // Orcad Pcb2 netlist format starts by "( {", followed by an unknown comment,
     // depending on the tool which created the file
     wxRegEx reOrcad( wxT( "(?i)[ ]*\\([ \t]+{+" ), wxRE_ADVANCED );
-    wxASSERT( reOrcad.IsValid() );
+    KI_ASSERT( reOrcad.IsValid() );
 
     // Our legacy netlist format starts by "# EESchema Netlist "
     wxRegEx reLegacy( wxT( "(?i)#[ \t]+EESchema[ \t]+Netlist[ \t]+" ), wxRE_ADVANCED );
-    wxASSERT( reLegacy.IsValid() );
+    KI_ASSERT( reLegacy.IsValid() );
 
     // Our new netlist format starts by "(export (version "
     wxRegEx reKicad( wxT( "[ ]*\\(export(\\s+\\(version)?" ), wxRE_ADVANCED );
-    wxASSERT( reKicad.IsValid() );
+    KI_ASSERT( reKicad.IsValid() );
 
     wxString line;
 
@@ -77,7 +78,7 @@ NETLIST_READER* NETLIST_READER::GetNetlistReader( NETLIST*        aNetlist,
                                                   const wxString& aNetlistFileName,
                                                   const wxString& aCompFootprintFileName )
 {
-    wxASSERT( aNetlist != nullptr );
+    KI_ASSERT( aNetlist != nullptr );
 
     std::unique_ptr<FILE_LINE_READER> file_rdr =
             std::make_unique<FILE_LINE_READER>( aNetlistFileName );
@@ -119,7 +120,7 @@ CMP_READER::~CMP_READER()
 
 bool CMP_READER::Load( NETLIST* aNetlist )
 {
-    wxCHECK_MSG( aNetlist != nullptr, true, wxT( "No netlist passed to CMP_READER::Load()" ) );
+    KI_CHECK_MSG( aNetlist != nullptr, true, wxT( "No netlist passed to CMP_READER::Load()" ) );
 
     wxString reference;    // Stores value read from line like Reference = BUS1;
     wxString timestamp;    // Stores value read from line like TimeStamp = /32307DE2/AA450F67;

@@ -38,6 +38,7 @@
 #include <wx/dir.h>
 #include <wx/wfstream.h>
 #include <wx/txtstrm.h>
+#include <core/ki_assert.h>
 
 
 bool SCH_IO_CADSTAR_ARCHIVE::CanReadLibrary( const wxString& aFileName ) const
@@ -69,7 +70,7 @@ SCH_SHEET* SCH_IO_CADSTAR_ARCHIVE::LoadSchematicFile( const wxString&        aFi
                                                       SCH_SHEET*             aAppendToMe,
                                                       const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
+    KI_CHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
 
     // Collect the font substitution warnings (RAII - automatically reset on scope exit)
     FONTCONFIG_REPORTER_SCOPE fontconfigScope( &LOAD_INFO_REPORTER::GetInstance() );
@@ -79,7 +80,7 @@ SCH_SHEET* SCH_IO_CADSTAR_ARCHIVE::LoadSchematicFile( const wxString&        aFi
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         rootSheet = aAppendToMe;
     }
     else
@@ -105,7 +106,7 @@ SCH_SHEET* SCH_IO_CADSTAR_ARCHIVE::LoadSchematicFile( const wxString&        aFi
     // Save symbols to project library
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &aSchematic->Project() );
     LIBRARY_TABLE* table = adapter->ProjectTable().value_or( nullptr );
-    wxCHECK_MSG( table, nullptr, "Could not load symbol lib table." );
+    KI_CHECK_MSG( table, nullptr, "Could not load symbol lib table." );
 
     wxFileName prj_fn = aSchematic->Project().GetProjectFullName();
     wxString libName = CADSTAR_SCH_ARCHIVE_LOADER::CreateLibName( prj_fn, nullptr );

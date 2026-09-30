@@ -50,6 +50,7 @@
 
 #include <jobs/job_export_sch_plot.h>
 #include <confirm.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_PLOT_SCHEMATIC::DIALOG_PLOT_SCHEMATIC( SCH_EDIT_FRAME* aEditFrame ) :
@@ -108,7 +109,7 @@ bool DIALOG_PLOT_SCHEMATIC::TransferDataToWindow()
     if( !m_job )
     {
         EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() );
-        wxASSERT( cfg );
+        KI_ASSERT( cfg );
 
         if( m_lineWidthCtrl->GetValue().IsEmpty() && cfg )
         {

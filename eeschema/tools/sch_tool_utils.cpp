@@ -41,6 +41,7 @@
 #include <limits>
 
 #include <wx/arrstr.h>
+#include <core/ki_assert.h>
 
 wxString GetSchItemAsText( const SCH_ITEM& aItem )
 {
@@ -295,7 +296,7 @@ std::vector<SCH_SYMBOL*> GetSameSymbolMultiUnitSelection( const SELECTION& aSel 
 
 bool SwapPinGeometry( SCH_PIN* aFirst, SCH_PIN* aSecond )
 {
-    wxCHECK_MSG( aFirst && aSecond, false, "Invalid pins supplied to SwapPinGeometry" );
+    KI_CHECK_MSG( aFirst && aSecond, false, "Invalid pins supplied to SwapPinGeometry" );
 
     // If the schematic pin is still backed by a library definition, swap that library pin; once the
     // caller sees the true return value it can decide to clone the updated library data into the

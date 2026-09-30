@@ -46,6 +46,7 @@
 
 #include <dialogs/panel_toolbar_customization.h>
 #include <toolbars_gerber.h>
+#include <core/ki_assert.h>
 
 using json = nlohmann::json;
 
@@ -278,7 +279,7 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aProje
     }
     else
     {
-        wxFAIL_MSG( wxT( "Unexpected filetype for GerbView::SaveFileAs()" ) );
+        KI_FAIL_MSG( wxT( "Unexpected filetype for GerbView::SaveFileAs()" ) );
     }
 }
 

@@ -81,6 +81,7 @@
 #include "pns_router.h"
 #include "pns_debug_decorator.h"
 #include "router_preview_item.h"
+#include <core/ki_log.h>
 
 typedef VECTOR2I::extended_type ecoord;
 
@@ -1646,7 +1647,7 @@ std::vector<std::unique_ptr<PNS::SOLID>> PNS_KICAD_IFACE_BASE::syncPad( PAD* aPa
     }
 
     default:
-        wxLogTrace( wxT( "PNS" ), wxT( "unsupported pad type 0x%x" ), aPad->GetAttribute() );
+        KI_LOG_TRACE( wxT( "PNS" ), wxT( "unsupported pad type 0x%x" ), aPad->GetAttribute() );
         return solids;
     }
 
@@ -2130,7 +2131,7 @@ bool PNS_KICAD_IFACE_BASE::syncBarcode( PNS::NODE* aWorld, PCB_BARCODE* aBarcode
 void PNS_KICAD_IFACE_BASE::SetBoard( BOARD* aBoard )
 {
     m_board = aBoard;
-    wxLogTrace( wxT( "PNS" ), wxT( "m_board = %p" ), m_board );
+    KI_LOG_TRACE( wxT( "PNS" ), wxT( "m_board = %p" ), m_board );
 }
 
 
@@ -2289,7 +2290,7 @@ void PNS_KICAD_IFACE_BASE::SyncWorld( PNS::NODE *aWorld )
 {
     if( !m_board )
     {
-        wxLogTrace( wxT( "PNS" ), wxT( "No board attached, aborting sync." ) );
+        KI_LOG_TRACE( wxT( "PNS" ), wxT( "No board attached, aborting sync." ) );
         return;
     }
 
@@ -2967,7 +2968,7 @@ EDA_UNITS PNS_KICAD_IFACE::GetUnits() const
 
 void PNS_KICAD_IFACE::SetView( KIGFX::VIEW* aView )
 {
-    wxLogTrace( wxT( "PNS" ), wxT( "SetView %p" ), aView );
+    KI_LOG_TRACE( wxT( "PNS" ), wxT( "SetView %p" ), aView );
 
     if( m_previewItems )
     {
@@ -3014,7 +3015,7 @@ wxString PNS_KICAD_IFACE::GetNetName( PNS::NET_HANDLE aNet ) const
 
 void PNS_KICAD_IFACE::UpdateNet( PNS::NET_HANDLE aNet )
 {
-    wxLogTrace( wxT( "PNS" ), wxT( "Update-net %s" ), GetNetName( aNet ) );
+    KI_LOG_TRACE( wxT( "PNS" ), wxT( "Update-net %s" ), GetNetName( aNet ) );
 }
 
 

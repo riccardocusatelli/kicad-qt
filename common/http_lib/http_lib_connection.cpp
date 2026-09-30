@@ -32,6 +32,7 @@
 
 #include <http_lib/http_lib_connection.h>
 #include <lib_id.h>
+#include <core/ki_log.h>
 
 const char* const traceHTTPLib = "KICAD_HTTP_LIB";
 
@@ -80,7 +81,7 @@ bool HTTP_LIB_CONNECTION::validateHttpLibraryEndpoints()
         m_lastError += wxString::Format( _( "Error: %s" ) + "\n" + _( "API Response:  %s" ) + "\n",
                                          e.what(), res );
 
-        wxLogTrace( traceHTTPLib, wxT( "validateHttpLibraryEndpoints: Exception while testing API connection: %s" ),
+        KI_LOG_TRACE( traceHTTPLib, wxT( "validateHttpLibraryEndpoints: Exception while testing API connection: %s" ),
                     m_lastError );
 
         m_endpointValid = false;
@@ -97,7 +98,7 @@ bool HTTP_LIB_CONNECTION::syncCategories()
 {
     if( !IsValidEndpoint() )
     {
-        wxLogTrace( traceHTTPLib, wxT( "syncCategories: without valid connection!" ) );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "syncCategories: without valid connection!" ) );
         return false;
     }
 
@@ -140,7 +141,7 @@ bool HTTP_LIB_CONNECTION::syncCategories()
         m_lastError += wxString::Format( _( "Error: %s" ) + "\n" + _( "API Response:  %s" ) + "\n",
                                          e.what(), res );
 
-        wxLogTrace( traceHTTPLib, wxT( "syncCategories: Exception while syncing categories: %s" ), m_lastError );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "syncCategories: Exception while syncing categories: %s" ), m_lastError );
 
         m_categories.clear();
 
@@ -279,7 +280,7 @@ bool HTTP_LIB_CONNECTION::SelectOne( const std::string& aPartID, HTTP_LIB_PART& 
 {
     if( !IsValidEndpoint() )
     {
-        wxLogTrace( traceHTTPLib, wxT( "SelectOne: without valid connection!" ) );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "SelectOne: without valid connection!" ) );
         return false;
     }
 
@@ -326,7 +327,7 @@ bool HTTP_LIB_CONNECTION::SelectOne( const std::string& aPartID, HTTP_LIB_PART& 
         m_lastError += wxString::Format( _( "Error: %s" ) + "\n" + _( "API Response: %s" ) + "\n",
                                          e.what(), res );
 
-        wxLogTrace( traceHTTPLib, wxT( "SelectOne: Exception while fetching part: %s" ), m_lastError );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "SelectOne: Exception while fetching part: %s" ), m_lastError );
 
         return false;
     }
@@ -341,7 +342,7 @@ bool HTTP_LIB_CONNECTION::SelectAll( const HTTP_LIB_CATEGORY& aCategory, std::ve
 {
     if( !IsValidEndpoint() )
     {
-        wxLogTrace( traceHTTPLib, wxT( "SelectAll: without valid connection!" ) );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "SelectAll: without valid connection!" ) );
         return false;
     }
 
@@ -385,7 +386,7 @@ bool HTTP_LIB_CONNECTION::SelectAll( const HTTP_LIB_CATEGORY& aCategory, std::ve
         m_lastError += wxString::Format( _( "Error: %s" ) + "\n" + _( "API Response: %s" ) + "\n",
                                          e.what(), res );
 
-        wxLogTrace( traceHTTPLib, wxT( "Exception occurred while syncing parts: %s" ), m_lastError );
+        KI_LOG_TRACE( traceHTTPLib, wxT( "Exception occurred while syncing parts: %s" ), m_lastError );
 
         return false;
     }

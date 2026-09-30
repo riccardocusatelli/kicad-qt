@@ -27,3 +27,6 @@ add_library(markdown_lib STATIC
             )
 
 target_include_directories( markdown_lib PRIVATE md_parser html_formatter )
+
+# markdown2html.cpp includes KiCad's macros.h, which uses the KI_ assertion macros
+target_link_libraries( markdown_lib PRIVATE kicore_rt )

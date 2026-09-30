@@ -48,6 +48,7 @@
 #include "pl_draw_panel_gal.h"
 #include "pl_editor_frame.h"
 #include "pl_editor_id.h"
+#include <core/ki_assert.h>
 
 PL_EDIT_TOOL::PL_EDIT_TOOL() :
         TOOL_INTERACTIVE( "plEditor.InteractiveEdit" ),
@@ -66,7 +67,7 @@ bool PL_EDIT_TOOL::Init()
     m_frame = getEditFrame<PL_EDITOR_FRAME>();
     m_selectionTool = m_toolMgr->GetTool<PL_SELECTION_TOOL>();
 
-    wxASSERT_MSG( m_selectionTool, "plEditor.InteractiveSelection tool is not available" );
+    KI_ASSERT_MSG( m_selectionTool, "plEditor.InteractiveSelection tool is not available" );
 
     CONDITIONAL_MENU& ctxMenu = m_menu->GetMenu();
 

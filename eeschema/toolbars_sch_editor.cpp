@@ -49,6 +49,7 @@
 #include <toolbars_sch_editor.h>
 #include <wx/choice.h>
 #include <wx/stattext.h>
+#include <core/ki_assert.h>
 
 
 ACTION_TOOLBAR_CONTROL SCH_ACTION_TOOLBAR_CONTROLS::currentVariant( "control.currentVariant",
@@ -320,7 +321,7 @@ void SCH_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
     if( aEvent.GetId() != ID_TOOLBAR_SCH_SELECT_VARAIANT )
         return;
 
-    wxCHECK( m_currentVariantCtrl, /* void */ );
+    KI_CHECK( m_currentVariantCtrl, /* void */ );
 
     int selection = m_currentVariantCtrl->GetSelection();
     int count = m_currentVariantCtrl->GetCount();

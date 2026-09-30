@@ -42,6 +42,7 @@
 #include <kicad_clipboard.h>
 #include <kidialog.h>
 #include <io/kicad/kicad_io_utils.h>
+#include <core/ki_assert.h>
 
 CLIPBOARD_IO::CLIPBOARD_IO():
         PCB_IO_KICAD_SEXPR(CTL_FOR_CLIPBOARD ),
@@ -155,7 +156,7 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
                     }
                 }
 
-                wxCHECK_MSG( maxCol >= minCol && maxRow >= minRow, /*void*/,
+                KI_CHECK_MSG( maxCol >= minCol && maxRow >= minRow, /*void*/,
                              wxT( "No selected cells!" ) );
 
                 // aTable is always a clone in the clipboard case
@@ -340,7 +341,7 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
             BOARD_ITEM* boardItem = static_cast<BOARD_ITEM*>( item );
             BOARD_ITEM* copy = nullptr;
 
-            wxCHECK2( boardItem, continue );
+            KI_CHECK2( boardItem, continue );
 
             if( boardItem->Type() == PCB_FIELD_T )
             {

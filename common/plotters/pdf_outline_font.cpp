@@ -38,6 +38,7 @@
 #include <core/utf8.h>
 
 #include <ft2build.h>
+#include <core/ki_log.h>
 #include FT_FREETYPE_H
 
 #include <font/font.h>
@@ -219,7 +220,7 @@ uint16_t PDF_OUTLINE_FONT_SUBSET::EnsureGlyph( uint32_t aGlyphIndex, const std::
 
     if( std::getenv( "KICAD_DEBUG_FONT_ADV" ) )
     {
-        wxLogTrace( tracePdfPlotter,
+        KI_LOG_TRACE( tracePdfPlotter,
                     "EnsureGlyph font='%s' gid=%u cid=%u rawAdvance26.6=%f rawAdvanceUnits=%f storedAdvancePdfUnits=%f unitsPerEm=%f", \
                     m_font ? m_font->GetName().ToUTF8().data() : "(null)", (unsigned) aGlyphIndex, (unsigned) cid, \
                     rawAdvance266, rawAdvanceFontUnits, advance, m_unitsPerEm );
@@ -290,7 +291,7 @@ std::string PDF_OUTLINE_FONT_SUBSET::BuildWidthsArray() const
 
         if( std::getenv( "KICAD_DEBUG_FONT_ADV" ) && logCount < 16 )
         {
-            wxLogTrace( tracePdfPlotter, "BuildWidthsArray FIXED cid=%u advPdfUnits=%f width1000=%ld", (unsigned) cid, adv, width1000 );
+            KI_LOG_TRACE( tracePdfPlotter, "BuildWidthsArray FIXED cid=%u advPdfUnits=%f width1000=%ld", (unsigned) cid, adv, width1000 );
             ++logCount;
         }
     }
@@ -448,7 +449,7 @@ PDF_OUTLINE_FONT_SUBSET* PDF_OUTLINE_FONT_MANAGER::ensureSubset( KIFONT::OUTLINE
         const char*    styleName = ( face && face->style_name ) ? face->style_name : "(null)";
         bool           fakeItal = static_cast<KIFONT::OUTLINE_FONT*>( aFont )->IsFakeItalic();
         bool           fakeBold = static_cast<KIFONT::OUTLINE_FONT*>( aFont )->IsFakeBold();
-        wxLogTrace( tracePdfPlotter,
+        KI_LOG_TRACE( tracePdfPlotter,
                     "ensureSubset font='%s' styleName='%s' reqItalic=%d reqBold=%d FT_style_flags=%d "
                     "faceHasRealItalic=%d faceHasRealBold=%d fakeItal=%d fakeBold=%d syntheticItalic=%d "
                     "syntheticBold=%d subsetKey[i=%d b=%d] subsetIdx=%u",
@@ -465,7 +466,7 @@ PDF_OUTLINE_FONT_SUBSET* PDF_OUTLINE_FONT_MANAGER::ensureSubset( KIFONT::OUTLINE
         subsetPtr->ForceSyntheticStyle( needSyntheticBold, needSyntheticItalic, angleDeg );
         if( std::getenv( "KICAD_DEBUG_SYN_STYLE" ) )
         {
-            wxLogTrace( tracePdfPlotter, "ForceSyntheticStyle applied: bold=%d italic=%d angle=%f", (int) needSyntheticBold, (int) needSyntheticItalic, angleDeg );
+            KI_LOG_TRACE( tracePdfPlotter, "ForceSyntheticStyle applied: bold=%d italic=%d angle=%f", (int) needSyntheticBold, (int) needSyntheticItalic, angleDeg );
         }
     }
 

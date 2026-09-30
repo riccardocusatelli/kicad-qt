@@ -45,6 +45,7 @@
 #include <wx/app.h>
 
 #include <algorithm>
+#include <core/ki_assert.h>
 
 
 #define GRID_CELL_MARGIN 4
@@ -240,7 +241,7 @@ void PANEL_PCBNEW_ACTION_PLUGINS::OnReloadButtonClick( wxCommandEvent& event )
 bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataFromWindow()
 {
     PCBNEW_SETTINGS* settings = dynamic_cast<PCBNEW_SETTINGS*>( Kiface().KifaceSettings() );
-    wxASSERT( settings );
+    KI_ASSERT( settings );
 
 #ifdef KICAD_IPC_API
     API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();

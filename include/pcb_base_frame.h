@@ -39,6 +39,7 @@
 #include <wx/datetime.h>
 #include <wx/filename.h>
 #include <wx/timer.h>
+#include <core/ki_assert.h>
 
 /* Forward declarations of classes. */
 class APP_SETTINGS_BASE;
@@ -166,7 +167,7 @@ public:
      */
     virtual COLOR_SETTINGS* GetColorSettings( bool aForceRefresh = false ) const override
     {
-        wxFAIL_MSG( wxT( "Color settings requested for a PCB_BASE_FRAME that does not "
+        KI_FAIL_MSG( wxT( "Color settings requested for a PCB_BASE_FRAME that does not "
                          "override!" ) );
         return nullptr;
     }
@@ -208,7 +209,7 @@ public:
      */
     virtual void ReloadFootprint( FOOTPRINT* aFootprint )
     {
-        wxFAIL_MSG( wxT( "Attempted to reload a footprint for PCB_BASE_FRAME that does not "
+        KI_FAIL_MSG( wxT( "Attempted to reload a footprint for PCB_BASE_FRAME that does not "
                          "override!" ) );
     }
 

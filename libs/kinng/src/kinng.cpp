@@ -88,13 +88,13 @@ void KINNG_REQUEST_SERVER::listenThread()
     nng_listener listener;
     int          retCode = 0;
 
-    KI_TRACE( TraceNng, "KINNG_REQUEST_SERVER starting" );
+    KI_LOG_TRACE( TraceNng, "KINNG_REQUEST_SERVER starting" );
 
     retCode = nng_rep0_open( &socket );
 
     if( retCode != 0 )
     {
-        KI_TRACE( TraceNng, "Got error code %d from nng_rep0_open!", retCode );
+        KI_LOG_TRACE( TraceNng, "Got error code %d from nng_rep0_open!", retCode );
         return;
     }
 
@@ -102,7 +102,7 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     if( retCode != 0 )
     {
-        KI_TRACE( TraceNng, "Got error code %d from nng_listener_create!", retCode );
+        KI_LOG_TRACE( TraceNng, "Got error code %d from nng_listener_create!", retCode );
         return;
     }
 
@@ -110,7 +110,7 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     nng_listener_start( listener, 0 );
 
-    KI_TRACE( TraceNng, "KINNG_REQUEST_SERVER listener has started" );
+    KI_LOG_TRACE( TraceNng, "KINNG_REQUEST_SERVER listener has started" );
 
     while( !m_shutdown.load() )
     {
@@ -126,7 +126,7 @@ void KINNG_REQUEST_SERVER::listenThread()
         if( retCode != 0 )
         {
             nng_free( buf, sz );
-            KI_TRACE( TraceNng, "Got error code %d from nngc_recv!", retCode );
+            KI_LOG_TRACE( TraceNng, "Got error code %d from nngc_recv!", retCode );
             break;
         }
 
@@ -143,13 +143,13 @@ void KINNG_REQUEST_SERVER::listenThread()
 
         if( retCode != 0 )
         {
-            KI_TRACE( TraceNng, "Got error code %d from nng_send!", retCode );
+            KI_LOG_TRACE( TraceNng, "Got error code %d from nng_send!", retCode );
         }
 
         m_pendingReply.clear();
     }
 
-    KI_TRACE( TraceNng, "KINNG_REQUEST_SERVER shutting down" );
+    KI_LOG_TRACE( TraceNng, "KINNG_REQUEST_SERVER shutting down" );
 
     nng_close( socket );
 }

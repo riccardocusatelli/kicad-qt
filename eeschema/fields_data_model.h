@@ -22,6 +22,7 @@
 #include <sch_reference_list.h>
 #include <wx/grid.h>
 #include <widgets/wx_grid.h>
+#include <core/ki_assert.h>
 
 
 struct BOM_FIELD;
@@ -67,7 +68,7 @@ public:
         case SHOW_FIELD_COLUMN:
         case GROUP_BY_COLUMN:     return aTypeName == wxGRID_VALUE_BOOL;
 
-        default:                  wxFAIL; return false;
+        default:                  KI_FAIL(); return false;
         }
     }
 
@@ -160,7 +161,7 @@ public:
 
     void MoveColumn( int aCol, int aNewPos )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), "Invalid Column Number" );
 
         if( aCol == aNewPos )
         {
@@ -183,19 +184,19 @@ public:
 
     void SetColLabelValue( int aCol, const wxString& aLabel ) override
     {
-        wxCHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), "Invalid Column Number" );
         m_cols[aCol].m_label = aLabel;
     }
 
     wxString GetColLabelValue( int aCol ) override
     {
-        wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxString() );
+        KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxString() );
         return m_cols[aCol].m_label;
     }
 
     wxString GetColFieldName( int aCol )
     {
-        wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxString() );
+        KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxString() );
         return m_cols[aCol].m_fieldName;
     }
 
@@ -231,7 +232,7 @@ public:
 
     std::vector<SCH_REFERENCE> GetRowReferences( int aRow ) const
     {
-        wxCHECK( aRow >= 0 && aRow < (int) m_rows.size(), std::vector<SCH_REFERENCE>() );
+        KI_CHECK( aRow >= 0 && aRow < (int) m_rows.size(), std::vector<SCH_REFERENCE>() );
         return m_rows[aRow].m_Refs;
     }
 
@@ -249,7 +250,7 @@ public:
 
     void SetSorting( int aCol, bool ascending )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
         m_sortColumn = aCol;
         m_sortAscending = ascending;
     }
@@ -299,25 +300,25 @@ public:
 
     void SetGroupColumn( int aCol, bool group )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
         m_cols[aCol].m_group = group;
     }
 
     bool GetGroupColumn( int aCol )
     {
-        wxCHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
+        KI_CHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
         return m_cols[aCol].m_group;
     }
 
     void SetShowColumn( int aCol, bool show )
     {
-        wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+        KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
         m_cols[aCol].m_show = show;
     }
 
     bool GetShowColumn( int aCol )
     {
-        wxCHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
+        KI_CHECK_MSG( aCol >= 0 && aCol < (int) m_cols.size(), false, "Invalid Column Number" );
         return m_cols[aCol].m_show;
     }
 

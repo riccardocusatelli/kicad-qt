@@ -42,6 +42,7 @@
 #include <footprint.h>
 #include <pcb_track.h>
 #include <pad.h>
+#include <core/ki_assert.h>
 
 
 NETINFO_ITEM::NETINFO_ITEM( BOARD* aParent, const wxString& aNetName, int aNetCode ) :
@@ -69,14 +70,14 @@ NETINFO_ITEM::~NETINFO_ITEM()
 
 void NETINFO_ITEM::Clear()
 {
-    wxCHECK( m_parent, /* void */ );
+    KI_CHECK( m_parent, /* void */ );
     m_netClass = m_parent->GetDesignSettings().m_NetSettings->GetDefaultNetclass();
 }
 
 
 void NETINFO_ITEM::SetNetClass( const std::shared_ptr<NETCLASS>& aNetClass )
 {
-    wxCHECK( m_parent, /* void */ );
+    KI_CHECK( m_parent, /* void */ );
 
     if( aNetClass )
         m_netClass = aNetClass;

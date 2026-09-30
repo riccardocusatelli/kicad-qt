@@ -40,6 +40,7 @@
 #include <wx/combo.h>
 #include <wx/msgdlg.h>
 #include <refdes_utils.h>
+#include <core/ki_assert.h>
 
 
 FOOTPRINT_NAME_VALIDATOR::FOOTPRINT_NAME_VALIDATOR( wxString* aValue ) :
@@ -226,7 +227,7 @@ void KIUI::ValidatorTransferToWindowWithoutEvents( wxValidator& aValidator )
 {
     wxWindow* ctrl = aValidator.GetWindow();
 
-    wxCHECK_RET( ctrl != nullptr, wxS( "Transferring validator data without a control" ) );
+    KI_CHECK_RET( ctrl != nullptr, wxS( "Transferring validator data without a control" ) );
 
     wxEventBlocker orient_update_blocker( ctrl, wxEVT_ANY );
     aValidator.TransferToWindow();

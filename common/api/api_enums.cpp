@@ -30,6 +30,7 @@
 #include <layer_ids.h>
 #include <pin_type.h>
 #include <stroke_params.h>
+#include <core/ki_assert.h>
 
 using namespace kiapi;
 using namespace kiapi::common;
@@ -89,7 +90,7 @@ KICAD_T FromProtoEnum( types::KiCadObjectType aValue )
 
     case types::KiCadObjectType::KOT_UNKNOWN:               return TYPE_NOT_INIT;
     default:
-        wxCHECK_MSG( false, TYPE_NOT_INIT,
+        KI_CHECK_MSG( false, TYPE_NOT_INIT,
                      "Unhandled case in FromProtoEnum<types::KiCadObjectType>" );
     }
 }
@@ -148,7 +149,7 @@ types::KiCadObjectType ToProtoEnum( KICAD_T aValue )
     case WSG_BITMAP_T:           return types::KiCadObjectType::KOT_WSG_BITMAP;
     case WSG_PAGE_T:             return types::KiCadObjectType::KOT_WSG_PAGE;
     default:
-        wxCHECK_MSG( false, types::KiCadObjectType::KOT_UNKNOWN,
+        KI_CHECK_MSG( false, types::KiCadObjectType::KOT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<KICAD_T>");
     }
 }
@@ -260,7 +261,7 @@ PCB_LAYER_ID FromProtoEnum( board::types::BoardLayer aValue )
 
     case board::types::BoardLayer::BL_UNKNOWN:     return UNDEFINED_LAYER;
     default:
-        wxCHECK_MSG( false, UNDEFINED_LAYER,
+        KI_CHECK_MSG( false, UNDEFINED_LAYER,
                      "Unhandled case in FromProtoEnum<board::types::BoardLayer>" );
     }
 }
@@ -370,7 +371,7 @@ board::types::BoardLayer ToProtoEnum( PCB_LAYER_ID aValue )
     case User_44:           return board::types::BoardLayer::BL_User_44;
     case User_45:           return board::types::BoardLayer::BL_User_45;
     default:
-        wxCHECK_MSG( false, board::types::BoardLayer::BL_UNKNOWN,
+        KI_CHECK_MSG( false, board::types::BoardLayer::BL_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PCB_LAYER_ID>");
     }
 }
@@ -383,7 +384,7 @@ SCH_LAYER_ID FromProtoEnum( schematic::types::SchematicLayer aValue )
     {
 
     default:
-        wxCHECK_MSG( false, SCH_LAYER_ID_START,
+        KI_CHECK_MSG( false, SCH_LAYER_ID_START,
                      "Unhandled case in FromProtoEnum<schematic::types::SchematicLayer>" );
     }
 }
@@ -396,7 +397,7 @@ schematic::types::SchematicLayer ToProtoEnum( SCH_LAYER_ID aValue )
     {
 
     default:
-        wxCHECK_MSG( false, schematic::types::SchematicLayer::SL_UNKNOWN,
+        KI_CHECK_MSG( false, schematic::types::SchematicLayer::SL_UNKNOWN,
                      "Unhandled case in ToProtoEnum<SCH_LAYER_ID>");
     }
 }
@@ -414,7 +415,7 @@ GR_TEXT_H_ALIGN_T FromProtoEnum( types::HorizontalAlignment aValue )
 
     case types::HorizontalAlignment::HA_UNKNOWN:       return GR_TEXT_H_ALIGN_CENTER;
     default:
-        wxCHECK_MSG( false, GR_TEXT_H_ALIGN_CENTER,
+        KI_CHECK_MSG( false, GR_TEXT_H_ALIGN_CENTER,
                      "Unhandled case in FromProtoEnum<types::HorizontalAlignment>" );
     }
 }
@@ -430,7 +431,7 @@ types::HorizontalAlignment ToProtoEnum( GR_TEXT_H_ALIGN_T aValue )
     case GR_TEXT_H_ALIGN_RIGHT:         return types::HorizontalAlignment::HA_RIGHT;
     case GR_TEXT_H_ALIGN_INDETERMINATE: return types::HorizontalAlignment::HA_INDETERMINATE;
     default:
-        wxCHECK_MSG( false, types::HorizontalAlignment::HA_UNKNOWN,
+        KI_CHECK_MSG( false, types::HorizontalAlignment::HA_UNKNOWN,
                      "Unhandled case in ToProtoEnum<GR_TEXT_H_ALIGN_T>");
     }
 }
@@ -448,7 +449,7 @@ GR_TEXT_V_ALIGN_T FromProtoEnum( types::VerticalAlignment aValue )
 
     case types::VerticalAlignment::VA_UNKNOWN:       return GR_TEXT_V_ALIGN_CENTER;
     default:
-        wxCHECK_MSG( false, GR_TEXT_V_ALIGN_CENTER,
+        KI_CHECK_MSG( false, GR_TEXT_V_ALIGN_CENTER,
                      "Unhandled case in FromProtoEnum<types::VerticalAlignment>" );
     }
 }
@@ -464,7 +465,7 @@ types::VerticalAlignment ToProtoEnum( GR_TEXT_V_ALIGN_T aValue )
     case GR_TEXT_V_ALIGN_BOTTOM:        return types::VerticalAlignment::VA_BOTTOM;
     case GR_TEXT_V_ALIGN_INDETERMINATE: return types::VerticalAlignment::VA_INDETERMINATE;
     default:
-        wxCHECK_MSG( false, types::VerticalAlignment::VA_UNKNOWN,
+        KI_CHECK_MSG( false, types::VerticalAlignment::VA_UNKNOWN,
                      "Unhandled case in ToProtoEnum<GR_TEXT_V_ALIGN_T>");
     }
 }
@@ -483,7 +484,7 @@ LINE_STYLE FromProtoEnum( types::StrokeLineStyle aValue )
     case types::StrokeLineStyle::SLS_DASHDOTDOT: return LINE_STYLE::DASHDOTDOT;
     case types::StrokeLineStyle::SLS_UNKNOWN:
     default:
-        wxCHECK_MSG( false, LINE_STYLE::DEFAULT,
+        KI_CHECK_MSG( false, LINE_STYLE::DEFAULT,
                      "Unhandled case in FromProtoEnum<types::StrokeLineStyle>" );
     }
 }
@@ -501,7 +502,7 @@ types::StrokeLineStyle ToProtoEnum( LINE_STYLE aValue )
     case LINE_STYLE::DASHDOT:    return types::StrokeLineStyle::SLS_DASHDOT;
     case LINE_STYLE::DASHDOTDOT: return types::StrokeLineStyle::SLS_DASHDOTDOT;
     default:
-        wxCHECK_MSG( false, types::StrokeLineStyle::SLS_UNKNOWN,
+        KI_CHECK_MSG( false, types::StrokeLineStyle::SLS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<LINE_STYLE>");
     }
 }
@@ -526,7 +527,7 @@ ELECTRICAL_PINTYPE FromProtoEnum( types::ElectricalPinType aValue )
     case types::ElectricalPinType::EPT_NO_CONNECT:      return ELECTRICAL_PINTYPE::PT_NC;
     case types::ElectricalPinType::EPT_UNKNOWN:
     default:
-        wxCHECK_MSG( false, ELECTRICAL_PINTYPE::PT_UNSPECIFIED,
+        KI_CHECK_MSG( false, ELECTRICAL_PINTYPE::PT_UNSPECIFIED,
                      "Unhandled case in FromProtoEnum<types::ElectricalPinType>" );
     }
 }
@@ -552,7 +553,7 @@ types::ElectricalPinType ToProtoEnum( ELECTRICAL_PINTYPE aValue )
     // Inherit shouldn't be serialized, it's an internal flag
     case ELECTRICAL_PINTYPE::PT_INHERIT:
     default:
-        wxCHECK_MSG( false, types::ElectricalPinType::EPT_UNKNOWN,
+        KI_CHECK_MSG( false, types::ElectricalPinType::EPT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<ELECTRICAL_PINTYPE>");
     }
 }
@@ -581,6 +582,6 @@ board::commands::BoardFlipDirection ToProtoEnum( FLIP_DIRECTION aValue )
     case FLIP_DIRECTION::TOP_BOTTOM: return board::commands::BoardFlipDirection::BFD_TOP_BOTTOM;
     }
 
-    wxCHECK_MSG( false, board::commands::BoardFlipDirection::BFD_UNKNOWN,
+    KI_CHECK_MSG( false, board::commands::BoardFlipDirection::BFD_UNKNOWN,
                  "Unhandled case in ToProtoEnum<FLIP_DIRECTION>" );
 }

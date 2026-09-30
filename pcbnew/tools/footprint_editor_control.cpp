@@ -59,6 +59,7 @@
 #include <memory>
 
 #include "footprint_editor_control.h"
+#include <core/ki_assert.h>
 
 
 FOOTPRINT_EDITOR_CONTROL::FOOTPRINT_EDITOR_CONTROL() :
@@ -337,7 +338,7 @@ int FOOTPRINT_EDITOR_CONTROL::SaveAs( const TOOL_EVENT& aEvent )
         // Save Library As
         const wxString& src_libNickname = m_frame->GetTargetFPID().GetLibNickname();
         std::optional<wxString> optUri = manager.GetFullURI( LIBRARY_TABLE_TYPE::FOOTPRINT, src_libNickname, true );
-        wxCHECK( optUri, 0 );
+        KI_CHECK( optUri, 0 );
 
         if( m_frame->SaveLibraryAs( *optUri ) )
             m_frame->SyncLibraryTree( true );

@@ -22,6 +22,7 @@
 
 #include <core/arraydim.h>
 #include <settings/layer_settings_utils.h>
+#include <core/ki_assert.h>
 
 
 GAL_SET UserVisbilityLayers()
@@ -84,7 +85,7 @@ GAL_LAYER_ID RenderLayerFromVisibilityLayer( VISIBILITY_LAYER aLayer )
     case VISIBILITY_LAYER::GRID:                    return LAYER_GRID;
     }
 
-    wxCHECK_MSG( false, GAL_LAYER_ID_END, "Unhandled layer in RenderLayerFromVisibilityLayer" );
+    KI_CHECK_MSG( false, GAL_LAYER_ID_END, "Unhandled layer in RenderLayerFromVisibilityLayer" );
 }
 
 

@@ -41,6 +41,7 @@
 #include <wx/choicdlg.h>
 #include <wx/filedlg.h>
 #include <kiplatform/ui.h>
+#include <core/ki_assert.h>
 
 
 void SCH_EDITOR_CONTROL::AssignFootprints( const std::string& aChangedSetOfReferences )
@@ -64,7 +65,7 @@ void SCH_EDITOR_CONTROL::AssignFootprints( const std::string& aChangedSetOfRefer
 
         for( PTREE::const_iterator ref = back_anno.begin();  ref != back_anno.end();  ++ref )
         {
-            wxASSERT( ref->first == "ref" );
+            KI_ASSERT( ref->first == "ref" );
 
             wxString reference = UTF8( ref->second.front().first );
 

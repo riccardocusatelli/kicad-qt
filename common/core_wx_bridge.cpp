@@ -70,8 +70,11 @@ static bool wxLogFilter( KI_LOG::LEVEL aLevel, const char* aMask )
     {
     case KI_LOG::LEVEL::TRACE:
         // Fast path for hot loops (triangulation): no masks set means no string conversion.
-        if( !aMask || wxLog::GetTraceMasks().empty() )
+        if( wxLog::GetTraceMasks().empty() )
             return false;
+
+        if( !aMask )    // "is any mask enabled?"
+            return true;
 
         return wxLog::IsAllowedTraceMask( wxString::FromUTF8( aMask ) );
 

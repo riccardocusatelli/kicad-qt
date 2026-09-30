@@ -59,6 +59,7 @@
 #include <libraries/symbol_library_adapter.h>
 #include <lib_table_notebook_panel.h>
 #include <widgets/wx_aui_art_providers.h>
+#include <core/ki_assert.h>
 
 /**
  * Container that describes file type info for the add a library options
@@ -97,7 +98,7 @@ public:
 
     void SetValue( int aRow, int aCol, const wxString &aValue ) override
     {
-        wxCHECK( aRow < (int) size(), /* void */ );
+        KI_CHECK( aRow < (int) size(), /* void */ );
 
         LIB_TABLE_GRID_DATA_MODEL::SetValue( aRow, aCol, aValue );
 
@@ -355,7 +356,7 @@ PANEL_SYM_LIB_TABLE::PANEL_SYM_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent, P
 
     std::optional<LIBRARY_TABLE*> table = Pgm().GetLibraryManager().Table( LIBRARY_TABLE_TYPE::SYMBOL,
                                                                            LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxASSERT( table.has_value() );
+    KI_ASSERT( table.has_value() );
 
     AddTable( table.value(), _( "Global Libraries" ), false /* closable */ );
 
@@ -714,7 +715,7 @@ void PANEL_SYM_LIB_TABLE::onReset( wxCommandEvent& event )
 
     std::optional<LIBRARY_TABLE*> newTable = Pgm().GetLibraryManager().Table( LIBRARY_TABLE_TYPE::SYMBOL,
                                                                               LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxASSERT( newTable );
+    KI_ASSERT( newTable );
 
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_parent->Kiway().Prj() );
 
@@ -884,7 +885,7 @@ bool PANEL_SYM_LIB_TABLE::TransferDataFromWindow()
 
     LIBRARY_MANAGER&              manager = Pgm().GetLibraryManager();
     std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxCHECK( optTable, false );
+    KI_CHECK( optTable, false );
     LIBRARY_TABLE* globalTable = *optTable;
 
     if( get_model( 0 )->Table() != *globalTable )
@@ -940,7 +941,7 @@ bool PANEL_SYM_LIB_TABLE::TransferDataFromWindow()
 void PANEL_SYM_LIB_TABLE::populateEnvironReadOnlyTable()
 {
     wxRegEx re( ".*?(\\$\\{(.+?)\\})|(\\$\\((.+?)\\)).*?", wxRE_ADVANCED );
-    wxASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
+    KI_ASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
 
     std::set< wxString > unique;
 

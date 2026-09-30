@@ -50,6 +50,7 @@
 #include "pns_meander_skew_placer.h"
 #include "pns_dp_meander_placer.h"
 #include "router_preview_item.h"
+#include <core/ki_assert.h>
 
 namespace PNS {
 
@@ -126,7 +127,7 @@ const ITEM_SET ROUTER::QueryHoverItems( const VECTOR2I& aP, int aSlopRadius )
     NODE*         node = m_placer ? m_placer->CurrentNode() : m_world.get();
     PNS::ITEM_SET ret;
 
-    wxCHECK( node, ret );
+    KI_CHECK( node, ret );
 
     if( aSlopRadius > 0 )
     {

@@ -82,6 +82,7 @@
 #include "drc_re_custom_rule_panel.h"
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_log.h>
 
 static constexpr const wxChar* KI_TRACE_DRC_RULE_EDITOR = wxT( "KI_TRACE_DRC_RULE_EDITOR" );
 
@@ -109,13 +110,13 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
         m_constraintData( aConstraintData ),
         m_helpWindow( nullptr )
 {
-    wxLogTrace( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] ctor START" ) );
+    KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] ctor START" ) );
 
     SetBorders( true, false, false, false );
 
     m_constraintType = aConstraintType;
     m_constraintPanel = getConstraintPanel( this, aConstraintType );
-    wxLogTrace( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] adding constraint panel to sizer" ) );
+    KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] adding constraint panel to sizer" ) );
     m_constraintContentSizer->Add( dynamic_cast<wxPanel*>( m_constraintPanel ), 0, wxEXPAND | wxTOP, 5 );
     m_layerList = m_board->GetEnabledLayers().UIOrder();
     m_constraintHeaderTitle->SetLabelText( *aConstraintTitle + " Constraint" );
@@ -175,7 +176,7 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
 
     // Create condition group panel (multi-condition UI)
     // Each condition row has its own custom query text control
-    wxLogTrace( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] creating conditionGroupPanel" ) );
+    KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] creating conditionGroupPanel" ) );
     m_conditionGroupPanel = new DRC_RE_CONDITION_GROUP_PANEL( this, m_board, twoObjects );
     m_conditionGroupPanel->SetChangeCallback(
             [this]()
@@ -191,7 +192,7 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
                 }
             } );
 
-    wxLogTrace( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] inserting conditionGroupPanel" ) );
+    KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] inserting conditionGroupPanel" ) );
     m_conditionControlsSizer->Insert( 0, m_conditionGroupPanel, 0, wxEXPAND | wxBOTTOM, 5 );
 
     if( aConstraintType == CUSTOM_RULE )
@@ -335,7 +336,7 @@ bool PANEL_DRC_RULE_EDITOR::TransferDataFromWindow()
     wxString generatedRule = m_constraintPanel->GenerateRule( context );
     m_constraintData->SetGeneratedRule( generatedRule );
 
-    wxLogTrace( KI_TRACE_DRC_RULE_EDITOR, wxS( "Generated rule '%s':\n%s" ),
+    KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "Generated rule '%s':\n%s" ),
                 context.ruleName, generatedRule );
 
     return true;
@@ -1040,11 +1041,11 @@ void PANEL_DRC_RULE_EDITOR::onShowMatchesButtonClicked( wxCommandEvent& event )
 {
     if( !m_constraintData )
     {
-        wxLogTrace( KI_TRACE_DRC_RULE_EDITOR, wxS( "Show Matches clicked: no constraint data" ) );
+        KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "Show Matches clicked: no constraint data" ) );
         return;
     }
 
-    wxLogTrace( KI_TRACE_DRC_RULE_EDITOR,
+    KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR,
                 wxS( "Show Matches clicked: nodeId=%d, rule='%s', code='%s'" ),
                 m_constraintData->GetId(), m_constraintData->GetRuleName(),
                 m_constraintData->GetConstraintCode() );
@@ -1187,7 +1188,7 @@ wxString PANEL_DRC_RULE_EDITOR::buildLayerClause() const
     // Real layer ID
     PCB_LAYER_ID layerId = static_cast<PCB_LAYER_ID>( layerValue );
     wxString clause = wxString::Format( wxS( "(layer \"%s\")" ), m_board->GetLayerName( layerId ) );
-    wxLogTrace( KI_TRACE_DRC_RULE_EDITOR, wxS( "Layer clause: %s" ), clause );
+    KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "Layer clause: %s" ), clause );
     return clause;
 }
 

@@ -38,6 +38,7 @@
 #include <wx/textctrl.h>
 
 #include <git2.h>
+#include <core/ki_log.h>
 
 
 // Strip the "* " / "  " prefix used to mark the current branch in the list.
@@ -268,7 +269,7 @@ void DIALOG_GIT_SWITCH::GetBranches()
 
     if( !currentBranchReference )
     {
-        wxLogTrace( traceGit, "Failed to get current branch" );
+        KI_LOG_TRACE( traceGit, "Failed to get current branch" );
         return;
     }
 

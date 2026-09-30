@@ -60,6 +60,7 @@
 #include <fix_board_shape.h>
 #include <pcb_reference_image.h>
 #include <core/mirror.h>
+#include <core/ki_assert.h>
 
 
 static const wxString QUERY_MODEL_UUID_KEY = wxS( "JLC_3DModel_Q" );
@@ -419,7 +420,7 @@ PCB_IO_EASYEDAPRO_PARSER::ParsePoly( BOARD_ITEM_CONTAINER* aContainer, nlohmann:
                     std::unique_ptr<PCB_SHAPE> shape =
                             std::make_unique<PCB_SHAPE>( aContainer, SHAPE_T::POLY );
 
-                    wxASSERT( chain.PointCount() > 2 );
+                    KI_ASSERT( chain.PointCount() > 2 );
 
                     if( chain.PointCount() > 2 )
                     {
@@ -1321,7 +1322,7 @@ void PCB_IO_EASYEDAPRO_PARSER::ParseBoard(
                     zone->Outline()->Append( contour );
                 }
 
-                wxASSERT( zone->Outline()->OutlineCount() == 1 );
+                KI_ASSERT( zone->Outline()->OutlineCount() == 1 );
 
                 poursToFill.emplace( uuid, zone.get() );
 

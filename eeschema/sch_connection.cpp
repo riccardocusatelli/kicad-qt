@@ -33,6 +33,7 @@
 
 #include <sch_connection.h>
 #include <boost/algorithm/string/join.hpp>
+#include <core/ki_assert.h>
 
 /**
  *
@@ -347,7 +348,7 @@ void SCH_CONNECTION::Clone( const SCH_CONNECTION& aOther )
 
 bool SCH_CONNECTION::IsDriver() const
 {
-    wxASSERT( Parent() );
+    KI_ASSERT( Parent() );
 
     switch( Parent()->Type() )
     {
@@ -392,7 +393,7 @@ void SCH_CONNECTION::ClearDriverChanged()
 
 wxString SCH_CONNECTION::Name( bool aIgnoreSheet ) const
 {
-    wxASSERT( !m_cached_name.IsEmpty() );
+    KI_ASSERT( !m_cached_name.IsEmpty() );
     return aIgnoreSheet ? m_cached_name : m_cached_name_with_path;
 }
 

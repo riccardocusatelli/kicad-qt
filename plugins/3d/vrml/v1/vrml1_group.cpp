@@ -35,6 +35,8 @@
 #include "vrml1_base.h"
 #include "vrml1_group.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL1GROUP::WRL1GROUP( NAMEREGISTER* aDictionary ) : WRL1NODE( aDictionary )
@@ -56,7 +58,7 @@ WRL1GROUP::WRL1GROUP( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1GROUP::~WRL1GROUP()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Group with %zu children, %zu references, and %zu "
                      "back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -67,7 +69,7 @@ bool WRL1GROUP::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 {
     if( nullptr == aTopNode )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [BUG] aTopNode is NULL" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
@@ -78,7 +80,7 @@ bool WRL1GROUP::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
@@ -88,7 +90,7 @@ bool WRL1GROUP::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -108,7 +110,7 @@ bool WRL1GROUP::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !aTopNode->ReadNode( proc, this, nullptr ) )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; unexpected eof %s." ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
@@ -127,9 +129,9 @@ bool WRL1GROUP::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
 SGNODE* WRL1GROUP::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 {
-    wxCHECK_MSG( m_Parent, nullptr, wxT( "Group has no parent." ) );
+    KI_CHECK_MSG( m_Parent, nullptr, wxT( "Group has no parent." ) );
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Group with %zu children, %zu references, %zu back "
                      "pointers, and %zu items." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size(), m_Items.size() );
@@ -140,7 +142,7 @@ SGNODE* WRL1GROUP::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
         {
             /// @todo Determine if this is a bug or can actually happen parsing a VRML file.
             ///       If it's a bug, this should be an assertion not a trace.
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] bad model: no base data given." ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] bad model: no base data given." ) );
 
             return nullptr;
         }
@@ -153,7 +155,7 @@ SGNODE* WRL1GROUP::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( nullptr == aParent && ptype == S3D::SGTYPE_TRANSFORM, nullptr,
+    KI_CHECK_MSG( nullptr == aParent && ptype == S3D::SGTYPE_TRANSFORM, nullptr,
                  wxString::Format(
                          wxT(" * [BUG] Group does not have a Transform parent (parent ID: %d" ),
                          ptype ) );

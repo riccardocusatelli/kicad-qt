@@ -101,7 +101,7 @@ public:
         if( !firstVertex || firstVertex->prev == firstVertex->next )
             return true;
 
-        KI_TRACE( TRIANGULATE_TRACE, "Created list with %f area", firstVertex->area() );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Created list with %f area", firstVertex->area() );
 
         m_vertices_original_size = m_vertices.size();
         firstVertex->updateList();
@@ -121,7 +121,7 @@ public:
 
             if( !retval )
             {
-                KI_TRACE( TRIANGULATE_TRACE, "Tesselation failed, logging remaining vertices" );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Tesselation failed, logging remaining vertices" );
                 logRemaining();
             }
 
@@ -175,7 +175,7 @@ private:
             return;
 
         msg.pop_back();
-        KI_TRACE( TRIANGULATE_TRACE, "%s", msg.c_str() );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "%s", msg.c_str() );
     }
 
     /**
@@ -221,7 +221,7 @@ private:
             }
         } while( p != aStart && next && p );
 
-        KI_TRACE( TRIANGULATE_TRACE, "Removed %d points in simplifyList", count );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Removed %d points in simplifyList", count );
 
         if( count )
             return retval;
@@ -299,7 +299,7 @@ private:
             ++count;
         }
 
-        KI_TRACE( TRIANGULATE_TRACE, "Removed %zu NULL triangles", count );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Removed %zu NULL triangles", count );
 
         return retval;
     }
@@ -319,7 +319,7 @@ private:
      */
     bool earcutList( VERTEX* aPoint, int pass = 0 )
     {
-        KI_TRACE( TRIANGULATE_TRACE, "earcutList starting at %p for pass %d", aPoint, pass );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "earcutList starting at %p for pass %d", aPoint, pass );
 
         if( !aPoint )
             return true;
@@ -343,7 +343,7 @@ private:
                 }
                 else
                 {
-                    KI_TRACE( TRIANGULATE_TRACE, "Ignoring tiny ear with area %f",
+                    KI_LOG_TRACE( TRIANGULATE_TRACE, "Ignoring tiny ear with area %f",
                                 area( prev, aPoint, next ) );
                 }
 
@@ -362,7 +362,7 @@ private:
                     locallyInside( prev, nextNext ) &&
                     locallyInside( nextNext, prev ) )
             {
-                KI_TRACE( TRIANGULATE_TRACE,
+                KI_LOG_TRACE( TRIANGULATE_TRACE,
                             "Local intersection detected.  Merging minor triangle with area %f",
                             area( prev, aPoint, nextNext ) );
                 m_result.AddTriangle( prev->i, aPoint->i, nextNext->i );
@@ -410,13 +410,13 @@ private:
                 // again, this time adding one point to each long edge (and thereby changing the locations)
                 if( internal_pass < 4 )
                 {
-                    KI_TRACE( TRIANGULATE_TRACE, "Subdividing polygon" );
+                    KI_LOG_TRACE( TRIANGULATE_TRACE, "Subdividing polygon" );
                     subdividePolygon( aPoint, internal_pass );
                     continue;
                 }
 
                 // If we don't have any NULL triangles left, cut the polygon in two and try again
-                KI_TRACE( TRIANGULATE_TRACE, "Splitting polygon" );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Splitting polygon" );
 
                 if( !splitPolygon( aPoint ) )
                     return false;
@@ -488,11 +488,11 @@ private:
         } while (p != aStart);
 
         avg /= longest.size();
-        KI_TRACE( TRIANGULATE_TRACE, "Average length: %f", avg );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Average length: %f", avg );
 
         for( auto it = longest.begin(); it != longest.end() && it->second > avg; ++it )
         {
-            KI_TRACE( TRIANGULATE_TRACE, "Subdividing edge with length %f", it->second );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "Subdividing edge with length %f", it->second );
             VERTEX* a = it->first;
             VERTEX* b = a->next;
             VERTEX* last = a;
@@ -560,12 +560,12 @@ private:
 
             if( overlapPoints[0]->area( overlapPoints[1] ) < 0 || overlapPoints[1]->area( overlapPoints[0] ) < 0 )
             {
-                KI_TRACE( TRIANGULATE_TRACE, "Split generated a hole, skipping" );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Split generated a hole, skipping" );
                 origPoly = origPoly->next;
                 continue;
             }
 
-            KI_TRACE( TRIANGULATE_TRACE, "Splitting at overlap point %f, %f", overlapPoints[0]->x, overlapPoints[0]->y );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "Splitting at overlap point %f, %f", overlapPoints[0]->x, overlapPoints[0]->y );
             std::swap( overlapPoints[0]->next, overlapPoints[1]->next );
             overlapPoints[0]->next->prev = overlapPoints[0];
             overlapPoints[1]->next->prev = overlapPoints[1];
@@ -576,7 +576,7 @@ private:
             logVertices( overlapPoints[1], nullptr );
             bool retval = earcutList( overlapPoints[0] ) && earcutList( overlapPoints[1] );
 
-            KI_TRACE( TRIANGULATE_TRACE, "%s at first overlap split", retval ? "Success" : "Failed" );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "%s at first overlap split", retval ? "Success" : "Failed" );
             return retval;
 
 
@@ -602,7 +602,7 @@ private:
 
                     bool retval = earcutList( origPoly ) && earcutList( newPoly );
 
-                    KI_TRACE( TRIANGULATE_TRACE, "%s at split", retval ? "Success" : "Failed" );
+                    KI_LOG_TRACE( TRIANGULATE_TRACE, "%s at split", retval ? "Success" : "Failed" );
                     return retval;
                 }
 
@@ -612,7 +612,7 @@ private:
             origPoly = origPoly->next;
         } while( origPoly != start );
 
-        KI_TRACE( TRIANGULATE_TRACE, "Could not find a valid split point" );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Could not find a valid split point" );
         return false;
     }
 

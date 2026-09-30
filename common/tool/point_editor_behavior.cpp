@@ -26,6 +26,7 @@
 #include <advanced_config.h>
 #include <commit.h>
 #include <geometry/shape_poly_set.h>
+#include <core/ki_assert.h>
 
 
 void POLYGON_POINT_EDIT_BEHAVIOR::BuildForPolyOutline( EDIT_POINTS&          aPoints,
@@ -114,7 +115,7 @@ void EDA_SEGMENT_POINT_EDIT_BEHAVIOR::MakePoints( EDIT_POINTS& aPoints )
 
 bool EDA_SEGMENT_POINT_EDIT_BEHAVIOR::UpdatePoints( EDIT_POINTS& aPoints )
 {
-    wxCHECK( aPoints.PointsSize() == SEGMENT_MAX_POINTS, false );
+    KI_CHECK( aPoints.PointsSize() == SEGMENT_MAX_POINTS, false );
 
     aPoints.Point( SEGMENT_START ) = m_segment.GetStart();
     aPoints.Point( SEGMENT_END ) = m_segment.GetEnd();
@@ -153,7 +154,7 @@ void EDA_CIRCLE_POINT_EDIT_BEHAVIOR::MakePoints( EDIT_POINTS& aPoints )
 
 bool EDA_CIRCLE_POINT_EDIT_BEHAVIOR::UpdatePoints( EDIT_POINTS& aPoints )
 {
-    wxCHECK( aPoints.PointsSize() == CIRC_MAX_POINTS, false );
+    KI_CHECK( aPoints.PointsSize() == CIRC_MAX_POINTS, false );
 
     aPoints.Point( CIRC_CENTER ).SetPosition( m_circle.getCenter() );
     aPoints.Point( CIRC_END ).SetPosition( m_circle.GetEnd() );
@@ -198,7 +199,7 @@ void EDA_BEZIER_POINT_EDIT_BEHAVIOR::MakePoints( EDIT_POINTS& aPoints )
 
 bool EDA_BEZIER_POINT_EDIT_BEHAVIOR::UpdatePoints( EDIT_POINTS& aPoints )
 {
-    wxCHECK( aPoints.PointsSize() == BEZIER_MAX_POINTS, false );
+    KI_CHECK( aPoints.PointsSize() == BEZIER_MAX_POINTS, false );
 
     aPoints.Point( BEZIER_START ).SetPosition( m_bezier.GetStart() );
     aPoints.Point( BEZIER_CTRL_PT1 ).SetPosition( m_bezier.GetBezierC1() );
@@ -594,7 +595,7 @@ EDA_ARC_POINT_EDIT_BEHAVIOR::EDA_ARC_POINT_EDIT_BEHAVIOR( EDA_SHAPE& aArc, const
         m_viewControls( aViewContols ),
         m_iuScale( aIuScale )
 {
-    wxASSERT( m_arc.GetShape() == SHAPE_T::ARC );
+    KI_ASSERT( m_arc.GetShape() == SHAPE_T::ARC );
 }
 
 
@@ -612,7 +613,7 @@ void EDA_ARC_POINT_EDIT_BEHAVIOR::MakePoints( EDIT_POINTS& aPoints )
 
 bool EDA_ARC_POINT_EDIT_BEHAVIOR::UpdatePoints( EDIT_POINTS& aPoints )
 {
-    wxCHECK( aPoints.PointsSize() == 4, false );
+    KI_CHECK( aPoints.PointsSize() == 4, false );
 
     aPoints.Point( ARC_START ).SetPosition( m_arc.GetStart() );
     aPoints.Point( ARC_MID ).SetPosition( m_arc.GetArcMid() );
@@ -721,7 +722,7 @@ ARC_EDIT_MODE IncrementArcEditMode( ARC_EDIT_MODE aMode )
     case ARC_EDIT_MODE::KEEP_ENDPOINTS_OR_START_DIRECTION:
         return ARC_EDIT_MODE::KEEP_CENTER_ADJUST_ANGLE_RADIUS;
     default:
-        wxFAIL_MSG( "Invalid arc edit mode" );
+        KI_FAIL_MSG( "Invalid arc edit mode" );
         return aMode;
     }
 }

@@ -29,6 +29,7 @@
 #include <widgets/panel_symbol_chooser.h>
 #include <symbol_chooser_frame.h>
 #include <algorithm>
+#include <core/ki_assert.h>
 
 
 static std::vector<PICKED_SYMBOL> s_SymbolHistoryList;
@@ -195,7 +196,7 @@ WINDOW_SETTINGS* SYMBOL_CHOOSER_FRAME::GetWindowSettings( APP_SETTINGS_BASE* aCf
     if( EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( aCfg ) )
         return &cfg->m_LibViewPanel.window;
 
-    wxFAIL_MSG( wxT( "SYMBOL_CHOOSER not running with EESCHEMA_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "SYMBOL_CHOOSER not running with EESCHEMA_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 

@@ -29,6 +29,8 @@
 
 #include "plugins/3dapi/ifsg_normals.h"
 #include "3d_cache/sg/sg_normals.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 extern char BadParent[];
@@ -57,7 +59,7 @@ IFSG_NORMALS::IFSG_NORMALS( SGNODE* aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -74,7 +76,7 @@ IFSG_NORMALS::IFSG_NORMALS( IFSG_NODE& aParent )
 #ifdef DEBUG
     if( ! pp )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     BadParent );
     }
 #endif
@@ -86,7 +88,7 @@ IFSG_NORMALS::IFSG_NORMALS( IFSG_NODE& aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -127,7 +129,7 @@ bool IFSG_NORMALS::NewNode( SGNODE* aParent )
 
     if( aParent != m_node->GetParent() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid SGNODE parent (%s) to SGNORMALS" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] invalid SGNODE parent (%s) to SGNORMALS" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeTypeName( aParent->GetNodeType() ) );
 
@@ -146,7 +148,7 @@ bool IFSG_NORMALS::NewNode( IFSG_NODE& aParent )
 {
     SGNODE* np = aParent.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return NewNode( np );
 }
@@ -154,7 +156,7 @@ bool IFSG_NORMALS::NewNode( IFSG_NODE& aParent )
 
 bool IFSG_NORMALS::GetNormalList( size_t& aListSize, SGVECTOR*& aNormalList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGNORMALS*) m_node )->GetNormalList( aListSize, aNormalList );
 }
@@ -162,7 +164,7 @@ bool IFSG_NORMALS::GetNormalList( size_t& aListSize, SGVECTOR*& aNormalList )
 
 bool IFSG_NORMALS::SetNormalList( size_t aListSize, const SGVECTOR* aNormalList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGNORMALS*) m_node )->SetNormalList( aListSize, aNormalList );
     return true;
@@ -171,7 +173,7 @@ bool IFSG_NORMALS::SetNormalList( size_t aListSize, const SGVECTOR* aNormalList 
 
 bool IFSG_NORMALS::AddNormal( double aXValue, double aYValue, double aZValue )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGNORMALS*) m_node )->AddNormal( aXValue, aYValue, aZValue );
     return true;
@@ -180,7 +182,7 @@ bool IFSG_NORMALS::AddNormal( double aXValue, double aYValue, double aZValue )
 
 bool IFSG_NORMALS::AddNormal( const SGVECTOR& aNormal )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGNORMALS*) m_node )->AddNormal( aNormal );
     return true;

@@ -52,6 +52,7 @@
 #include <widgets/wx_html_report_box.h>
 #include <widgets/symbol_diff_widget.h>
 #include <math/util.h>      // for KiROUND
+#include <core/ki_assert.h>
 
 
 SCH_INSPECTION_TOOL::SCH_INSPECTION_TOOL() :
@@ -101,11 +102,11 @@ void SCH_INSPECTION_TOOL::ShowERCDialog()
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( frame, /* void */ );
+    KI_CHECK( frame, /* void */ );
 
     DIALOG_ERC* dlg = frame->GetErcDialog();
 
-    wxCHECK( dlg, /* void */ );
+    KI_CHECK( dlg, /* void */ );
 
     // Needed at least on Windows. Raise() is not enough
     dlg->Show( true );
@@ -125,7 +126,7 @@ int SCH_INSPECTION_TOOL::PrevMarker( const TOOL_EVENT& aEvent )
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( frame, 0 );
+    KI_CHECK( frame, 0 );
 
     DIALOG_ERC* dlg = frame->GetErcDialog();
 
@@ -144,11 +145,11 @@ int SCH_INSPECTION_TOOL::NextMarker( const TOOL_EVENT& aEvent )
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( frame, 0 );
+    KI_CHECK( frame, 0 );
 
     DIALOG_ERC* dlg = frame->GetErcDialog();
 
-    wxCHECK( dlg, 0 );
+    KI_CHECK( dlg, 0 );
 
     dlg->Show( true );
     dlg->Raise();
@@ -162,7 +163,7 @@ int SCH_INSPECTION_TOOL::CrossProbe( const TOOL_EVENT& aEvent )
 {
     SCH_SELECTION_TOOL* selectionTool = m_toolMgr->GetTool<SCH_SELECTION_TOOL>();
 
-    wxCHECK( selectionTool, 0 );
+    KI_CHECK( selectionTool, 0 );
 
     SCH_SELECTION&      selection = selectionTool->GetSelection();
 
@@ -186,7 +187,7 @@ void SCH_INSPECTION_TOOL::CrossProbe( const SCH_MARKER* aMarker )
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( frame, /* void */ );
+    KI_CHECK( frame, /* void */ );
 
     DIALOG_ERC* dlg = frame->GetErcDialog();
 
@@ -222,7 +223,7 @@ void SCH_INSPECTION_TOOL::InspectERCError( const std::shared_ptr<RC_ITEM>& aERCI
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( frame, /* void */ );
+    KI_CHECK( frame, /* void */ );
 
     EDA_ITEM* a = frame->ResolveItem( aERCItem->GetMainItemID() );
 
@@ -249,11 +250,11 @@ int SCH_INSPECTION_TOOL::ExcludeMarker( const TOOL_EVENT& aEvent )
 
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( frame, 0 );
+    KI_CHECK( frame, 0 );
 
     DIALOG_ERC* dlg = frame->GetErcDialog();
 
-    wxCHECK( dlg, 0 );
+    KI_CHECK( dlg, 0 );
 
     // Let the ERC dialog handle it since it owns the marker provider's cached counts and view
     // updates. If marker is nullptr the dialog excludes whichever marker is selected in the
@@ -315,7 +316,7 @@ int SCH_INSPECTION_TOOL::DiffSymbol( const TOOL_EVENT& aEvent )
 {
     SCH_EDIT_FRAME* schEditorFrame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( schEditorFrame, 0 );
+    KI_CHECK( schEditorFrame, 0 );
 
     SCH_SELECTION& selection = m_selectionTool->RequestSelection( { SCH_SYMBOL_T } );
 
@@ -334,11 +335,11 @@ void SCH_INSPECTION_TOOL::DiffSymbol( SCH_SYMBOL* symbol )
 {
     SCH_EDIT_FRAME* schEditorFrame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
-    wxCHECK( schEditorFrame, /* void */ );
+    KI_CHECK( schEditorFrame, /* void */ );
 
     DIALOG_BOOK_REPORTER* dialog = schEditorFrame->GetSymbolDiffDialog();
 
-    wxCHECK( dialog, /* void */ );
+    KI_CHECK( dialog, /* void */ );
 
     dialog->DeleteAllPages();
     dialog->SetUserItemID( symbol->m_Uuid );

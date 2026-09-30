@@ -34,6 +34,8 @@
 #include <wx/log.h>
 
 #include "vrml2_node.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 static std::set< std::string > badNames;
@@ -195,7 +197,7 @@ void WRL2NODE::delNodeRef( WRL2NODE* aNode )
         return;
     }
 
-    wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                       " * [BUG] delNodeRef() did not find its target." ),
                 __FILE__, __FUNCTION__, __LINE__ );
 }
@@ -228,7 +230,7 @@ bool WRL2NODE::SetName( const std::string& aName )
 
     if( item != badNames.end() )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] invalid node name '%s' (matches restricted word)" ),
                     __FILE__, __FUNCTION__, __LINE__, *item );
@@ -239,7 +241,7 @@ bool WRL2NODE::SetName( const std::string& aName )
 
     if( isdigit( aName[0] ) )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] invalid node name '%s' (begins with digit)" ),
                     __FILE__, __FUNCTION__, __LINE__, aName );
 
@@ -256,7 +258,7 @@ bool WRL2NODE::SetName( const std::string& aName )
     if( std::string::npos != aName.find_first_of( BAD_CHARS1 )
         || std::string::npos != aName.find_first_of( BAD_CHARS2 ) )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] invalid node name '%s' (contains invalid character)" ),
                     __FILE__, __FUNCTION__, __LINE__, aName );
@@ -355,8 +357,8 @@ bool WRL2NODE::SetParent( WRL2NODE* aParent, bool doUnlink )
 
 bool WRL2NODE::AddChildNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
-    wxCHECK_MSG( aNode->GetNodeType() != WRL2NODES::WRL2_BASE, false,
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
+    KI_CHECK_MSG( aNode->GetNodeType() != WRL2NODES::WRL2_BASE, false,
                  wxT( "Attempting to add a base node to another node." ) );
 
 
@@ -382,8 +384,8 @@ bool WRL2NODE::AddChildNode( WRL2NODE* aNode )
 
 bool WRL2NODE::AddRefNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
-    wxCHECK_MSG( aNode->GetNodeType() != WRL2NODES::WRL2_BASE, false,
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
+    KI_CHECK_MSG( aNode->GetNodeType() != WRL2NODES::WRL2_BASE, false,
                  wxT( "Attempt to add a base node reference to another base node" ) );
 
     std::list< WRL2NODE* >::iterator sR = m_Refs.begin();

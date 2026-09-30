@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <core/ki_assert.h>
 
 
 static wxString paramValueString( const PARAM_CFG& aParam )
@@ -150,7 +151,7 @@ static void writeParam( PARAM_CFG& aParam, const wxString& aValue )
     }
 
     default:
-        wxASSERT_MSG( false, wxS( "Unsupported PARAM_CFG variant: " )
+        KI_ASSERT_MSG( false, wxS( "Unsupported PARAM_CFG variant: " )
                                 + wxString::Format( wxS( "%d" ), aParam.m_Type ) );
     }
 }

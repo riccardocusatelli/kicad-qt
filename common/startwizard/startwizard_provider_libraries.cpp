@@ -33,6 +33,7 @@
 #include <regex>
 #include <set>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 class PANEL_STARTWIZARD_LIBRARIES : public PANEL_STARTWIZARD_LIBRARIES_BASE
@@ -151,7 +152,7 @@ public:
             if( !LIBRARY_MANAGER::IsTableValid( LIBRARY_MANAGER::StockTablePath( type ) )
                 && type != LIBRARY_TABLE_TYPE::DESIGN_BLOCK )
             {
-                wxLogTrace( traceLibraries, wxT( "Stock table path for %s is not valid; will show warning" ),
+                KI_LOG_TRACE( traceLibraries, wxT( "Stock table path for %s is not valid; will show warning" ),
                             magic_enum::enum_name( type ) );
                 m_showWarning = true;
             }
@@ -262,7 +263,7 @@ bool STARTWIZARD_PROVIDER_LIBRARIES::MigrateBuiltInLibraries( LIBRARY_TABLE& aTa
         {
             toRemove.insert( row.URI() );
             insertStock = true;
-            wxLogTrace( traceLibraries, wxT( "Libraries migration: removing old stock row '%s'" ), row.URI() );
+            KI_LOG_TRACE( traceLibraries, wxT( "Libraries migration: removing old stock row '%s'" ), row.URI() );
         }
         else if( row.Type() == LIBRARY_TABLE_ROW::TABLE_TYPE_NAME && row.Nickname() == wxT( "KiCad" ) )
         {
@@ -270,19 +271,19 @@ bool STARTWIZARD_PROVIDER_LIBRARIES::MigrateBuiltInLibraries( LIBRARY_TABLE& aTa
 
             if( row.URI().Matches( aStockPath ) )
             {
-                wxLogTrace( traceLibraries,
+                KI_LOG_TRACE( traceLibraries,
                             wxT( "Libraries migration: migrated table already has latest stock setup" ) );
             }
             else if( LIBRARY_MANAGER::IsTableValid( row.URI() ) && !aStockPathValid )
             {
-                wxLogTrace( traceLibraries,
+                KI_LOG_TRACE( traceLibraries,
                             wxT( "Libraries migration: migrated table has working stock table at "
                                  "'%s' but calculated stock path '%s' is missing or invalid.  Leaving alone." ),
                             row.URI(), aStockPath );
             }
             else
             {
-                wxLogTrace( traceLibraries,
+                KI_LOG_TRACE( traceLibraries,
                             wxT( "Libraries migration: migrated chained table URI from '%s' to '%s'" ),
                             row.URI(), aStockPath );
                 row.SetDescription( _( "KiCad Default Libraries" ) );
@@ -306,7 +307,7 @@ bool STARTWIZARD_PROVIDER_LIBRARIES::MigrateBuiltInLibraries( LIBRARY_TABLE& aTa
 
     if( insertStock )
     {
-        wxLogTrace( traceLibraries, wxT( "Libraries migration: inserting chained default table" ) );
+        KI_LOG_TRACE( traceLibraries, wxT( "Libraries migration: inserting chained default table" ) );
         LIBRARY_TABLE_ROW chained = aTable.MakeRow();
         chained.SetType( LIBRARY_TABLE_ROW::TABLE_TYPE_NAME );
         chained.SetNickname( wxT( "KiCad" ) );
@@ -342,7 +343,7 @@ void STARTWIZARD_PROVIDER_LIBRARIES::Finish()
             if( MigrateBuiltInLibraries( table, type, stockPath, LIBRARY_MANAGER::IsTableValid( stockPath ) ) )
                 table.Save();
             else
-                wxLogTrace( traceLibraries, wxT( "Libraries migration: no actions needed" ) );
+                KI_LOG_TRACE( traceLibraries, wxT( "Libraries migration: no actions needed" ) );
         }
     }
 

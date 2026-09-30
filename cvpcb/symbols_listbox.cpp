@@ -32,6 +32,7 @@
 #include <listboxes.h>
 #include <cvpcb_id.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 SYMBOLS_LISTBOX::SYMBOLS_LISTBOX( CVPCB_MAINFRAME* parent, wxWindowID id ) :
@@ -140,7 +141,7 @@ void SYMBOLS_LISTBOX::OnChar( wxKeyEvent& event )
     if( m_isClosing )
         return;
 
-    wxLogTrace( kicadTraceKeyEvent, wxS( "SYMBOLS_LISTBOX::OnChar %s" ), dump( event ) );
+    KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "SYMBOLS_LISTBOX::OnChar %s" ), dump( event ) );
 
     int key = event.GetKeyCode();
 

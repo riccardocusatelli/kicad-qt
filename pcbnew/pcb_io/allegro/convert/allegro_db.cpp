@@ -30,6 +30,8 @@
 #include <ki_exception.h>
 
 #include <convert/allegro_pcb_structs.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 using namespace ALLEGRO;
 
@@ -145,7 +147,7 @@ bool DB_REF::Resolve( const DB_OBJ_RESOLVER& aResolver )
             return true;
         }
 
-        wxLogTrace( "ALLEGRO_EXTRACT", "Failed to resolve DB_REF target key %#010x for %s",
+        KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Failed to resolve DB_REF target key %#010x for %s",
                     m_TargetKey, m_DebugName ? m_DebugName : "<unknown>" );
     }
 
@@ -166,7 +168,7 @@ bool DB_STR_REF::Resolve( const DB_OBJ_RESOLVER& aResolver )
 
     if( !m_String )
     {
-        wxLogTrace( "ALLEGRO_EXTRACT", "Failed to resolve DB_STR_REF string key %#010x for %s", m_StringKey, m_DebugName ? m_DebugName : "<unknown>" );
+        KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Failed to resolve DB_STR_REF string key %#010x for %s", m_StringKey, m_DebugName ? m_DebugName : "<unknown>" );
     }
 
     return m_String != nullptr;
@@ -175,7 +177,7 @@ bool DB_STR_REF::Resolve( const DB_OBJ_RESOLVER& aResolver )
 
 bool DB_REF_CHAIN::Resolve( const DB_OBJ_RESOLVER& aResolver )
 {
-    wxCHECK_MSG( m_NextRefGetter != nullptr, false, wxString::Format(
+    KI_CHECK_MSG( m_NextRefGetter != nullptr, false, wxString::Format(
         "%s: Must set m_NextRefGetter before resolving DB_REF_CHAIN", DebugString() ) );
 
     if( m_Head == m_Tail )
@@ -222,7 +224,7 @@ bool DB_REF_CHAIN::Resolve( const DB_OBJ_RESOLVER& aResolver )
     }
 
     // Ended before the tail
-    wxLogTrace( "ALLEGRO_EXTRACT", "Failed to resolve DB_REF_CHAIN up to tail %#010x for %s", m_Tail, m_DebugName ? m_DebugName : "<unknown>" );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Failed to resolve DB_REF_CHAIN up to tail %#010x for %s", m_Tail, m_DebugName ? m_DebugName : "<unknown>" );
     return false;
 }
 
@@ -825,7 +827,7 @@ const COMPONENT_INST* COMPONENT_INST::GetNextInstance() const
 {
     if( m_Next.m_Target == nullptr )
     {
-        wxLogTrace( "ALLEGRO_EXTRACT", "COMPONENT_INST::GetNextInstance: Null m_Next reference for key %#010x", m_Key );
+        KI_LOG_TRACE( "ALLEGRO_EXTRACT", "COMPONENT_INST::GetNextInstance: Null m_Next reference for key %#010x", m_Key );
         return nullptr;
     }
 
@@ -1031,7 +1033,7 @@ bool FOOTPRINT_DEF::ResolveRefs( const DB_OBJ_RESOLVER& aResolver )
     {
         if( aObj.GetType() != BRD_FP_INST )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "FOOTPRINT_DEF::ResolveRefs: Unexpected type in footprint instance chain: %d", static_cast<int>( aObj.GetType() ) );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "FOOTPRINT_DEF::ResolveRefs: Unexpected type in footprint instance chain: %d", static_cast<int>( aObj.GetType() ) );
             return;
         }
 
@@ -1039,7 +1041,7 @@ bool FOOTPRINT_DEF::ResolveRefs( const DB_OBJ_RESOLVER& aResolver )
         fpInst.m_Parent = this;
     } );
 
-    wxLogTrace( "ALLEGRO_EXTRACT", "Resolved %zu footprint instances for footprint def key %#010x", m_Instances.m_Chain.size(), GetKey() );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Resolved %zu footprint instances for footprint def key %#010x", m_Instances.m_Chain.size(), GetKey() );
 
     ok &= m_SymLibPath.Resolve( aResolver );
 
@@ -1070,7 +1072,7 @@ FOOTPRINT_INSTANCE::FOOTPRINT_INSTANCE( const BLK_0x2D_FOOTPRINT_INST& aBlk ):
 
         if (aObj.GetType() != BRD_PLACED_PAD )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "FOOTPRINT_INSTANCE::m_Pads: Unexpected type in pad chain: %d", static_cast<int>( aObj.GetType() ) );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "FOOTPRINT_INSTANCE::m_Pads: Unexpected type in pad chain: %d", static_cast<int>( aObj.GetType() ) );
             return DB_NULLREF;
         }
 
@@ -1527,7 +1529,7 @@ bool BRD_DB::ResolveAndValidate()
     }
     catch( const IO_ERROR& e )
     {
-        wxLogTrace( "ALLEGRO_EXTRACT",
+        KI_LOG_TRACE( "ALLEGRO_EXTRACT",
                     "Strict reference resolution failed (%s), retrying with best-effort",
                     e.Problem() );
 
@@ -1558,17 +1560,17 @@ void BRD_DB::VisitFootprintDefs( BRD_DB::FP_DEF_VISITOR aVisitor ) const
 
 void BRD_DB::visitFootprintInstances( const FOOTPRINT_DEF& aFpDef, VIEW_OBJS_VISITOR aVisitor ) const
 {
-    wxLogTrace( "ALLEGRO_EXTRACT", "Visiting footprint instances for footprint def key %#010x", aFpDef.GetKey() );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting footprint instances for footprint def key %#010x", aFpDef.GetKey() );
 
     VIEW_OBJS viewObjs;
     viewObjs.m_Board = this;
 
     const auto fpInstNextFunc = [&]( const DB_OBJ& aObj )
     {
-        wxLogTrace( "ALLEGRO_EXTRACT", "Visiting footprint instance key %#010x", aObj.GetKey() );
+        KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting footprint instance key %#010x", aObj.GetKey() );
         if( aObj.GetType() != BRD_FP_INST )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "  Not a footprint instance, skipping key %#010x", aObj.GetKey() );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "  Not a footprint instance, skipping key %#010x", aObj.GetKey() );
             return;
         }
 
@@ -1593,7 +1595,7 @@ void BRD_DB::visitFootprintInstances( const FOOTPRINT_DEF& aFpDef, VIEW_OBJS_VIS
 
 void BRD_DB::VisitFootprintInstances( VIEW_OBJS_VISITOR aVisitor ) const
 {
-    wxLogTrace( "ALLEGRO_EXTRACT", "Visiting footprint instances" );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting footprint instances" );
 
     VIEW_OBJS viewObjs;
     viewObjs.m_Board = this;
@@ -1609,7 +1611,7 @@ void BRD_DB::VisitFootprintInstances( VIEW_OBJS_VISITOR aVisitor ) const
 
 void BRD_DB::VisitFunctionInstances( VIEW_OBJS_VISITOR aVisitor ) const
 {
-    wxLogTrace( "ALLEGRO_EXTRACT", "Visiting function instances" );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting function instances" );
 
     const auto componentVisitor = [&]( const VIEW_OBJS& aViewObjs )
     {
@@ -1623,7 +1625,7 @@ void BRD_DB::VisitFunctionInstances( VIEW_OBJS_VISITOR aVisitor ) const
 
 void BRD_DB::VisitComponents( VIEW_OBJS_VISITOR aVisitor ) const
 {
-    wxLogTrace( "ALLEGRO_EXTRACT", "Visiting components" );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting components" );
 
     VIEW_OBJS viewObjs;
 
@@ -1633,7 +1635,7 @@ void BRD_DB::VisitComponents( VIEW_OBJS_VISITOR aVisitor ) const
     {
         if( aObj.GetType() != BRD_COMPONENT )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "  Not a component object, skipping key %#010x", aObj.GetKey() );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "  Not a component object, skipping key %#010x", aObj.GetKey() );
             return DB_NULLREF;
         }
 
@@ -1643,11 +1645,11 @@ void BRD_DB::VisitComponents( VIEW_OBJS_VISITOR aVisitor ) const
 
         const auto compInstVisitor = [&]( const DB_OBJ& aCompInst )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "Visiting component instance key %#010x", aCompInst.GetKey() );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting component instance key %#010x", aCompInst.GetKey() );
 
             if( aCompInst.GetType() != BRD_COMPONENT_INST )
             {
-                wxLogTrace( "ALLEGRO_EXTRACT", "  Not a component instance, skipping key %#010x", aCompInst.GetKey() );
+                KI_LOG_TRACE( "ALLEGRO_EXTRACT", "  Not a component instance, skipping key %#010x", aCompInst.GetKey() );
                 return;
             }
 
@@ -1671,7 +1673,7 @@ void BRD_DB::VisitComponents( VIEW_OBJS_VISITOR aVisitor ) const
 
 void BRD_DB::VisitComponentPins( VIEW_OBJS_VISITOR aVisitor ) const
 {
-    wxLogTrace( "ALLEGRO_EXTRACT", "Visiting component pins" );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting component pins" );
 
     const auto componentVisitor = [&]( const VIEW_OBJS& aViewObjs )
     {
@@ -1680,16 +1682,16 @@ void BRD_DB::VisitComponentPins( VIEW_OBJS_VISITOR aVisitor ) const
 
         if( compInst == nullptr )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "  No component instance in view objs, skipping" );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "  No component instance in view objs, skipping" );
             return;
         }
 
         const auto padVisitor = [&]( const DB_OBJ& aObj )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "Visiting pad key %#010x", aObj.GetKey() );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting pad key %#010x", aObj.GetKey() );
             if( aObj.GetType() != BRD_PLACED_PAD )
             {
-                wxLogTrace( "ALLEGRO_EXTRACT", "  Not a placed pad, skipping key %#010x, type", aObj.GetKey() );
+                KI_LOG_TRACE( "ALLEGRO_EXTRACT", "  Not a placed pad, skipping key %#010x, type", aObj.GetKey() );
                 return;
             }
 
@@ -1711,7 +1713,7 @@ void BRD_DB::VisitComponentPins( VIEW_OBJS_VISITOR aVisitor ) const
 
 void BRD_DB::VisitNets( VIEW_OBJS_VISITOR aVisitor ) const
 {
-    wxLogTrace( "ALLEGRO_EXTRACT", "Visiting nets" );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting nets" );
 
     VIEW_OBJS viewObjs;
     viewObjs.m_Board = this;
@@ -1720,7 +1722,7 @@ void BRD_DB::VisitNets( VIEW_OBJS_VISITOR aVisitor ) const
     {
         if( aObj.GetType() != BRD_NET )
         {
-            wxLogTrace( "ALLEGRO_EXTRACT", "  Not a net object, skipping key %#010x", aObj.GetKey() );
+            KI_LOG_TRACE( "ALLEGRO_EXTRACT", "  Not a net object, skipping key %#010x", aObj.GetKey() );
             return DB_NULLREF;
         }
 
@@ -1739,7 +1741,7 @@ void BRD_DB::VisitNets( VIEW_OBJS_VISITOR aVisitor ) const
 
 void BRD_DB::VisitConnectedGeometry( VIEW_OBJS_VISITOR aVisitor ) const
 {
-    wxLogTrace( "ALLEGRO_EXTRACT", "Visiting connected geometry" );
+    KI_LOG_TRACE( "ALLEGRO_EXTRACT", "Visiting connected geometry" );
 
     VIEW_OBJS viewObjs;
     viewObjs.m_Board = this;
@@ -1752,7 +1754,7 @@ void BRD_DB::VisitConnectedGeometry( VIEW_OBJS_VISITOR aVisitor ) const
 
         // if( netAssign == nullptr )
         // {
-        //     wxLogTrace( "ALLEGRO_EXTRACT", "  Net %#010x has no assignment, skipping", net.GetKey() );
+        //     KI_LOG_TRACE( "ALLEGRO_EXTRACT", "  Net %#010x has no assignment, skipping", net.GetKey() );
         //     return;
         // }
     };

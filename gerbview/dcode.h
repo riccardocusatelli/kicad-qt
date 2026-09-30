@@ -34,6 +34,7 @@
 
 #include <gal/color4d.h>
 #include <geometry/shape_poly_set.h>
+#include <core/ki_assert.h>
 
 using KIGFX::COLOR4D;
 
@@ -120,7 +121,7 @@ public:
      */
     double GetParam( unsigned aIdx ) const
     {
-        wxASSERT( aIdx <= m_am_params.size() );
+        KI_ASSERT( aIdx <= m_am_params.size() );
 
         if( aIdx <= m_am_params.size() )
             return  m_am_params[aIdx - 1];

@@ -38,6 +38,8 @@
 #include <schematic.h>
 #include <sch_screen.h>
 #include <settings/settings_manager.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 // Note:
 // We need to switch between sheets to plot a hierarchy and update references and sheet number
@@ -119,7 +121,7 @@ void SCH_PLOTTER::createPDFFile( const SCH_PLOT_OPTS& aPlotOpts,
         return;
     }
 
-    wxCHECK( m_schematic, /* void */ );
+    KI_CHECK( m_schematic, /* void */ );
 
     // Allocate the plotter and set the job level parameter
     PDF_PLOTTER* plotter = new PDF_PLOTTER( &m_schematic->Project() );
@@ -871,7 +873,7 @@ wxFileName SCH_PLOTTER::createPlotFileName( const SCH_PLOT_OPTS& aPlotOpts,
         retv.SetPath( tmp.GetPath() );
     }
 
-    wxLogTrace( tracePathsAndFiles, "Writing plot file '%s'.", retv.GetFullPath() );
+    KI_LOG_TRACE( tracePathsAndFiles, "Writing plot file '%s'.", retv.GetFullPath() );
 
     return retv;
 }

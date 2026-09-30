@@ -30,6 +30,7 @@
 
 #include <stdexcept>
 #include <wx/log.h> // wxLogTrace
+#include <core/ki_log.h>
 
 
 /**
@@ -139,7 +140,7 @@ int checkGlError( const std::string& aInfo, const char* aFile, int aLine, bool a
     {
         if( aThrow )
         {
-            wxLogTrace( traceGalOpenGlError, wxT( "Throwing exception for glGetError() '%s' "
+            KI_LOG_TRACE( traceGalOpenGlError, wxT( "Throwing exception for glGetError() '%s' "
                                                   "in file '%s' on line %d." ),
                         errorMsg,
                         aFile,
@@ -171,13 +172,13 @@ static void GLAPIENTRY debugMsgCallback( GLenum aSource, GLenum aType, GLuint aI
     switch( aSeverity )
     {
     case GL_DEBUG_SEVERITY_HIGH:
-        wxLogTrace( traceGalOpenGlError, wxS( "OpenGL ERROR: %s" ), aMessage );
+        KI_LOG_TRACE( traceGalOpenGlError, wxS( "OpenGL ERROR: %s" ), aMessage );
         break;
     case GL_DEBUG_SEVERITY_MEDIUM:
-        wxLogTrace( traceGalOpenGlError, wxS( "OpenGL WARNING: %s" ), aMessage );
+        KI_LOG_TRACE( traceGalOpenGlError, wxS( "OpenGL WARNING: %s" ), aMessage );
         break;
     case GL_DEBUG_SEVERITY_LOW:
-        wxLogTrace( traceGalOpenGlError, wxS( "OpenGL INFO: %s" ), aMessage );
+        KI_LOG_TRACE( traceGalOpenGlError, wxS( "OpenGL INFO: %s" ), aMessage );
         break;
     case GL_DEBUG_SEVERITY_NOTIFICATION:
         return;

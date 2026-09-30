@@ -28,6 +28,7 @@
 #include <pcb_calculator_utils.h>
 #include <properties/property_mgr.h>
 #include <properties/property.h>
+#include <core/ki_assert.h>
 
 
 extern double DoubleFromString( const wxString& TextValue );
@@ -198,31 +199,31 @@ void PANEL_TRANSLINE::TranslineTypeSelection( enum TRANSLINE_TYPE_ID aType )
         switch( prm->m_Type )
         {
         case PRM_TYPE_SUBS:
-            wxASSERT( idxsubs < substrateprms_cnt );
+            KI_ASSERT( idxsubs < substrateprms_cnt );
             data = &substrateprms[idxsubs];
             idxsubs++;
             break;
 
         case PRM_TYPE_PHYS:
-            wxASSERT( idxphys < physprms_cnt );
+            KI_ASSERT( idxphys < physprms_cnt );
             data = &physprms[idxphys];
             idxphys++;
             break;
 
         case PRM_TYPE_ELEC:
-            wxASSERT( idxelec < elecprms_cnt );
+            KI_ASSERT( idxelec < elecprms_cnt );
             data = &elecprms[idxelec];
             idxelec++;
             break;
 
         case PRM_TYPE_FREQUENCY:
-            wxASSERT( idxfreq < frequencyprms_cnt );
+            KI_ASSERT( idxfreq < frequencyprms_cnt );
             data = &frequencyprms[idxfreq];
             idxfreq++;
             break;
         }
 
-        wxASSERT ( data );
+        KI_ASSERT ( data );
         data->name->SetToolTip( prm->m_ToolTip );
         data->name->SetLabel( prm->m_DlgLabel != wxS( "" ) ? prm->m_DlgLabel + wxS( ':' ) : wxString( wxS( "" ) ) );
         prm->m_ValueCtrl = data->value;

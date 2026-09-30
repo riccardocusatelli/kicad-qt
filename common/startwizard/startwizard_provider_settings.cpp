@@ -31,6 +31,7 @@
 #include <widgets/std_bitmap_button.h>
 #include <wx/dirdlg.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 class PANEL_STARTWIZARD_SETTINGS : public PANEL_STARTWIZARD_SETTINGS_BASE
@@ -220,7 +221,7 @@ void STARTWIZARD_PROVIDER_SETTINGS::Finish()
     wxString languageErr;
 
     if( !Pgm().SetLanguage( languageErr, true ) )
-        wxLogTrace( traceLocale, wxT( "Unable to apply imported language: %s" ), languageErr );
+        KI_LOG_TRACE( traceLocale, wxT( "Unable to apply imported language: %s" ), languageErr );
 }
 
 

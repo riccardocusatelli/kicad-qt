@@ -42,6 +42,7 @@
 #include <pgm_base.h>
 #include <settings/common_settings.h>
 #include <dialog_shim.h>
+#include <core/ki_assert.h>
 
 
 wxGridCellAttr* WX_GRID_TABLE_BASE::enhanceAttr( wxGridCellAttr* aInputAttr, int aRow, int aCol,
@@ -343,7 +344,7 @@ void WX_GRID::EnableAlternateRowColors( bool aEnable )
 {
     wxGridTableBase* table = wxGrid::GetTable();
 
-    wxCHECK_MSG( table, /* void */, "Tried to enable alternate row colors without a table assigned to the grid" );
+    KI_CHECK_MSG( table, /* void */, "Tried to enable alternate row colors without a table assigned to the grid" );
 
     if( aEnable )
     {
@@ -1087,7 +1088,7 @@ void WX_GRID::SetupColumnAutosizer( int aFlexibleCol )
 
     m_flexibleCol = aFlexibleCol;
 
-    wxASSERT_MSG( m_flexibleCol < colCount, "Flexible column index does not exist in grid" );
+    KI_ASSERT_MSG( m_flexibleCol < colCount, "Flexible column index does not exist in grid" );
 
     Bind( wxEVT_UPDATE_UI,
           [this]( wxUpdateUIEvent& aEvent )

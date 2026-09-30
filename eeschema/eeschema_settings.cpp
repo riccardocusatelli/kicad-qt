@@ -39,6 +39,7 @@
 #include <wx/config.h>
 #include <widgets/ui_common.h>
 #include <default_values.h>    // For some default values
+#include <core/ki_assert.h>
 
 using namespace T_BOMCFG_T;     // for the BOM_CFG_PARSER parser and its keywords
 
@@ -1015,7 +1016,7 @@ std::vector<EESCHEMA_SETTINGS::BOM_PLUGIN_SETTINGS> EESCHEMA_SETTINGS::bomSettin
 {
     std::vector<EESCHEMA_SETTINGS::BOM_PLUGIN_SETTINGS> ret;
 
-    wxASSERT( aObj.is_array() );
+    KI_ASSERT( aObj.is_array() );
 
     for( const nlohmann::json& entry : aObj )
     {
@@ -1062,7 +1063,7 @@ std::vector<EESCHEMA_SETTINGS::NETLIST_PLUGIN_SETTINGS> EESCHEMA_SETTINGS::netli
 {
     std::vector<EESCHEMA_SETTINGS::NETLIST_PLUGIN_SETTINGS> ret;
 
-    wxASSERT( aObj.is_array() );
+    KI_ASSERT( aObj.is_array() );
 
     for( const nlohmann::json& entry : aObj )
     {
@@ -1089,7 +1090,7 @@ BOM_CFG_PARSER::BOM_CFG_PARSER( std::vector<EESCHEMA_SETTINGS::BOM_PLUGIN_SETTIN
                                 const char* aLine, const wxString& aSource ) :
         DIALOG_BOM_CFG_LEXER( aLine, aSource )
 {
-    wxASSERT( aPluginList );
+    KI_ASSERT( aPluginList );
     m_pluginList = aPluginList;
 }
 

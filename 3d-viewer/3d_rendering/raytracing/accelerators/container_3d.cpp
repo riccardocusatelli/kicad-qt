@@ -28,6 +28,7 @@
 
 #include "container_3d.h"
 #include <cstdio>
+#include <core/ki_assert.h>
 
 CONTAINER_3D_BASE::CONTAINER_3D_BASE()
 {
@@ -69,7 +70,7 @@ void CONTAINER_3D_BASE::ConvertTo( CONST_VECTOR_OBJECT &aOutVector ) const
 
         for( LIST_OBJECT::const_iterator ii = m_objects.begin(); ii != m_objects.end(); ++ii )
         {
-            wxASSERT( (*ii) != nullptr );
+            KI_ASSERT( (*ii) != nullptr );
 
             aOutVector[i++] = static_cast<const OBJECT_3D*>( *ii );
         }

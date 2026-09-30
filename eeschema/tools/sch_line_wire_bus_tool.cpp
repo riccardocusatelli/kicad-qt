@@ -64,6 +64,8 @@
 #include <ee_grid_helper.h>
 #include <sch_selection.h>
 #include <sch_selection_tool.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 using BUS_GETTER = std::function<SCH_LINE*()>;
@@ -453,7 +455,7 @@ SCH_LINE* SCH_LINE_WIRE_BUS_TOOL::doUnfoldBus( SCH_COMMIT& aCommit, const wxStri
 
     if ( bus == nullptr )
     {
-        wxASSERT_MSG( false, wxString::Format( "Couldn't find the originating bus line (but had a net: %s )",
+        KI_ASSERT_MSG( false, wxString::Format( "Couldn't find the originating bus line (but had a net: %s )",
                                                aNet ) );
         return nullptr;
     }
@@ -523,7 +525,7 @@ void SCH_LINE_WIRE_BUS_TOOL::computeBreakPoint( const std::pair<SCH_LINE*, SCH_L
                                                 LINE_MODE                              mode,
                                                 bool                                   posture )
 {
-    wxCHECK_RET( aSegments.first && aSegments.second,
+    KI_CHECK_RET( aSegments.first && aSegments.second,
                  wxT( "Cannot compute break point of NULL line segment." ) );
 
     VECTOR2I  midPoint;
@@ -855,7 +857,7 @@ int SCH_LINE_WIRE_BUS_TOOL::doDrawSegments( const TOOL_EVENT& aTool, SCH_COMMIT&
             // First click when unfolding places the label and wire-to-bus entry
             if( m_busUnfold.in_progress && !m_busUnfold.label_placed )
             {
-                wxASSERT( aType == LAYER_WIRE );
+                KI_ASSERT( aType == LAYER_WIRE );
 
                 m_frame->AddToScreen( m_busUnfold.label, screen );
                 m_selectionTool->RemoveItemFromSel( m_busUnfold.label, true );
@@ -1105,7 +1107,7 @@ int SCH_LINE_WIRE_BUS_TOOL::doDrawSegments( const TOOL_EVENT& aTool, SCH_COMMIT&
             if( *evt->GetCommandId() >= ID_POPUP_SCH_UNFOLD_BUS
                 && *evt->GetCommandId() <= ID_POPUP_SCH_UNFOLD_BUS_END )
             {
-                wxASSERT_MSG( !segment, "Bus unfold event received when already drawing!" );
+                KI_ASSERT_MSG( !segment, "Bus unfold event received when already drawing!" );
 
                 aType = LAYER_WIRE;
                 wxString net = *evt->Parameter<wxString*>();
@@ -1280,7 +1282,7 @@ void SCH_LINE_WIRE_BUS_TOOL::finishSegments( SCH_COMMIT& aCommit )
 
     if( m_busUnfold.in_progress && m_busUnfold.label_placed )
     {
-        wxASSERT( m_busUnfold.entry && m_busUnfold.label );
+        KI_ASSERT( m_busUnfold.entry && m_busUnfold.label );
 
         aCommit.Added( m_busUnfold.entry, screen );
         m_frame->SaveCopyForRepeatItem( m_busUnfold.entry );
@@ -1415,7 +1417,7 @@ int SCH_LINE_WIRE_BUS_TOOL::AddJunctionsIfNeeded( SCH_COMMIT* aCommit, SCH_SELEC
 
     for( const VECTOR2I& point : screen->GetNeededJunctions( allItems ) )
     {
-        wxLogTrace( "KICAD_SCH_MOVE", "AddJunctionsIfNeeded: adding junction at %s", point.Format().c_str() );
+        KI_LOG_TRACE( "KICAD_SCH_MOVE", "AddJunctionsIfNeeded: adding junction at %s", point.Format().c_str() );
         AddJunction( aCommit, m_frame->GetScreen(), point );
     }
 

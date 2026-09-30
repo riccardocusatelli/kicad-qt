@@ -69,6 +69,7 @@
 #include <progress_reporter.h>
 #include <magic_enum.hpp>
 #include <thread_pool.h>
+#include <core/ki_assert.h>
 
 
 constexpr double BOLD_FACTOR = 1.75;    // CSS font-weight-normal is 400; bold is 700
@@ -544,7 +545,7 @@ void ALTIUM_PCB::Parse( const ALTIUM_PCB_COMPOUND_FILE&                  altiumP
 
         if( mappedDirectory == aFileMapping.end() )
         {
-            wxASSERT_MSG( !isRequired, wxString::Format( wxT( "Altium Directory of kind %d was "
+            KI_ASSERT_MSG( !isRequired, wxString::Format( wxT( "Altium Directory of kind %d was "
                                                               "expected, but no mapping is "
                                                               "present in the code" ),
                                                          directory ) );
@@ -2364,7 +2365,7 @@ void ALTIUM_PCB::ParseNets6Data( const ALTIUM_PCB_COMPOUND_FILE&     aAltiumPcbF
 
     ALTIUM_BINARY_PARSER reader( aAltiumPcbFile, aEntry );
 
-    wxASSERT( m_altiumToKicadNetcodes.empty() );
+    KI_ASSERT( m_altiumToKicadNetcodes.empty() );
 
     while( reader.GetRemainingBytes() >= 4 /* TODO: use Header section of file */ )
     {
@@ -3316,7 +3317,7 @@ void ALTIUM_PCB::ConvertArcs6ToFootprintItem( FOOTPRINT* aFootprint, const AARC6
 {
     if( aElem.polygon != ALTIUM_POLYGON_NONE )
     {
-        wxFAIL_MSG( wxString::Format( "Altium: Unexpected footprint Arc with polygon id %d",
+        KI_FAIL_MSG( wxString::Format( "Altium: Unexpected footprint Arc with polygon id %d",
                                       aElem.polygon ) );
         return;
     }
@@ -3636,7 +3637,7 @@ void ALTIUM_PCB::ConvertPads6ToFootprintItemOnCopper( FOOTPRINT* aFootprint, con
             switch( aElem.sizeAndShape->holeshape )
             {
             case ALTIUM_PAD_HOLE_SHAPE::ROUND:
-                wxFAIL_MSG( wxT( "Round holes are handled before the switch" ) );
+                KI_FAIL_MSG( wxT( "Round holes are handled before the switch" ) );
                 break;
 
             case ALTIUM_PAD_HOLE_SHAPE::SQUARE:
@@ -4258,7 +4259,7 @@ void ALTIUM_PCB::ParseVias6Data( const ALTIUM_PCB_COMPOUND_FILE&     aAltiumPcbF
             for( PCB_LAYER_ID layer : cuLayers )
             {
                 int altiumLayer = CopperLayerToOrdinal( layer );
-                wxCHECK2_MSG( altiumLayer < 32, break,
+                KI_CHECK2_MSG( altiumLayer < 32, break,
                               "Altium importer expects 32 or fewer copper layers" );
 
                 via->SetWidth( layer, elem.diameter_by_layer[altiumLayer] );
@@ -4415,7 +4416,7 @@ void ALTIUM_PCB::ConvertTracks6ToFootprintItem( FOOTPRINT* aFootprint, const ATR
 {
     if( aElem.polygon != ALTIUM_POLYGON_NONE )
     {
-        wxFAIL_MSG( wxString::Format( "Altium: Unexpected footprint Track with polygon id %u",
+        KI_FAIL_MSG( wxString::Format( "Altium: Unexpected footprint Track with polygon id %u",
                                       (unsigned)aElem.polygon ) );
         return;
     }

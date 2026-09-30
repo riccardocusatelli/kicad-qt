@@ -29,11 +29,12 @@
 #include "polygon_2d.h"
 #include "../ray.h"
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 static bool polygon_IsPointInside( const SEGMENTS& aSegments, const SFVEC2F& aPoint )
 {
-    wxASSERT( aSegments.size() >= 3 );
+    KI_ASSERT( aSegments.size() >= 3 );
 
     unsigned int i;
     unsigned int j        = aSegments.size() - 1;
@@ -86,17 +87,17 @@ POLYGON_2D::POLYGON_2D( const SEGMENTS_WIDTH_NORMALS& aOpenSegmentList,
     m_centroid = m_bbox.GetCenter();
 
     // Some checks
-    wxASSERT( m_open_segments.size() == aOpenSegmentList.size() );
-    wxASSERT( m_open_segments.size() > 0 );
+    KI_ASSERT( m_open_segments.size() == aOpenSegmentList.size() );
+    KI_ASSERT( m_open_segments.size() > 0 );
 
-    wxASSERT( m_outers_and_holes.m_Outers.size() > 0 );
-    wxASSERT( m_outers_and_holes.m_Outers.size() == aOuterAndHoles.m_Outers.size() );
-    wxASSERT( m_outers_and_holes.m_Holes.size() == aOuterAndHoles.m_Holes.size() );
+    KI_ASSERT( m_outers_and_holes.m_Outers.size() > 0 );
+    KI_ASSERT( m_outers_and_holes.m_Outers.size() == aOuterAndHoles.m_Outers.size() );
+    KI_ASSERT( m_outers_and_holes.m_Holes.size() == aOuterAndHoles.m_Holes.size() );
 
-    wxASSERT( m_outers_and_holes.m_Outers[0].size() >= 3 );
-    wxASSERT( m_outers_and_holes.m_Outers[0].size() == aOuterAndHoles.m_Outers[0].size() );
+    KI_ASSERT( m_outers_and_holes.m_Outers[0].size() >= 3 );
+    KI_ASSERT( m_outers_and_holes.m_Outers[0].size() == aOuterAndHoles.m_Outers[0].size() );
 
-    wxASSERT( m_bbox.IsInitialized() );
+    KI_ASSERT( m_bbox.IsInitialized() );
 }
 
 
@@ -159,7 +160,7 @@ bool POLYGON_2D::Intersect( const RAYSEG2D& aSegRay, float* aOutT, SFVEC2F* aNor
 
     if( hitIndex >= 0 )
     {
-        wxASSERT( ( tMin >= 0.0f ) && ( tMin <= 1.0f ) );
+        KI_ASSERT( ( tMin >= 0.0f ) && ( tMin <= 1.0f ) );
 
         if( aOutT )
             *aOutT = tMin;
@@ -305,7 +306,7 @@ static bool intersect( const SEGMENT_WITH_NORMALS& aSeg, const SFVEC2F& aStart,
 static void extractPathsFrom( const SEGMENTS_WIDTH_NORMALS& aSegList, const BBOX_2D& aBBox,
                               SEGMENTS_WIDTH_NORMALS& aOutSegThatIntersect )
 {
-    wxASSERT( aSegList.size() >= 3 );
+    KI_ASSERT( aSegList.size() >= 3 );
 
     unsigned int i;
     unsigned int j = aSegList.size() - 1;
@@ -380,7 +381,7 @@ void ConvertPolygonToBlocks( const SHAPE_POLY_SET& aMainPath, CONTAINER_2D_BASE&
                              const BOARD_ITEM& aBoardItem, int aPolyIndex )
 {
     // Get the path
-    wxASSERT( aPolyIndex < aMainPath.OutlineCount() );
+    KI_ASSERT( aPolyIndex < aMainPath.OutlineCount() );
 
     const SHAPE_LINE_CHAIN& path = aMainPath.COutline( aPolyIndex );
 
@@ -530,8 +531,8 @@ void ConvertPolygonToBlocks( const SHAPE_POLY_SET& aMainPath, CONTAINER_2D_BASE&
     blockAdvance.x = bbox.GetExtent().x / (float) grid_divisions.x;
     blockAdvance.y = bbox.GetExtent().y / (float) grid_divisions.y;
 
-    wxASSERT( blockAdvance.x > 0.0f );
-    wxASSERT( blockAdvance.y > 0.0f );
+    KI_ASSERT( blockAdvance.x > 0.0f );
+    KI_ASSERT( blockAdvance.y > 0.0f );
 
     const int leftToRight_inc = ( pathBounds.GetRight() - pathBounds.GetLeft() ) / grid_divisions.x;
 

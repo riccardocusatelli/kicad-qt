@@ -40,6 +40,7 @@
 #include <wx/menu.h>
 #include <wx/wupdlock.h>
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 /**
  * Store an SCH_SHEET_PATH of each sheet in hierarchy.
@@ -70,7 +71,7 @@ int HIERARCHY_TREE::OnCompareItems( const wxTreeItemId& item1, const wxTreeItemI
 HIERARCHY_PANE::HIERARCHY_PANE( SCH_EDIT_FRAME* aParent ) :
         WX_PANEL( aParent )
 {
-    wxASSERT( dynamic_cast<SCH_EDIT_FRAME*>( aParent ) );
+    KI_ASSERT( dynamic_cast<SCH_EDIT_FRAME*>( aParent ) );
 
     m_frame = aParent;
 
@@ -171,7 +172,7 @@ void HIERARCHY_PANE::UpdateHierarchySelection()
     std::function<void( const wxTreeItemId& )> recursiveDescent =
             [&]( const wxTreeItemId& id )
             {
-                wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+                KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
 
                 TREE_ITEM_DATA* itemData = static_cast<TREE_ITEM_DATA*>( m_tree->GetItemData( id ) );
 
@@ -267,7 +268,7 @@ void HIERARCHY_PANE::UpdateHierarchyTree( bool aClear )
     std::function<void( const wxTreeItemId& )> getCollapsedNodes =
             [&]( const wxTreeItemId& id )
             {
-                wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+                KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
 
                 TREE_ITEM_DATA* itemData = static_cast<TREE_ITEM_DATA*>( m_tree->GetItemData( id ) );
 
@@ -340,7 +341,7 @@ void HIERARCHY_PANE::UpdateHierarchyTree( bool aClear )
     std::function<void( const wxTreeItemId& )> collapseNodes =
             [&]( const wxTreeItemId& id )
             {
-                wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+                KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
 
                 TREE_ITEM_DATA* itemData =
                         static_cast<TREE_ITEM_DATA*>( m_tree->GetItemData( id ) );
@@ -428,7 +429,7 @@ void HIERARCHY_PANE::UpdateLabelsHierarchyTree()
     std::function<void( const wxTreeItemId& )> recursiveDescent =
             [&]( const wxTreeItemId& id )
             {
-                wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+                KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
                 wxTreeItemIdValue cookie;
                 wxTreeItemId      child = m_tree->GetFirstChild( id, cookie );
 
@@ -454,7 +455,7 @@ std::vector<wxString> HIERARCHY_PANE::GetCollapsedPaths() const
     std::function<void( const wxTreeItemId& )> collect =
             [&]( const wxTreeItemId& id )
             {
-                wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+                KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
 
                 TREE_ITEM_DATA* itemData = static_cast<TREE_ITEM_DATA*>( m_tree->GetItemData( id ) );
 
@@ -872,7 +873,7 @@ void HIERARCHY_PANE::UpdateNetHighlight( const wxString& aNetName )
 
     std::function<void( const wxTreeItemId& )> recurse = [&]( const wxTreeItemId& id )
     {
-        wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+        KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
 
         TREE_ITEM_DATA* data = static_cast<TREE_ITEM_DATA*>( m_tree->GetItemData( id ) );
 
@@ -900,7 +901,7 @@ void HIERARCHY_PANE::setIdenticalSheetsHighlighted( const SCH_SHEET_PATH& path, 
 {
     std::function<void( const wxTreeItemId& )> recursiveDescent = [&]( const wxTreeItemId& id )
     {
-        wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+        KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
 
         TREE_ITEM_DATA* itemData = static_cast<TREE_ITEM_DATA*>( m_tree->GetItemData( id ) );
 
@@ -930,7 +931,7 @@ void HIERARCHY_PANE::renameIdenticalSheets( const SCH_SHEET_PATH& renamedSheet,
 {
     std::function<void( const wxTreeItemId& )> recursiveDescent = [&]( const wxTreeItemId& id )
     {
-        wxCHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
+        KI_CHECK_RET( id.IsOk(), wxT( "Invalid tree item" ) );
 
         TREE_ITEM_DATA* data = static_cast<TREE_ITEM_DATA*>( m_tree->GetItemData( id ) );
 

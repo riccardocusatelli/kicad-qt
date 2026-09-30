@@ -35,6 +35,7 @@
 
 #include <vector>
 #include <utility>
+#include <core/ki_assert.h>
 
 
 // Helper function to shorten conditions
@@ -162,7 +163,7 @@ bool DIALOG_SIM_COMMAND::TransferDataToWindow()
         case NGSPICE_COMPATIBILITY_MODE::LTSPICE:     m_compatibilityMode->SetSelection( 3 ); break;
         case NGSPICE_COMPATIBILITY_MODE::LT_PSPICE:   m_compatibilityMode->SetSelection( 4 ); break;
         case NGSPICE_COMPATIBILITY_MODE::HSPICE:      m_compatibilityMode->SetSelection( 5 ); break;
-        default:    wxFAIL_MSG( wxString::Format( "Unknown NGSPICE_COMPATIBILITY_MODE %d.",
+        default:    KI_FAIL_MSG( wxString::Format( "Unknown NGSPICE_COMPATIBILITY_MODE %d.",
                                                   settings->GetCompatibilityMode() ) );       break;
         }
     }

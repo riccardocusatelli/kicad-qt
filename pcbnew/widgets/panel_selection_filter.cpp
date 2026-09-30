@@ -24,6 +24,7 @@
 #include <widgets/panel_selection_filter.h>
 #include <wx/settings.h>
 #include <wx/dcbuffer.h>
+#include <core/ki_assert.h>
 
 
 wxDEFINE_EVENT( EVT_PCB_SELECTION_FILTER_FLASH, PCB_SELECTION_FILTER_EVENT );
@@ -50,9 +51,9 @@ PANEL_SELECTION_FILTER::PANEL_SELECTION_FILTER( wxWindow* aParent ) :
 
     SetBorders( true, false, false, false );
 
-    wxASSERT( m_frame );
+    KI_ASSERT( m_frame );
     m_tool = m_frame->GetToolManager()->GetTool<PCB_SELECTION_TOOL>();
-    wxASSERT( m_tool );
+    KI_ASSERT( m_tool );
 
     PCB_SELECTION_FILTER_OPTIONS& opts = m_tool->GetFilter();
     SetCheckboxesFromFilter( opts );

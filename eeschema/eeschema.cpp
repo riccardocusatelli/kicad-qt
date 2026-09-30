@@ -79,6 +79,8 @@
 #include <toolbars_symbol_editor.h>
 
 #include <wx/crt.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 // The main sheet of the project
 SCH_SHEET*  g_RootSheet = nullptr;
@@ -489,7 +491,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
     constexpr static int interval = 150;
     constexpr static int timeLimit = 120000;
 
-    wxCHECK( aKiway, /* void */ );
+    KI_CHECK( aKiway, /* void */ );
 
     // Use compare_exchange to atomically check and set the flag to prevent race conditions
     // when PreloadLibraries is called multiple times concurrently (e.g., from project manager
@@ -566,25 +568,25 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
                 // Collect library load errors for async reporting
                 wxString errors = adapter->GetLibraryLoadErrors();
 
-                wxLogTrace( traceLibraries, "eeschema PreloadLibraries: errors.IsEmpty()=%d, length=%zu",
+                KI_LOG_TRACE( traceLibraries, "eeschema PreloadLibraries: errors.IsEmpty()=%d, length=%zu",
                             errors.IsEmpty(), errors.length() );
 
                 std::vector<LOAD_MESSAGE> messages = ExtractLibraryLoadErrors( errors, RPT_SEVERITY_ERROR );
 
                 if( !messages.empty() )
                 {
-                    wxLogTrace( traceLibraries, "  -> collected %zu messages, calling AddLibraryLoadMessages",
+                    KI_LOG_TRACE( traceLibraries, "  -> collected %zu messages, calling AddLibraryLoadMessages",
                                 messages.size() );
                     Pgm().AddLibraryLoadMessages( messages );
                 }
                 else
                 {
-                    wxLogTrace( traceLibraries, "  -> no errors from symbol libraries" );
+                    KI_LOG_TRACE( traceLibraries, "  -> no errors from symbol libraries" );
                 }
             }
             else
             {
-                wxLogTrace( traceLibraries, "eeschema PreloadLibraries: aborted, skipping symbol processing" );
+                KI_LOG_TRACE( traceLibraries, "eeschema PreloadLibraries: aborted, skipping symbol processing" );
             }
 
             Pgm().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
@@ -766,7 +768,7 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aProje
     }
     else
     {
-        wxFAIL_MSG( wxS( "Unexpected filetype for Eeschema::SaveFileAs()" ) );
+        KI_FAIL_MSG( wxS( "Unexpected filetype for Eeschema::SaveFileAs()" ) );
     }
 }
 

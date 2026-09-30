@@ -38,6 +38,7 @@
 #include <widgets/wx_html_report_panel.h>
 #include <widgets/std_bitmap_button.h>
 #include <sch_commit.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_CHANGE_SYMBOLS::DIALOG_CHANGE_SYMBOLS( SCH_EDIT_FRAME* aParent, SCH_SYMBOL* aSymbol, MODE aMode ) :
@@ -45,7 +46,7 @@ DIALOG_CHANGE_SYMBOLS::DIALOG_CHANGE_SYMBOLS( SCH_EDIT_FRAME* aParent, SCH_SYMBO
         m_symbol( aSymbol),
         m_mode( aMode )
 {
-    wxASSERT( aParent );
+    KI_ASSERT( aParent );
 
     if( m_mode == MODE::UPDATE )
     {
@@ -280,7 +281,7 @@ void DIALOG_CHANGE_SYMBOLS::updateFieldsList()
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( GetParent() );
 
-    wxCHECK( frame, /* void */ );
+    KI_CHECK( frame, /* void */ );
 
     // Load non-mandatory fields from all matching symbols and their library symbols
     std::set<wxString> fieldNames;
@@ -289,13 +290,13 @@ void DIALOG_CHANGE_SYMBOLS::updateFieldsList()
     {
         SCH_SCREEN* screen = instance.LastScreen();
 
-        wxCHECK2( screen, continue );
+        KI_CHECK2( screen, continue );
 
         for( SCH_ITEM* item : screen->Items().OfType( SCH_SYMBOL_T ) )
         {
             SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( item );
 
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             if( !isMatch( symbol, &instance ) )
                 continue;
@@ -431,7 +432,7 @@ void DIALOG_CHANGE_SYMBOLS::onOkButtonClicked( wxCommandEvent& aEvent )
 {
     SCH_EDIT_FRAME* parent = dynamic_cast<SCH_EDIT_FRAME*>( GetParent() );
 
-    wxCHECK( parent, /* void */ );
+    KI_CHECK( parent, /* void */ );
 
     wxBusyCursor    dummy;
     SCH_COMMIT      commit( parent );
@@ -466,7 +467,7 @@ bool DIALOG_CHANGE_SYMBOLS::isMatch( SCH_SYMBOL* aSymbol, SCH_SHEET_PATH* aInsta
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( GetParent() );
 
-    wxCHECK( frame, false );
+    KI_CHECK( frame, false );
 
     if( !aSymbol )
         return false;
@@ -507,7 +508,7 @@ int DIALOG_CHANGE_SYMBOLS::processMatchingSymbols( SCH_COMMIT* aCommit )
 {
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( GetParent() );
 
-    wxCHECK( frame, false );
+    KI_CHECK( frame, false );
 
     LIB_ID      newId;
     int         matchesProcessed = 0;
@@ -527,14 +528,14 @@ int DIALOG_CHANGE_SYMBOLS::processMatchingSymbols( SCH_COMMIT* aCommit )
     {
         SCH_SCREEN* screen = instance.LastScreen();
 
-        wxCHECK2( screen, continue );
+        KI_CHECK2( screen, continue );
 
         // Fetch all the symbols that meet the change criteria.
         for( SCH_ITEM* item : screen->Items().OfType( SCH_SYMBOL_T ) )
         {
             symbol = static_cast<SCH_SYMBOL*>( item );
 
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             if( !isMatch( symbol, &instance ) )
                 continue;
@@ -573,13 +574,13 @@ int DIALOG_CHANGE_SYMBOLS::processMatchingSymbols( SCH_COMMIT* aCommit )
 int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<SCH_SYMBOL*,
                                            SYMBOL_CHANGE_INFO>& aSymbols )
 {
-    wxCHECK( !aSymbols.empty(), 0 );
+    KI_CHECK( !aSymbols.empty(), 0 );
 
     int             matchesProcessed = 0;
     SCH_EDIT_FRAME* frame = dynamic_cast<SCH_EDIT_FRAME*>( GetParent() );
     wxString        msg;
 
-    wxCHECK( frame, 0 );
+    KI_CHECK( frame, 0 );
 
     std::map<SCH_SYMBOL*, SYMBOL_CHANGE_INFO>           symbols = aSymbols;
     std::map<SCH_SYMBOL*, SYMBOL_CHANGE_INFO>::iterator it = symbols.begin();
@@ -590,7 +591,7 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
     {
         SCH_SYMBOL* symbol = it->first;
 
-        wxCHECK2( symbol, ++it; continue );
+        KI_CHECK2( symbol, ++it; continue );
 
         if( !it->second.m_LibId.IsValid() )
         {
@@ -631,11 +632,11 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
     // library symbols in the schematic file.
     for( const auto& [ symbol, symbol_change_info ] : symbols )
     {
-        wxCHECK( symbol && !symbol_change_info.m_Instances.empty(), 0 );
+        KI_CHECK( symbol && !symbol_change_info.m_Instances.empty(), 0 );
 
         SCH_SCREEN* screen = symbol_change_info.m_Instances[0].LastScreen();
 
-        wxCHECK( screen, 0 );
+        KI_CHECK( screen, 0 );
 
         screen->Remove( symbol );
         SCH_SYMBOL* symbol_copy = static_cast<SCH_SYMBOL*>( symbol->Clone() );
@@ -649,7 +650,7 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
 
         LIB_SYMBOL* libSymbol = frame->GetLibSymbol( symbol_change_info.m_LibId );
 
-        wxCHECK2( libSymbol, continue );
+        KI_CHECK2( libSymbol, continue );
 
         if( symbol_change_info.m_LibId != symbol->GetLibId() )
             symbol->SetLibId( symbol_change_info.m_LibId );
@@ -852,7 +853,7 @@ wxString DIALOG_CHANGE_SYMBOLS::getSymbolReferences( SCH_SYMBOL& aSymbol, const 
 
     SCH_EDIT_FRAME* parent = dynamic_cast< SCH_EDIT_FRAME* >( GetParent() );
 
-    wxCHECK( parent, msg );
+    KI_CHECK( parent, msg );
 
     SCH_SHEET_LIST sheets = parent->Schematic().Hierarchy();
 

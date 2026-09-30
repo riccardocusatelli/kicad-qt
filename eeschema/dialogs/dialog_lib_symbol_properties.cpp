@@ -51,6 +51,7 @@
 
 #include <wx/clipbrd.h>
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 
 int DIALOG_LIB_SYMBOL_PROPERTIES::m_lastOpenedPage = 0;
@@ -379,7 +380,7 @@ bool DIALOG_LIB_SYMBOL_PROPERTIES::TransferDataToWindow()
         wxString libName = m_Parent->GetCurLib();
 
         // Someone forgot to set the current library in the editor frame window.
-        wxCHECK( !libName.empty(), false );
+        KI_CHECK( !libName.empty(), false );
 
         m_Parent->GetLibManager().GetSymbolNames( libName, symbolNames );
 
@@ -662,7 +663,7 @@ bool DIALOG_LIB_SYMBOL_PROPERTIES::TransferDataFromWindow()
         LIB_SYMBOL* newParent = m_Parent->GetLibManager().GetSymbol( parentName, libName );
 
         // Verify that the requested parent exists
-        wxCHECK( newParent, false );
+        KI_CHECK( newParent, false );
 
         m_libEntry->SetParent( newParent );
     }

@@ -61,6 +61,7 @@
 #include <convert_basic_shapes_to_polygon.h>
 #include <geometry/geometry_utils.h>
 #include <pcbnew_settings.h>
+#include <core/ki_assert.h>
 
 
 using namespace DSN;
@@ -246,7 +247,7 @@ PADSTACK* SPECCTRA_DB::makePADSTACK( BOARD* aBoard, PAD* aPad )
     std::string uniqifier;
 
     // caller must do these checks before calling here.
-    wxASSERT( !isRoundKeepout( aPad ) );
+    KI_ASSERT( !isRoundKeepout( aPad ) );
 
     PADSTACK*   padstack = new PADSTACK();
 
@@ -938,8 +939,8 @@ IMAGE* SPECCTRA_DB::makeIMAGE( BOARD* aBoard, FOOTPRINT* aFootprint )
 
                 isStartContour = iterator.IsEndContour();
 
-                wxASSERT( window );
-                wxASSERT( cutout );
+                KI_ASSERT( window );
+                KI_ASSERT( cutout );
 
                 VECTOR2I point( iterator->x, iterator->y );
 
@@ -1287,8 +1288,8 @@ void SPECCTRA_DB::FromBOARD( BOARD* aBoard )
                     // will start with a new contour.
                     isStartContour = iterator.IsEndContour();
 
-                    wxASSERT( window );
-                    wxASSERT( cutout );
+                    KI_ASSERT( window );
+                    KI_ASSERT( cutout );
 
                     VECTOR2I point( iterator->x, iterator->y );
 
@@ -1389,8 +1390,8 @@ void SPECCTRA_DB::FromBOARD( BOARD* aBoard )
 
                     isStartContour = iterator.IsEndContour();
 
-                    wxASSERT( window );
-                    wxASSERT( cutout );
+                    KI_ASSERT( window );
+                    KI_ASSERT( cutout );
 
                     VECTOR2I point( iterator->x, iterator->y );
 
@@ -1555,7 +1556,7 @@ void SPECCTRA_DB::FromBOARD( BOARD* aBoard )
         // we AppendVia() this first one, there is no way it can be a duplicate,
         // the pcb->library via container is empty at this point.  After this,
         // we'll have to use LookupVia().
-        wxASSERT( m_pcb->m_library->m_vias.size() == 0 );
+        KI_ASSERT( m_pcb->m_library->m_vias.size() == 0 );
         m_pcb->m_library->AppendVia( via );
 
         // set the "spare via" index at the start of the
@@ -1607,7 +1608,7 @@ void SPECCTRA_DB::FromBOARD( BOARD* aBoard )
                 {
                     old_netcode = netcode;
                     NETINFO_ITEM* net = aBoard->FindNet( netcode );
-                    wxASSERT( net );
+                    KI_ASSERT( net );
                     netname = TO_UTF8( net->GetNetname() );
                 }
 
@@ -1666,7 +1667,7 @@ void SPECCTRA_DB::FromBOARD( BOARD* aBoard )
             dsnVia->m_vertexes.push_back( mapPt( via->GetPosition() ) );
 
             NETINFO_ITEM* net = aBoard->FindNet( netcode );
-            wxASSERT( net );
+            KI_ASSERT( net );
 
             dsnVia->m_net_id = TO_UTF8( net->GetNetname() );
 

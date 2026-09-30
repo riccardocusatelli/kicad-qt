@@ -85,6 +85,8 @@
 #include <toolbars_pcb_editor.h>
 
 #include <wx/crt.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 /* init functions defined by swig */
 
@@ -752,7 +754,7 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aSrcPr
     }
     else
     {
-        wxFAIL_MSG( wxT( "Unexpected filetype for Pcbnew::SaveFileAs()" ) );
+        KI_FAIL_MSG( wxT( "Unexpected filetype for Pcbnew::SaveFileAs()" ) );
     }
 }
 
@@ -774,7 +776,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
     constexpr static int interval = 150;
     constexpr static int timeLimit = 120000;
 
-    wxCHECK( aKiway, /* void */ );
+    KI_CHECK( aKiway, /* void */ );
 
     // Use compare_exchange to atomically check and set the flag to prevent race conditions
     // when PreloadLibraries is called multiple times concurrently (e.g., from project manager
@@ -851,7 +853,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
                 // Collect and report library load errors from adapter
                 wxString errors = adapter->GetLibraryLoadErrors();
 
-                wxLogTrace( traceLibraries,
+                KI_LOG_TRACE( traceLibraries,
                             "pcbnew PreloadLibraries: adapter errors.IsEmpty()=%d, length=%zu",
                             errors.IsEmpty(), errors.length() );
 
@@ -860,7 +862,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
                     std::vector<LOAD_MESSAGE> messages =
                             ExtractLibraryLoadErrors( errors, RPT_SEVERITY_ERROR );
 
-                    wxLogTrace( traceLibraries, "  -> adapter: collected %zu messages",
+                    KI_LOG_TRACE( traceLibraries, "  -> adapter: collected %zu messages",
                                 messages.size() );
 
                     if( !messages.empty() )
@@ -868,12 +870,12 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
                 }
                 else
                 {
-                    wxLogTrace( traceLibraries, "  -> no errors from footprint adapter" );
+                    KI_LOG_TRACE( traceLibraries, "  -> no errors from footprint adapter" );
                 }
             }
             else
             {
-                wxLogTrace( traceLibraries, "pcbnew PreloadLibraries: aborted, skipping footprint processing" );
+                KI_LOG_TRACE( traceLibraries, "pcbnew PreloadLibraries: aborted, skipping footprint processing" );
             }
 
             m_libraryPreloadAbort.store( false );

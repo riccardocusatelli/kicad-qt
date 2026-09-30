@@ -46,6 +46,7 @@
 #include <widgets/widget_hotkey_list.h>
 #include <widgets/wx_grid.h>
 #include <widgets/std_bitmap_button.h>
+#include <core/ki_assert.h>
 
 
 // Column position by function:
@@ -380,7 +381,7 @@ public:
             m_grid( aGrid ),
             m_layerPairSettings( aLayerPairSettings )
     {
-        wxASSERT_MSG( m_grid.GetNumberRows() == 0, "Grid should be empty at controller start" );
+        KI_ASSERT_MSG( m_grid.GetNumberRows() == 0, "Grid should be empty at controller start" );
 
         configureGrid();
         fillGridFromStore();
@@ -466,7 +467,7 @@ private:
 
     void fillRowFromLayerPair( int aRow, const LAYER_PAIR_INFO& aLayerPairInfo )
     {
-        wxASSERT_MSG( aRow < m_grid.GetNumberRows(), "Row index out of bounds" );
+        KI_ASSERT_MSG( aRow < m_grid.GetNumberRows(), "Row index out of bounds" );
 
         const LAYER_PAIR& layerPair = aLayerPairInfo.GetLayerPair();
 
@@ -614,7 +615,7 @@ private:
                 return i;
         }
 
-        wxASSERT_MSG( false, wxString::Format( "Unknown layer in grid: %d", aLayerId ) );
+        KI_ASSERT_MSG( false, wxString::Format( "Unknown layer in grid: %d", aLayerId ) );
         return 0;
     }
 
@@ -769,7 +770,7 @@ int ROUTER_TOOL::SelectCopperLayerPair( const TOOL_EVENT& aEvent )
     if( !boardSettings )
     {
         // Should only be used for suitable frame types with layer pairs
-        wxASSERT_MSG( false, "Could not access layer pair settings" );
+        KI_ASSERT_MSG( false, "Could not access layer pair settings" );
         return 0;
     }
 

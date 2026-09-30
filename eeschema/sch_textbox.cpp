@@ -42,6 +42,7 @@
 #include <markup_parser.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 SCH_TEXTBOX::SCH_TEXTBOX( SCH_LAYER_ID aLayer, int aLineWidth, FILL_T aFillType, const wxString& aText,
@@ -164,7 +165,7 @@ VECTOR2I SCH_TEXTBOX::GetDrawPos() const
         case GR_TEXT_H_ALIGN_LEFT:          pos.y = bbox.GetBottom() - m_marginBottom;                         break;
         case GR_TEXT_H_ALIGN_CENTER:        pos.y = ( bbox.GetTop() + bbox.GetBottom() ) / 2;                  break;
         case GR_TEXT_H_ALIGN_RIGHT:         pos.y = bbox.GetTop() + m_marginTop;                               break;
-        case GR_TEXT_H_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
+        case GR_TEXT_H_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
         }
 
         switch( GetVertJustify() )
@@ -172,7 +173,7 @@ VECTOR2I SCH_TEXTBOX::GetDrawPos() const
         case GR_TEXT_V_ALIGN_TOP:           pos.x = bbox.GetLeft() + m_marginLeft;                             break;
         case GR_TEXT_V_ALIGN_CENTER:        pos.x = ( bbox.GetLeft() + bbox.GetRight() ) / 2;                  break;
         case GR_TEXT_V_ALIGN_BOTTOM:        pos.x = bbox.GetRight() - m_marginRight;                           break;
-        case GR_TEXT_V_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
+        case GR_TEXT_V_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
         }
     }
     else
@@ -182,7 +183,7 @@ VECTOR2I SCH_TEXTBOX::GetDrawPos() const
         case GR_TEXT_H_ALIGN_LEFT:          pos.x = bbox.GetLeft() + m_marginLeft;                             break;
         case GR_TEXT_H_ALIGN_CENTER:        pos.x = ( bbox.GetLeft() + bbox.GetRight() ) / 2;                  break;
         case GR_TEXT_H_ALIGN_RIGHT:         pos.x = bbox.GetRight() - m_marginRight;                           break;
-        case GR_TEXT_H_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
+        case GR_TEXT_H_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
         }
 
         switch( GetVertJustify() )
@@ -190,7 +191,7 @@ VECTOR2I SCH_TEXTBOX::GetDrawPos() const
         case GR_TEXT_V_ALIGN_TOP:           pos.y = bbox.GetTop() + m_marginTop;                               break;
         case GR_TEXT_V_ALIGN_CENTER:        pos.y = ( bbox.GetTop() + bbox.GetBottom() ) / 2;                  break;
         case GR_TEXT_V_ALIGN_BOTTOM:        pos.y = bbox.GetBottom() - m_marginBottom;                         break;
-        case GR_TEXT_V_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
+        case GR_TEXT_V_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
         }
     }
 
@@ -540,7 +541,7 @@ double SCH_TEXTBOX::Similarity( const SCH_ITEM& aOther ) const
 
 int SCH_TEXTBOX::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 {
-    wxASSERT( aOther.Type() == SCH_TEXTBOX_T );
+    KI_ASSERT( aOther.Type() == SCH_TEXTBOX_T );
 
     int retv = SCH_SHAPE::compare( aOther, aCompareFlags );
 

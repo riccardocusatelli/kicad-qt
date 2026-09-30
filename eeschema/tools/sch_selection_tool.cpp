@@ -67,6 +67,8 @@
 #include <wx/log.h>
 
 #include "symb_transforms_utils.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SELECTION_CONDITION SCH_CONDITIONS::SingleSymbol = []( const SELECTION& aSel )
@@ -1223,7 +1225,7 @@ int SCH_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
 
 void SCH_SELECTION_TOOL::EnterGroup()
 {
-    wxCHECK_RET( m_selection.GetSize() == 1 && m_selection[0]->Type() == SCH_GROUP_T,
+    KI_CHECK_RET( m_selection.GetSize() == 1 && m_selection[0]->Type() == SCH_GROUP_T,
                  wxT( "EnterGroup called when selection is not a single group" ) );
     SCH_GROUP* aGroup = static_cast<SCH_GROUP*>( m_selection[0] );
 
@@ -3445,7 +3447,7 @@ void SCH_SELECTION_TOOL::ZoomFitCrossProbeBBox( const BOX2I& aBBox )
         // Use standard KiCad zoom for parts too wide to fit on screen/
         ratio = kicadRatio;
         compRatioBent = 1.0; // Reset so we don't modify the "KiCad" ratio
-        wxLogTrace( "CROSS_PROBE_SCALE",
+        KI_LOG_TRACE( "CROSS_PROBE_SCALE",
                     "Part TOO WIDE for screen.  Using normal KiCad zoom ratio: %1.5f", ratio );
     }
 

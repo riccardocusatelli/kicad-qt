@@ -31,6 +31,7 @@
 #include <cvpcb_id.h>
 #include <cvpcb_mainframe.h>
 #include <tools/cvpcb_actions.h>
+#include <core/ki_log.h>
 
 FOOTPRINTS_LISTBOX::FOOTPRINTS_LISTBOX( CVPCB_MAINFRAME* parent, wxWindowID id ) :
         ITEMS_LISTBOX_BASE( parent, id, wxDefaultPosition, wxDefaultSize, wxLC_SINGLE_SEL | wxNO_BORDER )
@@ -134,7 +135,7 @@ void FOOTPRINTS_LISTBOX::SetFootprints( FOOTPRINT_LIST& aList, const wxString& a
     if( aFilterType & FILTERING_BY_PIN_COUNT && aComponent )
     {
         int pc = aComponent->GetPinCount();
-        wxLogTrace( "CVPCB_PINCOUNT",
+        KI_LOG_TRACE( "CVPCB_PINCOUNT",
                     wxT( "FOOTPRINTS_LISTBOX::SetFootprints: ref='%s' pinCount filter=%d" ),
                     aComponent->GetReference(), pc );
         filter.FilterByPinCount( pc );
@@ -215,7 +216,7 @@ void FOOTPRINTS_LISTBOX::OnChar( wxKeyEvent& event )
     if( m_isClosing )
         return;
 
-    wxLogTrace( kicadTraceKeyEvent, wxS( "FOOTPRINTS_LISTBOX::OnChar %s" ), dump( event ) );
+    KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "FOOTPRINTS_LISTBOX::OnChar %s" ), dump( event ) );
 
     int key = event.GetKeyCode();
 

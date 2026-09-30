@@ -40,6 +40,7 @@
 #include <tool/tool_manager.h>
 #include <tools/pcb_grid_helper.h>
 #include <tools/pcb_actions.h>
+#include <core/ki_assert.h>
 
 
 bool PCB_VIEWER_TOOLS::Init()
@@ -226,7 +227,7 @@ int PCB_VIEWER_TOOLS::TextOutlines( const TOOL_EVENT& aEvent )
     {
         for( PCB_FIELD* field : fp->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             view()->Update( field, KIGFX::REPAINT );
         }

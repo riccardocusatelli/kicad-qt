@@ -45,6 +45,7 @@
 #include <set>
 
 #include <gendrill_writer_base.h>
+#include <core/ki_assert.h>
 
 
 /* Helper function for sorting hole list.
@@ -84,7 +85,7 @@ void GENDRILL_WRITER_BASE::buildHolesList( const DRILL_SPAN& aSpan, bool aGenera
     m_holeListBuffer.clear();
     m_toolListBuffer.clear();
 
-    wxASSERT( IsCopperLayerLowerThan( aSpan.BottomLayer(), aSpan.TopLayer() ) );  // fix the caller
+    KI_ASSERT( IsCopperLayerLowerThan( aSpan.BottomLayer(), aSpan.TopLayer() ) );  // fix the caller
 
     auto computeStubLength = [&]( PCB_LAYER_ID aStartLayer, PCB_LAYER_ID aEndLayer )
     {
@@ -379,7 +380,7 @@ void GENDRILL_WRITER_BASE::buildHolesList( const DRILL_SPAN& aSpan, bool aGenera
 
 std::vector<DRILL_SPAN> GENDRILL_WRITER_BASE::getUniqueLayerPairs() const
 {
-    wxASSERT( m_pcb );
+    KI_ASSERT( m_pcb );
 
     PCB_TYPE_COLLECTOR vias;
 
@@ -459,7 +460,7 @@ const std::string GENDRILL_WRITER_BASE::layerPairName( DRILL_LAYER_PAIR aPair ) 
 const wxString GENDRILL_WRITER_BASE::getDrillFileName( const DRILL_SPAN& aSpan, bool aNPTH,
                                                        bool aMerge_PTH_NPTH ) const
 {
-    wxASSERT( m_pcb );
+    KI_ASSERT( m_pcb );
 
     wxString    extend;
 
@@ -514,7 +515,7 @@ const wxString GENDRILL_WRITER_BASE::getDrillFileName( const DRILL_SPAN& aSpan, 
 const wxString GENDRILL_WRITER_BASE::getProtectionFileName( const DRILL_SPAN& aSpan,
                                                             IPC4761_FEATURES aFeature ) const
 {
-    wxASSERT( m_pcb );
+    KI_ASSERT( m_pcb );
 
     wxString extend;
 
@@ -805,7 +806,7 @@ bool GENDRILL_WRITER_BASE::genDrillMapFile( const wxString& aFullFileName, PLOT_
         plotter->SetGerberCoordinatesFormat( 5 ); // format x.5 unit = mm
         break;
 
-    default: wxASSERT( false ); KI_FALLTHROUGH;
+    default: KI_ASSERT( false ); KI_FALLTHROUGH;
 
     case PLOT_FORMAT::PDF:
     case PLOT_FORMAT::POST:
@@ -1131,7 +1132,7 @@ bool GENDRILL_WRITER_BASE::GenDrillReportFile( const wxString& aFullFileName, RE
     static const char separator[] =
         "    =============================================================\n";
 
-    wxASSERT( m_pcb );
+    KI_ASSERT( m_pcb );
 
     unsigned    totalHoleCount;
     wxFileName  brdFilename( m_pcb->GetFileName() );

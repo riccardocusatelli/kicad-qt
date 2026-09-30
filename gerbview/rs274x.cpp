@@ -34,6 +34,7 @@
 #include <X2_gerber_attributes.h>
 #include <gbr_metadata.h>
 #include <wx/log.h>
+#include <core/ki_assert.h>
 
 extern int ReadInt( char*& text, bool aSkipSeparator = true );
 extern double ReadDouble( char*& text, bool aSkipSeparator = true );
@@ -1152,7 +1153,7 @@ bool GERBER_FILE_IMAGE::ReadApertureMacro( char *aBuff, unsigned int aBuffSize, 
 
             // m_Params[1] is a count of polygon points, so it must be given
             // in advance, i.e. be immediate.
-            wxASSERT( prim.m_Params[1].IsImmediate() );
+            KI_ASSERT( prim.m_Params[1].IsImmediate() );
 
             paramCount = (int) prim.m_Params[1].GetValueFromMacro( nullptr ) * 2 + 1;
 

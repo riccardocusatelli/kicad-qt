@@ -47,6 +47,7 @@
 #include <wx/wfstream.h>
 #include <wx/zipstrm.h>
 #include <wx_filename.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_EXPORT_2581::DIALOG_EXPORT_2581( PCB_EDIT_FRAME* aParent ) :
@@ -306,7 +307,7 @@ void DIALOG_EXPORT_2581::onOKClick( wxCommandEvent& event )
 bool DIALOG_EXPORT_2581::GenerateFile( JOB_EXPORT_PCB_IPC2581& aJob, BOARD* aBoard,
                                        PROGRESS_REPORTER* aProgressReporter, REPORTER* aReporter )
 {
-    wxCHECK( aBoard, false );
+    KI_CHECK( aBoard, false );
     wxString outPath = aJob.GetFullOutputPath( aBoard->GetProject() );
 
     if( !PATHS::EnsurePathExists( outPath, true ) )
@@ -420,7 +421,7 @@ void DIALOG_EXPORT_2581::init()
     {
         for( PCB_FIELD* field : fp->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             options.insert( field->GetName() );
         }

@@ -40,6 +40,7 @@
 #include <core/profile.h>
 
 #include <stdexcept>
+#include <core/ki_log.h>
 
 
 static const wxChar* const traceAllegroPerf = wxT( "KICAD_ALLEGRO_PERF" );
@@ -157,14 +158,14 @@ bool PCB_IO_ALLEGRO::LoadBoardFromData( const uint8_t* aData, size_t aSize, BOAR
 
     PROF_TIMER totalTimer;
 
-    wxLogTrace( traceAllegroPerf, wxT( "=== Allegro Import Performance ===" ) );
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "=== Allegro Import Performance ===" ) );
 
     // Import phase 1: turn the file into the C++ structs
     PROF_TIMER phaseTimer;
     std::unique_ptr<ALLEGRO::BRD_DB> brdDb = parser.Parse();
     phaseTimer.Stop();
 
-    wxLogTrace( traceAllegroPerf, wxT( "Phase 1 (binary parse): %.3f ms" ), phaseTimer.msecs() ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "Phase 1 (binary parse): %.3f ms" ), phaseTimer.msecs() ); //format:allow
 
     // Import Phase 2: turn the C++ structs into the KiCad BOARD
     ALLEGRO::BOARD_BUILDER builder( *brdDb, aBoard, *m_reporter, m_progressReporter, m_layer_mapping_handler );
@@ -173,17 +174,17 @@ bool PCB_IO_ALLEGRO::LoadBoardFromData( const uint8_t* aData, size_t aSize, BOAR
     const bool phase2Ok = builder.BuildBoard();
     phaseTimer.Stop();
 
-    wxLogTrace( traceAllegroPerf, wxT( "Phase 2 (board construction): %.3f ms" ), phaseTimer.msecs() ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "Phase 2 (board construction): %.3f ms" ), phaseTimer.msecs() ); //format:allow
 
     if( !phase2Ok )
     {
-        wxLogTrace( wxT( "KICAD_ALLEGRO" ), "Phase 2 board construction failed" );
+        KI_LOG_TRACE( wxT( "KICAD_ALLEGRO" ), "Phase 2 board construction failed" );
         m_reporter->Report( _( "Failed to build board from Allegro data" ), RPT_SEVERITY_ERROR );
         return false;
     }
 
-    wxLogTrace( wxT( "KICAD_ALLEGRO" ), "Board construction completed successfully" );
-    wxLogTrace( traceAllegroPerf, wxT( "LoadBoard total (Phase 1 + Phase 2): %.3f ms" ), totalTimer.msecs() ); //format:allow
+    KI_LOG_TRACE( wxT( "KICAD_ALLEGRO" ), "Board construction completed successfully" );
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "LoadBoard total (Phase 1 + Phase 2): %.3f ms" ), totalTimer.msecs() ); //format:allow
 
     aBoard.m_LegacyNetclassesLoaded = true;
     aBoard.m_LegacyDesignSettingsLoaded = true;

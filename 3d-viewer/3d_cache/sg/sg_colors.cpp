@@ -28,6 +28,8 @@
 
 #include "3d_cache/sg/sg_colors.h"
 #include "3d_cache/sg/sg_helpers.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 SGCOLORS::SGCOLORS( SGNODE* aParent ) : SGNODE( aParent )
@@ -38,7 +40,7 @@ SGCOLORS::SGCOLORS( SGNODE* aParent ) : SGNODE( aParent )
     {
         m_Parent = nullptr;
 
-        wxLogTrace( MASK_3D_SG,
+        KI_LOG_TRACE( MASK_3D_SG,
                     wxT( "%s:%s:%d * [BUG] inappropriate parent to SGCOLORS (type %s)" ),
                     __FILE__, __FUNCTION__, __LINE__, aParent->GetNodeType() );
     }
@@ -99,19 +101,19 @@ SGNODE* SGCOLORS::FindNode(const char* aNodeName, const SGNODE *aCaller) noexcep
 
 void SGCOLORS::unlinkChildNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK( aCaller, /* void */ );
+    KI_CHECK( aCaller, /* void */ );
 }
 
 
 void SGCOLORS::unlinkRefNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK( aCaller, /* void */ );
+    KI_CHECK( aCaller, /* void */ );
 }
 
 
 bool SGCOLORS::AddRefNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK( aNode, false );
+    KI_CHECK( aNode, false );
 
     return false;
 }
@@ -119,7 +121,7 @@ bool SGCOLORS::AddRefNode( SGNODE* aNode ) noexcept
 
 bool SGCOLORS::AddChildNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK( aNode, false );
+    KI_CHECK( aNode, false );
 
     return false;
 }
@@ -240,7 +242,7 @@ bool SGCOLORS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 {
     if( nullptr == parentNode )
     {
-        wxCHECK( m_Parent, false );
+        KI_CHECK( m_Parent, false );
 
         SGNODE* np = m_Parent;
 
@@ -256,11 +258,11 @@ bool SGCOLORS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
         return false;
     }
 
-    wxCHECK( parentNode == m_Parent, false );
+    KI_CHECK( parentNode == m_Parent, false );
 
     if( !aFile.good() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -283,7 +285,7 @@ bool SGCOLORS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 
 bool SGCOLORS::ReadCache( std::istream& aFile, SGNODE* parentNode )
 {
-    wxCHECK( colors.empty(), false );
+    KI_CHECK( colors.empty(), false );
 
     size_t ncolors;
     aFile.read( (char*) &ncolors, sizeof( size_t ) );

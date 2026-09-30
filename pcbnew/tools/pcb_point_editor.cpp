@@ -27,6 +27,7 @@
 #include <memory>
 #include <algorithm>
 #include <limits>
+#include <core/ki_assert.h>
 
 using namespace std::placeholders;
 #include <advanced_config.h>
@@ -227,7 +228,7 @@ public:
     RECTANGLE_POINT_EDIT_BEHAVIOR( PCB_SHAPE& aRectangle ) :
             m_rectangle( aRectangle )
     {
-        wxASSERT( m_rectangle.GetShape() == SHAPE_T::RECTANGLE );
+        KI_ASSERT( m_rectangle.GetShape() == SHAPE_T::RECTANGLE );
     }
 
     /**
@@ -236,7 +237,7 @@ public:
      */
     static void MakePoints( const PCB_SHAPE& aRectangle, EDIT_POINTS& aPoints )
     {
-        wxCHECK( aRectangle.GetShape() == SHAPE_T::RECTANGLE, /* void */ );
+        KI_CHECK( aRectangle.GetShape() == SHAPE_T::RECTANGLE, /* void */ );
 
         VECTOR2I topLeft = aRectangle.GetTopLeft();
         VECTOR2I botRight = aRectangle.GetBotRight();
@@ -359,7 +360,7 @@ public:
 
     static void UpdatePoints( const PCB_SHAPE& aRectangle, EDIT_POINTS& aPoints )
     {
-        wxCHECK( aPoints.PointsSize() >= RECT_MAX_POINTS, /* void */ );
+        KI_CHECK( aPoints.PointsSize() >= RECT_MAX_POINTS, /* void */ );
 
         VECTOR2I topLeft = aRectangle.GetTopLeft();
         VECTOR2I botRight = aRectangle.GetBotRight();
@@ -578,7 +579,7 @@ public:
 
     bool UpdatePoints( EDIT_POINTS& aPoints ) override
     {
-        wxCHECK( aPoints.PointsSize() == REFIMG_MAX_POINTS, false );
+        KI_CHECK( aPoints.PointsSize() == REFIMG_MAX_POINTS, false );
 
         REFERENCE_IMAGE& refImage = m_refImage.GetReferenceImage();
 
@@ -1222,7 +1223,7 @@ public:
 
     bool UpdatePoints( EDIT_POINTS& aPoints ) override
     {
-        wxCHECK( aPoints.PointsSize() == DIM_ALIGNED_MAX, false );
+        KI_CHECK( aPoints.PointsSize() == DIM_ALIGNED_MAX, false );
 
         aPoints.Point( DIM_START ).SetPosition( m_dimension.GetStart() );
         aPoints.Point( DIM_END ).SetPosition( m_dimension.GetEnd() );
@@ -1415,7 +1416,7 @@ public:
 
     bool UpdatePoints( EDIT_POINTS& aPoints ) override
     {
-        wxCHECK( aPoints.PointsSize() == DIM_CENTER_MAX, false );
+        KI_CHECK( aPoints.PointsSize() == DIM_CENTER_MAX, false );
 
         aPoints.Point( DIM_START ).SetPosition( m_dimension.GetStart() );
         aPoints.Point( DIM_END ).SetPosition( m_dimension.GetEnd() );
@@ -1476,7 +1477,7 @@ public:
 
     bool UpdatePoints( EDIT_POINTS& aPoints ) override
     {
-        wxCHECK( aPoints.PointsSize() == DIM_RADIAL_MAX, false );
+        KI_CHECK( aPoints.PointsSize() == DIM_RADIAL_MAX, false );
 
         aPoints.Point( DIM_START ).SetPosition( m_dimension.GetStart() );
         aPoints.Point( DIM_END ).SetPosition( m_dimension.GetEnd() );
@@ -1567,7 +1568,7 @@ public:
 
     bool UpdatePoints( EDIT_POINTS& aPoints ) override
     {
-        wxCHECK( aPoints.PointsSize() == DIM_LEADER_MAX, false );
+        KI_CHECK( aPoints.PointsSize() == DIM_LEADER_MAX, false );
 
         aPoints.Point( DIM_START ).SetPosition( m_dimension.GetStart() );
         aPoints.Point( DIM_END ).SetPosition( m_dimension.GetEnd() );
@@ -1932,7 +1933,7 @@ bool PCB_POINT_EDITOR::Init()
     // Find the selection tool, so they can cooperate
     m_selectionTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
 
-    wxASSERT_MSG( m_selectionTool, wxT( "pcbnew.InteractiveSelection tool is not available" ) );
+    KI_ASSERT_MSG( m_selectionTool, wxT( "pcbnew.InteractiveSelection tool is not available" ) );
 
     const auto arcIsEdited =
             []( const SELECTION& aSelection ) -> bool
@@ -2887,7 +2888,7 @@ int PCB_POINT_EDITOR::movePoint( const TOOL_EVENT& aEvent )
 
 void PCB_POINT_EDITOR::updateItem( BOARD_COMMIT& aCommit )
 {
-    wxCHECK( m_editPoints, /* void */ );
+    KI_CHECK( m_editPoints, /* void */ );
     EDA_ITEM* item = m_editPoints->GetParent();
 
     if( !item )
@@ -2899,7 +2900,7 @@ void PCB_POINT_EDITOR::updateItem( BOARD_COMMIT& aCommit )
 
     if( m_editorBehavior )
     {
-        wxCHECK( m_editedPoint, /* void */ );
+        KI_CHECK( m_editedPoint, /* void */ );
         m_editorBehavior->UpdateItem( *m_editedPoint, *m_editPoints, aCommit, updatedItems );
     }
 

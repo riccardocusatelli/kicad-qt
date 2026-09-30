@@ -32,6 +32,7 @@
 //#include <numeric>
 #include <core/arraydim.h>
 #include <core/profile.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -291,7 +292,7 @@ int GERBER_FILE_IMAGE::GetDcodesCount()
     {
         D_CODE* dcode = n.second;
 
-        wxCHECK2( dcode, continue );
+        KI_CHECK2( dcode, continue );
 
         if( dcode->m_InUse || dcode->m_Defined )
             count++;

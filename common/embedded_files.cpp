@@ -38,6 +38,7 @@
 #include <paths.h>
 #include <picosha2.h>
 #include <wildcards_and_files_ext.h>
+#include <core/ki_log.h>
 
 
 bool EMBEDDED_FILES::EMBEDDED_FILE::Validate()
@@ -308,7 +309,7 @@ EMBEDDED_FILES::RETURN_CODE EMBEDDED_FILES::DecompressAndDecode( EMBEDDED_FILE& 
 
     if( compressedSize == 0 )
     {
-        wxLogTrace( wxT( "KICAD_EMBED" ),
+        KI_LOG_TRACE( wxT( "KICAD_EMBED" ),
                     wxT( "%s:%s:%d\n * Base64DecodedSize failed for file '%s' with size %zu" ),
                     __FILE__, __FUNCTION__, __LINE__, aFile.name,
                     aFile.compressedEncodedData.size() );
@@ -341,7 +342,7 @@ EMBEDDED_FILES::RETURN_CODE EMBEDDED_FILES::DecompressAndDecode( EMBEDDED_FILE& 
 
     if( ZSTD_isError( decompressedSize ) )
     {
-        wxLogTrace( wxT( "KICAD_EMBED" ),
+        KI_LOG_TRACE( wxT( "KICAD_EMBED" ),
                     wxT( "%s:%s:%d\n * ZSTD_decompress failed with error '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, ZSTD_getErrorName( decompressedSize ) );
         aFile.decompressedData.clear();
@@ -363,7 +364,7 @@ EMBEDDED_FILES::RETURN_CODE EMBEDDED_FILES::DecompressAndDecode( EMBEDDED_FILE& 
 
     if( test_hash != aFile.data_hash )
     {
-        wxLogTrace( wxT( "KICAD_EMBED" ),
+        KI_LOG_TRACE( wxT( "KICAD_EMBED" ),
                     wxT( "%s:%s:%d\n * Checksum error in embedded file '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, aFile.name );
         aFile.decompressedData.clear();
@@ -513,7 +514,7 @@ void EMBEDDED_FILES_PARSER::ParseEmbedded( EMBEDDED_FILES* aFiles )
             case T_name:
                 if( file )
                 {
-                    wxLogTrace( wxT( "KICAD_EMBED" ),
+                    KI_LOG_TRACE( wxT( "KICAD_EMBED" ),
                                 wxT( "Duplicate 'name' tag in embedded file %s" ), file->name );
                 }
 
@@ -579,7 +580,7 @@ wxFileName EMBEDDED_FILES::GetTemporaryFileName( const wxString& aName ) const
 
     if( !PATHS::EnsurePathExists( cacheFile.GetFullPath() ) )
     {
-        wxLogTrace( wxT( "KICAD_EMBED" ),
+        KI_LOG_TRACE( wxT( "KICAD_EMBED" ),
                     wxT( "%s:%s:%d\n * failed to create embed cache directory '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, cacheFile.GetPath() );
 

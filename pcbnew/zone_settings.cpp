@@ -35,6 +35,7 @@
 #include <zone.h>
 #include <wx/dataview.h>
 #include <widgets/color_swatch.h>
+#include <core/ki_assert.h>
 
 bool ZONE_LAYER_PROPERTIES::operator==( const ZONE_LAYER_PROPERTIES& aOther ) const
 {
@@ -415,7 +416,7 @@ void LAYER_PROPERTIES_GRID_TABLE::SetValue( int aRow, int aCol, const wxString& 
     {
     case 1:  offset.x = m_frame->ValueFromString( aValue );                           break;
     case 2:  offset.y = m_frame->ValueFromString( aValue );                           break;
-    default: wxFAIL_MSG( wxString::Format( wxT( "column %d isn't a long" ), aCol ) ); break;
+    default: KI_FAIL_MSG( wxString::Format( wxT( "column %d isn't a long" ), aCol ) ); break;
     }
 
     m_items[aRow].second.hatching_offset = offset;
@@ -427,7 +428,7 @@ long LAYER_PROPERTIES_GRID_TABLE::GetValueAsLong( int aRow, int aCol )
     switch( aCol )
     {
     case 0:  return m_items[aRow].first;
-    default: wxFAIL_MSG( wxString::Format( wxT( "column %d isn't a long" ), aCol ) ); return -1;
+    default: KI_FAIL_MSG( wxString::Format( wxT( "column %d isn't a long" ), aCol ) ); return -1;
     }
 }
 
@@ -437,7 +438,7 @@ void LAYER_PROPERTIES_GRID_TABLE::SetValueAsLong( int aRow, int aCol, long aValu
     switch( aCol )
     {
     case 0:  m_items[aRow].first = ToLAYER_ID( (int) aValue );                        break;
-    default: wxFAIL_MSG( wxString::Format( wxT( "column %d isn't a long" ), aCol ) ); break;
+    default: KI_FAIL_MSG( wxString::Format( wxT( "column %d isn't a long" ), aCol ) ); break;
     }
 }
 

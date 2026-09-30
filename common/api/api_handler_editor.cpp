@@ -23,6 +23,7 @@
 #include <eda_base_frame.h>
 #include <eda_item.h>
 #include <wx/wx.h>
+#include <core/ki_assert.h>
 
 using namespace kiapi::common::commands;
 
@@ -55,7 +56,7 @@ HANDLER_RESULT<BeginCommitResponse> API_HANDLER_EDITOR::handleBeginCommit(
         return tl::unexpected( e );
     }
 
-    wxASSERT( !m_activeClients.count( aCtx.ClientName ) );
+    KI_ASSERT( !m_activeClients.count( aCtx.ClientName ) );
 
     BeginCommitResponse response;
 
@@ -84,7 +85,7 @@ HANDLER_RESULT<EndCommitResponse> API_HANDLER_EDITOR::handleEndCommit(
         return tl::unexpected( e );
     }
 
-    wxASSERT( m_activeClients.count( aCtx.ClientName ) );
+    KI_ASSERT( m_activeClients.count( aCtx.ClientName ) );
 
     const std::pair<KIID, std::unique_ptr<COMMIT>>& pair = m_commits.at( aCtx.ClientName );
     const KIID& id = pair.first;

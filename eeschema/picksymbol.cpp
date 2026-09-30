@@ -45,6 +45,7 @@
 #include <project_sch.h>
 
 #include <dialog_symbol_chooser.h>
+#include <core/ki_assert.h>
 
 PICKED_SYMBOL SCH_BASE_FRAME::PickSymbolFromLibrary( const SYMBOL_LIBRARY_FILTER* aFilter,
                                                      std::vector<PICKED_SYMBOL>&  aHistoryList,
@@ -146,7 +147,7 @@ void SCH_EDIT_FRAME::SelectUnit( SCH_SYMBOL* aSymbol, int aUnit )
     if( swapWithOther )
     {
         // We were reliably informed this would exist.
-        wxASSERT( otherSymbolRef );
+        KI_ASSERT( otherSymbolRef );
 
         SCH_SYMBOL* otherSymbol = otherSymbolRef->GetSymbol();
 

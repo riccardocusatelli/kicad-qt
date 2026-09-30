@@ -27,6 +27,7 @@
 #include <pcbnew_settings.h>
 #include <footprint_editor_settings.h>
 #include <pcb_origin_transforms.h>
+#include <core/ki_assert.h>
 
 using COORD_TYPE = ORIGIN_TRANSFORMS::COORD_TYPES_T;
 
@@ -46,7 +47,7 @@ long long int PCB_ORIGIN_TRANSFORMS::ToDisplay( long long int aValue, COORD_TYPE
     case COORD_TYPE::REL_X_COORD: value = ToDisplayRelX( value ); break;
     case COORD_TYPE::REL_Y_COORD: value = ToDisplayRelY( value ); break;
     case COORD_TYPE::NOT_A_COORD: /* do nothing */ ; break;
-    default:                      wxASSERT( false ); break;
+    default:                      KI_ASSERT( false ); break;
     };
 
     return value;
@@ -64,7 +65,7 @@ double PCB_ORIGIN_TRANSFORMS::ToDisplay( double aValue, COORD_TYPES_T aCoordType
     case COORD_TYPE::REL_X_COORD: value = ToDisplayRelX( value ); break;
     case COORD_TYPE::REL_Y_COORD: value = ToDisplayRelY( value ); break;
     case COORD_TYPE::NOT_A_COORD: /* do nothing */ ; break;
-    default:                      wxASSERT( false ); break;
+    default:                      KI_ASSERT( false ); break;
     };
 
     return value;
@@ -91,7 +92,7 @@ long long int PCB_ORIGIN_TRANSFORMS::FromDisplay( long long int aValue, COORD_TY
     case COORD_TYPE::REL_X_COORD: value = FromDisplayRelX( value ); break;
     case COORD_TYPE::REL_Y_COORD: value = FromDisplayRelY( value ); break;
     case COORD_TYPE::NOT_A_COORD: /* do nothing */ ; break;
-    default:                      wxASSERT( false ); break;
+    default:                      KI_ASSERT( false ); break;
     };
 
     return value;
@@ -109,7 +110,7 @@ double PCB_ORIGIN_TRANSFORMS::FromDisplay( double aValue, COORD_TYPES_T aCoordTy
     case COORD_TYPE::REL_X_COORD: value = FromDisplayRelX( value ); break;
     case COORD_TYPE::REL_Y_COORD: value = FromDisplayRelY( value ); break;
     case COORD_TYPE::NOT_A_COORD: /* do nothing */ ; break;
-    default:                      wxASSERT( false ); break;
+    default:                      KI_ASSERT( false ); break;
     };
 
     return value;

@@ -24,6 +24,7 @@
 #include <widgets/footprint_select_widget.h>
 #include <json_common.h>
 #include <wx/wupdlock.h>
+#include <core/ki_assert.h>
 
 
 wxDEFINE_EVENT( EVT_FOOTPRINT_SELECTED, wxCommandEvent );
@@ -64,7 +65,7 @@ void FOOTPRINT_SELECT_WIDGET::OnComboBox( wxCommandEvent& aEvent )
 
     wxStringClientData* clientdata =
             static_cast<wxStringClientData*>( m_fp_sel_ctrl->GetClientObject( sel ) );
-    wxASSERT( clientdata );
+    KI_ASSERT( clientdata );
 
     evt.SetString( clientdata->GetData() );
     wxPostEvent( this, evt );

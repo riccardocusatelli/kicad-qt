@@ -38,6 +38,7 @@
 #include <drc/drc_test_provider.h>
 #include <project_pcb.h>
 #include <string_utils.h>
+#include <core/ki_assert.h>
 
 
 /*
@@ -773,7 +774,7 @@ bool footprintVsBoardStackup( const FOOTPRINT& aFp, const BOARD& aBoard, REPORTE
 bool FOOTPRINT::FootprintNeedsUpdate( const FOOTPRINT* aLibFP, int aCompareFlags,
                                       REPORTER* aReporter )
 {
-    wxASSERT( aLibFP );
+    KI_ASSERT( aLibFP );
     bool diff = false;
 
     // To avoid issues when comparing the footprint on board and the footprint in library

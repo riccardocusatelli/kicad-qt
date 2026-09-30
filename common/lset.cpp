@@ -39,6 +39,7 @@
 #include <wx/string.h>
 
 #include <lset.h>
+#include <core/ki_assert.h>
 
 
 LSET::LSET( std::initializer_list<PCB_LAYER_ID> aList ) :
@@ -89,7 +90,7 @@ int LSET::LayerCount( PCB_LAYER_ID aStart, PCB_LAYER_ID aEnd, int aCopperLayerCo
     int end = aEnd;
 
     // Both layers need to be copper
-    wxCHECK( IsCopperLayer( aStart ) && IsCopperLayer( aEnd ), aCopperLayerCount );
+    KI_CHECK( IsCopperLayer( aStart ) && IsCopperLayer( aEnd ), aCopperLayerCount );
 
     if( aStart == B_Cu )
         std::swap( start, end );
@@ -554,7 +555,7 @@ PCB_LAYER_ID LSET::ExtractLayer() const
             return PCB_LAYER_ID( i );
     }
 
-    wxASSERT( 0 );  // set_count was verified as 1 above, what did you break?
+    KI_ASSERT( 0 );  // set_count was verified as 1 above, what did you break?
 
     return UNDEFINED_LAYER;
 }
@@ -757,7 +758,7 @@ PCB_LAYER_ID ToLAYER_ID( int aLayer )
     if( aLayer == std::numeric_limits<int>::max() )
         return B_Cu;
 
-    wxASSERT( aLayer < GAL_LAYER_ID_END );
+    KI_ASSERT( aLayer < GAL_LAYER_ID_END );
     return PCB_LAYER_ID( aLayer );
 }
 

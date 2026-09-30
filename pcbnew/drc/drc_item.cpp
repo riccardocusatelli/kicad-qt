@@ -32,6 +32,7 @@
 #include <board.h>
 #include <pcb_marker.h>
 #include <i18n_utility.h>
+#include <core/ki_assert.h>
 
 
 // These, being statically-defined, require specialized I18N handling.
@@ -472,7 +473,7 @@ std::shared_ptr<DRC_ITEM> DRC_ITEM::Create( int aErrorCode )
     case DRCE_TRACK_ON_POST_MACHINED_LAYER: return std::make_shared<DRC_ITEM>( trackOnPostMachinedLayer );
     case DRCE_TRACK_NOT_CENTERED_ON_VIA:    return std::make_shared<DRC_ITEM>( trackNotCenteredOnVia );
     default:
-        wxFAIL_MSG( wxT( "Unknown DRC error code" ) );
+        KI_FAIL_MSG( wxT( "Unknown DRC error code" ) );
         return nullptr;
     }
 }

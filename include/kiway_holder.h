@@ -25,6 +25,7 @@
 #define KIWAY_HOLDER_H_
 
 #include <kicommon.h>
+#include <core/ki_assert.h>
 
 class KIWAY;
 class PROJECT;
@@ -54,7 +55,7 @@ public:
      */
     KIWAY& Kiway() const
     {
-        wxASSERT( m_kiway );    // smoke out bugs in Debug build, then Release runs fine.
+        KI_ASSERT( m_kiway );    // smoke out bugs in Debug build, then Release runs fine.
         return *m_kiway;
     }
 

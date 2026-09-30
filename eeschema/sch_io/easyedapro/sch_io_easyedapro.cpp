@@ -49,6 +49,7 @@
 #include <project_sch.h>
 #include <libraries/library_table.h>
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_assert.h>
 
 
 struct SCH_IO_EASYEDAPRO::PRJ_DATA
@@ -431,7 +432,7 @@ SCH_SHEET* SCH_IO_EASYEDAPRO::LoadSchematicFile( const wxString& aFileName,
                                                  SCHEMATIC* aSchematic, SCH_SHEET* aAppendToMe,
                                                  const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
+    KI_CHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
 
     // Collect the font substitution warnings (RAII - automatically reset on scope exit)
     FONTCONFIG_REPORTER_SCOPE fontconfigScope( &LOAD_INFO_REPORTER::GetInstance() );
@@ -440,7 +441,7 @@ SCH_SHEET* SCH_IO_EASYEDAPRO::LoadSchematicFile( const wxString& aFileName,
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr,
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr,
                      wxS( "Can't append to a schematic with no root!" ) );
 
         rootSheet = aAppendToMe;
@@ -607,7 +608,7 @@ SCH_SHEET* SCH_IO_EASYEDAPRO::LoadSchematicFile( const wxString& aFileName,
 
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &aSchematic->Project() );
     LIBRARY_TABLE* table = adapter->ProjectTable().value_or( nullptr );
-    wxCHECK_MSG( table, nullptr, "Could not load symbol lib table." );
+    KI_CHECK_MSG( table, nullptr, "Could not load symbol lib table." );
 
     if( !table->HasRow( libName ) )
     {

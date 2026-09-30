@@ -40,6 +40,7 @@
 // Must be after other includes to avoid conflict with a window header on msys2
 #include "tuner_slider.h"
 #include "core/kicad_algo.h"
+#include <core/ki_assert.h>
 
 TUNER_SLIDER::TUNER_SLIDER( SIMULATOR_FRAME_UI* aFrame, wxWindow* aParent,
                             const SCH_SHEET_PATH& aSheetPath, SCH_SYMBOL* aSymbol ) :
@@ -266,7 +267,7 @@ void TUNER_SLIDER::updateModeControls()
 
 void TUNER_SLIDER::updateSlider()
 {
-    wxASSERT( m_max >= m_value && m_value >= m_min );
+    KI_ASSERT( m_max >= m_value && m_value >= m_min );
     double value = ( ( m_value - m_min ) / ( m_max - m_min ) ).ToDouble();
     m_slider->SetValue( KiROUND( value * 100.0 ) );
 }

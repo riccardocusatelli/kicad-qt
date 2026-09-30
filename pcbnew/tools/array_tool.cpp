@@ -32,6 +32,7 @@
 #include <pcb_group.h>
 #include <tools/board_reannotate_tool.h>
 #include <tools/pcb_selection_tool.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -121,7 +122,7 @@ void ARRAY_TOOL::onDialogClosed( wxCloseEvent& aEvent )
     if( m_array_opts == nullptr )
         return;
 
-    wxCHECK( m_selection, /* void */ );
+    KI_CHECK( m_selection, /* void */ );
 
     PCB_SELECTION&  selection = *m_selection;
     PCB_BASE_FRAME* editFrame = getEditFrame<PCB_BASE_FRAME>();

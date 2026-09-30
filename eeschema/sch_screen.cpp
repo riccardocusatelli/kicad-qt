@@ -71,6 +71,8 @@
 
 #include "sch_bus_entry.h"
 #include "sch_shape.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 /**
  * Flag to enable profiling of the TestDanglingEnds() function.
@@ -108,7 +110,7 @@ SCH_SCREEN::~SCH_SCREEN()
 
 SCHEMATIC* SCH_SCREEN::Schematic() const
 {
-    wxCHECK_MSG( GetParent() && GetParent()->Type() == SCHEMATIC_T, nullptr,
+    KI_CHECK_MSG( GetParent() && GetParent()->Type() == SCHEMATIC_T, nullptr,
                  wxT( "SCH_SCREEN must have a SCHEMATIC parent!" ) );
 
     return static_cast<SCHEMATIC*>( GetParent() );
@@ -128,7 +130,7 @@ void SCH_SCREEN::SetFileName( const wxString& aFileName )
 {
     // Don't assert here.  We still call this after failing to load a file in order to show the
     // user what we *tried* to load.
-    // wxASSERT( aFileName.IsEmpty() || wxIsAbsolutePath( aFileName ) );
+    // KI_ASSERT( aFileName.IsEmpty() || wxIsAbsolutePath( aFileName ) );
 
     m_fileName = aFileName;
 }
@@ -142,7 +144,7 @@ void SCH_SCREEN::IncRefCount()
 
 void SCH_SCREEN::DecRefCount()
 {
-    wxCHECK_RET( m_refCount != 0, wxT( "Screen reference count already zero.  Bad programmer!" ) );
+    KI_CHECK_RET( m_refCount != 0, wxT( "Screen reference count already zero.  Bad programmer!" ) );
     m_refCount--;
 }
 
@@ -210,7 +212,7 @@ void SCH_SCREEN::Append( SCH_ITEM* aItem, bool aUpdateLibSymbol )
 
                             foundSymbol = it->second;
 
-                            wxCHECK2( foundSymbol, continue );
+                            KI_CHECK2( foundSymbol, continue );
 
                             wxString tmp = symbol->GetLibSymbolRef()->GetName();
 
@@ -282,7 +284,7 @@ void SCH_SCREEN::Append( SCH_ITEM* aItem, bool aUpdateLibSymbol )
 
 void SCH_SCREEN::Append( SCH_SCREEN* aScreen )
 {
-    wxCHECK_RET( aScreen, "Invalid screen object." );
+    KI_CHECK_RET( aScreen, "Invalid screen object." );
 
     // No need to descend the hierarchy.  Once the top level screen is copied, all of its
     // children are copied as well.
@@ -378,7 +380,7 @@ bool SCH_SCREEN::Remove( SCH_ITEM* aItem, bool aUpdateLibSymbol )
 
 void SCH_SCREEN::DeleteItem( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( aItem, wxT( "Cannot delete invalid item from screen." ) );
+    KI_CHECK_RET( aItem, wxT( "Cannot delete invalid item from screen." ) );
 
     // Markers are not saved in the file, no need to flag as modified.
     // TODO: Maybe we should have a listing somewhere of items that aren't saved?
@@ -392,7 +394,7 @@ void SCH_SCREEN::DeleteItem( SCH_ITEM* aItem )
         // This structure is attached to a sheet, get the parent sheet object.
         SCH_SHEET_PIN* sheetPin = (SCH_SHEET_PIN*) aItem;
         SCH_SHEET* sheet = sheetPin->GetParent();
-        wxCHECK_RET( sheet, wxT( "Sheet pin parent not properly set, bad programmer!" ) );
+        KI_CHECK_RET( sheet, wxT( "Sheet pin parent not properly set, bad programmer!" ) );
         sheet->RemovePin( sheetPin );
         return;
     }
@@ -651,7 +653,7 @@ SPIN_STYLE SCH_SCREEN::GetLabelOrientationForPoint( const VECTOR2I&       aPosit
 
 bool SCH_SCREEN::IsTerminalPoint( const VECTOR2I& aPosition, int aLayer ) const
 {
-    wxCHECK_MSG( aLayer == LAYER_NOTES || aLayer == LAYER_BUS || aLayer == LAYER_WIRE, false,
+    KI_CHECK_MSG( aLayer == LAYER_NOTES || aLayer == LAYER_BUS || aLayer == LAYER_WIRE, false,
                  wxT( "Invalid layer type passed to SCH_SCREEN::IsTerminalPoint()." ) );
 
     SCH_SHEET_PIN* sheetPin;
@@ -716,7 +718,7 @@ bool SCH_SCREEN::IsTerminalPoint( const VECTOR2I& aPosition, int aLayer ) const
 
 void SCH_SCREEN::UpdateSymbolLinks( REPORTER* aReporter )
 {
-    wxCHECK_RET( Schematic(), "Cannot call SCH_SCREEN::UpdateSymbolLinks with no SCHEMATIC" );
+    KI_CHECK_RET( Schematic(), "Cannot call SCH_SCREEN::UpdateSymbolLinks with no SCHEMATIC" );
 
     wxString msg;
     std::vector<SCH_SYMBOL*> symbols;
@@ -819,7 +821,7 @@ void SCH_SCREEN::UpdateSymbolLinks( REPORTER* aReporter )
             LEGACY_SYMBOL_LIB& legacyCacheLib = legacyLibs->back();
 
             // It better be the cache library.
-            wxCHECK2( legacyCacheLib.IsCache(), continue );
+            KI_CHECK2( legacyCacheLib.IsCache(), continue );
 
             wxString id = symbol->GetLibId().Format();
 
@@ -1461,7 +1463,7 @@ SCH_LABEL_BASE* SCH_SCREEN::GetLabel( const VECTOR2I& aPosition, int aAccuracy )
 
 void SCH_SCREEN::AddLibSymbol( LIB_SYMBOL* aLibSymbol )
 {
-    wxCHECK( aLibSymbol, /* void */ );
+    KI_CHECK( aLibSymbol, /* void */ );
 
     wxString libSymbolName = aLibSymbol->GetLibId().Format().wx_str();
 
@@ -1614,7 +1616,7 @@ void SCH_SCREEN::PruneOrphanedSymbolInstances( const wxString& aProjectName,
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         std::set<KIID_PATH> pathsToPrune;
         const std::vector<SCH_SYMBOL_INSTANCE> instances = symbol->GetInstances();
@@ -1638,7 +1640,7 @@ void SCH_SCREEN::PruneOrphanedSymbolInstances( const wxString& aProjectName,
 
         for( const KIID_PATH& sheetPath : pathsToPrune )
         {
-            wxLogTrace( traceSchSheetPaths, wxS( "Pruning project '%s' symbol instance %s." ),
+            KI_LOG_TRACE( traceSchSheetPaths, wxS( "Pruning project '%s' symbol instance %s." ),
                         aProjectName, sheetPath.AsString() );
             symbol->RemoveInstance( sheetPath );
         }
@@ -1661,7 +1663,7 @@ void SCH_SCREEN::PruneOrphanedSheetInstances( const wxString& aProjectName,
     {
         SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         std::set<KIID_PATH> pathsToPrune;
         const std::vector<SCH_SHEET_INSTANCE> instances = sheet->GetInstances();
@@ -1685,7 +1687,7 @@ void SCH_SCREEN::PruneOrphanedSheetInstances( const wxString& aProjectName,
 
         for( const KIID_PATH& sheetPath : pathsToPrune )
         {
-            wxLogTrace( traceSchSheetPaths, wxS( "Pruning project '%s' sheet instance %s." ),
+            KI_LOG_TRACE( traceSchSheetPaths, wxS( "Pruning project '%s' sheet instance %s." ),
                         aProjectName, sheetPath.AsString() );
             sheet->RemoveInstance( sheetPath );
         }
@@ -1701,7 +1703,7 @@ bool SCH_SCREEN::HasSymbolFieldNamesWithWhiteSpace() const
     {
         const SCH_SYMBOL* symbol = static_cast<const SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         for( const SCH_FIELD& field : symbol->GetFields() )
         {
@@ -1726,7 +1728,7 @@ std::set<wxString> SCH_SCREEN::GetSheetNames() const
     {
         SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         retv.emplace( sheet->GetName() );
     }
@@ -1737,7 +1739,7 @@ std::set<wxString> SCH_SCREEN::GetSheetNames() const
 
 bool SCH_SCREEN::HasInstanceDataFromOtherProjects() const
 {
-    wxCHECK( Schematic(), false );
+    KI_CHECK( Schematic(), false );
 
     SCH_SHEET_LIST hierarchy = Schematic()->Hierarchy();
 
@@ -1840,12 +1842,12 @@ wxString SCH_SCREEN::GroupsSanityCheckInternal( bool repair )
 
 bool SCH_SCREEN::InProjectPath() const
 {
-    wxCHECK( Schematic() && !m_fileName.IsEmpty(), false );
+    KI_CHECK( Schematic() && !m_fileName.IsEmpty(), false );
 
     wxFileName thisScreenFn( m_fileName );
     wxFileName thisProjectFn( Schematic()->Project().GetProjectFullName() );
 
-    wxCHECK( thisProjectFn.IsAbsolute(), false );
+    KI_CHECK( thisProjectFn.IsAbsolute(), false );
 
     if( thisScreenFn.GetDirCount() < thisProjectFn.GetDirCount() )
         return false;
@@ -1865,7 +1867,7 @@ std::set<wxString> SCH_SCREEN::GetVariantNames() const
     {
         const SCH_SYMBOL* symbol = static_cast<const SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         const std::vector<SCH_SYMBOL_INSTANCE> symbolInstances = symbol->GetInstances();
 
@@ -1880,7 +1882,7 @@ std::set<wxString> SCH_SCREEN::GetVariantNames() const
     {
         const SCH_SHEET* sheet = static_cast<const SCH_SHEET*>( item );
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         const std::vector<SCH_SHEET_INSTANCE> sheetInstances = sheet->GetInstances();
 
@@ -1897,13 +1899,13 @@ std::set<wxString> SCH_SCREEN::GetVariantNames() const
 
 void SCH_SCREEN::DeleteVariant( const wxString& aVariantName, SCH_COMMIT* aCommit )
 {
-    wxCHECK( !aVariantName.IsEmpty(), /* void */ );
+    KI_CHECK( !aVariantName.IsEmpty(), /* void */ );
 
     for( SCH_ITEM* item : Items().OfType( SCH_SYMBOL_T ) )
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         std::vector<SCH_SYMBOL_INSTANCE> symbolInstances = symbol->GetInstances();
 
@@ -1923,7 +1925,7 @@ void SCH_SCREEN::DeleteVariant( const wxString& aVariantName, SCH_COMMIT* aCommi
     {
         SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         std::vector<SCH_SHEET_INSTANCE> sheetInstances = sheet->GetInstances();
 
@@ -1944,13 +1946,13 @@ void SCH_SCREEN::DeleteVariant( const wxString& aVariantName, SCH_COMMIT* aCommi
 void SCH_SCREEN::RenameVariant( const wxString& aOldName, const wxString& aNewName,
                                 SCH_COMMIT* aCommit )
 {
-    wxCHECK( !aOldName.IsEmpty() && !aNewName.IsEmpty(), /* void */ );
+    KI_CHECK( !aOldName.IsEmpty() && !aNewName.IsEmpty(), /* void */ );
 
     for( SCH_ITEM* item : Items().OfType( SCH_SYMBOL_T ) )
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         std::vector<SCH_SYMBOL_INSTANCE> symbolInstances = symbol->GetInstances();
 
@@ -1970,7 +1972,7 @@ void SCH_SCREEN::RenameVariant( const wxString& aOldName, const wxString& aNewNa
     {
         SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         std::vector<SCH_SHEET_INSTANCE> sheetInstances = sheet->GetInstances();
 
@@ -1991,13 +1993,13 @@ void SCH_SCREEN::RenameVariant( const wxString& aOldName, const wxString& aNewNa
 void SCH_SCREEN::CopyVariant( const wxString& aSourceVariant, const wxString& aNewVariant,
                               SCH_COMMIT* aCommit )
 {
-    wxCHECK( !aSourceVariant.IsEmpty() && !aNewVariant.IsEmpty(), /* void */ );
+    KI_CHECK( !aSourceVariant.IsEmpty() && !aNewVariant.IsEmpty(), /* void */ );
 
     for( SCH_ITEM* item : Items().OfType( SCH_SYMBOL_T ) )
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         std::vector<SCH_SYMBOL_INSTANCE> symbolInstances = symbol->GetInstances();
 
@@ -2017,7 +2019,7 @@ void SCH_SCREEN::CopyVariant( const wxString& aSourceVariant, const wxString& aN
     {
         SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         std::vector<SCH_SHEET_INSTANCE> sheetInstances = sheet->GetInstances();
 
@@ -2141,7 +2143,7 @@ void SCH_SCREENS::ClearAnnotationOfNewSheetPaths( SCH_SHEET_LIST& aInitialSheetP
 
     SCHEMATIC* sch = first->Schematic();
 
-    wxCHECK_RET( sch, "Null schematic in SCH_SCREENS::ClearAnnotationOfNewSheetPaths" );
+    KI_CHECK_RET( sch, "Null schematic in SCH_SCREENS::ClearAnnotationOfNewSheetPaths" );
 
     // Clear the annotation for symbols inside new sheetpaths not already in aInitialSheetList
     SCH_SCREENS screensList( sch->Root() );     // The list of screens, shared by sheet paths
@@ -2294,7 +2296,7 @@ void SCH_SCREENS::UpdateSymbolLinks( REPORTER* aReporter )
 
     SCHEMATIC* sch = first->Schematic();
 
-    wxCHECK_RET( sch, "Null schematic in SCH_SCREENS::UpdateSymbolLinks" );
+    KI_CHECK_RET( sch, "Null schematic in SCH_SCREENS::UpdateSymbolLinks" );
 
     SCH_SHEET_LIST sheets = sch->Hierarchy();
 
@@ -2390,7 +2392,7 @@ void SCH_SCREENS::BuildClientSheetPathList()
 
     SCHEMATIC* sch = first->Schematic();
 
-    wxCHECK_RET( sch, "Null schematic in SCH_SCREENS::BuildClientSheetPathList" );
+    KI_CHECK_RET( sch, "Null schematic in SCH_SCREENS::BuildClientSheetPathList" );
 
     // Don't build until we have a hierarchy to work with.  This can be called before the hierarchy is built.
     if( !sch->HasHierarchy() )
@@ -2495,7 +2497,7 @@ std::set<wxString> SCH_SCREENS::GetVariantNames() const
 
 void SCH_SCREENS::DeleteVariant( const wxString& aVariantName, SCH_COMMIT* aCommit )
 {
-    wxCHECK( !aVariantName.IsEmpty(), /* void */ );
+    KI_CHECK( !aVariantName.IsEmpty(), /* void */ );
 
     for( SCH_SCREEN* screen : m_screens )
         screen->DeleteVariant( aVariantName, aCommit );
@@ -2505,7 +2507,7 @@ void SCH_SCREENS::DeleteVariant( const wxString& aVariantName, SCH_COMMIT* aComm
 void SCH_SCREENS::RenameVariant( const wxString& aOldName, const wxString& aNewName,
                                  SCH_COMMIT* aCommit )
 {
-    wxCHECK( !aOldName.IsEmpty() && !aNewName.IsEmpty(), /* void */ );
+    KI_CHECK( !aOldName.IsEmpty() && !aNewName.IsEmpty(), /* void */ );
 
     for( SCH_SCREEN* screen : m_screens )
         screen->RenameVariant( aOldName, aNewName, aCommit );
@@ -2515,7 +2517,7 @@ void SCH_SCREENS::RenameVariant( const wxString& aOldName, const wxString& aNewN
 void SCH_SCREENS::CopyVariant( const wxString& aSourceVariant, const wxString& aNewVariant,
                                SCH_COMMIT* aCommit )
 {
-    wxCHECK( !aSourceVariant.IsEmpty() && !aNewVariant.IsEmpty(), /* void */ );
+    KI_CHECK( !aSourceVariant.IsEmpty() && !aNewVariant.IsEmpty(), /* void */ );
 
     for( SCH_SCREEN* screen : m_screens )
         screen->CopyVariant( aSourceVariant, aNewVariant, aCommit );

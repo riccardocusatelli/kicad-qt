@@ -67,6 +67,7 @@
 #include <dialog_HTML_reporter_base.h>
 #include <libraries/library_manager.h>
 #include <widgets/wx_aui_art_providers.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -87,7 +88,7 @@ public:
 
     void SetValue( int aRow, int aCol, const wxString &aValue ) override
     {
-        wxCHECK( aRow < (int) size(), /* void */ );
+        KI_CHECK( aRow < (int) size(), /* void */ );
 
         LIB_TABLE_GRID_DATA_MODEL::SetValue( aRow, aCol, aValue );
 
@@ -329,7 +330,7 @@ PANEL_FP_LIB_TABLE::PANEL_FP_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent, PRO
 
     std::optional<LIBRARY_TABLE*> table = Pgm().GetLibraryManager().Table( LIBRARY_TABLE_TYPE::FOOTPRINT,
                                                                            LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxASSERT( table.has_value() );
+    KI_ASSERT( table.has_value() );
 
     AddTable( table.value(), _( "Global Libraries" ), false /* closable */ );
 
@@ -822,7 +823,7 @@ void PANEL_FP_LIB_TABLE::onReset( wxCommandEvent& event )
 
     std::optional<LIBRARY_TABLE*> newTable = Pgm().GetLibraryManager().Table( LIBRARY_TABLE_TYPE::FOOTPRINT,
                                                                               LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxASSERT( newTable );
+    KI_ASSERT( newTable );
 
     FOOTPRINT_LIBRARY_ADAPTER* adapter = PROJECT_PCB::FootprintLibAdapter( m_project );
 
@@ -867,7 +868,7 @@ bool PANEL_FP_LIB_TABLE::TransferDataFromWindow()
 
     std::optional<LIBRARY_TABLE*> optTable = Pgm().GetLibraryManager().Table( LIBRARY_TABLE_TYPE::FOOTPRINT,
                                                                               LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxCHECK( optTable, false );
+    KI_CHECK( optTable, false );
     LIBRARY_TABLE* globalTable = *optTable;
 
     if( get_model( 0 )->Table() != *globalTable )
@@ -925,7 +926,7 @@ bool PANEL_FP_LIB_TABLE::TransferDataFromWindow()
 void PANEL_FP_LIB_TABLE::populateEnvironReadOnlyTable()
 {
     wxRegEx re( ".*?(\\$\\{(.+?)\\})|(\\$\\((.+?)\\)).*?", wxRE_ADVANCED );
-    wxASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
+    KI_ASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
 
     std::set< wxString > unique;
 

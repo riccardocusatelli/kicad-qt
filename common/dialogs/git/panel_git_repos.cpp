@@ -34,6 +34,7 @@
 #include <wx/button.h>
 #include <wx/checkbox.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 PANEL_GIT_REPOS::PANEL_GIT_REPOS( wxWindow* aParent ) : PANEL_GIT_REPOS_BASE( aParent)
@@ -63,7 +64,7 @@ static std::pair<wxString, wxString> getDefaultAuthorAndEmail()
 
     if( git_config_open_default( &config ) != 0 )
     {
-        wxLogTrace( traceGit, "Failed to open default Git config: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to open default Git config: %s", KIGIT_COMMON::GetLastGitError() );
         return std::make_pair( name, email );
     }
 
@@ -71,7 +72,7 @@ static std::pair<wxString, wxString> getDefaultAuthorAndEmail()
 
     if( git_config_get_entry( &name_c, config, "user.name" ) != 0 )
     {
-        wxLogTrace( traceGit, "Failed to get user.name from Git config: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to get user.name from Git config: %s", KIGIT_COMMON::GetLastGitError() );
         return std::make_pair( name, email );
     }
 
@@ -79,7 +80,7 @@ static std::pair<wxString, wxString> getDefaultAuthorAndEmail()
 
     if( git_config_get_entry( &email_c, config, "user.email" ) != 0 )
     {
-        wxLogTrace( traceGit, "Failed to get user.email from Git config: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to get user.email from Git config: %s", KIGIT_COMMON::GetLastGitError() );
         return std::make_pair( name, email );
     }
 

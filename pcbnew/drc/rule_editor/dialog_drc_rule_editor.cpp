@@ -54,6 +54,7 @@
 #include <functional>
 #include <memory>
 #include <set>
+#include <core/ki_log.h>
 
 
 const RULE_TREE_NODE* FindNodeById( const std::vector<RULE_TREE_NODE>& aNodes, int aTargetId )
@@ -129,7 +130,7 @@ bool DIALOG_DRC_RULE_EDITOR::TransferDataToWindow()
     SetMinSize( wxSize( 400, 500 ) );
     SetSize( m_initialSize );
 
-    wxLogTrace( "debug_dlg_size", "DRC TransferDataToWindow: size=%s minSize=%s",
+    KI_LOG_TRACE( "debug_dlg_size", "DRC TransferDataToWindow: size=%s minSize=%s",
                 GetSize().IsFullySpecified() ? wxString::Format( "%dx%d", GetSize().x, GetSize().y )
                                              : wxString( "default" ),
                 GetMinSize().IsFullySpecified()
@@ -210,7 +211,7 @@ void DIALOG_DRC_RULE_EDITOR::LoadExistingRules()
     if( entries.empty() )
         return;
 
-    wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+    KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                 wxS( "[LoadExistingRules] Loaded %zu entries from %s" ),
                 entries.size(), rulesFile.GetFullPath() );
 
@@ -225,7 +226,7 @@ void DIALOG_DRC_RULE_EDITOR::LoadExistingRules()
         {
             constraintTypeToNodeId[*node.m_nodeTypeMap] = node.m_nodeId;
 
-            wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+            KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                         wxS( "[LoadExistingRules]   Node '%s': nodeId=%d, m_nodeTypeMap=%d" ),
                         wxString( node.m_nodeName ), node.m_nodeId,
                         static_cast<int>( *node.m_nodeTypeMap ) );
@@ -243,7 +244,7 @@ void DIALOG_DRC_RULE_EDITOR::LoadExistingRules()
     {
         DRC_RULE_EDITOR_CONSTRAINT_NAME type = entry.panelType;
 
-        wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+        KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                     wxS( "[LoadExistingRules] Processing entry: rule='%s', panelType=%d" ),
                     entry.ruleName, static_cast<int>( type ) );
 
@@ -251,7 +252,7 @@ void DIALOG_DRC_RULE_EDITOR::LoadExistingRules()
 
         if( typeIt == constraintTypeToNodeId.end() )
         {
-            wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+            KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                         wxS( "[LoadExistingRules] No parent found for panelType=%d, skipping" ),
                         static_cast<int>( type ) );
             continue;
@@ -263,7 +264,7 @@ void DIALOG_DRC_RULE_EDITOR::LoadExistingRules()
 
         if( histIt == m_treeHistoryData.end() )
         {
-            wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+            KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                         wxS( "[LoadExistingRules] Tree item not found for parentId=%d, skipping" ),
                         parentId );
             continue;
@@ -273,13 +274,13 @@ void DIALOG_DRC_RULE_EDITOR::LoadExistingRules()
 
         if( !parentItem.IsOk() )
         {
-            wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+            KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                         wxS( "[LoadExistingRules] Tree item not valid for parentId=%d, skipping" ),
                         parentId );
             continue;
         }
 
-        wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+        KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                     wxS( "[LoadExistingRules] Found parent node: parentId=%d" ), parentId );
 
         RULE_TREE_NODE node =
@@ -305,7 +306,7 @@ void DIALOG_DRC_RULE_EDITOR::LoadExistingRules()
         m_ruleTreeNodeDatas.push_back( node );
         AppendNewRuleTreeItem( node, parentItem );
 
-        wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+        KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                     wxS( "[LoadExistingRules] Appended rule '%s' to tree under parentId=%d" ),
                     entry.ruleName, parentId );
     }
@@ -985,7 +986,7 @@ int DIALOG_DRC_RULE_EDITOR::highlightMatchingItems( int aNodeId )
         return -1;
     }
 
-    wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] nodeId=%d, condition='%s'" ), aNodeId,
+    KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] nodeId=%d, condition='%s'" ), aNodeId,
                 condition );
 
     m_drcTool = m_frame->GetToolManager()->GetTool<DRC_TOOL>();
@@ -1014,7 +1015,7 @@ int DIALOG_DRC_RULE_EDITOR::highlightMatchingItems( int aNodeId )
 
     int matchCount = static_cast<int>( matches.size() );
 
-    wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] matched_count=%d (filtered from %zu)" ),
+    KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] matched_count=%d (filtered from %zu)" ),
                 matchCount, allMatches.size() );
 
     // Clear any existing selection and select matched items

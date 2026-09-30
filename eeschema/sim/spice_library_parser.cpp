@@ -37,6 +37,7 @@
 
 #include <pegtl.hpp>
 #include <pegtl/contrib/parse_tree.hpp>
+#include <core/ki_assert.h>
 
 
 namespace SIM_LIBRARY_SPICE_PARSER
@@ -101,7 +102,7 @@ void SPICE_LIBRARY_PARSER::parseFile( const wxString &aFilePath, REPORTER& aRepo
             }
             else
             {
-                wxFAIL_MSG( "Unhandled parse tree node" );
+                KI_FAIL_MSG( "Unhandled parse tree node" );
             }
         }
     }

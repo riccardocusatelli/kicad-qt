@@ -59,6 +59,7 @@
 #include <kiway.h>
 #include <pgm_base.h>
 #include <libraries/symbol_library_adapter.h>
+#include <core/ki_assert.h>
 
 
 /* ERC tests :
@@ -551,7 +552,7 @@ int ERC_TESTER::TestMultiunitFootprints()
 
         if( refList.GetCount() == 0 )
         {
-            wxFAIL;   // it should not happen
+            KI_FAIL();   // it should not happen
             continue;
         }
 
@@ -610,7 +611,7 @@ int ERC_TESTER::TestMissingUnits()
     {
         SCH_REFERENCE_LIST& refList = symbol.second;
 
-        wxCHECK2( refList.GetCount(), continue );
+        KI_CHECK2( refList.GetCount(), continue );
 
         // Reference unit
         SCH_REFERENCE& base_ref = refList.GetItem( 0 );
@@ -1693,7 +1694,7 @@ int ERC_TESTER::TestSimilarLabels()
 
 int ERC_TESTER::TestLibSymbolIssues()
 {
-    wxCHECK( m_schematic, 0 );
+    KI_CHECK( m_schematic, 0 );
 
     LIBRARY_MANAGER& manager = Pgm().GetLibraryManager();
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_schematic->Project() );
@@ -1739,7 +1740,7 @@ int ERC_TESTER::TestLibSymbolIssues()
                     std::shared_ptr<ERC_ITEM> ercItem = ERC_ITEM::Create( ERCE_LIB_SYMBOL_ISSUES );
                     std::optional<wxString> uri =
                             manager.GetFullURI( LIBRARY_TABLE_TYPE::SYMBOL, libName, true );
-                    wxCHECK2( uri.has_value(), uri = wxEmptyString );
+                    KI_CHECK2( uri.has_value(), uri = wxEmptyString );
                     ercItem->SetItems( symbol );
                     msg.Printf( _( "The symbol library '%s' was not found at '%s'" ),
                                 UnescapeString( libName ), *uri );
@@ -1815,7 +1816,7 @@ int ERC_TESTER::TestLibSymbolIssues()
 
 int ERC_TESTER::TestFootprintLinkIssues( KIFACE* aCvPcb, PROJECT* aProject )
 {
-    wxCHECK( m_schematic, 0 );
+    KI_CHECK( m_schematic, 0 );
 
     if( std::optional<LIBRARY_MANAGER_ADAPTER*> adapter =
                 Pgm().GetLibraryManager().Adapter( LIBRARY_TABLE_TYPE::FOOTPRINT ) )
@@ -1901,7 +1902,7 @@ int ERC_TESTER::TestFootprintLinkIssues( KIFACE* aCvPcb, PROJECT* aProject )
 
 int ERC_TESTER::TestFootprintFilters()
 {
-    wxCHECK( m_schematic, 0 );
+    KI_CHECK( m_schematic, 0 );
 
     wxString msg;
     int      err_count = 0;

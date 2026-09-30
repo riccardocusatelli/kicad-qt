@@ -30,6 +30,7 @@
 #include <build_version.h>
 #include <macros.h>
 #include <wx_filename.h>
+#include <core/ki_assert.h>
 
 
 void PATHS::getUserDocumentPath( wxFileName& aPath )
@@ -180,7 +181,7 @@ static wxString getBuildDirectoryRoot()
         fn.RemoveLastDir();
     }
 
-    wxASSERT_MSG(
+    KI_ASSERT_MSG(
             fn.GetDirCount() > 0,
             wxString::Format( wxT( "Could not find build root directory above %s" ), execPath ) );
 

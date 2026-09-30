@@ -30,6 +30,8 @@
 #include "vrml2_base.h"
 #include "vrml2_box.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL2BOX::WRL2BOX() : WRL2NODE()
@@ -56,7 +58,7 @@ WRL2BOX::WRL2BOX( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2BOX::~WRL2BOX()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying Box node." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying Box node." ) );
 }
 
 
@@ -77,7 +79,7 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -86,7 +88,7 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -105,7 +107,7 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( !proc.ReadName( glob ) )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           "%s" ),
                     __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -117,7 +119,7 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
     {
         if( !proc.ReadSFVec3f( size ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                               " * [INFO] invalid size %s\n"
                                               " * [INFO] file: '%s'\n"
                                               "%s" ),
@@ -132,7 +134,7 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
     }
     else
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                           " * [INFO] invalid Box %s\n"
                                           " * [INFO] file: '%s'\n" ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(),
@@ -143,7 +145,7 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( size.x < 1e-6 || size.y < 1e-6 || size.z < 1e-6 )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                           " * [INFO] invalid Box size %s\n"
                                           " * [INFO] file: '%s'\n" ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(),
@@ -158,7 +160,7 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         return true;
     }
 
-    wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                       " * [INFO] invalid size %s (no closing brace).\n"
                                       " * [INFO] file: '%s'\n" ),
                 __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(), proc.GetFileName() );
@@ -170,14 +172,14 @@ bool WRL2BOX::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 bool WRL2BOX::AddRefNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL2BOX::AddChildNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
@@ -185,7 +187,7 @@ SGNODE* WRL2BOX::TranslateToSG( SGNODE* aParent )
 {
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( aParent && ( ptype == S3D::SGTYPE_SHAPE ), nullptr,
+    KI_CHECK_MSG( aParent && ( ptype == S3D::SGTYPE_SHAPE ), nullptr,
                  wxString::Format( wxT( "Box does not have a Shape parent (parent ID: %s)" ),
                                    ptype ) );
 

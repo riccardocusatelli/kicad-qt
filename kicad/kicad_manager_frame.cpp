@@ -86,6 +86,7 @@
 #include <widgets/wx_aui_art_providers.h>
 
 #include <../pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h>   // for SEXPR_BOARD_FILE_VERSION def
+#include <core/ki_assert.h>
 
 
 #ifdef __WXMAC__
@@ -507,7 +508,7 @@ void KICAD_MANAGER_FRAME::setupUIConditions()
 
     ACTION_MANAGER* manager = m_toolManager->GetActionManager();
 
-    wxASSERT( manager );
+    KI_ASSERT( manager );
 
     auto activeProject =
             [this] ( const SELECTION& )
@@ -553,7 +554,7 @@ wxWindow* KICAD_MANAGER_FRAME::GetToolCanvas() const
 APP_SETTINGS_BASE* KICAD_MANAGER_FRAME::config() const
 {
     APP_SETTINGS_BASE* ret = PgmTop().PgmSettings();
-    wxASSERT( ret );
+    KI_ASSERT( ret );
     return ret;
 }
 
@@ -561,7 +562,7 @@ APP_SETTINGS_BASE* KICAD_MANAGER_FRAME::config() const
 KICAD_SETTINGS* KICAD_MANAGER_FRAME::kicadSettings() const
 {
     KICAD_SETTINGS* ret = dynamic_cast<KICAD_SETTINGS*>( config() );
-    wxASSERT( ret );
+    KI_ASSERT( ret );
     return ret;
 }
 
@@ -1091,7 +1092,7 @@ bool KICAD_MANAGER_FRAME::LoadProject( const wxFileName& aProjectFileName )
 
 void KICAD_MANAGER_FRAME::CreateNewProject( const wxFileName& aProjectFileName, bool aCreateStubFiles )
 {
-    wxCHECK_RET( aProjectFileName.DirExists() && aProjectFileName.IsDirWritable(),
+    KI_CHECK_RET( aProjectFileName.DirExists() && aProjectFileName.IsDirWritable(),
                  "Project folder must exist and be writable to create a new project." );
 
     // If the project is legacy, convert it
@@ -1356,7 +1357,7 @@ void KICAD_MANAGER_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 
     auto settings = dynamic_cast<KICAD_SETTINGS*>( aCfg );
 
-    wxCHECK( settings, /*void*/ );
+    KI_CHECK( settings, /*void*/ );
 
     m_leftWinWidth = settings->m_LeftWinWidth;
     m_showHistoryPanel = settings->m_ShowHistoryPanel;
@@ -1369,7 +1370,7 @@ void KICAD_MANAGER_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
     KICAD_SETTINGS* settings = dynamic_cast<KICAD_SETTINGS*>( aCfg );
 
-    wxCHECK( settings, /*void*/ );
+    KI_CHECK( settings, /*void*/ );
 
     settings->m_LeftWinWidth = m_projectTreePane->GetSize().x;
     settings->m_ShowHistoryPanel = m_historyPane && m_auimgr.GetPane( m_historyPane ).IsShown();

@@ -62,6 +62,7 @@
 
 #include <kiplatform/app.h>
 #include <kiplatform/environment.h>
+#include <core/ki_log.h>
 
 #ifdef KICAD_IPC_API
 #include <api/api_server.h>
@@ -624,7 +625,7 @@ struct APP_KICAD : public wxApp
 
             if( keyEvent )
             {
-                wxLogTrace( kicadTraceKeyEvent, "APP_KICAD::ProcessEvent %s", dump( *keyEvent ) );
+                KI_LOG_TRACE( kicadTraceKeyEvent, "APP_KICAD::ProcessEvent %s", dump( *keyEvent ) );
             }
         }
 

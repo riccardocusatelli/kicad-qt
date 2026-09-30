@@ -46,6 +46,7 @@
 #include <wx/log.h>
 
 #include "topo_match.h"
+#include <core/ki_log.h>
 
 
 static const wxString traceTopoMatch = wxT( "TOPO_MATCH" );
@@ -59,7 +60,7 @@ bool PIN::IsIsomorphic( const PIN& b, TOPOLOGY_MISMATCH_REASON& aReason ) const
 {
     if( m_conns.size() != b.m_conns.size() )
     {
-        wxLogTrace( traceTopoMatch,
+        KI_LOG_TRACE( traceTopoMatch,
                     wxT( "[conns mismatch n1 %d n2 %d c-ref %d c-other %d thispin %s-%s "
                          "otherpin %s-%s" ),
             m_netcode,
@@ -80,24 +81,24 @@ bool PIN::IsIsomorphic( const PIN& b, TOPOLOGY_MISMATCH_REASON& aReason ) const
 
         for( auto c : m_conns )
         {
-            wxLogTrace( traceTopoMatch, wxT( "%s-%s " ), c->m_parent->m_reference, c->m_ref );
+            KI_LOG_TRACE( traceTopoMatch, wxT( "%s-%s " ), c->m_parent->m_reference, c->m_ref );
         }
 
-        wxLogTrace( traceTopoMatch, wxT( "||" ) );
+        KI_LOG_TRACE( traceTopoMatch, wxT( "||" ) );
 
         for( auto c : b.m_conns )
         {
-            wxLogTrace( traceTopoMatch, wxT( "%s-%s " ), c->m_parent->m_reference, c->m_ref );
+            KI_LOG_TRACE( traceTopoMatch, wxT( "%s-%s " ), c->m_parent->m_reference, c->m_ref );
         }
 
 
-        wxLogTrace( traceTopoMatch, wxT( "] " ) );
+        KI_LOG_TRACE( traceTopoMatch, wxT( "] " ) );
         return false;
     }
 
     if( m_conns.empty() )
     {
-        wxLogTrace( traceTopoMatch, wxT( "[conns empty]" ) );
+        KI_LOG_TRACE( traceTopoMatch, wxT( "[conns empty]" ) );
         return true;
     }
 
@@ -196,7 +197,7 @@ bool checkCandidateNetConsistency( const std::unordered_map<int, int>& aBaseMapp
         {
             if( baseIt->second != tgtNet )
             {
-                wxLogTrace( traceTopoMatch, wxT( "nets inconsistent\n" ) );
+                KI_LOG_TRACE( traceTopoMatch, wxT( "nets inconsistent\n" ) );
 
                 aReason.m_reference = aRef->GetParent()->GetReferenceAsString();
                 aReason.m_candidate = aTgt->GetParent()->GetReferenceAsString();
@@ -239,7 +240,7 @@ bool checkCandidateNetConsistency( const std::unordered_map<int, int>& aBaseMapp
         {
             if( localIt->second != tgtNet )
             {
-                wxLogTrace( traceTopoMatch, wxT( "nets inconsistent (candidate internal)\n" ) );
+                KI_LOG_TRACE( traceTopoMatch, wxT( "nets inconsistent (candidate internal)\n" ) );
 
                 aReason.m_reference = aRef->GetParent()->GetReferenceAsString();
                 aReason.m_candidate = aTgt->GetParent()->GetReferenceAsString();
@@ -291,7 +292,7 @@ CONNECTION_GRAPH::findMatchingComponents( COMPONENT*                            
 
         candidatesChecked++;
 
-        wxLogTrace( traceTopoMatch, wxT( "Check '%s'/'%s' " ), aRef->m_reference,
+        KI_LOG_TRACE( traceTopoMatch, wxT( "Check '%s'/'%s' " ), aRef->m_reference,
                     cmpTarget->m_reference );
 
         TOPOLOGY_MISMATCH_REASON localReason;
@@ -306,12 +307,12 @@ CONNECTION_GRAPH::findMatchingComponents( COMPONENT*                            
 
         if( netResult )
         {
-            wxLogTrace( traceTopoMatch, wxT( "match!\n" ) );
+            KI_LOG_TRACE( traceTopoMatch, wxT( "match!\n" ) );
             matches.push_back( cmpTarget );
         }
         else
         {
-            wxLogTrace( traceTopoMatch, wxT( "Reject [net topo mismatch]\n" ) );
+            KI_LOG_TRACE( traceTopoMatch, wxT( "Reject [net topo mismatch]\n" ) );
             aMismatchReasons.push_back( localReason );
         }
     }
@@ -371,7 +372,7 @@ CONNECTION_GRAPH::findMatchingComponents( COMPONENT*                            
 
     timerFmc.Stop();
 
-    wxLogTrace( traceTopoMatchDetail,
+    KI_LOG_TRACE( traceTopoMatchDetail,
                 wxT( "  findMatch '%s' (%d pins): %s total, checked %d/%d structural, "
                      "netCheck %0.3f ms, score %0.3f ms, %d matches" ),
                 aRef->m_reference, aRef->GetPinCount(), timerFmc.to_string(),
@@ -398,24 +399,24 @@ void CONNECTION_GRAPH::breakTie( COMPONENT* aRef, std::vector<COMPONENT*>& aMatc
         candidateRefs += aMatches[i]->GetParent()->GetReferenceAsString();
     }
 
-    wxLogTrace( traceTopoMatch, wxT( "Topology tie for %s: %s" ),
+    KI_LOG_TRACE( traceTopoMatch, wxT( "Topology tie for %s: %s" ),
                 aRef->GetParent()->GetReferenceAsString(), candidateRefs );
 
     if( breakTieBySymbolUuid( aRef, aMatches ) )
     {
-        wxLogTrace( traceTopoMatchDetail, wxT( "Broke tie with symbol UUID match for %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Broke tie with symbol UUID match for %s" ),
                     aRef->GetParent()->GetReferenceAsString() );
     }
     else if( breakTieByValue( aRef, aMatches ) )
     {
-        wxLogTrace( traceTopoMatchDetail, wxT( "Broke tie with footprint value match for %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Broke tie with footprint value match for %s" ),
                     aRef->GetParent()->GetReferenceAsString() );
     }
     // TODO: other tie breakers can be added, e.g. based on position or reference designators,
     // just waiting for actual user test cases
     else
     {
-        wxLogTrace( traceTopoMatchDetail, wxT( "No tie breakers worked for %s, leaving match order alone." ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "No tie breakers worked for %s, leaving match order alone." ),
                     aRef->GetParent()->GetReferenceAsString() );
     }
 }
@@ -486,7 +487,7 @@ bool CONNECTION_GRAPH::breakTieBySymbolUuid( COMPONENT* aRef, std::vector<COMPON
 
     if( refSymbolUuid == niluuid )
     {
-        wxLogTrace( traceTopoMatchDetail, wxT( "Tie symbol UUID unavailable for %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie symbol UUID unavailable for %s" ),
                     refFp ? refFp->GetReferenceAsString() : wxString( wxT( "<null>" ) ) );
         return false;
     }
@@ -522,21 +523,21 @@ bool CONNECTION_GRAPH::breakTieBySymbolUuid( COMPONENT* aRef, std::vector<COMPON
         }
     }
 
-    wxLogTrace( traceTopoMatchDetail, wxT( "Tie reference symbol UUID for %s: %s (hits=%d)" ),
+    KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie reference symbol UUID for %s: %s (hits=%d)" ),
                 refFp->GetReferenceAsString(), refSymbolUuid.AsString(), symbolUuidHitCount );
 
-    wxLogTrace( traceTopoMatchDetail, wxT( "Tie candidate symbol UUIDs: %s" ), candidateSymbolUuids );
+    KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie candidate symbol UUIDs: %s" ), candidateSymbolUuids );
 
     // One match is what we want, we should have one match between the source symbol instance
     // and the destination only since in theory we are repeating across two instances of the same sheet
     if( symbolUuidHitCount == 1 )
     {
-        wxLogTrace( traceTopoMatchDetail, wxT( "Symbol UUID unique match (usable) for %s: %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Symbol UUID unique match (usable) for %s: %s" ),
                     refFp->GetReferenceAsString(), matchingSymbolCandidates );
 
         std::rotate( aMatches.begin(), aMatches.begin() + uniqueMatchIdx, aMatches.begin() + uniqueMatchIdx + 1 );
 
-        wxLogTrace( traceTopoMatchDetail, wxT( "Applied symbol UUID tie-break for %s: selected %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Applied symbol UUID tie-break for %s: selected %s" ),
                     refFp->GetReferenceAsString(), aMatches.front()->GetParent()->GetReferenceAsString() );
 
         return true;
@@ -544,14 +545,14 @@ bool CONNECTION_GRAPH::breakTieBySymbolUuid( COMPONENT* aRef, std::vector<COMPON
     // Copy and pasting footprints can result in multiple matches
     else if( symbolUuidHitCount > 1 )
     {
-        wxLogTrace( traceTopoMatchDetail, wxT( "Symbol UUID multiple matches (not usable) for %s: %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Symbol UUID multiple matches (not usable) for %s: %s" ),
                     refFp->GetReferenceAsString(), matchingSymbolCandidates );
         return false;
     }
     // Probably not sheet instances, break the tie some other way
     else
     {
-        wxLogTrace( traceTopoMatchDetail, wxT( "No symbol UUID candidate match (not usable) for %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "No symbol UUID candidate match (not usable) for %s" ),
                     refFp->GetReferenceAsString() );
         return false;
     }
@@ -609,7 +610,7 @@ void CONNECTION_GRAPH::BuildConnectivity( const std::unordered_set<int>& aExtern
         if( aExternalNets.count( netcode ) )
             continue;
 
-        wxLogTrace( traceTopoMatch, wxT( "net %d: %d connections\n" ), netcode,
+        KI_LOG_TRACE( traceTopoMatch, wxT( "net %d: %d connections\n" ), netcode,
                     (int) pins.size() );
 
         for( PIN* p : pins )
@@ -727,7 +728,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
     }
     timerPrecompute.Stop();
 
-    wxLogTrace( traceTopoMatchDetail,
+    KI_LOG_TRACE( traceTopoMatchDetail,
                 wxT( "Structural precomputation: %s (%d source x %d target)" ),
                 timerPrecompute.to_string(), (int) numRef,
                 (int) aTarget->m_components.size() );
@@ -754,7 +755,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
         {
             if (it->second == current.m_ref)
             {
-                wxLogTrace( traceTopoMatch, wxT( "stk: Remove %s from locked\n" ),
+                KI_LOG_TRACE( traceTopoMatch, wxT( "stk: Remove %s from locked\n" ),
                             current.m_ref->m_reference );
                 current.m_locked.erase( it );
                 break;
@@ -763,7 +764,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
 
         if( nloops >= c_ITER_LIMIT )
         {
-            wxLogTrace( traceTopoMatch, wxT( "stk: Iter cnt exceeded\n" ) );
+            KI_LOG_TRACE( traceTopoMatch, wxT( "stk: Iter cnt exceeded\n" ) );
 
             TOPOLOGY_MISMATCH_REASON reason;
             reason.m_reason = _( "Iteration count exceeded (timeout)" );
@@ -788,7 +789,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
 
             timerInitMatch.Stop();
 
-            wxLogTrace( traceTopoMatchDetail,
+            KI_LOG_TRACE( traceTopoMatchDetail,
                         wxT( "iter %d: initial match for '%s' (%d pins): %s, %d candidates" ),
                         nloops, current.m_ref->m_reference, current.m_ref->GetPinCount(),
                         timerInitMatch.to_string(), (int) current.m_matches.size() );
@@ -799,7 +800,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
             current.m_currentMatch = 0;
         }
 
-        wxLogTrace( traceTopoMatch, wxT( "stk: Current '%s' stack %d cm %d/%d locked %d/%d\n" ),
+        KI_LOG_TRACE( traceTopoMatch, wxT( "stk: Current '%s' stack %d cm %d/%d locked %d/%d\n" ),
                     current.m_ref->m_reference, (int) stack.size(), current.m_currentMatch,
                     (int) current.m_matches.size(), (int) current.m_locked.size(),
                     (int) m_components.size() );
@@ -809,7 +810,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
 
         if ( current.m_matches.empty() )
         {
-            wxLogTrace( traceTopoMatch, wxT( "stk: No matches at all, going up [level=%d]\n" ),
+            KI_LOG_TRACE( traceTopoMatch, wxT( "stk: No matches at all, going up [level=%d]\n" ),
                         (int) stack.size() );
             stack.pop_back();
             backtrackCount++;
@@ -819,7 +820,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
         if( current.m_currentMatch >= 0
             && static_cast<size_t>( current.m_currentMatch ) >= current.m_matches.size() )
         {
-            wxLogTrace( traceTopoMatch, wxT( "stk: No more matches, going up [level=%d]\n" ),
+            KI_LOG_TRACE( traceTopoMatch, wxT( "stk: No more matches, going up [level=%d]\n" ),
                         (int) stack.size() );
             stack.pop_back();
             backtrackCount++;
@@ -828,13 +829,13 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
 
         auto& match = current.m_matches[current.m_currentMatch];
 
-        wxLogTrace( traceTopoMatch, wxT( "stk: candidate '%s', match list : ( " ),
+        KI_LOG_TRACE( traceTopoMatch, wxT( "stk: candidate '%s', match list : ( " ),
                     current.m_matches[current.m_currentMatch]->m_reference, current.m_refIndex );
 
         for( auto m : current.m_matches )
-            wxLogTrace( traceTopoMatch, wxT( "%s " ), m->GetParent()->GetReferenceAsString() );
+            KI_LOG_TRACE( traceTopoMatch, wxT( "%s " ), m->GetParent()->GetReferenceAsString() );
 
-        wxLogTrace( traceTopoMatch, wxT( "\n" ) );
+        KI_LOG_TRACE( traceTopoMatch, wxT( "\n" ) );
 
         current.m_currentMatch++;
         current.m_locked[match] = current.m_ref;
@@ -856,7 +857,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
                 aResult[ iter.second->GetParent() ] = iter.first->GetParent();
 
             timerTotal.Stop();
-            wxLogTrace( traceTopoMatch,
+            KI_LOG_TRACE( traceTopoMatch,
                         wxT( "Isomorphism: %s, %d iterations, %d backtracks, "
                              "MRV total %0.1f ms (%d candidates)" ),
                         timerTotal.to_string(), nloops, backtrackCount, mrvTotalMs,
@@ -937,7 +938,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
         double mrvMs = timerMrv.msecs();
         mrvTotalMs += mrvMs;
 
-        wxLogTrace( traceTopoMatchDetail,
+        KI_LOG_TRACE( traceTopoMatchDetail,
                     wxT( "iter %d: MRV scan %0.3f ms, %d unlocked candidates" ),
                     nloops, mrvMs, (int) mrvCandidates.size() );
 
@@ -983,7 +984,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
 
         if( bestNextRef )
         {
-            wxLogTrace( traceTopoMatchDetail,
+            KI_LOG_TRACE( traceTopoMatchDetail,
                         wxT( "iter %d: MRV picked '%s' (%d matches, best of %d)" ),
                         nloops, bestNextRef->m_reference,
                         (int) bestMatches.size(), (int) mrvCandidates.size() );
@@ -995,7 +996,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
         }
         else
         {
-            wxLogTrace( traceTopoMatchDetail,
+            KI_LOG_TRACE( traceTopoMatchDetail,
                         wxT( "iter %d: MRV dead end, alt='%s'" ),
                         nloops, altNextRef ? altNextRef->m_reference : wxString( "(none)" ) );
 
@@ -1008,7 +1009,7 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
     };
 
     timerTotal.Stop();
-    wxLogTrace( traceTopoMatch,
+    KI_LOG_TRACE( traceTopoMatch,
                 wxT( "Isomorphism: %s, %d iterations, %d backtracks, "
                      "MRV total %0.1f ms (%d candidates)" ),
                 timerTotal.to_string(), nloops, backtrackCount, mrvTotalMs,

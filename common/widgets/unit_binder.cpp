@@ -34,6 +34,7 @@
 
 #include "widgets/unit_binder.h"
 #include "wx/dcclient.h"
+#include <core/ki_assert.h>
 
 using namespace EDA_UNIT_UTILS::UI;
 
@@ -241,7 +242,7 @@ void UNIT_BINDER::onClick( wxMouseEvent& aEvent )
 void UNIT_BINDER::onComboBox( wxCommandEvent& aEvent )
 {
     wxComboBox* combo = dynamic_cast<wxComboBox*>( m_valueCtrl );
-    wxCHECK( combo, /*void*/ );
+    KI_CHECK( combo, /*void*/ );
 
     const wxString      value = combo->GetStringSelection();
     const long long int conv = ValueFromString( *m_iuScale, m_units, value, m_dataType );
@@ -640,7 +641,7 @@ EDA_ANGLE UNIT_BINDER::GetAngleValue()
 void UNIT_BINDER::SetOptionsList( std::span<const long long int> aOptions )
 {
     wxComboBox* cb = dynamic_cast<wxComboBox*>( m_valueCtrl );
-    wxCHECK( cb, /* void */ );
+    KI_CHECK( cb, /* void */ );
 
     cb->Clear();
 
@@ -652,7 +653,7 @@ void UNIT_BINDER::SetOptionsList( std::span<const long long int> aOptions )
 void UNIT_BINDER::SetDoubleOptionsList( std::span<const double> aOptions )
 {
     wxComboBox* cb = dynamic_cast<wxComboBox*>( m_valueCtrl );
-    wxCHECK( cb, /* void */ );
+    KI_CHECK( cb, /* void */ );
 
     cb->Clear();
 

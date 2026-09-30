@@ -122,6 +122,8 @@
 #include <wx/choicdlg.h>
 #include <wx/textdlg.h>
 #include <wx/generic/treectlg.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 #ifdef KICAD_IPC_API
@@ -492,24 +494,24 @@ void SCH_EDIT_FRAME::StartCrossProbeFlash( const std::vector<SCH_ITEM*>& aItems 
 {
     if( !eeconfig()->m_CrossProbing.flash_selection )
     {
-        wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash: aborted (setting disabled) items=%zu", aItems.size() );
+        KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash: aborted (setting disabled) items=%zu", aItems.size() );
         return;
     }
 
     if( aItems.empty() )
     {
-        wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash: aborted (no items)" );
+        KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash: aborted (no items)" );
         return;
     }
 
     if( m_crossProbeFlashing )
     {
-        wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash: restarting existing flash (phase=%d)",
+        KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash: restarting existing flash (phase=%d)",
                     m_crossProbeFlashPhase );
         m_crossProbeFlashTimer.Stop();
     }
 
-    wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash: starting with %zu items", aItems.size() );
+    KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash: starting with %zu items", aItems.size() );
     m_crossProbeFlashItems.clear();
 
     for( SCH_ITEM* it : aItems )
@@ -522,19 +524,19 @@ void SCH_EDIT_FRAME::StartCrossProbeFlash( const std::vector<SCH_ITEM*>& aItems 
         m_crossProbeFlashTimer.SetOwner( this );
 
     bool started = m_crossProbeFlashTimer.Start( 500, wxTIMER_CONTINUOUS );
-    wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash: timer start=%d id=%d", (int) started,
+    KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash: timer start=%d id=%d", (int) started,
                 m_crossProbeFlashTimer.GetId() );
 }
 
 
 void SCH_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
 {
-    wxLogTrace( traceCrossProbeFlash, "Timer(SCH) fired: phase=%d running=%d items=%zu", m_crossProbeFlashPhase,
+    KI_LOG_TRACE( traceCrossProbeFlash, "Timer(SCH) fired: phase=%d running=%d items=%zu", m_crossProbeFlashPhase,
                 (int) m_crossProbeFlashing, m_crossProbeFlashItems.size() );
 
     if( !m_crossProbeFlashing )
     {
-        wxLogTrace( traceCrossProbeFlash, "Timer fired but not flashing (ignored)" );
+        KI_LOG_TRACE( traceCrossProbeFlash, "Timer fired but not flashing (ignored)" );
         return;
     }
 
@@ -549,7 +551,7 @@ void SCH_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
     if( m_crossProbeFlashPhase % 2 == 0 )
     {
         selTool->ClearSelection( true );
-        wxLogTrace( traceCrossProbeFlash, "Phase %d: cleared selection", m_crossProbeFlashPhase );
+        KI_LOG_TRACE( traceCrossProbeFlash, "Phase %d: cleared selection", m_crossProbeFlashPhase );
     }
     else
     {
@@ -559,14 +561,14 @@ void SCH_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
                 selTool->AddItemToSel( item, true );
         }
 
-        wxLogTrace( traceCrossProbeFlash, "Phase %d: restored %zu items", m_crossProbeFlashPhase,
+        KI_LOG_TRACE( traceCrossProbeFlash, "Phase %d: restored %zu items", m_crossProbeFlashPhase,
                     m_crossProbeFlashItems.size() );
     }
 
     if( GetCanvas() )
     {
         GetCanvas()->ForceRefresh();
-        wxLogTrace( traceCrossProbeFlash, "Phase %d: forced canvas refresh", m_crossProbeFlashPhase );
+        KI_LOG_TRACE( traceCrossProbeFlash, "Phase %d: forced canvas refresh", m_crossProbeFlashPhase );
     }
 
     m_syncingPcbToSchSelection = prevGuard;
@@ -582,7 +584,7 @@ void SCH_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
 
         m_crossProbeFlashing = false;
         m_crossProbeFlashTimer.Stop();
-        wxLogTrace( traceCrossProbeFlash, "Flashing complete. Final selection size=%zu",
+        KI_LOG_TRACE( traceCrossProbeFlash, "Flashing complete. Final selection size=%zu",
                     m_crossProbeFlashItems.size() );
     }
 }
@@ -621,7 +623,7 @@ SCH_EDIT_FRAME::~SCH_EDIT_FRAME()
         }
         catch( const std::runtime_error& e )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Settings exception occurred: %s" ), e.what() ) );
+            KI_FAIL_MSG( wxString::Format( wxT( "Settings exception occurred: %s" ), e.what() ) );
         }
     }
 
@@ -722,7 +724,7 @@ void SCH_EDIT_FRAME::setupUIConditions()
     ACTION_MANAGER*       mgr = m_toolManager->GetActionManager();
     SCH_EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
     auto hasElements =
             [ this ] ( const SELECTION& aSel )
@@ -1088,7 +1090,7 @@ void SCH_EDIT_FRAME::SetCurrentSheet( const SCH_SHEET_PATH& aSheet )
     {
         ClearFocus();
 
-        wxLogTrace( traceSchCurrentSheet,
+        KI_LOG_TRACE( traceSchCurrentSheet,
                    "SCH_EDIT_FRAME::SetCurrentSheet: Changing from path='%s' (size=%zu) to path='%s' (size=%zu)",
                    GetCurrentSheet().Path().AsString(),
                    GetCurrentSheet().size(),
@@ -1111,7 +1113,7 @@ void SCH_EDIT_FRAME::HardRedraw()
 
     for( const std::pair<const wxString, LIB_SYMBOL*>& libSymbol : screen->GetLibSymbols() )
     {
-        wxCHECK2( libSymbol.second, continue );
+        KI_CHECK2( libSymbol.second, continue );
         libSymbol.second->ClearCaches();
     }
 
@@ -1459,7 +1461,7 @@ void SCH_EDIT_FRAME::NewProject()
         }
 
         // OpenProjectFiles() requires absolute
-        wxASSERT_MSG( create_me.IsAbsolute(), wxS( "wxFileDialog returned non-absolute path" ) );
+        KI_ASSERT_MSG( create_me.IsAbsolute(), wxS( "wxFileDialog returned non-absolute path" ) );
 
         OpenProjectFiles( std::vector<wxString>( 1, create_me.GetFullPath() ), KICTL_CREATE );
         m_mruPath = create_me.GetPath();
@@ -1821,7 +1823,7 @@ void SCH_EDIT_FRAME::updateTitle()
 {
     SCH_SCREEN* screen = GetScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     wxString title;
 
@@ -2319,13 +2321,13 @@ void SCH_EDIT_FRAME::UpdateItem( EDA_ITEM* aItem, bool isAddOrDelete, bool aUpda
 
 void SCH_EDIT_FRAME::DisplayCurrentSheet()
 {
-    wxCHECK( m_toolManager, /* void */ );
+    KI_CHECK( m_toolManager, /* void */ );
 
     m_toolManager->RunAction( ACTIONS::cancelInteractive );
     m_toolManager->RunAction( ACTIONS::selectionClear );
     SCH_SCREEN* screen = GetCurrentSheet().LastScreen();
 
-    wxCHECK( screen, /* void */ );
+    KI_CHECK( screen, /* void */ );
 
     m_toolManager->RunAction( ACTIONS::selectionClear );
 
@@ -2345,7 +2347,7 @@ void SCH_EDIT_FRAME::DisplayCurrentSheet()
 
     SCH_SELECTION_TOOL* selectionTool = m_toolManager->GetTool<SCH_SELECTION_TOOL>();
 
-    wxCHECK( selectionTool, /* void */ );
+    KI_CHECK( selectionTool, /* void */ );
 
     auto visit =
             [&]( EDA_ITEM* item )
@@ -2396,7 +2398,7 @@ void SCH_EDIT_FRAME::DisplayCurrentSheet()
 
     SCH_EDITOR_CONTROL* editTool = m_toolManager->GetTool<SCH_EDITOR_CONTROL>();
 
-    wxCHECK( editTool, /* void */ );
+    KI_CHECK( editTool, /* void */ );
 
     TOOL_EVENT dummy;
     editTool->UpdateNetHighlighting( dummy );
@@ -2610,7 +2612,7 @@ void SCH_EDIT_FRAME::unitsChangeRefresh()
             NET_NAVIGATOR_ITEM_DATA* tmp =
                     dynamic_cast<NET_NAVIGATOR_ITEM_DATA*>( m_netNavigator->GetItemData( selection ) );
 
-            wxCHECK( tmp, /* void */ );
+            KI_CHECK( tmp, /* void */ );
             itemData = *tmp;
         }
 
@@ -2835,7 +2837,7 @@ void SCH_EDIT_FRAME::updateSelectionFilterVisbility()
 #ifdef KICAD_IPC_API
 void SCH_EDIT_FRAME::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
 {
-    wxLogTrace( traceApi, "SCH frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
+    KI_LOG_TRACE( traceApi, "SCH frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
     RecreateToolbars();
     aEvt.Skip();
 }
@@ -2912,7 +2914,7 @@ void SCH_EDIT_FRAME::ToggleSchematicHierarchy()
 {
     EESCHEMA_SETTINGS* cfg = eeconfig();
 
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     wxAuiPaneInfo&     hierarchy_pane = m_auimgr.GetPane( SchematicHierarchyPaneName() );
 
@@ -2955,7 +2957,7 @@ void SCH_EDIT_FRAME::ToggleLibraryTree()
 {
     EESCHEMA_SETTINGS* cfg = eeconfig();
 
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     wxAuiPaneInfo& db_library_pane = m_auimgr.GetPane( DesignBlocksPaneName() );
 
@@ -2997,7 +2999,7 @@ void SCH_EDIT_FRAME::ToggleRemoteSymbolPanel()
 {
     EESCHEMA_SETTINGS* cfg = eeconfig();
 
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     wxAuiPaneInfo& remotePane = m_auimgr.GetPane( RemoteSymbolPaneName() );
 
@@ -3039,7 +3041,7 @@ void SCH_EDIT_FRAME::ToggleRemoteSymbolPanel()
 
 void SCH_EDIT_FRAME::SetSchematic( SCHEMATIC* aSchematic )
 {
-    wxCHECK( aSchematic, /* void */ );
+    KI_CHECK( aSchematic, /* void */ );
 
     if( m_schematic )
         m_schematic->SetProject( nullptr );

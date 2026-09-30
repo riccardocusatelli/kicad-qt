@@ -27,6 +27,7 @@
 #include <schematic_settings.h>
 #include <string_utils.h>
 #include <geometry/shape_utils.h>
+#include <core/ki_assert.h>
 
 // Small margin in internal units between the pin text and the pin line
 static const int PIN_TEXT_MARGIN = 4;
@@ -398,7 +399,7 @@ BOX2I PIN_LAYOUT_CACHE::GetPinBoundingBox( bool aIncludeLabelsOnInvisiblePins,
     if( const SCH_SYMBOL* symbol = dynamic_cast<const SCH_SYMBOL*>( m_pin.GetParentSymbol() ) )
     {
         SCH_PIN* const libPin = m_pin.GetLibPin();
-        wxCHECK( libPin, BOX2I() );
+        KI_CHECK( libPin, BOX2I() );
 
         BOX2I r = libPin->GetBoundingBox( aIncludeLabelsOnInvisiblePins, aIncludeNameAndNumber,
                                           aIncludeElectricalType );

@@ -22,6 +22,7 @@
  */
 
 #include "layer_utils.h"
+#include <core/ki_assert.h>
 
 
 wxString LAYER_UTILS::AccumulateNames( const LSEQ& aLayers, const BOARD* aBoard )
@@ -47,7 +48,7 @@ LSET LAYER_UTILS::GetAllFootprintLayers( const FOOTPRINT& aFootprint )
     aFootprint.RunOnChildren(
             [&]( BOARD_ITEM* aSubItem )
             {
-                wxCHECK2( aSubItem, /*void*/ );
+                KI_CHECK2( aSubItem, /*void*/ );
                 usedLayers |= aSubItem->GetLayerSet();
             },
             RECURSE_MODE::RECURSE );

@@ -39,6 +39,7 @@
 #include <launch_ext.h>
 
 #include <algorithm>
+#include <core/ki_assert.h>
 
 // Maps from dialogTitle <-> pageTitle for keeping track of last-selected pages.
 // This is not a simple page index because some dialogs have dynamic page sets.
@@ -477,7 +478,7 @@ void PAGED_DIALOG::onPageChanging( wxBookCtrlEvent& aEvent )
 
     wxWindow* page = m_treebook->GetPage( currentPage );
 
-    wxCHECK( page, /* void */ );
+    KI_CHECK( page, /* void */ );
 
     // If there is a validation error on the current page, don't allow the page change.
     if( !page->Validate() || !page->TransferDataFromWindow() )

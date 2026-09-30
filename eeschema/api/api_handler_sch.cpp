@@ -27,6 +27,7 @@
 #include <wx/filename.h>
 
 #include <api/common/types/base_types.pb.h>
+#include <core/ki_assert.h>
 
 using namespace kiapi::common::commands;
 using kiapi::common::types::CommandStatus;
@@ -270,7 +271,7 @@ HANDLER_RESULT<ItemRequestStatus> API_HANDLER_SCH::handleCreateUpdateItemsIntern
             }
             else
             {
-                wxASSERT( false );
+                KI_ASSERT( false );
             }
 
             if( !m_activeClients.count( aClientName ) )

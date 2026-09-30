@@ -54,6 +54,7 @@
 #include <connectivity/connectivity_data.h>
 #include <widgets/appearance_controls.h>
 #include <widgets/report_severity.h>
+#include <core/ki_assert.h>
 
 using namespace kiapi::common::commands;
 using types::CommandStatus;
@@ -951,7 +952,7 @@ HANDLER_RESULT<BoardStackupResponse> API_HANDLER_PCB::handleGetStackup(
             continue;
 
         PCB_LAYER_ID id = FromProtoEnum<PCB_LAYER_ID>( layer.layer() );
-        wxCHECK2( id != UNDEFINED_LAYER, continue );
+        KI_CHECK2( id != UNDEFINED_LAYER, continue );
 
         layer.set_user_name( frame()->GetBoard()->GetLayerName( id ) );
     }

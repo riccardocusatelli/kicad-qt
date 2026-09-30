@@ -40,6 +40,7 @@
 #include <widgets/wx_progress_reporters.h>
 #include "dialog_schematic_setup.h"
 #include "panel_template_fieldnames.h"
+#include <core/ki_assert.h>
 
 
 DIALOG_SCHEMATIC_SETUP::DIALOG_SCHEMATIC_SETUP( SCH_EDIT_FRAME* aFrame ) :
@@ -200,7 +201,7 @@ void DIALOG_SCHEMATIC_SETUP::onAuxiliaryAction( wxCommandEvent& event )
     SCHEMATIC     otherSch( otherPrj );
     PROJECT_FILE& file = otherPrj->GetProjectFile();
 
-    wxASSERT( file.m_SchematicSettings );
+    KI_ASSERT( file.m_SchematicSettings );
 
     file.m_SchematicSettings->LoadFromFile();
 

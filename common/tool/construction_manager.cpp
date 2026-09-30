@@ -38,6 +38,8 @@
 #include <math/util.h>
 #include <hash.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -187,7 +189,7 @@ CONSTRUCTION_MANAGER::CONSTRUCTION_MANAGER( CONSTRUCTION_VIEW_HANDLER& aHelper )
             {
                 // This shouldn't be possible (probably indicates a race in destruction of something)
                 // but at least avoid blowing up acceptConstructionItems.
-                wxCHECK_MSG( aAccepted != nullptr, void(), "Null proposal accepted" );
+                KI_CHECK_MSG( aAccepted != nullptr, void(), "Null proposal accepted" );
 
                 acceptConstructionItems( std::move( aAccepted ) );
             } );
@@ -398,7 +400,7 @@ bool CONSTRUCTION_MANAGER::HasActiveConstruction() const
 SNAP_LINE_MANAGER::SNAP_LINE_MANAGER( CONSTRUCTION_VIEW_HANDLER& aViewHandler ) :
         m_viewHandler( aViewHandler ), m_snapManager( static_cast<SNAP_MANAGER*>( &aViewHandler ) )
 {
-    wxASSERT( m_snapManager );
+    KI_ASSERT( m_snapManager );
     SetDirections( { VECTOR2I( 1, 0 ), VECTOR2I( 0, 1 ) } );
 }
 
@@ -565,32 +567,32 @@ OPT_VECTOR2I SNAP_LINE_MANAGER::GetNearestSnapLinePoint( const VECTOR2I&    aCur
                                                         const VECTOR2D&    aGridSize,
                                                         const VECTOR2I&    aGridOrigin ) const
 {
-    wxLogTrace( traceSnap, "GetNearestSnapLinePoint: cursor=(%d, %d), nearestGrid=(%d, %d), distToNearest=%s, snapRange=%d",
+    KI_LOG_TRACE( traceSnap, "GetNearestSnapLinePoint: cursor=(%d, %d), nearestGrid=(%d, %d), distToNearest=%s, snapRange=%d",
                 aCursor.x, aCursor.y, aNearestGrid.x, aNearestGrid.y,
                 aDistToNearest ? wxString::Format( "%d", *aDistToNearest ) : wxString( "none" ), aSnapRange );
 
     if( !m_snapLineOrigin || m_directions.empty() )
     {
-        wxLogTrace( traceSnap, "  No snap line origin or no directions, returning nullopt" );
+        KI_LOG_TRACE( traceSnap, "  No snap line origin or no directions, returning nullopt" );
         return std::nullopt;
     }
 
     const bool gridBetterThanNearest = !aDistToNearest || *aDistToNearest > aSnapRange;
     const bool gridActive = aGridSize.x > 0 && aGridSize.y > 0;
 
-    wxLogTrace( traceSnap, "  snapLineOrigin=(%d, %d), directions count=%zu, gridBetterThanNearest=%d, gridActive=%d",
+    KI_LOG_TRACE( traceSnap, "  snapLineOrigin=(%d, %d), directions count=%zu, gridBetterThanNearest=%d, gridActive=%d",
                 m_snapLineOrigin->x, m_snapLineOrigin->y, m_directions.size(), gridBetterThanNearest, gridActive );
 
     if( !gridBetterThanNearest )
     {
-        wxLogTrace( traceSnap, "  Grid not better than nearest, returning nullopt" );
+        KI_LOG_TRACE( traceSnap, "  Grid not better than nearest, returning nullopt" );
         return std::nullopt;
     }
 
     const int       escapeRange = 2 * aSnapRange;
     const EDA_ANGLE longRangeEscapeAngle( 4, DEGREES_T );
 
-    wxLogTrace( traceSnap, "  escapeRange=%d, longRangeEscapeAngle=%.1f deg",
+    KI_LOG_TRACE( traceSnap, "  escapeRange=%d, longRangeEscapeAngle=%.1f deg",
                 escapeRange, longRangeEscapeAngle.AsDegrees() );
 
     const VECTOR2D origin( *m_snapLineOrigin );
@@ -608,7 +610,7 @@ OPT_VECTOR2I SNAP_LINE_MANAGER::GetNearestSnapLinePoint( const VECTOR2I&    aCur
 
         if( dirLength == 0.0 )
         {
-            wxLogTrace( traceSnap, "    Direction %zu: zero length, skipping", ii );
+            KI_LOG_TRACE( traceSnap, "    Direction %zu: zero length, skipping", ii );
             continue;
         }
 
@@ -619,12 +621,12 @@ OPT_VECTOR2I SNAP_LINE_MANAGER::GetNearestSnapLinePoint( const VECTOR2I&    aCur
         VECTOR2D  offset = delta - dirUnit * distanceAlong;
         double    perpDistance = offset.EuclideanNorm();
 
-        wxLogTrace( traceSnap, "    Direction %zu: dir=(%d, %d), perpDist=%.1f, distAlong=%.1f",
+        KI_LOG_TRACE( traceSnap, "    Direction %zu: dir=(%d, %d), perpDist=%.1f, distAlong=%.1f",
                     ii, direction.x, direction.y, perpDistance, distanceAlong );
 
         if( perpDistance > aSnapRange )
         {
-            wxLogTrace( traceSnap, "      perpDistance > snapRange, skipping" );
+            KI_LOG_TRACE( traceSnap, "      perpDistance > snapRange, skipping" );
             continue;
         }
 
@@ -636,19 +638,19 @@ OPT_VECTOR2I SNAP_LINE_MANAGER::GetNearestSnapLinePoint( const VECTOR2I&    aCur
             EDA_ANGLE directionAngle( dirVector );
             double    angleDiff = ( deltaAngle - directionAngle ).Normalize180().AsDegrees();
 
-            wxLogTrace( traceSnap, "      In escape range: deltaAngle=%.1f, dirAngle=%.1f, angleDiff=%.1f",
+            KI_LOG_TRACE( traceSnap, "      In escape range: deltaAngle=%.1f, dirAngle=%.1f, angleDiff=%.1f",
                         deltaAngle.AsDegrees(), directionAngle.AsDegrees(), angleDiff );
 
             if( std::abs( angleDiff ) > longRangeEscapeAngle.AsDegrees() )
             {
                 escaped = true;
-                wxLogTrace( traceSnap, "      ESCAPED (angle diff too large)" );
+                KI_LOG_TRACE( traceSnap, "      ESCAPED (angle diff too large)" );
             }
         }
 
         if( escaped )
         {
-            wxLogTrace( traceSnap, "      Not updating (escaped)" );
+            KI_LOG_TRACE( traceSnap, "      Not updating (escaped)" );
             continue;
         }
 
@@ -663,7 +665,7 @@ OPT_VECTOR2I SNAP_LINE_MANAGER::GetNearestSnapLinePoint( const VECTOR2I&    aCur
                 // Vertical line: keep origin X, snap Y to grid
                 snapPoint.x = origin.x;
                 snapPoint.y = aNearestGrid.y;
-                wxLogTrace( traceSnap, "      Vertical line: snapping to grid Y, snapPoint=(%.1f, %.1f)",
+                KI_LOG_TRACE( traceSnap, "      Vertical line: snapping to grid Y, snapPoint=(%.1f, %.1f)",
                             snapPoint.x, snapPoint.y );
             }
             else if( direction.y == 0 && direction.x != 0 )
@@ -671,7 +673,7 @@ OPT_VECTOR2I SNAP_LINE_MANAGER::GetNearestSnapLinePoint( const VECTOR2I&    aCur
                 // Horizontal line: snap X to grid, keep origin Y
                 snapPoint.x = aNearestGrid.x;
                 snapPoint.y = origin.y;
-                wxLogTrace( traceSnap, "      Horizontal line: snapping to grid X, snapPoint=(%.1f, %.1f)",
+                KI_LOG_TRACE( traceSnap, "      Horizontal line: snapping to grid X, snapPoint=(%.1f, %.1f)",
                             snapPoint.x, snapPoint.y );
             }
             else
@@ -713,36 +715,36 @@ OPT_VECTOR2I SNAP_LINE_MANAGER::GetNearestSnapLinePoint( const VECTOR2I&    aCur
                 }
 
                 snapPoint = bestGridPoint;
-                wxLogTrace( traceSnap, "      Diagonal line: snapping to grid intersection, snapPoint=(%.1f, %.1f)",
+                KI_LOG_TRACE( traceSnap, "      Diagonal line: snapping to grid intersection, snapPoint=(%.1f, %.1f)",
                             snapPoint.x, snapPoint.y );
             }
         }
         else
         {
-            wxLogTrace( traceSnap, "      Grid not active, using projection" );
+            KI_LOG_TRACE( traceSnap, "      Grid not active, using projection" );
         }
 
         if( perpDistance < bestPerpDistance )
         {
             bestPerpDistance = perpDistance;
             bestSnapPoint = KiROUND( snapPoint );
-            wxLogTrace( traceSnap, "      NEW BEST: perpDist=%.1f, snapPoint=(%d, %d)",
+            KI_LOG_TRACE( traceSnap, "      NEW BEST: perpDist=%.1f, snapPoint=(%d, %d)",
                         bestPerpDistance, bestSnapPoint->x, bestSnapPoint->y );
         }
         else
         {
-            wxLogTrace( traceSnap, "      Not updating (perpDist=%.1f >= bestPerp=%.1f)",
+            KI_LOG_TRACE( traceSnap, "      Not updating (perpDist=%.1f >= bestPerp=%.1f)",
                         perpDistance, bestPerpDistance );
         }
     }
 
     if( bestSnapPoint )
     {
-        wxLogTrace( traceSnap, "  RETURNING bestSnapPoint=(%d, %d)", bestSnapPoint->x, bestSnapPoint->y );
+        KI_LOG_TRACE( traceSnap, "  RETURNING bestSnapPoint=(%d, %d)", bestSnapPoint->x, bestSnapPoint->y );
         return *bestSnapPoint;
     }
 
-    wxLogTrace( traceSnap, "  RETURNING nullopt (no valid snap found)" );
+    KI_LOG_TRACE( traceSnap, "  RETURNING nullopt (no valid snap found)" );
     return std::nullopt;
 }
 

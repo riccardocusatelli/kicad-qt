@@ -36,6 +36,7 @@
 #include <project.h>
 #include <richio.h>
 #include <algorithm>
+#include <core/ki_assert.h>
 
 
 // ASC SYMBOL lines look like: SYMBOL [folder\]name ...
@@ -154,7 +155,7 @@ void LTSPICE_SCHEMATIC::Load( SCHEMATIC* aSchematic, SCH_SHEET* aRootSheet,
             m_fileCache[ wxS( "ascFiles" ) ][ wxS( "parentFile" ) ] = buffer;
 
             for( const LTSPICE_FILE& file : sourceFiles )
-                wxASSERT( file.Sheet == nullptr && file.Screen == nullptr );
+                KI_ASSERT( file.Sheet == nullptr && file.Screen == nullptr );
         }
 
         SCH_SHEET_PATH     curSheetPath;

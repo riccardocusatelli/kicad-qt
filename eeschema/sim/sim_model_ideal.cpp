@@ -27,6 +27,7 @@
 #include <pegtl/contrib/parse_tree.hpp>
 #include <fmt/core.h>
 #include <wx/regex.h>
+#include <core/ki_assert.h>
 
 std::string SPICE_GENERATOR_IDEAL::ModelLine( const SPICE_ITEM& aItem ) const
 {
@@ -67,7 +68,7 @@ SIM_MODEL_IDEAL::SIM_MODEL_IDEAL( TYPE aType ) :
     case TYPE::C: AddParam( capacitor ); break;
     case TYPE::L: AddParam( inductor  ); break;
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_IDEAL" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_IDEAL" );
     }
 }
 

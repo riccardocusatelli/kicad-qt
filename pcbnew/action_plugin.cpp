@@ -33,6 +33,7 @@
 #include "bitmaps.h"
 #include "bitmap_store.h"
 #include <pgm_base.h>
+#include <core/ki_assert.h>
 
 
 ACTION_PLUGIN::~ACTION_PLUGIN()
@@ -160,7 +161,7 @@ void ACTION_PLUGINS::register_action( ACTION_PLUGIN* aAction )
         }
     }
 
-    wxASSERT( PgmOrNull() );    // PgmOrNull() returning nullptr should never happen,
+    KI_ASSERT( PgmOrNull() );    // PgmOrNull() returning nullptr should never happen,
                                 // but it sometimes happens on msys2 build
 
     if( PgmOrNull() )           // Hack for msys2. Must be removed when the root cause is fixed

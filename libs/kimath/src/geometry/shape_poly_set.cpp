@@ -1897,7 +1897,7 @@ bool SHAPE_POLY_SET::isExteriorWaist( const SEG& aSegA, const SEG& aSegB ) const
         // This is the case for non-fractured segments
         if( !side1 && !side2 )
         {
-            KI_TRACE( "collinear", "Found exterior waist between (%d,%d)-(%d,%d) and (%d,%d)-(%d,%d)",
+            KI_LOG_TRACE( "collinear", "Found exterior waist between (%d,%d)-(%d,%d) and (%d,%d)-(%d,%d)",
                         aSegA.A.x, aSegA.A.y, aSegA.B.x, aSegA.B.y,
                         aSegB.A.x, aSegB.A.y, aSegB.B.x, aSegB.B.y );
             return true;
@@ -3258,7 +3258,7 @@ void SHAPE_POLY_SET::cacheTriangulation( bool aPartition, bool aSimplify,
             // to be referenced to the ii-th polygon
             if( !triangulate( partitions, ii , m_triangulatedPolys, aHintData ) )
             {
-                KI_TRACE( TRIANGULATE_TRACE, "Failed to triangulate partitioned polygon %d", ii );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Failed to triangulate partitioned polygon %d", ii );
             }
             else
             {
@@ -3279,7 +3279,7 @@ void SHAPE_POLY_SET::cacheTriangulation( bool aPartition, bool aSimplify,
 
         if( !triangulate( tmpSet, -1, m_triangulatedPolys, aHintData ) )
         {
-            KI_TRACE( TRIANGULATE_TRACE, "Failed to triangulate polygon" );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "Failed to triangulate polygon" );
         }
         else
         {

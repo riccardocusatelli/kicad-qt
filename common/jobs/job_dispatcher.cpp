@@ -22,6 +22,7 @@
 #include <jobs/job_dispatcher.h>
 #include <reporter.h>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 class wxWindow;
 
@@ -76,13 +77,13 @@ bool JOB_DISPATCHER::HandleJobConfig( JOB* job, wxWindow* aParent )
 
 void JOB_DISPATCHER::SetReporter( REPORTER* aReporter )
 {
-    wxCHECK( aReporter != nullptr, /*void*/ );
+    KI_CHECK( aReporter != nullptr, /*void*/ );
     m_reporter = aReporter;
 }
 
 
 void JOB_DISPATCHER::SetProgressReporter( PROGRESS_REPORTER* aReporter )
 {
-    wxCHECK( aReporter != nullptr, /*void*/ );
+    KI_CHECK( aReporter != nullptr, /*void*/ );
     m_progressReporter = aReporter;
 }

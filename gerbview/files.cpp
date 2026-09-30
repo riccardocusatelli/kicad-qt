@@ -40,6 +40,7 @@
 #include "widgets/gerbview_layer_widget.h"
 #include <tool/tool_manager.h>
 #include <kiplatform/ui.h>
+#include <core/ki_assert.h>
 
 // HTML Messages used more than one time:
 #define MSG_NO_MORE_LAYER _( "<b>No more available layers</b> in GerbView to load files" )
@@ -268,7 +269,7 @@ bool GERBVIEW_FRAME::LoadListOfGerberAndDrillFiles( const wxString&      aPath,
                                                     const wxArrayString& aFilenameList,
                                                     std::vector<int>*    aFileType )
 {
-    wxCHECK_MSG( aFilenameList.Count() == aFileType->size(), false,
+    KI_CHECK_MSG( aFilenameList.Count() == aFileType->size(), false,
                  "Mismatch in file names and file types count" );
 
     wxFileName filename;

@@ -31,6 +31,7 @@
 #include <boost/range/algorithm/partition.hpp>
 #include <boost/range/algorithm/nth_element.hpp>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 
 CONTAINER_2D_BASE::CONTAINER_2D_BASE( OBJECT_2D_TYPE aObjType )
@@ -172,9 +173,9 @@ static bool sortByCentroidZ( const OBJECT_2D* a, const OBJECT_2D* b )
 
 void BVH_CONTAINER_2D::recursiveBuild_MIDDLE_SPLIT( BVH_CONTAINER_NODE_2D* aNodeParent )
 {
-    wxASSERT( aNodeParent != nullptr );
-    wxASSERT( aNodeParent->m_BBox.IsInitialized() == true );
-    wxASSERT( aNodeParent->m_LeafList.size() > 0 );
+    KI_ASSERT( aNodeParent != nullptr );
+    KI_ASSERT( aNodeParent->m_BBox.IsInitialized() == true );
+    KI_ASSERT( aNodeParent->m_LeafList.size() > 0 );
 
     if( aNodeParent->m_LeafList.size() > BVH_CONTAINER2D_MAX_OBJ_PER_LEAF )
     {
@@ -222,9 +223,9 @@ void BVH_CONTAINER_2D::recursiveBuild_MIDDLE_SPLIT( BVH_CONTAINER_NODE_2D* aNode
             i++;
         }
 
-        wxASSERT( leftNode->m_LeafList.size() > 0 );
-        wxASSERT( rightNode->m_LeafList.size() > 0 );
-        wxASSERT( ( leftNode->m_LeafList.size() + rightNode->m_LeafList.size() ) ==
+        KI_ASSERT( leftNode->m_LeafList.size() > 0 );
+        KI_ASSERT( rightNode->m_LeafList.size() > 0 );
+        KI_ASSERT( ( leftNode->m_LeafList.size() + rightNode->m_LeafList.size() ) ==
                   aNodeParent->m_LeafList.size() );
 
         aNodeParent->m_Children[0] = leftNode;
@@ -234,7 +235,7 @@ void BVH_CONTAINER_2D::recursiveBuild_MIDDLE_SPLIT( BVH_CONTAINER_NODE_2D* aNode
         recursiveBuild_MIDDLE_SPLIT( leftNode );
         recursiveBuild_MIDDLE_SPLIT( rightNode );
 
-        wxASSERT( aNodeParent->m_LeafList.size() == 0 );
+        KI_ASSERT( aNodeParent->m_LeafList.size() == 0 );
     }
     else
     {
@@ -243,14 +244,14 @@ void BVH_CONTAINER_2D::recursiveBuild_MIDDLE_SPLIT( BVH_CONTAINER_NODE_2D* aNode
         aNodeParent->m_Children[1] = nullptr;
     }
 
-    wxASSERT( aNodeParent != nullptr );
-    wxASSERT( aNodeParent->m_BBox.IsInitialized() == true );
+    KI_ASSERT( aNodeParent != nullptr );
+    KI_ASSERT( aNodeParent->m_BBox.IsInitialized() == true );
 }
 
 
 bool BVH_CONTAINER_2D::IntersectAny( const RAYSEG2D& aSegRay ) const
 {
-    wxASSERT( m_isInitialized == true );
+    KI_ASSERT( m_isInitialized == true );
 
     if( m_tree )
         return recursiveIntersectAny( m_tree, aSegRay );
@@ -262,15 +263,15 @@ bool BVH_CONTAINER_2D::IntersectAny( const RAYSEG2D& aSegRay ) const
 bool BVH_CONTAINER_2D::recursiveIntersectAny( const BVH_CONTAINER_NODE_2D* aNode,
                                               const RAYSEG2D& aSegRay ) const
 {
-    wxASSERT( aNode != nullptr );
+    KI_ASSERT( aNode != nullptr );
 
     if( aNode->m_BBox.Inside( aSegRay.m_Start ) || aNode->m_BBox.Inside( aSegRay.m_End ) ||
         aNode->m_BBox.Intersect( aSegRay ) )
     {
         if( !aNode->m_LeafList.empty() )
         {
-            wxASSERT( aNode->m_Children[0] == nullptr );
-            wxASSERT( aNode->m_Children[1] == nullptr );
+            KI_ASSERT( aNode->m_Children[0] == nullptr );
+            KI_ASSERT( aNode->m_Children[1] == nullptr );
 
             // Leaf
             for( const OBJECT_2D* obj : aNode->m_LeafList )
@@ -283,8 +284,8 @@ bool BVH_CONTAINER_2D::recursiveIntersectAny( const BVH_CONTAINER_NODE_2D* aNode
         }
         else
         {
-            wxASSERT( aNode->m_Children[0] != nullptr );
-            wxASSERT( aNode->m_Children[1] != nullptr );
+            KI_ASSERT( aNode->m_Children[0] != nullptr );
+            KI_ASSERT( aNode->m_Children[1] != nullptr );
 
             // Node
             if( recursiveIntersectAny( aNode->m_Children[0], aSegRay ) )
@@ -302,8 +303,8 @@ bool BVH_CONTAINER_2D::recursiveIntersectAny( const BVH_CONTAINER_NODE_2D* aNode
 void BVH_CONTAINER_2D::GetIntersectingObjects( const BBOX_2D& aBBox,
                                                CONST_LIST_OBJECT2D& aOutList ) const
 {
-    wxASSERT( aBBox.IsInitialized() == true );
-    wxASSERT( m_isInitialized == true );
+    KI_ASSERT( aBBox.IsInitialized() == true );
+    KI_ASSERT( m_isInitialized == true );
 
     aOutList.clear();
 
@@ -316,15 +317,15 @@ void BVH_CONTAINER_2D::recursiveGetListObjectsIntersects( const BVH_CONTAINER_NO
                                                           const BBOX_2D& aBBox,
                                                           CONST_LIST_OBJECT2D& aOutList ) const
 {
-    wxASSERT( aNode != nullptr );
-    wxASSERT( aBBox.IsInitialized() == true );
+    KI_ASSERT( aNode != nullptr );
+    KI_ASSERT( aBBox.IsInitialized() == true );
 
     if( aNode->m_BBox.Intersects( aBBox ) )
     {
         if( !aNode->m_LeafList.empty() )
         {
-            wxASSERT( aNode->m_Children[0] == nullptr );
-            wxASSERT( aNode->m_Children[1] == nullptr );
+            KI_ASSERT( aNode->m_Children[0] == nullptr );
+            KI_ASSERT( aNode->m_Children[1] == nullptr );
 
             // Leaf
             for( CONST_LIST_OBJECT2D::const_iterator ii = aNode->m_LeafList.begin();
@@ -339,8 +340,8 @@ void BVH_CONTAINER_2D::recursiveGetListObjectsIntersects( const BVH_CONTAINER_NO
         }
         else
         {
-            wxASSERT( aNode->m_Children[0] != nullptr );
-            wxASSERT( aNode->m_Children[1] != nullptr );
+            KI_ASSERT( aNode->m_Children[0] != nullptr );
+            KI_ASSERT( aNode->m_Children[1] != nullptr );
 
             // Node
             recursiveGetListObjectsIntersects( aNode->m_Children[0], aBBox, aOutList );

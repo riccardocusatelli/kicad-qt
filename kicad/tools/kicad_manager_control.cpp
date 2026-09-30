@@ -59,6 +59,7 @@
 #include <launch_ext.h>
 
 #include "widgets/filedlg_new_project.h"
+#include <core/ki_assert.h>
 
 KICAD_MANAGER_CONTROL::KICAD_MANAGER_CONTROL() :
         TOOL_INTERACTIVE( "kicad.Control" ),
@@ -861,7 +862,7 @@ int KICAD_MANAGER_CONTROL::Execute( const TOOL_EVENT& aEvent )
     else if( aEvent.IsAction( &KICAD_MANAGER_ACTIONS::editOtherPCB ) )
         execFile = PCBNEW_EXE;
     else
-        wxFAIL_MSG( "Execute(): unexpected request" );
+        KI_FAIL_MSG( "Execute(): unexpected request" );
 
     if( execFile.IsEmpty() )
         return 0;

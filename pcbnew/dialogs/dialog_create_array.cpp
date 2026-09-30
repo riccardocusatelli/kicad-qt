@@ -33,6 +33,7 @@
 #include <tools/pcb_picker_tool.h>
 #include <tool/tool_manager.h>
 #include <widgets/text_ctrl_eval.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -256,7 +257,7 @@ void DIALOG_CREATE_ARRAY::OnSelectCenterButton( wxCommandEvent& event )
 
     TOOL_MANAGER*    toolMgr = m_frame->GetToolManager();
     PCB_PICKER_TOOL* pickerTool = toolMgr->GetTool<PCB_PICKER_TOOL>();
-    wxCHECK( pickerTool, /* void */ );
+    KI_CHECK( pickerTool, /* void */ );
 
     // Keep the dialog visible, but disable while picking.
     // Hiding the dialog on GTK causes the controls to not accept their new values
@@ -274,7 +275,7 @@ void DIALOG_CREATE_ARRAY::OnSelectCenterButton( wxCommandEvent& event )
     }
     else
     {
-        wxFAIL_MSG( "Unknown event source" );
+        KI_FAIL_MSG( "Unknown event source" );
     }
 }
 
@@ -285,7 +286,7 @@ void DIALOG_CREATE_ARRAY::OnAxisNumberingChange( wxCommandEvent& aEvent )
 
     const int newAlphabet = aEvent.GetSelection();
 
-    wxCHECK( newAlphabet >= 0 && newAlphabet < static_cast<int>( numberingTypeData.size() ),
+    KI_CHECK( newAlphabet >= 0 && newAlphabet < static_cast<int>( numberingTypeData.size() ),
              /* void */ );
 
     const ARRAY_AXIS::NUMBERING_TYPE numberingType =
@@ -300,7 +301,7 @@ void DIALOG_CREATE_ARRAY::OnAxisNumberingChange( wxCommandEvent& aEvent )
     else if( aEvent.GetEventObject() == m_choiceCircNumbering )
         matchingTextCtrl = m_entryCircNumberingStart;
 
-    wxCHECK( matchingTextCtrl, /* void */ );
+    KI_CHECK( matchingTextCtrl, /* void */ );
 
     ARRAY_AXIS dummyAxis;
     dummyAxis.SetAxisType( numberingType );
@@ -386,7 +387,7 @@ static bool validateAxisOptions( const wxTextCtrl& offsetEntry, const wxChoice& 
     void*                      clientData = typeEntry.GetClientData( typeEntry.GetSelection() );
     const NUMBERING_LIST_DATA* numberingData = static_cast<NUMBERING_LIST_DATA*>( clientData );
 
-    wxCHECK_MSG( numberingData, false, wxT( "Failed to get client data from list control." ) );
+    KI_CHECK_MSG( numberingData, false, wxT( "Failed to get client data from list control." ) );
 
     aAxis.SetAxisType( numberingData->m_numbering_type );
 

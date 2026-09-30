@@ -41,6 +41,7 @@
 #include <wx/log.h>
 #include <wx/stattext.h>
 #include <wx/panel.h>
+#include <core/ki_assert.h>
 
 
 PCB_DESIGN_BLOCK_PREVIEW_WIDGET::PCB_DESIGN_BLOCK_PREVIEW_WIDGET( wxWindow* aParent, PCB_EDIT_FRAME* aFrame ) :
@@ -121,7 +122,7 @@ PCB_DESIGN_BLOCK_PREVIEW_WIDGET::~PCB_DESIGN_BLOCK_PREVIEW_WIDGET()
 
 void PCB_DESIGN_BLOCK_PREVIEW_WIDGET::SetStatusText( wxString const& aText )
 {
-    wxCHECK( m_statusPanel, /* void */ );
+    KI_CHECK( m_statusPanel, /* void */ );
 
     m_status->SetLabel( aText );
     m_preview->Hide();

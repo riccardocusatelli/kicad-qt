@@ -24,6 +24,7 @@
 #include <sch_screen.h>
 #include <schematic.h>
 #include <eeschema_settings.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_EESCHEMA_PAGE_SETTINGS::DIALOG_EESCHEMA_PAGE_SETTINGS( EDA_DRAW_FRAME* aParent,
@@ -37,7 +38,7 @@ DIALOG_EESCHEMA_PAGE_SETTINGS::DIALOG_EESCHEMA_PAGE_SETTINGS( EDA_DRAW_FRAME* aP
 DIALOG_EESCHEMA_PAGE_SETTINGS::~DIALOG_EESCHEMA_PAGE_SETTINGS()
 {
     EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() );
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     cfg->m_PageSettings.export_paper = m_PaperExport->GetValue();
 
@@ -106,7 +107,7 @@ void DIALOG_EESCHEMA_PAGE_SETTINGS::onTransferDataToWindow()
     m_TextSheetNumber->SetLabel( wxString::Format( m_TextSheetNumber->GetLabel(), m_screen->GetVirtualPageNumber() ) );
 
     EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() );
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     m_PaperExport->SetValue( cfg->m_PageSettings.export_paper );
     m_RevisionExport->SetValue( m_TextRevision->GetValue().IsEmpty() ? false : cfg->m_PageSettings.export_revision );
@@ -127,7 +128,7 @@ void DIALOG_EESCHEMA_PAGE_SETTINGS::onTransferDataToWindow()
 
 bool DIALOG_EESCHEMA_PAGE_SETTINGS::onSavePageSettings()
 {
-    wxCHECK_MSG( dynamic_cast<SCH_EDIT_FRAME*>( m_parent ), true,
+    KI_CHECK_MSG( dynamic_cast<SCH_EDIT_FRAME*>( m_parent ), true,
                  "DIALOG_PAGES_SETTINGS::OnDateApplyClick frame is not a schematic frame!" );
 
     // Exports settings to other sheets if requested:

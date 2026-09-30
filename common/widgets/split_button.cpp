@@ -32,6 +32,7 @@
 #include <wx/settings.h>
 #include <wx/version.h>
 #include <kiplatform/ui.h>
+#include <core/ki_assert.h>
 
 SPLIT_BUTTON::SPLIT_BUTTON( wxWindow* aParent, wxWindowID aId, const wxString& aLabel,
                             const wxPoint& aPos, const wxSize& aSize ) :
@@ -173,7 +174,7 @@ void SPLIT_BUTTON::OnLeftButtonUp( wxMouseEvent& aEvent )
     if( x < ( GetSize().GetWidth() - m_arrowButtonWidth ) )
     {
         wxEvtHandler* pEventHandler = GetEventHandler();
-        wxASSERT( pEventHandler );
+        KI_ASSERT( pEventHandler );
 
         pEventHandler->CallAfter(
                 [this]()

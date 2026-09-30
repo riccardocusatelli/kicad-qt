@@ -19,6 +19,7 @@
 
 #include <widgets/stepped_slider.h>
 #include <wx/event.h>
+#include <core/ki_assert.h>
 
 
 BEGIN_EVENT_TABLE( STEPPED_SLIDER, wxSlider )
@@ -44,7 +45,7 @@ STEPPED_SLIDER::~STEPPED_SLIDER()
 
 void STEPPED_SLIDER::SetStep( int aSize )
 {
-    wxASSERT( aSize > 0 );
+    KI_ASSERT( aSize > 0 );
     m_step = ( aSize > 0 ) ? aSize : 1;
 
     // configure pg up/down to increment by our steps

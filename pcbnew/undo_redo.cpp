@@ -26,6 +26,7 @@
  */
 
 #include <functional>
+#include <core/ki_assert.h>
 using namespace std::placeholders;
 #include <component_classes/component_class_manager.h>
 #include <macros.h>
@@ -120,7 +121,7 @@ void PCB_BASE_EDIT_FRAME::saveCopyInUndoList( PICKED_ITEMS_LIST* commandToUndo,
             commandToUndo->SetPickedItemStatus( command, ii );
         }
 
-        wxASSERT( item );
+        KI_ASSERT( item );
 
         switch( command )
         {
@@ -139,7 +140,7 @@ void PCB_BASE_EDIT_FRAME::saveCopyInUndoList( PICKED_ITEMS_LIST* commandToUndo,
             break;
 
         default:
-            wxFAIL_MSG( wxString::Format( wxT( "Unrecognized undo command: %X" ), command ) );
+            KI_FAIL_MSG( wxString::Format( wxT( "Unrecognized undo command: %X" ), command ) );
             break;
         }
     }
@@ -155,7 +156,7 @@ void PCB_BASE_EDIT_FRAME::saveCopyInUndoList( PICKED_ITEMS_LIST* commandToUndo,
     else
     {
         // Should not occur
-        wxASSERT( false );
+        KI_ASSERT( false );
         delete commandToUndo;
     }
 }
@@ -374,7 +375,7 @@ void PCB_BASE_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool
                     else if( change_type == ITEM_CHANGE_TYPE::ADDED )
                     {
                         // Error condition - added an already added item
-                        wxASSERT_MSG( false, wxT( "UndoRedo: should not add already added item" ) );
+                        KI_ASSERT_MSG( false, wxT( "UndoRedo: should not add already added item" ) );
                     }
 
                     // For all other cases, the item remains as ADDED as seen by the bulk callbacks
@@ -383,7 +384,7 @@ void PCB_BASE_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool
                 case ITEM_CHANGE_TYPE::DELETED:
                     // This is an error condition - item has already been deleted so should not
                     // be operated on further
-                    wxASSERT_MSG( false, wxT( "UndoRedo: should not alter already deleted item" ) );
+                    KI_ASSERT_MSG( false, wxT( "UndoRedo: should not alter already deleted item" ) );
                     break;
 
                 case ITEM_CHANGE_TYPE::CHANGED:
@@ -395,7 +396,7 @@ void PCB_BASE_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool
                     {
                         // This is an error condition - item has already been changed so should not
                         // be added
-                        wxASSERT_MSG( false, wxT( "UndoRedo: should not add already changed item" ) );
+                        KI_ASSERT_MSG( false, wxT( "UndoRedo: should not add already changed item" ) );
                     }
 
                     // Otherwise, item remains CHANGED
@@ -612,7 +613,7 @@ void PCB_BASE_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool
             break;
 
         default:
-            wxFAIL_MSG( wxString::Format( wxT( "PutDataInPreviousState() error (unknown code %X)" ),
+            KI_FAIL_MSG( wxString::Format( wxT( "PutDataInPreviousState() error (unknown code %X)" ),
                                           aList->GetPickedItemStatus( ii ) ) );
             break;
         }
@@ -748,7 +749,7 @@ void PCB_BASE_EDIT_FRAME::ClearListAndDeleteItems( PICKED_ITEMS_LIST* aList )
     aList->ClearListAndDeleteItems(
             []( EDA_ITEM* item )
             {
-                wxASSERT_MSG( item->HasFlag( UR_TRANSIENT ),
+                KI_ASSERT_MSG( item->HasFlag( UR_TRANSIENT ),
                               "Item on undo/redo list not owned by undo/redo!" );
 
                 delete item;

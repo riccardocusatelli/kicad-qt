@@ -32,6 +32,7 @@
 #include <wx/checkbox.h>
 #include <wx/gbsizer.h>
 #include <wx/stattext.h>
+#include <core/ki_assert.h>
 
 
 WX_MULTI_ENTRY_DIALOG::WX_MULTI_ENTRY_DIALOG( EDA_DRAW_FRAME* aParent, const wxString& aCaption,
@@ -151,7 +152,7 @@ std::vector<WX_MULTI_ENTRY_DIALOG::RESULT> WX_MULTI_ENTRY_DIALOG::GetValues() co
                     if constexpr( std::is_same_v<ArgType, UNIT_BOUND> )
                     {
                         UNIT_BINDER* binder = m_unit_binders[ii].get();
-                        wxASSERT( binder );
+                        KI_ASSERT( binder );
                         results.push_back( binder ? binder->GetValue() : 0 );
                     }
                     else if constexpr( std::is_same_v<ArgType, CHECKBOX> )

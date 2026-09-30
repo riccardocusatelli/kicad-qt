@@ -46,6 +46,7 @@
 
 #include <list>
 #include <set>
+#include <core/ki_assert.h>
 
 
 /**
@@ -1201,7 +1202,7 @@ void PANEL_SETUP_LAYERS::addUserDefinedLayer( wxCommandEvent& aEvent )
         }
     }
 
-    wxCHECK( layer >= User_1, /* void */ );
+    KI_CHECK( layer >= User_1, /* void */ );
 
     m_enabledLayers.set( layer );
     append_user_layer( layer );
@@ -1209,17 +1210,17 @@ void PANEL_SETUP_LAYERS::addUserDefinedLayer( wxCommandEvent& aEvent )
     PANEL_SETUP_LAYERS_CTLs& ctl = m_layersControls[layer];
 
     // All user-defined layers should have a checkbox
-    wxASSERT( ctl.checkbox );
+    KI_ASSERT( ctl.checkbox );
     ctl.checkbox->SetValue( true );
 
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( ctl.name );
 
-    wxCHECK( textCtrl, /* void */ );
+    KI_CHECK( textCtrl, /* void */ );
     textCtrl->ChangeValue( LSET::Name( layer ) );
 
     wxChoice* userLayerType = dynamic_cast<wxChoice*>( ctl.choice );
 
-    wxCHECK( userLayerType, /* void */ );
+    KI_CHECK( userLayerType, /* void */ );
     userLayerType->SetSelection( 0 );
 
     ctl.name->Show( true );

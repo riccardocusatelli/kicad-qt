@@ -31,6 +31,7 @@
 #include <sch_edit_frame.h>
 #include <i18n_utility.h>
 #include <units_provider.h>
+#include <core/ki_assert.h>
 
 
 // These, being statically-defined, require specialized I18N handling.
@@ -367,7 +368,7 @@ std::shared_ptr<ERC_ITEM> ERC_ITEM::Create( int aErrorCode )
     case ERCE_FIELD_NAME_WHITESPACE:   return std::make_shared<ERC_ITEM>( fieldNameWhitespace );
     case ERCE_UNSPECIFIED:
     default:
-        wxFAIL_MSG( wxS( "Unknown ERC error code" ) );
+        KI_FAIL_MSG( wxS( "Unknown ERC error code" ) );
         break;
     }
 

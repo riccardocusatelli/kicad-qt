@@ -27,6 +27,7 @@
 #include <core/wx_stl_compat.h> // for wxString hash
 #include <settings/json_settings.h>
 #include <pgm_base.h>
+#include <core/ki_assert.h>
 
 class COLOR_SETTINGS;
 class COMMON_SETTINGS;
@@ -156,7 +157,7 @@ public:
         }
         else
         {
-            wxFAIL_MSG( wxString::Format( "Tried to GetAppSettings before registering: %s", aFilename ) );
+            KI_FAIL_MSG( wxString::Format( "Tried to GetAppSettings before registering: %s", aFilename ) );
         }
 
         m_app_settings_cache[typeHash] = ret;

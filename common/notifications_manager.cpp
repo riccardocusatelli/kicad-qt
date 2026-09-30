@@ -53,6 +53,7 @@
 #include <optional>
 #include <tuple>
 #include <vector>
+#include <core/ki_assert.h>
 
 
 static long long g_last_closed_timer = 0;
@@ -321,7 +322,7 @@ void NOTIFICATIONS_MANAGER::CreateOrUpdate( const wxString& aKey,
                                             const wxString& aDescription,
                                             const wxString& aHref )
 {
-    wxCHECK_RET( !aKey.IsEmpty(), wxS( "Notification key must not be empty" ) );
+    KI_CHECK_RET( !aKey.IsEmpty(), wxS( "Notification key must not be empty" ) );
 
     auto it = std::find_if( m_notifications.begin(), m_notifications.end(),
                             [&]( const NOTIFICATION& noti )

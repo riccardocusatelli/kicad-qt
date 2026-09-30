@@ -32,6 +32,7 @@
 #include <footprint.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 PCB_TABLECELL::PCB_TABLECELL( BOARD_ITEM* aParent ) :
@@ -51,7 +52,7 @@ PCB_TABLECELL::PCB_TABLECELL( BOARD_ITEM* aParent ) :
 
 void PCB_TABLECELL::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_TABLECELL_T );
+    KI_ASSERT( aImage->Type() == PCB_TABLECELL_T );
 
     std::swap( *( (PCB_TABLECELL*) this ), *( (PCB_TABLECELL*) aImage ) );
 }

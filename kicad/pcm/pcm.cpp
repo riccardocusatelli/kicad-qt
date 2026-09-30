@@ -49,6 +49,8 @@
 #include <wx/tokenzr.h>
 #include <wx/wfstream.h>
 #include <wx/zipstrm.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -409,7 +411,7 @@ bool PLUGIN_CONTENT_MANAGER::VerifyHash( std::istream& aStream, const wxString& 
 const PCM_REPOSITORY&
 PLUGIN_CONTENT_MANAGER::getCachedRepository( const wxString& aRepositoryId ) const
 {
-    wxASSERT_MSG( m_repository_cache.find( aRepositoryId ) != m_repository_cache.end(),
+    KI_ASSERT_MSG( m_repository_cache.find( aRepositoryId ) != m_repository_cache.end(),
                   wxT( "Repository is not cached." ) );
 
     return m_repository_cache.at( aRepositoryId );
@@ -600,7 +602,7 @@ void PLUGIN_CONTENT_MANAGER::updateInstalledPackagesMetadata( const wxString& aR
     }
     catch( ... )
     {
-        wxLogTrace( tracePcm, wxS( "Invalid/Missing repository " ) + aRepositoryId );
+        KI_LOG_TRACE( tracePcm, wxS( "Invalid/Missing repository " ) + aRepositoryId );
         return;
     }
 
@@ -889,7 +891,7 @@ PCM_PACKAGE_STATE PLUGIN_CONTENT_MANAGER::GetPackageState( const wxString& aRepo
 
 const wxString PLUGIN_CONTENT_MANAGER::GetPackageUpdateVersion( const PCM_PACKAGE& aPackage )
 {
-    wxASSERT_MSG( m_installed.find( aPackage.identifier ) != m_installed.end(),
+    KI_ASSERT_MSG( m_installed.find( aPackage.identifier ) != m_installed.end(),
                   wxT( "GetPackageUpdateVersion called on a not installed package" ) );
 
     const PCM_INSTALLATION_ENTRY& entry = m_installed.at( aPackage.identifier );
@@ -901,7 +903,7 @@ const wxString PLUGIN_CONTENT_MANAGER::GetPackageUpdateVersion( const PCM_PACKAG
                 return ver.version == entry.current_version;
             } );
 
-    wxASSERT_MSG( installed_ver_it != entry.package.versions.end(),
+    KI_ASSERT_MSG( installed_ver_it != entry.package.versions.end(),
                   wxT( "Installed package version not found" ) );
 
     auto ver_it = std::find_if( aPackage.versions.begin(), aPackage.versions.end(),
@@ -971,7 +973,7 @@ const std::vector<PCM_INSTALLATION_ENTRY> PLUGIN_CONTENT_MANAGER::GetInstalledPa
 const wxString&
 PLUGIN_CONTENT_MANAGER::GetInstalledPackageVersion( const wxString& aPackageId ) const
 {
-    wxASSERT_MSG( m_installed.find( aPackageId ) != m_installed.end(),
+    KI_ASSERT_MSG( m_installed.find( aPackageId ) != m_installed.end(),
                   wxT( "Installed package not found." ) );
 
     return m_installed.at( aPackageId ).current_version;
@@ -1091,7 +1093,7 @@ PLUGIN_CONTENT_MANAGER::GetRepositoryPackageBitmaps( const wxString& aRepository
         catch( ... )
         {
             // Log and ignore
-            wxLogTrace( wxT( "Error loading png bitmap for entry %s from %s" ), entry->GetName(),
+            KI_LOG_TRACE( wxT( "Error loading png bitmap for entry %s from %s" ), entry->GetName(),
                         resources_file.GetFullPath() );
         }
     }
@@ -1132,7 +1134,7 @@ std::unordered_map<wxString, wxBitmap> PLUGIN_CONTENT_MANAGER::GetInstalledPacka
             catch( ... )
             {
                 // Log and ignore
-                wxLogTrace( wxT( "Error loading png bitmap from %s" ), icon.GetFullPath() );
+                KI_LOG_TRACE( wxT( "Error loading png bitmap from %s" ), icon.GetFullPath() );
             }
         }
 

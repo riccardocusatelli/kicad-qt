@@ -31,6 +31,7 @@
 #include <string_utils.h>
 #include <base_units.h>
 #include <unordered_set>
+#include <core/ki_assert.h>
 
 
 // const int netSettingsSchemaVersion = 0;
@@ -903,7 +904,7 @@ void NET_SETTINGS::RecomputeEffectiveNetclasses()
         // Note this needs to be a copy in case we now need to add the default netclass
         std::vector<NETCLASS*> constituents = nc->GetConstituentNetclasses();
 
-        wxASSERT( constituents.size() > 0 );
+        KI_ASSERT( constituents.size() > 0 );
 
         // If the last netclass is Default, remove it (it will be re-added if still needed)
         if( ( *constituents.rbegin() )->GetName() == NETCLASS::Default )

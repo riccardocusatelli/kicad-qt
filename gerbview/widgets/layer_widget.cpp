@@ -44,6 +44,7 @@
 #include <wx/menu.h>
 
 #include <algorithm>
+#include <core/ki_assert.h>
 
 
 const wxEventType LAYER_WIDGET::EVT_LAYER_COLOR_CHANGE = wxNewEventType();
@@ -277,7 +278,7 @@ int LAYER_WIDGET::findLayerRow( int aLayer ) const
     {
         // column 0 in the layer scroll window has a wxStaticBitmap, get its ID.
         wxWindow* w = getLayerComp( row, 0 );
-        wxASSERT( w );
+        KI_ASSERT( w );
 
         if( aLayer == getDecodedId( w->GetId() ) )
             return row;
@@ -306,7 +307,7 @@ int LAYER_WIDGET::findRenderRow( int aId ) const
     {
         // column 0 in the layer scroll window has a wxStaticBitmap, get its ID.
         wxWindow* w = getRenderComp( row, 0 );
-        wxASSERT( w );
+        KI_ASSERT( w );
 
         if( aId == getDecodedId( w->GetId() ) )
             return row;
@@ -318,7 +319,7 @@ int LAYER_WIDGET::findRenderRow( int aId ) const
 
 void LAYER_WIDGET::insertLayerRow( int aRow, const ROW& aSpec )
 {
-    wxASSERT( aRow >= 0 );
+    KI_ASSERT( aRow >= 0 );
 
     int         col;
     int         index = aRow * LYR_COLUMN_COUNT;
@@ -413,7 +414,7 @@ void LAYER_WIDGET::updateLayerRow( int aRow, const wxString& aName )
 
 void LAYER_WIDGET::insertRenderRow( int aRow, const ROW& aSpec )
 {
-    wxASSERT( aRow >= 0 );
+    KI_ASSERT( aRow >= 0 );
 
     int         col;
     int         index = aRow * RND_COLUMN_COUNT;
@@ -714,7 +715,7 @@ void LAYER_WIDGET::setLayerCheckbox( int aLayer, bool isVisible )
     if( row >= 0 )
     {
         wxCheckBox* cb = (wxCheckBox*) getLayerComp( row, COLUMN_COLOR_LYR_CB );
-        wxASSERT( cb );
+        KI_ASSERT( cb );
         cb->SetValue( isVisible );      // does not fire an event
     }
 }
@@ -727,7 +728,7 @@ bool LAYER_WIDGET::IsLayerVisible( int aLayer )
     if( row >= 0 )
     {
         wxCheckBox* cb = (wxCheckBox*) getLayerComp( row, COLUMN_COLOR_LYR_CB );
-        wxASSERT( cb );
+        KI_ASSERT( cb );
         return cb->GetValue();
     }
 
@@ -743,7 +744,7 @@ void LAYER_WIDGET::SetLayerColor( int aLayer, const COLOR4D& aColor )
     {
         int col = 1;    // bitmap button is column 1
         auto swatch = static_cast<COLOR_SWATCH*>( getLayerComp( row, col ) );
-        wxASSERT( swatch );
+        KI_ASSERT( swatch );
 
         swatch->SetSwatchColor( aColor, false );
     }
@@ -758,7 +759,7 @@ COLOR4D LAYER_WIDGET::GetLayerColor( int aLayer ) const
     {
         const int col = 1;    // bitmap button is column 1
         auto swatch = static_cast<COLOR_SWATCH*>( getLayerComp( row, col ) );
-        wxASSERT( swatch );
+        KI_ASSERT( swatch );
 
         return swatch->GetSwatchColor();
     }
@@ -775,7 +776,7 @@ COLOR4D LAYER_WIDGET::GetRenderColor( int aRow ) const
     {
         const int col = 0;    // bitmap button (swatch) is column 0
         auto swatch = static_cast<COLOR_SWATCH*>( getRenderComp( row, col ) );
-        wxASSERT( swatch );
+        KI_ASSERT( swatch );
 
         return swatch->GetSwatchColor();
     }
@@ -792,7 +793,7 @@ void LAYER_WIDGET::SetRenderState( int aId, bool isSet )
     {
         int col = 1;    // checkbox is column 1
         wxCheckBox* cb = (wxCheckBox*) getRenderComp( row, col );
-        wxASSERT( cb );
+        KI_ASSERT( cb );
         cb->SetValue( isSet );  // does not fire an event
     }
 }
@@ -806,7 +807,7 @@ bool LAYER_WIDGET::GetRenderState( int aId )
     {
         int col = 1;    // checkbox is column 1
         wxCheckBox* cb = (wxCheckBox*) getRenderComp( row, col );
-        wxASSERT( cb );
+        KI_ASSERT( cb );
         return cb->GetValue();
     }
 

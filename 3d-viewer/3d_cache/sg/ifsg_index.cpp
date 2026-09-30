@@ -29,6 +29,7 @@
 
 #include "plugins/3dapi/ifsg_index.h"
 #include "3d_cache/sg/sg_coordindex.h"
+#include <core/ki_assert.h>
 
 
 IFSG_INDEX::IFSG_INDEX() : IFSG_NODE()
@@ -38,7 +39,7 @@ IFSG_INDEX::IFSG_INDEX() : IFSG_NODE()
 
 bool IFSG_INDEX::GetIndices( size_t& nIndices, int*& aIndexList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGINDEX*) m_node )->GetIndices( nIndices, aIndexList );
 }
@@ -46,7 +47,7 @@ bool IFSG_INDEX::GetIndices( size_t& nIndices, int*& aIndexList )
 
 bool IFSG_INDEX::SetIndices( size_t nIndices, int* aIndexList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGINDEX*) m_node )->SetIndices( nIndices, aIndexList );
 
@@ -56,7 +57,7 @@ bool IFSG_INDEX::SetIndices( size_t nIndices, int* aIndexList )
 
 bool IFSG_INDEX::AddIndex( int aIndex )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGINDEX*) m_node )->AddIndex( aIndex );
 

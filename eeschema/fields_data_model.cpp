@@ -34,6 +34,7 @@
 #include "string_utils.h"
 
 #include "fields_data_model.h"
+#include <core/ki_assert.h>
 
 
 /**      
@@ -110,7 +111,7 @@ wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetColLabelValue( int aCol )
 
 wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetValue( int aRow, int aCol )
 {
-    wxCHECK( aRow < GetNumberRows(), wxT( "bad row!" ) );
+    KI_CHECK( aRow < GetNumberRows(), wxT( "bad row!" ) );
 
     BOM_FIELD& rowData = m_fields[aRow];
 
@@ -138,7 +139,7 @@ wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetValue( int aRow, int aCol )
 
 bool VIEW_CONTROLS_GRID_DATA_MODEL::GetValueAsBool( int aRow, int aCol )
 {
-    wxCHECK( aRow < GetNumberRows(), false );
+    KI_CHECK( aRow < GetNumberRows(), false );
 
     BOM_FIELD& rowData = m_fields[aRow];
 
@@ -148,7 +149,7 @@ bool VIEW_CONTROLS_GRID_DATA_MODEL::GetValueAsBool( int aRow, int aCol )
     case GROUP_BY_COLUMN:   return rowData.groupBy;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
         return false;
     }
 }
@@ -156,7 +157,7 @@ bool VIEW_CONTROLS_GRID_DATA_MODEL::GetValueAsBool( int aRow, int aCol )
 
 void VIEW_CONTROLS_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString &aValue )
 {
-    wxCHECK( aRow < GetNumberRows(), /*void*/ );
+    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
 
     BOM_FIELD& rowData = m_fields[aRow];
 
@@ -171,7 +172,7 @@ void VIEW_CONTROLS_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
     }
 
     GetView()->Refresh();
@@ -180,7 +181,7 @@ void VIEW_CONTROLS_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString
 
 void VIEW_CONTROLS_GRID_DATA_MODEL::SetValueAsBool( int aRow, int aCol, bool aValue )
 {
-    wxCHECK( aRow < GetNumberRows(), /*void*/ );
+    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
 
     BOM_FIELD& rowData = m_fields[aRow];
 
@@ -190,7 +191,7 @@ void VIEW_CONTROLS_GRID_DATA_MODEL::SetValueAsBool( int aRow, int aCol, bool aVa
     case GROUP_BY_COLUMN:   rowData.groupBy = aValue; break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
     }
 }
 
@@ -210,7 +211,7 @@ void VIEW_CONTROLS_GRID_DATA_MODEL::AppendRow( const wxString& aFieldName, const
 
 void VIEW_CONTROLS_GRID_DATA_MODEL::DeleteRow( int aRow )
 {
-    wxCHECK( aRow >= 0 && aRow < GetNumberRows(), /* void */ );
+    KI_CHECK( aRow >= 0 && aRow < GetNumberRows(), /* void */ );
 
     m_fields.erase( m_fields.begin() + aRow );
 
@@ -224,7 +225,7 @@ void VIEW_CONTROLS_GRID_DATA_MODEL::DeleteRow( int aRow )
 
 wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetCanonicalFieldName( int aRow )
 {
-    wxCHECK( aRow >= 0 && aRow < GetNumberRows(), wxEmptyString );
+    KI_CHECK( aRow >= 0 && aRow < GetNumberRows(), wxEmptyString );
 
     BOM_FIELD& rowData = m_fields[aRow];
 
@@ -234,7 +235,7 @@ wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetCanonicalFieldName( int aRow )
 
 void VIEW_CONTROLS_GRID_DATA_MODEL::SetCanonicalFieldName( int aRow, const wxString& aName )
 {
-    wxCHECK( aRow >= 0 && aRow < GetNumberRows(), /* void */ );
+    KI_CHECK( aRow >= 0 && aRow < GetNumberRows(), /* void */ );
 
     BOM_FIELD& rowData = m_fields[aRow];
 
@@ -662,7 +663,7 @@ wxString FIELDS_EDITOR_GRID_DATA_MODEL::GetValue( const DATA_MODEL_ROW& group, i
 
 void FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString& aValue )
 {
-    wxCHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxS( "Invalid column number" ) );
+    KI_CHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxS( "Invalid column number" ) );
 
     // Can't modify references or generated fields (e.g. ${QUANTITY})
     if( ColIsReference( aCol )
@@ -709,35 +710,35 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString
 
 bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsReference( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == GetCanonicalFieldName( FIELD_T::REFERENCE );
 }
 
 
 bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsValue( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == GetCanonicalFieldName( FIELD_T::VALUE );
 }
 
 
 bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsQuantity( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == QUANTITY_VARIABLE;
 }
 
 
 bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsItemNumber( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == ITEM_NUMBER_VARIABLE;
 }
 
 
 bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsAttribute( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return isAttribute( m_cols[aCol].m_fieldName );
 }
 
@@ -1788,7 +1789,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::DeleteRows( size_t aPosition, size_t aNumRow
 
     if( aPosition >= curNumRows )
     {
-       wxFAIL_MSG( wxString::Format( wxT( "Called FIELDS_EDITOR_GRID_DATA_MODEL::DeleteRows(aPosition=%lu, "
+       KI_FAIL_MSG( wxString::Format( wxT( "Called FIELDS_EDITOR_GRID_DATA_MODEL::DeleteRows(aPosition=%lu, "
                                           "aNumRows=%lu)\nPosition value is invalid for present table with %lu rows" ),
                                       (unsigned long) aPosition, (unsigned long) aNumRows,
                                       (unsigned long) curNumRows ) );

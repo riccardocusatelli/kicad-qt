@@ -48,6 +48,7 @@
 #include <api/board/board_types.pb.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 static const int INWARD_ARROW_LENGTH_TO_HEAD_RATIO = 2;
@@ -631,7 +632,7 @@ void PCB_DIMENSION_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
     // for now, display only the text within the DIMENSION using class PCB_TEXT.
     wxString    msg;
 
-    wxCHECK_RET( m_parent != nullptr, wxT( "PCB_TEXT::GetMsgPanelInfo() m_Parent is NULL." ) );
+    KI_CHECK_RET( m_parent != nullptr, wxT( "PCB_TEXT::GetMsgPanelInfo() m_Parent is NULL." ) );
 
     // Don't use GetShownText(); we want to see the variable references here
     aList.emplace_back( _( "Dimension" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
@@ -825,7 +826,7 @@ void PCB_DIMENSION_BASE::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_L
                                                   int aClearance, int aError, ERROR_LOC aErrorLoc,
                                                   bool aIgnoreLineWidth ) const
 {
-    wxASSERT_MSG( !aIgnoreLineWidth, wxT( "IgnoreLineWidth has no meaning for dimensions." ) );
+    KI_ASSERT_MSG( !aIgnoreLineWidth, wxT( "IgnoreLineWidth has no meaning for dimensions." ) );
 
     for( const std::shared_ptr<SHAPE>& shape : m_shapes )
     {
@@ -845,7 +846,7 @@ void PCB_DIMENSION_BASE::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_L
         }
         else
         {
-            wxFAIL_MSG( wxT( "PCB_DIMENSION_BASE::TransformShapeToPolygon unknown shape type." ) );
+            KI_FAIL_MSG( wxT( "PCB_DIMENSION_BASE::TransformShapeToPolygon unknown shape type." ) );
         }
     }
 }
@@ -868,7 +869,7 @@ EDA_ITEM* PCB_DIM_ALIGNED::Clone() const
 
 void PCB_DIM_ALIGNED::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_ALIGNED_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_ALIGNED_T, /* void */ );
     *this = *static_cast<const PCB_DIM_ALIGNED*>( aOther );
 }
 
@@ -915,7 +916,7 @@ bool PCB_DIM_ALIGNED::Deserialize( const google::protobuf::Any &aContainer )
 
 void PCB_DIM_ALIGNED::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_ALIGNED*>( aImage )->m_shapes.clear();
@@ -1101,7 +1102,7 @@ EDA_ITEM* PCB_DIM_ORTHOGONAL::Clone() const
 
 void PCB_DIM_ORTHOGONAL::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_ORTHOGONAL_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_ORTHOGONAL_T, /* void */ );
     *this = *static_cast<const PCB_DIM_ORTHOGONAL*>( aOther );
 }
 
@@ -1154,7 +1155,7 @@ bool PCB_DIM_ORTHOGONAL::Deserialize( const google::protobuf::Any &aContainer )
 
 void PCB_DIM_ORTHOGONAL::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_ORTHOGONAL*>( aImage )->m_shapes.clear();
@@ -1372,7 +1373,7 @@ PCB_DIM_LEADER::PCB_DIM_LEADER( BOARD_ITEM* aParent ) :
 
 void PCB_DIM_LEADER::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_LEADER_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_LEADER_T, /* void */ );
     *this = *static_cast<const PCB_DIM_LEADER*>( aOther );
 }
 
@@ -1425,7 +1426,7 @@ EDA_ITEM* PCB_DIM_LEADER::Clone() const
 
 void PCB_DIM_LEADER::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_LEADER*>( aImage )->m_shapes.clear();
@@ -1566,7 +1567,7 @@ PCB_DIM_RADIAL::PCB_DIM_RADIAL( BOARD_ITEM* aParent ) :
 
 void PCB_DIM_RADIAL::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_RADIAL_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_RADIAL_T, /* void */ );
     *this = *static_cast<const PCB_DIM_RADIAL*>( aOther );
 }
 
@@ -1617,7 +1618,7 @@ EDA_ITEM* PCB_DIM_RADIAL::Clone() const
 
 void PCB_DIM_RADIAL::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_RADIAL*>( aImage )->m_shapes.clear();
@@ -1724,7 +1725,7 @@ PCB_DIM_CENTER::PCB_DIM_CENTER( BOARD_ITEM* aParent ) :
 
 void PCB_DIM_CENTER::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_CENTER_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_CENTER_T, /* void */ );
     *this = *static_cast<const PCB_DIM_CENTER*>( aOther );
 }
 
@@ -1773,7 +1774,7 @@ EDA_ITEM* PCB_DIM_CENTER::Clone() const
 
 void PCB_DIM_CENTER::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     std::swap( *static_cast<PCB_DIM_CENTER*>( this ), *static_cast<PCB_DIM_CENTER*>( aImage ) );
 }

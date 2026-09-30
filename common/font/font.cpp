@@ -39,6 +39,7 @@
 // The "official" name of the Kicad stroke font (always existing)
 #include <font/kicad_font_name.h>
 #include <wx/tokenzr.h>
+#include <core/ki_assert.h>
 
 // markup_parser.h includes pegtl.hpp which includes windows.h... which leaks #define DrawText
 #undef DrawText
@@ -221,7 +222,7 @@ void FONT::getLinePositions( const wxString& aText, const VECTOR2I& aPosition,
     case GR_TEXT_V_ALIGN_CENTER: offset.y -= height / 2; break;
     case GR_TEXT_V_ALIGN_BOTTOM: offset.y -= height;     break;
     case GR_TEXT_V_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -238,7 +239,7 @@ void FONT::getLinePositions( const wxString& aText, const VECTOR2I& aPosition,
         case GR_TEXT_H_ALIGN_CENTER: lineOffset.x = -lineSize.x / 2;            break;
         case GR_TEXT_H_ALIGN_RIGHT:  lineOffset.x = -( lineSize.x + offset.x ); break;
         case GR_TEXT_H_ALIGN_INDETERMINATE:
-            wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+            KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
             break;
         }
 
@@ -409,7 +410,7 @@ VECTOR2I FONT::drawMarkup( BOX2I* aBoundingBox, std::vector<std::unique_ptr<GLYP
         markup = &cached;
     }
 
-    wxASSERT( markup && markup->root );
+    KI_ASSERT( markup && markup->root );
 
     return ::drawMarkup( aBoundingBox, aGlyphs, markup->root.get(), aPosition, this, aSize, aAngle,
                          aMirror, aOrigin, aTextStyle, aFontMetrics, aMousePos, aActiveUrl );

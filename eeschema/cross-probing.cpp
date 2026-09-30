@@ -50,6 +50,8 @@
 #include <wx/filefn.h>
 #include <wx/log.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 SCH_ITEM* SCH_EDITOR_CONTROL::FindSymbolAndItem( const wxString* aPath, const wxString* aReference,
                                                  bool aSearchHierarchy, SCH_SEARCH_T aSearchType,
@@ -864,7 +866,7 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL,
                                                                 LIBRARY_TABLE_SCOPE::PROJECT );
 
-        wxCHECK_RET( optTable.has_value(), "Could not load symbol lib table." );
+        KI_CHECK_RET( optTable.has_value(), "Could not load symbol lib table." );
         LIBRARY_TABLE* table = optTable.value();
 
         wxString projectPath = Prj().GetProjectPath();
@@ -886,7 +888,7 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
             if( type == SCH_IO_MGR::SCH_FILE_UNKNOWN )
             {
-                wxLogTrace( "KIWAY", "Unknown file type: %s", fn.GetFullPath() );
+                KI_LOG_TRACE( "KIWAY", "Unknown file type: %s", fn.GetFullPath() );
                 continue;
             }
 
@@ -1003,10 +1005,10 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
             if( eeconfig()->m_CrossProbing.flash_selection )
             {
-                wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash enabled, items=%zu", items.size() );
+                KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash enabled, items=%zu", items.size() );
                 if( items.empty() )
                 {
-                    wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): nothing to flash" );
+                    KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): nothing to flash" );
                 }
                 else
                 {
@@ -1018,7 +1020,7 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             }
             else
             {
-                wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash disabled" );
+                KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash disabled" );
             }
         }
 
@@ -1094,10 +1096,10 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         char              delim = '\n';
 
         std::string formatStr;
-        wxCHECK( std::getline( ss, formatStr, delim ), /* void */ );
+        KI_CHECK( std::getline( ss, formatStr, delim ), /* void */ );
 
         std::string fnameStr;
-        wxCHECK( std::getline( ss, fnameStr, delim ), /* void */ );
+        KI_CHECK( std::getline( ss, fnameStr, delim ), /* void */ );
 
         int importFormat;
 
@@ -1107,7 +1109,7 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         }
         catch( std::invalid_argument& )
         {
-            wxFAIL;
+            KI_FAIL();
             importFormat = -1;
         }
 

@@ -35,6 +35,7 @@
 #include <board_design_settings.h>
 #include <tool/tool_manager.h>
 #include <tools/pad_tool.h>
+#include <core/ki_assert.h>
 
 GRAPHICS_CLEANER::GRAPHICS_CLEANER( const DRAWINGS& aDrawings, FOOTPRINT* aParentFootprint,
                                     BOARD_COMMIT& aCommit, TOOL_MANAGER* aToolMgr ) :
@@ -156,7 +157,7 @@ bool GRAPHICS_CLEANER::areEquivalent( PCB_SHAPE* aShape1, PCB_SHAPE* aShape2 )
                 && equivalent( aShape1->GetBezierC2(), aShape2->GetBezierC2(), m_epsilon );
 
     default:
-        wxFAIL_MSG( wxT( "GRAPHICS_CLEANER::areEquivalent unimplemented for " )
+        KI_FAIL_MSG( wxT( "GRAPHICS_CLEANER::areEquivalent unimplemented for " )
                     + aShape1->SHAPE_T_asString() );
         return false;
     }
@@ -380,7 +381,7 @@ void GRAPHICS_CLEANER::mergeRects()
 
 void GRAPHICS_CLEANER::mergePads()
 {
-    wxCHECK_MSG( m_parentFootprint, /*void*/, wxT( "mergePads() is FootprintEditor only" ) );
+    KI_CHECK_MSG( m_parentFootprint, /*void*/, wxT( "mergePads() is FootprintEditor only" ) );
 
     PAD_TOOL*               padTool = m_toolMgr->GetTool<PAD_TOOL>();
     std::map<wxString, int> padToNetTieGroupMap = m_parentFootprint->MapPadNumbersToNetTieGroups();

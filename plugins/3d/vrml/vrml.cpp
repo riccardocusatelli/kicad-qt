@@ -47,6 +47,7 @@
 #include <wx/log.h>
 
 #include <decompress.hpp>
+#include <core/ki_log.h>
 
 
 #define PLUGIN_VRML_MAJOR 1
@@ -204,7 +205,7 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, bool useInline, bool applyUnitC
             }
             catch( std::runtime_error& e )
             {
-                wxLogTrace( traceVrmlPlugin, wxS( " * [INFO] wrz load failed: %s" ),
+                KI_LOG_TRACE( traceVrmlPlugin, wxS( " * [INFO] wrz load failed: %s" ),
                             wxString::FromUTF8Unchecked( e.what() ) );
 
                 delete[] buffer;
@@ -212,7 +213,7 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, bool useInline, bool applyUnitC
             }
             catch( ... )
             {
-                wxLogTrace( traceVrmlPlugin, wxS( " * [INFO] wrz load failed: unknown error" ) );
+                KI_LOG_TRACE( traceVrmlPlugin, wxS( " * [INFO] wrz load failed: unknown error" ) );
 
                 delete[] buffer;
                 return nullptr;
@@ -251,17 +252,17 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, bool useInline, bool applyUnitC
 
     if( proc.GetVRMLType() == WRLVERSION::VRML_V1 )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 1.0 file" ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 1.0 file" ) );
 
         WRL1BASE* bp = new WRL1BASE;
 
         if( !bp->Read( proc ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
 
             scene = (SCENEGRAPH*)bp->TranslateToSG( nullptr, nullptr );
         }
@@ -270,7 +271,7 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, bool useInline, bool applyUnitC
     }
     else
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 2.0 file" ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 2.0 file" ) );
 
         WRL2BASE* bp = new WRL2BASE;
 
@@ -285,11 +286,11 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, bool useInline, bool applyUnitC
 
         if( !bp->Read( proc ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
 
             // for now we recalculate all normals per-vertex per-face
             scene = (SCENEGRAPH*)bp->TranslateToSG( nullptr );

@@ -18,6 +18,7 @@
 #include "kicad_git_errors.h"
 #include "git_progress.h"
 #include <import_export.h>
+#include <core/ki_assert.h>
 
 class APIEXPORT KIGIT_REPO_MIXIN: public KIGIT_ERRORS, public GIT_PROGRESS
 {
@@ -25,7 +26,7 @@ public:
     KIGIT_REPO_MIXIN( KIGIT_COMMON* aCommon ) : m_common( aCommon )
     {
         // Ensure m_common is initialized
-        wxASSERT( aCommon != nullptr );
+        KI_ASSERT( aCommon != nullptr );
     }
 
     virtual ~KIGIT_REPO_MIXIN()

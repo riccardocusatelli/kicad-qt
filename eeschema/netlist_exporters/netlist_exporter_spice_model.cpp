@@ -28,6 +28,7 @@
 #include <string_utils.h>
 #include <project.h>
 #include <richio.h>
+#include <core/ki_assert.h>
 
 
 void NETLIST_EXPORTER_SPICE_MODEL::WriteHead( OUTPUTFORMATTER& aFormatter,
@@ -48,7 +49,7 @@ void NETLIST_EXPORTER_SPICE_MODEL::WriteHead( OUTPUTFORMATTER& aFormatter,
             case L_BIDI:        portDir = "inout";                      break;
             case L_TRISTATE:    portDir = "tristate";                   break;
             case L_UNSPECIFIED: portDir = "passive";                    break;
-            default:            wxFAIL_MSG( "Invalid port direction" ); break;
+            default:            KI_FAIL_MSG( "Invalid port direction" ); break;
         }
 
         aFormatter.Print( 0, "+       %s ; %s\n", TO_UTF8( port.m_name ), TO_UTF8( portDir ) );

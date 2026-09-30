@@ -45,6 +45,7 @@
 #include <wx/uri.h>
 #include <project.h>
 #include <common.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -1541,7 +1542,7 @@ wxString NormalizeFileUri( const wxString& aFileUri )
 {
     wxString uriPathAndFileName;
 
-    wxCHECK( aFileUri.StartsWith( wxS( "file://" ), &uriPathAndFileName ), aFileUri );
+    KI_CHECK( aFileUri.StartsWith( wxS( "file://" ), &uriPathAndFileName ), aFileUri );
 
     wxString tmp = uriPathAndFileName;
     wxString retv = wxS( "file://" );

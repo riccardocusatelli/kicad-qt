@@ -60,6 +60,7 @@
 #include <wx/radiobox.h>
 #include <wx/radiobut.h>
 #include <wx/datectrl.h>
+#include <core/ki_assert.h>
 #if wxUSE_TIMEPICKCTRL
 #include <wx/timectrl.h>
 #endif
@@ -1594,7 +1595,7 @@ int DIALOG_SHIM::ShowQuasiModal()
     // Get the optimal parent
     wxWindow* parent = GetParentForModalDialog( GetParent(), GetWindowStyle() );
 
-    wxASSERT_MSG( !m_qmodal_parent_disabler, wxT( "Caller using ShowQuasiModal() twice on same window?" ) );
+    KI_ASSERT_MSG( !m_qmodal_parent_disabler, wxT( "Caller using ShowQuasiModal() twice on same window?" ) );
 
     // quasi-modal: disable only my "optimal" parent
     m_qmodal_parent_disabler = new WINDOW_DISABLER( parent );
@@ -1647,7 +1648,7 @@ void DIALOG_SHIM::EndQuasiModal( int retCode )
 
     if( !IsQuasiModal() )
     {
-        wxFAIL_MSG( wxT( "Either DIALOG_SHIM::EndQuasiModal was called twice, or ShowQuasiModal wasn't called" ) );
+        KI_FAIL_MSG( wxT( "Either DIALOG_SHIM::EndQuasiModal was called twice, or ShowQuasiModal wasn't called" ) );
         return;
     }
 

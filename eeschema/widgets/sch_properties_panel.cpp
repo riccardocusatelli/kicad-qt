@@ -46,6 +46,7 @@
 #include <wildcards_and_files_ext.h>
 #include <wx_filename.h>
 #include <set>
+#include <core/ki_assert.h>
 
 static const wxString MISSING_FIELD_SENTINEL = wxS( "\uE000" );
 
@@ -229,7 +230,7 @@ SCH_PROPERTIES_PANEL::SCH_PROPERTIES_PANEL( wxWindow* aParent, SCH_BASE_FRAME* a
     m_propMgr.Rebuild();
     bool found = false;
 
-    wxASSERT( wxPGGlobalVars );
+    KI_ASSERT( wxPGGlobalVars );
 
     wxString editorKey = PG_UNIT_EDITOR::BuildEditorName( m_frame );
 
@@ -493,10 +494,10 @@ PROPERTY_BASE* SCH_PROPERTIES_PANEL::getPropertyFromEvent( const wxPropertyGridE
 
     SCH_ITEM* firstItem = static_cast<SCH_ITEM*>( item );
 
-    wxCHECK_MSG( firstItem, nullptr, wxT( "getPropertyFromEvent for a property with nothing selected!") );
+    KI_CHECK_MSG( firstItem, nullptr, wxT( "getPropertyFromEvent for a property with nothing selected!") );
 
     PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *firstItem ), aEvent.GetPropertyName() );
-    wxCHECK_MSG( property, nullptr, wxT( "getPropertyFromEvent for a property not found on the selected item!" ) );
+    KI_CHECK_MSG( property, nullptr, wxT( "getPropertyFromEvent for a property not found on the selected item!" ) );
 
     return property;
 }
@@ -538,7 +539,7 @@ void SCH_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
     SELECTION fallbackSelection;
     const SELECTION& selection = getSelection( fallbackSelection );
 
-    wxCHECK( getPropertyFromEvent( aEvent ), /* void */ );
+    KI_CHECK( getPropertyFromEvent( aEvent ), /* void */ );
 
     wxVariant   newValue = aEvent.GetPropertyValue();
     SCH_COMMIT  changes( m_frame );
@@ -553,7 +554,7 @@ void SCH_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
 
         SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
         PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *item ), aEvent.GetPropertyName() );
-        wxCHECK2( property, continue );
+        KI_CHECK2( property, continue );
 
         // Editing reference text in the schematic must go through the parent symbol in order to handle
         // symbol instance data properly.
@@ -562,7 +563,7 @@ void SCH_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
                 && property->Name() == wxT( "Text" ) )
         {
             SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( item->GetParentSymbol() );
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             changes.Modify( symbol, screen, RECURSE_MODE::NO_RECURSE );
             symbol->SetRefProp( newValue.GetString() );

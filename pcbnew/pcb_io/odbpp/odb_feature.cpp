@@ -46,6 +46,7 @@
 #include "pcb_io_odbpp.h"
 #include <callback_gal.h>
 #include <string_utils.h>
+#include <core/ki_assert.h>
 
 
 void FEATURES_MANAGER::AddFeatureLine( const VECTOR2I& aStart, const VECTOR2I& aEnd,
@@ -1089,7 +1090,7 @@ void ODB_SURFACE_DATA::AddPolygonHoles( const SHAPE_POLY_SET::POLYGON& aPolygon 
 {
     for( size_t ii = 1; ii < aPolygon.size(); ++ii )
     {
-        wxCHECK2( aPolygon[ii].PointCount() >= 3, continue );
+        KI_CHECK2( aPolygon[ii].PointCount() >= 3, continue );
 
         const std::vector<VECTOR2I>& hole = aPolygon[ii].CPoints();
 

@@ -37,6 +37,7 @@
 #include <widgets/std_bitmap_button.h>
 #include <wx/hyperlink.h>
 #include <symbol_preview_widget.h>
+#include <core/ki_assert.h>
 
 class ALT_PIN_DATA_MODEL : public WX_GRID_TABLE_BASE, public std::vector<SCH_PIN::ALT>
 {
@@ -55,7 +56,7 @@ public:
         case COL_NAME:  return _( "Alternate Pin Name" );
         case COL_TYPE:  return _( "Electrical Type" );
         case COL_SHAPE: return _( "Graphic Style" );
-        default:        wxFAIL; return wxEmptyString;
+        default:        KI_FAIL(); return wxEmptyString;
         }
     }
 
@@ -71,7 +72,7 @@ public:
         case COL_NAME:  return at( aRow ).m_Name;
         case COL_TYPE:  return PinTypeNames()[static_cast<int>( at( aRow ).m_Type )];
         case COL_SHAPE: return PinShapeNames()[static_cast<int>( at( aRow ).m_Shape )];
-        default:        wxFAIL; return wxEmptyString;
+        default:        KI_FAIL(); return wxEmptyString;
         }
     }
 
@@ -96,7 +97,7 @@ public:
             break;
 
         default:
-            wxFAIL;
+            KI_FAIL();
             break;
         }
     }

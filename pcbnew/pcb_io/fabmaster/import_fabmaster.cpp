@@ -58,6 +58,8 @@
 #include <math/util.h>
 
 #include <wx/filename.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 /**
@@ -91,7 +93,7 @@ void FABMASTER::checkpoint()
 double FABMASTER::readDouble( const std::string& aStr ) const
 {
     // This is bad, but at least don't return uninitialized data
-    wxCHECK_MSG( !aStr.empty(), 0.0, "Empty string passed to readDouble" );
+    KI_CHECK_MSG( !aStr.empty(), 0.0, "Empty string passed to readDouble" );
 
     std::istringstream istr( aStr );
     istr.imbue( std::locale::classic() );
@@ -105,7 +107,7 @@ double FABMASTER::readDouble( const std::string& aStr ) const
 int FABMASTER::readInt( const std::string& aStr ) const
 {
     // This is bad, but at least don't return uninitialized data
-    wxCHECK_MSG( !aStr.empty(), 0, "Empty string passed to readInt" );
+    KI_CHECK_MSG( !aStr.empty(), 0, "Empty string passed to readInt" );
 
     std::istringstream istr( aStr );
     istr.imbue( std::locale::classic() );
@@ -845,7 +847,7 @@ bool FABMASTER::assignLayers()
 
     for( const auto& [layer_name, fabmaster_layer] : layers )
     {
-        wxLogTrace( traceFabmaster, wxT( "Layer %s -> KiCad layer %d" ), layer_name,
+        KI_LOG_TRACE( traceFabmaster, wxT( "Layer %s -> KiCad layer %d" ), layer_name,
                     fabmaster_layer.layerid );
     }
 
@@ -1360,7 +1362,7 @@ FABMASTER::GRAPHIC_POLYGON* FABMASTER::processPolygon( const FABMASTER::GRAPHIC_
     }
     else
     {
-        wxCHECK_MSG( false, nullptr,
+        KI_CHECK_MSG( false, nullptr,
                      wxString::Format( "Unhandled polygon type: %s", aData.graphic_dataname ) );
     }
 
@@ -1755,7 +1757,7 @@ size_t FABMASTER::processTraces( size_t aRow )
 
         if( !gr_item )
         {
-            wxLogTrace( traceFabmaster,  _( "Unhandled graphic item '%s' in row %zu." ),
+            KI_LOG_TRACE( traceFabmaster,  _( "Unhandled graphic item '%s' in row %zu." ),
                         gr_data.graphic_dataname.c_str(),
                         rownum );
             continue;
@@ -2474,7 +2476,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
 
                     if( !IsPcbLayer( layer ) )
                     {
-                        wxLogTrace( traceFabmaster, wxS( "The layer %s is not mapped?" ),
+                        KI_LOG_TRACE( traceFabmaster, wxS( "The layer %s is not mapped?" ),
                                                          ref->layer.c_str() );
                         continue;
                     }
@@ -3306,7 +3308,7 @@ bool FABMASTER::traceIsOpen( const FABMASTER::TRACE& aLine )
     }
 
     // Should have at least one item
-    wxCHECK( first, true );
+    KI_CHECK( first, true );
 
     // First subsequence was only one item
     if( !last )

@@ -42,6 +42,7 @@
 #include <geometry/eda_angle.h>
 #include <pgm_base.h>
 #include <settings/common_settings.h>
+#include <core/ki_assert.h>
 
 class SHAPE_LINE_CHAIN;
 class SHAPE_POLY_SET;
@@ -443,9 +444,9 @@ public:
      */
     virtual void SetLayerDepth( double aLayerDepth )
     {
-        wxCHECK_MSG( aLayerDepth <= m_depthRange.y, /*void*/,
+        KI_CHECK_MSG( aLayerDepth <= m_depthRange.y, /*void*/,
                      wxT( "SetLayerDepth: below minimum" ) );
-        wxCHECK_MSG( aLayerDepth >= m_depthRange.x, /*void*/,
+        KI_CHECK_MSG( aLayerDepth >= m_depthRange.x, /*void*/,
                      wxT( "SetLayerDepth: above maximum" ) );
 
         m_layerDepth = aLayerDepth;

@@ -59,6 +59,7 @@
 #include <tools/zone_filler_tool.h>
 #include <tools/board_inspection_tool.h>
 #include <kiplatform/ui.h>
+#include <core/ki_assert.h>
 
 // wxWidgets spends *far* too long calcuating column widths (most of it, believe it or
 // not, in repeatedly creating/destroying a wxDC to do the measurement in).
@@ -743,7 +744,7 @@ void DIALOG_DRC::OnDRCItemSelected( wxDataViewEvent& aEvent )
         {
             int net = track->GetNetCode();
 
-            wxASSERT( net > 0 );    // Without a net how can it be a diff-pair?
+            KI_ASSERT( net > 0 );    // Without a net how can it be a diff-pair?
 
             for( const KIID& id : rc_item->GetIDs() )
             {

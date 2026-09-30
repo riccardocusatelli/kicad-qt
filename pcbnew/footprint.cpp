@@ -79,6 +79,8 @@
 #include <api/api_pcb_utils.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 FOOTPRINT::FOOTPRINT( BOARD* parent ) :
@@ -636,7 +638,7 @@ bool FOOTPRINT::Deserialize( const google::protobuf::Any &aContainer )
             }
             else
             {
-                wxLogTrace( traceApi, wxString::Format( wxS( "Attempting to unpack unknown type %s "
+                KI_LOG_TRACE( traceApi, wxString::Format( wxS( "Attempting to unpack unknown type %s "
                                                              "from footprint message, skipping" ),
                                                         itemMsg.type_url() ) );
             }
@@ -1092,7 +1094,7 @@ FOOTPRINT& FOOTPRINT::operator=( const FOOTPRINT& aOther )
 
 void FOOTPRINT::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_FOOTPRINT_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_FOOTPRINT_T, /* void */ );
     *this = *static_cast<const FOOTPRINT*>( aOther );
 
     for( PAD* pad : m_pads )
@@ -1247,7 +1249,7 @@ FOOTPRINT_VARIANT* FOOTPRINT::AddVariant( const wxString& aVariantName )
     if( aVariantName.IsEmpty()
         || aVariantName.CmpNoCase( GetDefaultVariantName() ) == 0 )
     {
-        wxASSERT_MSG( false, wxT( "Variant name cannot be empty or default." ) );
+        KI_ASSERT_MSG( false, wxT( "Variant name cannot be empty or default." ) );
         return nullptr;
     }
 
@@ -1440,11 +1442,11 @@ void FOOTPRINT::Add( BOARD_ITEM* aBoardItem, ADD_MODE aMode, bool aSkipConnectiv
         break;
 
     case PCB_MARKER_T:
-        wxFAIL_MSG( wxT( "FOOTPRINT::Add(): Markers go at the board level, even in the footprint editor" ) );
+        KI_FAIL_MSG( wxT( "FOOTPRINT::Add(): Markers go at the board level, even in the footprint editor" ) );
         return;
 
     case PCB_FOOTPRINT_T:
-        wxFAIL_MSG( wxT( "FOOTPRINT::Add(): Nested footprints not supported" ) );
+        KI_FAIL_MSG( wxT( "FOOTPRINT::Add(): Nested footprints not supported" ) );
         return;
 
     case PCB_POINT_T:
@@ -1456,7 +1458,7 @@ void FOOTPRINT::Add( BOARD_ITEM* aBoardItem, ADD_MODE aMode, bool aSkipConnectiv
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "FOOTPRINT::Add(): BOARD_ITEM type (%d) not handled" ),
+        KI_FAIL_MSG( wxString::Format( wxT( "FOOTPRINT::Add(): BOARD_ITEM type (%d) not handled" ),
                                       aBoardItem->Type() ) );
 
         return;
@@ -1564,7 +1566,7 @@ void FOOTPRINT::Remove( BOARD_ITEM* aBoardItem, REMOVE_MODE aMode )
         wxString msg;
         msg.Printf( wxT( "FOOTPRINT::Remove() needs work: BOARD_ITEM type (%d) not handled" ),
                     aBoardItem->Type() );
-        wxFAIL_MSG( msg );
+        KI_FAIL_MSG( msg );
     }
     }
 
@@ -2690,7 +2692,7 @@ void FOOTPRINT::RunOnChildren( const std::function<void( BOARD_ITEM* )>& aFuncti
     }
     catch( std::bad_function_call& )
     {
-        wxFAIL_MSG( wxT( "Error running FOOTPRINT::RunOnChildren" ) );
+        KI_FAIL_MSG( wxT( "Error running FOOTPRINT::RunOnChildren" ) );
     }
 }
 
@@ -2705,7 +2707,7 @@ std::vector<int> FOOTPRINT::ViewGetLayers() const
     switch( m_layer )
     {
     default:
-        wxASSERT_MSG( false, wxT( "Illegal layer" ) );   // do you really have footprints placed
+        KI_ASSERT_MSG( false, wxT( "Illegal layer" ) );   // do you really have footprints placed
                                                          // on other layers?
         KI_FALLTHROUGH;
 
@@ -2859,7 +2861,7 @@ void FOOTPRINT::Rotate( const VECTOR2I& aRotCentre, const EDA_ANGLE& aAngle )
 
 void FOOTPRINT::SetLayerAndFlip( PCB_LAYER_ID aLayer )
 {
-    wxASSERT( aLayer == F_Cu || aLayer == B_Cu );
+    KI_ASSERT( aLayer == F_Cu || aLayer == B_Cu );
 
     if( aLayer != GetLayer() )
         Flip( GetPosition(), FLIP_DIRECTION::LEFT_RIGHT );
@@ -3247,7 +3249,7 @@ BOARD_ITEM* FOOTPRINT::DuplicateItem( bool addToParentGroup, BOARD_COMMIT* aComm
 
     default:
         // Un-handled item for duplication
-        wxFAIL_MSG( wxT( "Duplication not supported for items of class " ) + aItem->GetClass() );
+        KI_FAIL_MSG( wxT( "Duplication not supported for items of class " ) + aItem->GetClass() );
         break;
     }
 
@@ -4145,7 +4147,7 @@ void FOOTPRINT::CheckClippedSilk( const std::function<void( BOARD_ITEM* aItemA,
 
 void FOOTPRINT::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_FOOTPRINT_T );
+    KI_ASSERT( aImage->Type() == PCB_FOOTPRINT_T );
 
     FOOTPRINT* image = static_cast<FOOTPRINT*>( aImage );
 
@@ -4756,7 +4758,7 @@ void FOOTPRINT::SetStackupMode( FOOTPRINT_STACKUP aMode )
 
 void FOOTPRINT::SetStackupLayers( LSET aLayers )
 {
-    wxCHECK2( m_stackupMode == FOOTPRINT_STACKUP::CUSTOM_LAYERS, /*void*/ );
+    KI_CHECK2( m_stackupMode == FOOTPRINT_STACKUP::CUSTOM_LAYERS, /*void*/ );
 
     if( m_stackupMode == FOOTPRINT_STACKUP::CUSTOM_LAYERS )
         m_stackupLayers = std::move( aLayers );

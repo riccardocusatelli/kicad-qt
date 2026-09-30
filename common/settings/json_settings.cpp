@@ -42,6 +42,8 @@
 #include <wx/log.h>
 #include <wx/stdstream.h>
 #include <wx/wfstream.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 nlohmann::json::json_pointer JSON_SETTINGS_INTERNALS::PointerFromString( std::string aPath )
@@ -57,7 +59,7 @@ nlohmann::json::json_pointer JSON_SETTINGS_INTERNALS::PointerFromString( std::st
     }
     catch( ... )
     {
-        wxASSERT_MSG( false, wxT( "Invalid pointer path in PointerFromString!" ) );
+        KI_ASSERT_MSG( false, wxT( "Invalid pointer path in PointerFromString!" ) );
     }
 
     return p;
@@ -88,7 +90,7 @@ JSON_SETTINGS::JSON_SETTINGS( const wxString& aFilename, SETTINGS_LOC aLocation,
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "Error: Could not create filename field for %s" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Error: Could not create filename field for %s" ),
                     GetFullFilename() );
     }
 
@@ -145,7 +147,7 @@ void JSON_SETTINGS::Load()
         catch( ... )
         {
             // Skip unreadable parameters in file
-            wxLogTrace( traceSettings, wxT( "param '%s' load err" ), param->GetJsonPath().c_str() );
+            KI_LOG_TRACE( traceSettings, wxT( "param '%s' load err" ), param->GetJsonPath().c_str() );
         }
     }
 }
@@ -177,7 +179,7 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
 
                     if( !wxCopyFile( aPath.GetFullPath(), temp.GetFullPath() ) )
                     {
-                        wxLogTrace( traceSettings,
+                        KI_LOG_TRACE( traceSettings,
                                     wxT( "%s: could not create temp file for migration" ),
                                     GetFullFilename() );
                     }
@@ -199,14 +201,14 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
                 if( !MigrateFromLegacy( cfg.get() ) )
                 {
                     success = false;
-                    wxLogTrace( traceSettings,
+                    KI_LOG_TRACE( traceSettings,
                                 wxT( "%s: migrated; not all settings were found in legacy file" ),
                                 GetFullFilename() );
                 }
                 else
                 {
                     success = true;
-                    wxLogTrace( traceSettings, wxT( "%s: migrated from legacy format" ),
+                    KI_LOG_TRACE( traceSettings, wxT( "%s: migrated from legacy format" ),
                                 GetFullFilename() );
                 }
 
@@ -216,7 +218,7 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
 
                     if( !wxCopyFile( temp.GetFullPath(), aPath.GetFullPath() ) )
                     {
-                        wxLogTrace( traceSettings,
+                        KI_LOG_TRACE( traceSettings,
                                     wxT( "migrate; copy temp file %s to %s failed" ),
                                     temp.GetFullPath(),
                                     aPath.GetFullPath() );
@@ -224,7 +226,7 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
 
                     if( !wxRemoveFile( temp.GetFullPath() ) )
                     {
-                        wxLogTrace( traceSettings,
+                        KI_LOG_TRACE( traceSettings,
                                     wxT( "migrate; failed to remove temp file %s" ),
                                     temp.GetFullPath() );
                     }
@@ -297,14 +299,14 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
                 }
                 catch( ... )
                 {
-                    wxLogTrace( traceSettings, wxT( "%s: file version could not be read!" ),
+                    KI_LOG_TRACE( traceSettings, wxT( "%s: file version could not be read!" ),
                                 GetFullFilename() );
                     success = false;
                 }
 
                 if( filever >= 0 && filever < m_schemaVersion )
                 {
-                    wxLogTrace( traceSettings, wxT( "%s: attempting migration from version "
+                    KI_LOG_TRACE( traceSettings, wxT( "%s: attempting migration from version "
                                                     "%d to %d" ),
                                 GetFullFilename(),
                                 filever,
@@ -316,13 +318,13 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
                     }
                     else
                     {
-                        wxLogTrace( traceSettings, wxT( "%s: migration failed!" ),
+                        KI_LOG_TRACE( traceSettings, wxT( "%s: migration failed!" ),
                                     GetFullFilename() );
                     }
                 }
                 else if( filever > m_schemaVersion )
                 {
-                    wxLogTrace( traceSettings,
+                    KI_LOG_TRACE( traceSettings,
                                 wxT( "%s: warning: file version %d is newer than latest (%d)" ),
                                 GetFullFilename(),
                                 filever,
@@ -332,16 +334,16 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
             }
             else
             {
-                wxLogTrace( traceSettings, wxT( "%s exists but can't be opened for read" ),
+                KI_LOG_TRACE( traceSettings, wxT( "%s exists but can't be opened for read" ),
                             GetFullFilename() );
             }
         }
         catch( nlohmann::json::parse_error& error )
         {
             success = false;
-            wxLogTrace( traceSettings, wxT( "Json parse error reading %s: %s" ),
+            KI_LOG_TRACE( traceSettings, wxT( "Json parse error reading %s: %s" ),
                         path.GetFullPath(), error.what() );
-            wxLogTrace( traceSettings, wxT( "Attempting migration in case file is in legacy "
+            KI_LOG_TRACE( traceSettings, wxT( "Attempting migration in case file is in legacy "
                                             "format" ) );
             migrateFromLegacy( path );
         }
@@ -354,7 +356,7 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
     for( NESTED_SETTINGS* settings : m_nested_settings )
         settings->LoadFromFile();
 
-    wxLogTrace( traceSettings, wxT( "Loaded <%s> with schema %d" ),
+    KI_LOG_TRACE( traceSettings, wxT( "Loaded <%s> with schema %d" ),
                 GetFullFilename(),
                 m_schemaVersion );
 
@@ -365,7 +367,7 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
     {
         if( legacy_migrated && m_deleteLegacyAfterMigration && !wxRemoveFile( path.GetFullPath() ) )
         {
-            wxLogTrace( traceSettings, wxT( "Warning: could not remove legacy file %s" ),
+            KI_LOG_TRACE( traceSettings, wxT( "Warning: could not remove legacy file %s" ),
                         path.GetFullPath() );
         }
 
@@ -389,7 +391,7 @@ bool JSON_SETTINGS::Store()
         }
         catch( const std::exception& e )
         {
-            wxLogTrace( traceSettings, wxT( "param '%s' store err: %s" ),
+            KI_LOG_TRACE( traceSettings, wxT( "param '%s' store err: %s" ),
                         param->GetJsonPath().c_str(), e.what() );
         }
     }
@@ -443,7 +445,7 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
 
     if( !m_createIfMissing && !path.FileExists() )
     {
-        wxLogTrace( traceSettings,
+        KI_LOG_TRACE( traceSettings,
                     wxT( "File for %s doesn't exist and m_createIfMissing == false; not saving" ),
                     GetFullFilename() );
         return false;
@@ -452,7 +454,7 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
     // Ensure the path exists, and create it if not.
     if( !path.DirExists() && !path.Mkdir() )
     {
-        wxLogTrace( traceSettings, wxT( "Warning: could not create path %s, can't save %s" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Warning: could not create path %s, can't save %s" ),
                     path.GetPath(), GetFullFilename() );
         return false;
     }
@@ -460,7 +462,7 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
     if( ( path.FileExists() && !path.IsFileWritable() ) ||
         ( !path.FileExists() && !path.IsDirWritable() ) )
     {
-        wxLogTrace( traceSettings, wxT( "File for %s is read-only; not saving" ),
+        KI_LOG_TRACE( traceSettings, wxT( "File for %s is read-only; not saving" ),
                     GetFullFilename() );
         return false;
     }
@@ -469,7 +471,7 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
 
     for( NESTED_SETTINGS* settings : m_nested_settings )
     {
-        wxCHECK2( settings, continue );
+        KI_CHECK2( settings, continue );
 
         modified |= settings->SaveToFile();
     }
@@ -478,19 +480,19 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
 
     if( !modified && !aForce && path.FileExists() )
     {
-        wxLogTrace( traceSettings, wxT( "%s contents not modified, skipping save" ),
+        KI_LOG_TRACE( traceSettings, wxT( "%s contents not modified, skipping save" ),
                     GetFullFilename() );
         return false;
     }
     else if( !modified && !aForce && !m_createIfDefault )
     {
-        wxLogTrace( traceSettings,
+        KI_LOG_TRACE( traceSettings,
                     wxT( "%s contents still default and m_createIfDefault == false; not saving" ),
                     GetFullFilename() );
         return false;
     }
 
-    wxLogTrace( traceSettings, wxT( "Saving %s" ), GetFullFilename() );
+    KI_LOG_TRACE( traceSettings, wxT( "Saving %s" ), GetFullFilename() );
 
     LOCALE_IO dummy;
     bool success = true;
@@ -535,7 +537,7 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
                 // and write, preferring data safety over avoiding a rewrite.
                 if( !existing.bad() && current == payload )
                 {
-                    wxLogTrace( traceSettings,
+                    KI_LOG_TRACE( traceSettings,
                                 wxT( "%s on-disk contents match payload, skipping write" ),
                                 GetFullFilename() );
 
@@ -550,19 +552,19 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
 
         if( !fileStream.IsOk() || !fileStream.WriteAll( payload.c_str(), payload.size() ) )
         {
-            wxLogTrace( traceSettings, wxT( "Warning: could not save %s" ), GetFullFilename() );
+            KI_LOG_TRACE( traceSettings, wxT( "Warning: could not save %s" ), GetFullFilename() );
             success = false;
         }
     }
     catch( nlohmann::json::exception& error )
     {
-        wxLogTrace( traceSettings, wxT( "Catch error: could not save %s. Json error %s" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Catch error: could not save %s. Json error %s" ),
                     GetFullFilename(), error.what() );
         success = false;
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "Error: could not save %s." ) );
+        KI_LOG_TRACE( traceSettings, wxT( "Error: could not save %s." ) );
         success = false;
     }
 
@@ -607,7 +609,7 @@ bool JSON_SETTINGS::LoadFromRawFile( const wxString& aPath )
     }
     catch( nlohmann::json::parse_error& error )
     {
-        wxLogTrace( traceSettings, wxT( "Json parse error reading %s: %s" ), aPath, error.what() );
+        KI_LOG_TRACE( traceSettings, wxT( "Json parse error reading %s: %s" ), aPath, error.what() );
 
         return false;
     }
@@ -735,8 +737,8 @@ template KICOMMON_API void JSON_SETTINGS::Set<KIGFX::CROSS_HAIR_MODE>( const std
 void JSON_SETTINGS::registerMigration( int aOldSchemaVersion, int aNewSchemaVersion,
                                        std::function<bool()> aMigrator )
 {
-    wxASSERT( aNewSchemaVersion > aOldSchemaVersion );
-    wxASSERT( aNewSchemaVersion <= m_schemaVersion );
+    KI_ASSERT( aNewSchemaVersion > aOldSchemaVersion );
+    KI_ASSERT( aNewSchemaVersion <= m_schemaVersion );
     m_migrators[aOldSchemaVersion] = std::make_pair( aNewSchemaVersion, aMigrator );
 }
 
@@ -747,11 +749,11 @@ bool JSON_SETTINGS::Migrate()
 
     while( filever < m_schemaVersion )
     {
-        wxASSERT( m_migrators.count( filever ) > 0 );
+        KI_ASSERT( m_migrators.count( filever ) > 0 );
 
         if( !m_migrators.count( filever ) )
         {
-            wxLogTrace( traceSettings, wxT( "Migrator missing for %s version %d!" ),
+            KI_LOG_TRACE( traceSettings, wxT( "Migrator missing for %s version %d!" ),
                         typeid( *this ).name(),
                         filever );
             return false;
@@ -761,7 +763,7 @@ bool JSON_SETTINGS::Migrate()
 
         if( pair.second() )
         {
-            wxLogTrace( traceSettings, wxT( "Migrated %s from %d to %d" ),
+            KI_LOG_TRACE( traceSettings, wxT( "Migrated %s from %d to %d" ),
                         typeid( *this ).name(),
                         filever,
                         pair.first );
@@ -770,7 +772,7 @@ bool JSON_SETTINGS::Migrate()
         }
         else
         {
-            wxLogTrace( traceSettings, wxT( "Migration failed for %s from %d to %d" ),
+            KI_LOG_TRACE( traceSettings, wxT( "Migration failed for %s from %d to %d" ),
                         typeid( *this ).name(),
                         filever,
                         pair.first );
@@ -784,7 +786,7 @@ bool JSON_SETTINGS::Migrate()
 
 bool JSON_SETTINGS::MigrateFromLegacy( wxConfigBase* aLegacyConfig )
 {
-    wxLogTrace( traceSettings, wxT( "MigrateFromLegacy() not implemented for %s" ),
+    KI_LOG_TRACE( traceSettings, wxT( "MigrateFromLegacy() not implemented for %s" ),
                 typeid( *this ).name() );
     return false;
 }
@@ -864,7 +866,7 @@ bool JSON_SETTINGS::fromLegacy( wxConfigBase* aConfig, const std::string& aKey,
         }
         catch( ... )
         {
-            wxASSERT_MSG( false, wxT( "Could not write value in fromLegacy!" ) );
+            KI_ASSERT_MSG( false, wxT( "Could not write value in fromLegacy!" ) );
             return false;
         }
 
@@ -903,7 +905,7 @@ bool JSON_SETTINGS::fromLegacyString( wxConfigBase* aConfig, const std::string& 
         }
         catch( ... )
         {
-            wxASSERT_MSG( false, wxT( "Could not write value in fromLegacyString!" ) );
+            KI_ASSERT_MSG( false, wxT( "Could not write value in fromLegacyString!" ) );
             return false;
         }
 
@@ -931,7 +933,7 @@ bool JSON_SETTINGS::fromLegacyColor( wxConfigBase* aConfig, const std::string& a
         }
         catch( ... )
         {
-            wxASSERT_MSG( false, wxT( "Could not write value in fromLegacyColor!" ) );
+            KI_ASSERT_MSG( false, wxT( "Could not write value in fromLegacyColor!" ) );
             return false;
         }
 
@@ -944,7 +946,7 @@ bool JSON_SETTINGS::fromLegacyColor( wxConfigBase* aConfig, const std::string& a
 
 void JSON_SETTINGS::AddNestedSettings( NESTED_SETTINGS* aSettings )
 {
-    wxLogTrace( traceSettings, wxT( "AddNestedSettings %s" ), aSettings->GetFilename() );
+    KI_LOG_TRACE( traceSettings, wxT( "AddNestedSettings %s" ), aSettings->GetFilename() );
     m_nested_settings.push_back( aSettings );
 }
 
@@ -962,7 +964,7 @@ void JSON_SETTINGS::ReleaseNestedSettings( NESTED_SETTINGS* aSettings )
 
     if( it != m_nested_settings.end() )
     {
-        wxLogTrace( traceSettings, wxT( "Flush and release %s" ), ( *it )->GetFilename() );
+        KI_LOG_TRACE( traceSettings, wxT( "Flush and release %s" ), ( *it )->GetFilename() );
 
         // Flush the nested state into the parent and propagate genuine dirtiness so a later parent
         // save persists it; the nested object is gone by then, so this is the parent's only signal.

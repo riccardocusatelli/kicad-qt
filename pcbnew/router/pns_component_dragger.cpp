@@ -28,6 +28,7 @@
 
 #include "pns_component_dragger.h"
 #include "pns_debug_decorator.h"
+#include <core/ki_assert.h>
 
 namespace PNS
 {
@@ -92,7 +93,7 @@ bool COMPONENT_DRAGGER::Start( const VECTOR2I& aP, ITEM_SET& aPrimitives )
                 const JOINT* jA = m_world->FindJoint( line.CPoint( 0 ), aItem->Layer(), aItem->Net() );
                 const JOINT* jB = m_world->FindJoint( line.CLastPoint(), aItem->Layer(), aItem->Net() );
 
-                wxASSERT( jA == aJoint || jB == aJoint );
+                KI_ASSERT( jA == aJoint || jB == aJoint );
                 const JOINT* jSearch = ( jA == aJoint ) ? jB : jA;
 
                 if( jSearch && jSearch->LinkCount( ITEM::SOLID_T ) )
@@ -221,7 +222,7 @@ bool COMPONENT_DRAGGER::Drag( const VECTOR2I& aP )
         }
 
         default:
-            wxFAIL_MSG( wxT( "Unexpected item type in COMPONENT_DRAGGER::m_fixedItems" ) );
+            KI_FAIL_MSG( wxT( "Unexpected item type in COMPONENT_DRAGGER::m_fixedItems" ) );
         }
     }
 

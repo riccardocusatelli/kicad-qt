@@ -36,6 +36,8 @@
 #include <thread_pool.h>
 #include <trace_helpers.h>
 #include <settings/settings_manager.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 using namespace std::chrono_literals;
 
@@ -63,7 +65,7 @@ wxString SYMBOL_LIBRARY_ADAPTER::GlobalPathEnvVariableName()
 SCH_IO* SYMBOL_LIBRARY_ADAPTER::schplugin( const LIB_DATA* aRow )
 {
     SCH_IO* ret = dynamic_cast<SCH_IO*>( aRow->plugin.get() );
-    wxCHECK( aRow->plugin && ret, nullptr );
+    KI_CHECK( aRow->plugin && ret, nullptr );
     return ret;
 }
 
@@ -86,14 +88,14 @@ std::optional<LIB_STATUS> SYMBOL_LIBRARY_ADAPTER::LoadOne( LIB_DATA* aLib )
     {
         wxArrayString dummyList;
         schplugin( aLib )->EnumerateSymbolLib( dummyList, getUri( aLib->row ), &options );
-        wxLogTrace( traceLibraries, "Sym: %s: library enumerated %zu items", aLib->row->Nickname(), dummyList.size() );
+        KI_LOG_TRACE( traceLibraries, "Sym: %s: library enumerated %zu items", aLib->row->Nickname(), dummyList.size() );
         aLib->status.load_status = LOAD_STATUS::LOADED;
     }
     catch( IO_ERROR& e )
     {
         aLib->status.load_status = LOAD_STATUS::LOAD_ERROR;
         aLib->status.error = LIBRARY_ERROR( { e.What() } );
-        wxLogTrace( traceLibraries, "Sym: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
+        KI_LOG_TRACE( traceLibraries, "Sym: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
     }
 
     return aLib->status;
@@ -130,17 +132,17 @@ LIBRARY_RESULT<IO_BASE*> SYMBOL_LIBRARY_ADAPTER::createPlugin( const LIBRARY_TAB
     }
     else if( type == SCH_IO_MGR::SCH_FILE_UNKNOWN )
     {
-        wxLogTrace( traceLibraries, "Sym: Plugin type %s is unknown!", row->Type() );
+        KI_LOG_TRACE( traceLibraries, "Sym: Plugin type %s is unknown!", row->Type() );
         wxString msg = wxString::Format( _( "Unknown library type %s " ), row->Type() );
         return tl::unexpected( LIBRARY_ERROR( msg ) );
     }
 
     SCH_IO* plugin = SCH_IO_MGR::FindPlugin( type );
-    wxCHECK( plugin, tl::unexpected( LIBRARY_ERROR( _( "Internal error" ) ) ) );
+    KI_CHECK( plugin, tl::unexpected( LIBRARY_ERROR( _( "Internal error" ) ) ) );
 
     plugin->SetLibraryManagerAdapter( this );
 
-    wxLogTrace( traceLibraries, "Sym: Library %s (%s) plugin created", row->Nickname(),
+    KI_LOG_TRACE( traceLibraries, "Sym: Library %s (%s) plugin created", row->Nickname(),
                 magic_enum::enum_name( row->Scope() ) );
 
     return plugin;
@@ -168,7 +170,7 @@ std::vector<LIB_SYMBOL*> SYMBOL_LIBRARY_ADAPTER::GetSymbols( const wxString& aNi
     }
     catch( IO_ERROR& e )
     {
-        wxLogTrace( traceLibraries, "Sym: Exception enumerating library %s: %s", lib->row->Nickname(), e.What() );
+        KI_LOG_TRACE( traceLibraries, "Sym: Exception enumerating library %s: %s", lib->row->Nickname(), e.What() );
     }
 
     for( LIB_SYMBOL* symbol : symbols )
@@ -201,7 +203,7 @@ std::vector<wxString> SYMBOL_LIBRARY_ADAPTER::GetSymbolNames( const wxString& aN
         }
         catch( const IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "Sym: Exception enumerating library %s: %s",
+            KI_LOG_TRACE( traceLibraries, "Sym: Exception enumerating library %s: %s",
                         lib->row->Nickname(), e.What() );
         }
     }
@@ -227,7 +229,7 @@ LIB_SYMBOL* SYMBOL_LIBRARY_ADAPTER::LoadSymbol( const wxString& aNickname, const
     }
     else
     {
-        wxLogTrace( traceLibraries, "LoadSymbol: requested library %s not loaded", aNickname );
+        KI_LOG_TRACE( traceLibraries, "LoadSymbol: requested library %s not loaded", aNickname );
     }
 
     return nullptr;
@@ -237,13 +239,13 @@ LIB_SYMBOL* SYMBOL_LIBRARY_ADAPTER::LoadSymbol( const wxString& aNickname, const
 SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxString& aNickname,
                                                                    const LIB_SYMBOL* aSymbol, bool aOverwrite )
 {
-    wxCHECK( aSymbol, SAVE_SKIPPED );
+    KI_CHECK( aSymbol, SAVE_SKIPPED );
 
     LIBRARY_RESULT<LIB_DATA*> libResult = loadIfNeeded( aNickname );
 
     if( !libResult.has_value() )
     {
-        wxLogTrace( traceLibraries, "SaveSymbol: unable to load library %s: %s", aNickname,
+        KI_LOG_TRACE( traceLibraries, "SaveSymbol: unable to load library %s: %s", aNickname,
                     libResult.error().message );
         return SAVE_SKIPPED;
     }
@@ -252,12 +254,12 @@ SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxStrin
 
     if( !lib )
     {
-        wxLogTrace( traceLibraries, "SaveSymbol: library %s not found", aNickname );
+        KI_LOG_TRACE( traceLibraries, "SaveSymbol: library %s not found", aNickname );
         return SAVE_SKIPPED;
     }
 
     SCH_IO* plugin = schplugin( lib );
-    wxCHECK( plugin, SAVE_SKIPPED );
+    KI_CHECK( plugin, SAVE_SKIPPED );
 
     std::map<std::string, UTF8> options = lib->row->GetOptionsMap();
 
@@ -273,7 +275,7 @@ SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxStrin
         }
         catch( const IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "SaveSymbol: error checking for existing symbol %s:%s: %s", aNickname,
+            KI_LOG_TRACE( traceLibraries, "SaveSymbol: error checking for existing symbol %s:%s: %s", aNickname,
                         aSymbol->GetName(), e.What() );
             return SAVE_SKIPPED;
         }
@@ -285,7 +287,7 @@ SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxStrin
     }
     catch( const IO_ERROR& e )
     {
-        wxLogTrace( traceLibraries, "SaveSymbol: error saving %s:%s: %s", aNickname, aSymbol->GetName(), e.What() );
+        KI_LOG_TRACE( traceLibraries, "SaveSymbol: error saving %s:%s: %s", aNickname, aSymbol->GetName(), e.What() );
         return SAVE_SKIPPED;
     }
 
@@ -295,7 +297,7 @@ SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxStrin
 
 void SYMBOL_LIBRARY_ADAPTER::DeleteSymbol( const wxString& aNickname, const wxString& aSymbolName )
 {
-    wxCHECK_MSG( false, /* void */, "Unimplemented!" );
+    KI_CHECK_MSG( false, /* void */, "Unimplemented!" );
 }
 
 
@@ -367,7 +369,7 @@ std::vector<SUB_LIBRARY> SYMBOL_LIBRARY_ADAPTER::GetSubLibraries( const wxString
         }
         catch( const IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "Sym: Exception getting sub-libraries for %s: %s",
+            KI_LOG_TRACE( traceLibraries, "Sym: Exception getting sub-libraries for %s: %s",
                         aNickname, e.What() );
         }
     }
@@ -409,7 +411,7 @@ int SYMBOL_LIBRARY_ADAPTER::GetModifyHash() const
         if( std::optional<const LIB_DATA*> result = fetchIfLoaded( row->Nickname() ) )
         {
             const LIB_DATA* rowData = *result;
-            wxCHECK2( rowData->row, continue );
+            KI_CHECK2( rowData->row, continue );
             hash += schplugin( rowData )->GetModifyHash();
         }
     }
@@ -423,7 +425,7 @@ std::optional<int> SYMBOL_LIBRARY_ADAPTER::GetLibraryModifyHash( const wxString&
     if( std::optional<const LIB_DATA*> result = fetchIfLoaded( aNickname ) )
     {
         const LIB_DATA* rowData = *result;
-        wxCHECK( rowData->row, std::nullopt );
+        KI_CHECK( rowData->row, std::nullopt );
         return schplugin( rowData )->GetModifyHash();
     }
 

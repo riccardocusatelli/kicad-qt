@@ -48,6 +48,7 @@
 #include <google/protobuf/any.pb.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 using KIGFX::PCB_PAINTER;
 using KIGFX::PCB_RENDER_SETTINGS;
@@ -74,7 +75,7 @@ PCB_REFERENCE_IMAGE::~PCB_REFERENCE_IMAGE()
 
 PCB_REFERENCE_IMAGE& PCB_REFERENCE_IMAGE::operator=( const BOARD_ITEM& aItem )
 {
-    wxCHECK_MSG( Type() == aItem.Type(), *this,
+    KI_CHECK_MSG( Type() == aItem.Type(), *this,
                  wxT( "Cannot assign object type " ) + aItem.GetClass() + wxT( " to type " )
                          + GetClass() );
 
@@ -91,7 +92,7 @@ PCB_REFERENCE_IMAGE& PCB_REFERENCE_IMAGE::operator=( const BOARD_ITEM& aItem )
 
 void PCB_REFERENCE_IMAGE::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_REFERENCE_IMAGE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_REFERENCE_IMAGE_T, /* void */ );
     *this = *static_cast<const PCB_REFERENCE_IMAGE*>( aOther );
 }
 
@@ -104,7 +105,7 @@ EDA_ITEM* PCB_REFERENCE_IMAGE::Clone() const
 
 void PCB_REFERENCE_IMAGE::swapData( BOARD_ITEM* aItem )
 {
-    wxCHECK_RET( aItem->Type() == PCB_REFERENCE_IMAGE_T,
+    KI_CHECK_RET( aItem->Type() == PCB_REFERENCE_IMAGE_T,
                  wxString::Format( wxT( "% object cannot swap data with %s object." ),
                                    GetClass(), aItem->GetClass() ) );
 

@@ -31,6 +31,7 @@
 #include <wx/msgdlg.h>
 #include <wx/choicdlg.h>
 #include <wx/crt.h>
+#include <core/ki_log.h>
 /**
  * Flag to enable confirmation dialog debugging output.
  *
@@ -250,7 +251,7 @@ void DisplayInfoMessage( wxWindow* aParent, const wxString& aMessage, const wxSt
 {
     if( !wxTheApp || !wxTheApp->GetTopWindow() )
     {
-        wxLogTrace( traceConfirm, wxS( "%s %s" ), aMessage, aExtraInfo );
+        KI_LOG_TRACE( traceConfirm, wxS( "%s %s" ), aMessage, aExtraInfo );
         return;
     }
 

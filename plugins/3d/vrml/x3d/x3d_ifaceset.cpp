@@ -34,6 +34,7 @@
 #include "x3d_coords.h"
 #include "plugins/3dapi/ifsg_all.h"
 #include "wrlfacet.h"
+#include <core/ki_log.h>
 
 
 X3DIFACESET::X3DIFACESET() : X3DNODE()
@@ -65,7 +66,7 @@ X3DIFACESET::X3DIFACESET( X3DNODE* aParent ) : X3DNODE()
 
 X3DIFACESET::~X3DIFACESET()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying IndexedFaceSet." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying IndexedFaceSet." ) );
 }
 
 
@@ -229,14 +230,14 @@ SGNODE* X3DIFACESET::TranslateToSG( SGNODE* aParent )
 
     if( nullptr != aParent && ptype != S3D::SGTYPE_SHAPE )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( " * [BUG] IndexedFaceSet does not have a valid Shape parent "
                          "(parent ID: %d)" ), ptype );
 
         return nullptr;
     }
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating IndexedFaceSet with %zu children, %zu references, "
                      "%zu back pointers, and %zu coordinate indices." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size(), coordIndex.size() );

@@ -31,6 +31,7 @@
 #include <footprint_library_adapter.h>
 
 #include <mutex>
+#include <core/ki_assert.h>
 
 static std::mutex mutex3D_cacheManager;
 std::mutex PROJECT_PCB::s_libAdapterMutex;
@@ -49,11 +50,11 @@ FOOTPRINT_LIBRARY_ADAPTER* PROJECT_PCB::FootprintLibAdapter( PROJECT* aProject )
                              std::make_unique<FOOTPRINT_LIBRARY_ADAPTER>( mgr ) );
 
         std::optional<LIBRARY_MANAGER_ADAPTER*> created = mgr.Adapter( LIBRARY_TABLE_TYPE::FOOTPRINT );
-        wxCHECK( created && ( *created )->Type() == LIBRARY_TABLE_TYPE::FOOTPRINT, nullptr );
+        KI_CHECK( created && ( *created )->Type() == LIBRARY_TABLE_TYPE::FOOTPRINT, nullptr );
         return static_cast<FOOTPRINT_LIBRARY_ADAPTER*>( *created );
     }
 
-    wxCHECK( ( *adapter )->Type() == LIBRARY_TABLE_TYPE::FOOTPRINT, nullptr );
+    KI_CHECK( ( *adapter )->Type() == LIBRARY_TABLE_TYPE::FOOTPRINT, nullptr );
     return static_cast<FOOTPRINT_LIBRARY_ADAPTER*>( *adapter );
 }
 

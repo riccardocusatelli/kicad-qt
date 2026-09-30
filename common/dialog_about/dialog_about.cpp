@@ -31,6 +31,7 @@
 #include <wx/clipbrd.h>
 #include <wx/msgdlg.h>
 #include <wx/hyperlink.h>
+#include <core/ki_assert.h>
 
 /* All KiCad icons are linked into shared library 'libbitmaps.a'.
  *  Icons:
@@ -54,7 +55,7 @@ DIALOG_ABOUT::DIALOG_ABOUT( EDA_BASE_FRAME *aParent, ABOUT_APP_INFO& aAppInfo ) 
         m_images( nullptr ),
         m_info( aAppInfo )
 {
-    wxASSERT( aParent != nullptr );
+    KI_ASSERT( aParent != nullptr );
 
     // dpi fixes
     m_notebook->SetMinSize( FromDIP( m_notebook->GetMinSize() ) );

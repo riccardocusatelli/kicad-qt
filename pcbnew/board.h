@@ -44,6 +44,7 @@
 #include <unordered_set>
 #include <project.h>
 #include <list>
+#include <core/ki_assert.h>
 
 struct HISTORY_FILE_DATA;
 class BOARD_DESIGN_SETTINGS;
@@ -1537,7 +1538,7 @@ public:
 
     void CacheItemSubtreeById( BOARD_ITEM* aItem )
     {
-        wxCHECK( aItem, /* void */ );
+        KI_CHECK( aItem, /* void */ );
 
         CacheItemById( aItem );
 
@@ -1551,7 +1552,7 @@ public:
 
     void CacheChildrenById( const BOARD_ITEM* aParent )
     {
-        wxCHECK( aParent, /* void */ );
+        KI_CHECK( aParent, /* void */ );
 
         aParent->RunOnChildren(
                 [this]( BOARD_ITEM* aChild )
@@ -1563,7 +1564,7 @@ public:
 
     void UncacheItemSubtreeById( const BOARD_ITEM* aItem )
     {
-        wxCHECK( aItem, /* void */ );
+        KI_CHECK( aItem, /* void */ );
 
         UncacheItemById( aItem->m_Uuid );
 
@@ -1577,7 +1578,7 @@ public:
 
     void UncacheChildrenById( const BOARD_ITEM* aParent )
     {
-        wxCHECK( aParent, /* void */ );
+        KI_CHECK( aParent, /* void */ );
 
         aParent->RunOnChildren(
                 [this]( BOARD_ITEM* aChild )

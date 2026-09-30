@@ -33,6 +33,7 @@
 #include <wx/filename.h>
 #include <wx/log.h>
 #include <wx/tokenzr.h>
+#include <core/ki_log.h>
 
 /*
  * Flag to enable advanced config debugging
@@ -209,7 +210,7 @@ static void dumpCfg( const std::vector<std::unique_ptr<PARAM_CFG>>& aArray )
 
     for( const auto& param : aArray )
     {
-        wxLogTrace( AdvancedConfigMask, dumpParamCfg( *param ) );
+        KI_LOG_TRACE( AdvancedConfigMask, dumpParamCfg( *param ) );
     }
 }
 
@@ -257,7 +258,7 @@ struct GEOMETRY_TUNING_REGISTRAR
 
 ADVANCED_CFG::ADVANCED_CFG()
 {
-    wxLogTrace( AdvancedConfigMask, wxS( "Init advanced config" ) );
+    KI_LOG_TRACE( AdvancedConfigMask, wxS( "Init advanced config" ) );
 
     // Init defaults - this is done in case the config doesn't exist,
     // then the values will remain as set here.
@@ -418,7 +419,7 @@ void ADVANCED_CFG::loadFromConfigFile()
 
     if( !k_advanced.FileExists() )
     {
-        wxLogTrace( AdvancedConfigMask, wxS( "File does not exist %s" ), k_advanced.GetFullPath() );
+        KI_LOG_TRACE( AdvancedConfigMask, wxS( "File does not exist %s" ), k_advanced.GetFullPath() );
 
         // load the defaults
         wxConfig emptyConfig;
@@ -427,7 +428,7 @@ void ADVANCED_CFG::loadFromConfigFile()
         return;
     }
 
-    wxLogTrace( AdvancedConfigMask, wxS( "Loading advanced config from: %s" ), k_advanced.GetFullPath() );
+    KI_LOG_TRACE( AdvancedConfigMask, wxS( "Loading advanced config from: %s" ), k_advanced.GetFullPath() );
 
     wxFileConfig file_cfg( wxS( "" ), wxS( "" ), k_advanced.GetFullPath() );
     loadSettings( file_cfg );
@@ -742,7 +743,7 @@ void ADVANCED_CFG::loadSettings( wxConfigBase& aCfg )
 
     dumpCfg( m_entries );
 
-    wxLogTrace( kicadTraceCoroutineStack, wxT( "Using coroutine stack size %d" ), m_CoroutineStackSize );
+    KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "Using coroutine stack size %d" ), m_CoroutineStackSize );
 
     syncGeometryTuning( *this );
 }

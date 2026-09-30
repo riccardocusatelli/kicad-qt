@@ -33,6 +33,7 @@
 #include <macros.h>
 #include <trigo.h>
 #include <widgets/msgpanel.h>
+#include <core/ki_assert.h>
 
 using namespace STROKEPARAMS_T;
 
@@ -248,7 +249,7 @@ void STROKE_PARAMS::Stroke( const SHAPE* aShape, LINE_STYLE aLineStyle, int aWid
                 startAngle = startAngle.Normalize() - ANGLE_360;
         }
 
-        wxASSERT( startAngle < arcEndAngle );
+        KI_ASSERT( startAngle < arcEndAngle );
 
         EDA_ANGLE angleIncrement = EDA_ANGLE( 0.5, DEGREES_T );
 
@@ -355,7 +356,7 @@ void STROKE_PARAMS::GetMsgPanelInfo( UNITS_PROVIDER* aUnitsProvider,
 
 void STROKE_PARAMS::Format( OUTPUTFORMATTER* aFormatter, const EDA_IU_SCALE& aIuScale ) const
 {
-    wxASSERT( aFormatter != nullptr );
+    KI_ASSERT( aFormatter != nullptr );
 
     if( GetColor() == KIGFX::COLOR4D::UNSPECIFIED )
     {

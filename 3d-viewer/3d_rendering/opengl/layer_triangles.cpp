@@ -26,6 +26,7 @@
 #include "../raytracing/ray.h"
 #include <wx/debug.h>   // For the wxASSERT
 #include <mutex>
+#include <core/ki_assert.h>
 
 
 TRIANGLE_LIST::TRIANGLE_LIST( unsigned int aNrReservedTriangles, bool aReserveNormals )
@@ -307,7 +308,7 @@ OPENGL_RENDER_LIST::OPENGL_RENDER_LIST( const TRIANGLE_DISPLAY_LIST& aLayerTrian
 
     if( aTextureIndexForSegEnds )
     {
-        wxASSERT( glIsTexture( aTextureIndexForSegEnds ) );
+        KI_ASSERT( glIsTexture( aTextureIndexForSegEnds ) );
 
         if( glIsTexture( aTextureIndexForSegEnds ) )
         {
@@ -546,7 +547,7 @@ void OPENGL_RENDER_LIST::DrawCulled( bool aDrawMiddle,
 
 void OPENGL_RENDER_LIST::ApplyScalePosition( float aZposition, float aZscale )
 {
-    wxCHECK2( aZscale > FLT_EPSILON, aZscale = FLT_EPSILON + 1 );
+    KI_CHECK2( aZscale > FLT_EPSILON, aZscale = FLT_EPSILON + 1 );
 
     m_zPositionTransformation = aZposition;
     m_zScaleTransformation = aZscale;
@@ -569,12 +570,12 @@ void OPENGL_RENDER_LIST::SetItIsTransparent( bool aSetTransparent )
 GLuint OPENGL_RENDER_LIST::generate_top_or_bot_seg_ends(
         const TRIANGLE_LIST* aTriangleContainer, bool aIsNormalUp, GLuint aTextureId ) const
 {
-    wxCHECK( aTriangleContainer != nullptr, 0 );
+    KI_CHECK( aTriangleContainer != nullptr, 0 );
 
-    wxASSERT( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 );
+    KI_ASSERT( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 );
 
     // Top and Bot don't have normals array stored in container
-    wxASSERT( aTriangleContainer->GetNormalsSize() == 0 );
+    KI_ASSERT( aTriangleContainer->GetNormalsSize() == 0 );
 
     if( ( aTriangleContainer->GetVertexSize() > 0 )
       && ( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 ) )
@@ -636,12 +637,12 @@ GLuint OPENGL_RENDER_LIST::generate_top_or_bot_seg_ends(
 GLuint OPENGL_RENDER_LIST::generate_top_or_bot_triangles( const TRIANGLE_LIST* aTriangleContainer,
                                                           bool aIsNormalUp ) const
 {
-    wxCHECK( aTriangleContainer != nullptr, 0 );
+    KI_CHECK( aTriangleContainer != nullptr, 0 );
 
-    wxASSERT( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 );
+    KI_ASSERT( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 );
 
     // Top and Bot dint have normals array stored in container
-    wxASSERT( aTriangleContainer->GetNormalsSize() == 0 );
+    KI_ASSERT( aTriangleContainer->GetNormalsSize() == 0 );
 
     if( ( aTriangleContainer->GetVertexSize() > 0 )
       && ( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 ) )
@@ -680,16 +681,16 @@ GLuint OPENGL_RENDER_LIST::generate_top_or_bot_triangles( const TRIANGLE_LIST* a
 GLuint OPENGL_RENDER_LIST::generate_middle_triangles(
         const TRIANGLE_LIST* aTriangleContainer ) const
 {
-    wxCHECK( aTriangleContainer != nullptr, 0 );
+    KI_CHECK( aTriangleContainer != nullptr, 0 );
 
     // We expect that it is a multiple of 3 vertex
-    wxASSERT( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 );
+    KI_ASSERT( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 );
 
     // We expect that it is a multiple of 6 vertex (because we expect to add quads)
-    wxASSERT( (aTriangleContainer->GetVertexSize() % 6 ) == 0 );
+    KI_ASSERT( (aTriangleContainer->GetVertexSize() % 6 ) == 0 );
 
     // We expect that there are normals with same size as vertex
-    wxASSERT( aTriangleContainer->GetNormalsSize() == aTriangleContainer->GetVertexSize() );
+    KI_ASSERT( aTriangleContainer->GetNormalsSize() == aTriangleContainer->GetVertexSize() );
 
     if( ( aTriangleContainer->GetVertexSize() > 0 )
       && ( ( aTriangleContainer->GetVertexSize() % 3 ) == 0 )

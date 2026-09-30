@@ -266,7 +266,7 @@ int BEZIER_POLY::numberOfInflectionPoints()
     if( b1 ^ b2 )
         return 0;
 
-    KI_TRACE( BEZIER_DBG, "numberOfInflectionPoints: rare case" );
+    KI_LOG_TRACE( BEZIER_DBG, "numberOfInflectionPoints: rare case" );
     // These are rare cases where there are potentially 2 or 0 inflection points.
     return -1;
 }
@@ -329,7 +329,7 @@ void BEZIER_POLY::subdivide( double aT, BEZIER_POLY& aLeft, BEZIER_POLY& aRight 
 
 void BEZIER_POLY::recursiveSegmentation( std::vector<VECTOR2D>& aOutput, double aThreshhold )
 {
-    KI_TRACE( BEZIER_DBG, "recursiveSegmentation with threshold %f", aThreshhold );
+    KI_LOG_TRACE( BEZIER_DBG, "recursiveSegmentation with threshold %f", aThreshhold );
     std::vector<BEZIER_POLY> stack;
 
     BEZIER_POLY* bezier = nullptr;
@@ -344,7 +344,7 @@ void BEZIER_POLY::recursiveSegmentation( std::vector<VECTOR2D>& aOutput, double 
 
         if( bezier->m_ctrlPts[3] == bezier->m_ctrlPts[0] )
         {
-            KI_TRACE( BEZIER_DBG, "recursiveSegmentation dropping zero length segment" );
+            KI_LOG_TRACE( BEZIER_DBG, "recursiveSegmentation dropping zero length segment" );
             stack.pop_back();
         }
         else if( bezier->isFlat( aThreshhold ) )
@@ -360,7 +360,7 @@ void BEZIER_POLY::recursiveSegmentation( std::vector<VECTOR2D>& aOutput, double 
         }
     }
 
-    KI_TRACE( BEZIER_DBG, "recursiveSegmentation generated %zu points", aOutput.size() );
+    KI_LOG_TRACE( BEZIER_DBG, "recursiveSegmentation generated %zu points", aOutput.size() );
 }
 
 
@@ -402,33 +402,33 @@ int BEZIER_POLY::findInflectionPoints( double& aT1, double& aT2 )
 
             if( t2 - t1 > 0.00001 )
             {
-                KI_TRACE( BEZIER_DBG, "BEZIER_POLY Found 2 inflection points at t1 = %f, t2 = %f", t1, t2 );
+                KI_LOG_TRACE( BEZIER_DBG, "BEZIER_POLY Found 2 inflection points at t1 = %f, t2 = %f", t1, t2 );
                 return 2;
             }
             else
             {
-                KI_TRACE( BEZIER_DBG, "BEZIER_POLY Found 1 inflection point at t = %f", t1 );
+                KI_LOG_TRACE( BEZIER_DBG, "BEZIER_POLY Found 1 inflection point at t = %f", t1 );
                 return 1;
             }
         }
         else if( t1 > 0.0 && t1 < 1.0 )
         {
             aT1 = t1;
-            KI_TRACE( BEZIER_DBG, "BEZIER_POLY Found 1 inflection point at t = %f", t1 );
+            KI_LOG_TRACE( BEZIER_DBG, "BEZIER_POLY Found 1 inflection point at t = %f", t1 );
             return 1;
         }
         else if( t2 > 0.0 && t2 < 1.0 )
         {
             aT1 = t2;
-            KI_TRACE( BEZIER_DBG, "BEZIER_POLY Found 1 inflection point at t = %f", t2 );
+            KI_LOG_TRACE( BEZIER_DBG, "BEZIER_POLY Found 1 inflection point at t = %f", t2 );
             return 1;
         }
 
-        KI_TRACE( BEZIER_DBG, "BEZIER_POLY Found no inflection points" );
+        KI_LOG_TRACE( BEZIER_DBG, "BEZIER_POLY Found no inflection points" );
         return 0;
     }
 
-    KI_TRACE( BEZIER_DBG, "BEZIER_POLY Found no inflection points" );
+    KI_LOG_TRACE( BEZIER_DBG, "BEZIER_POLY Found no inflection points" );
     return 0;
 }
 
@@ -449,13 +449,13 @@ void BEZIER_POLY::cubicParabolicApprox( std::vector<VECTOR2D>& aOutput, double a
     {
         if( c->isNaN() )
         {
-            KI_TRACE(  BEZIER_DBG, "cubicParabolicApprox: NaN detected" );
+            KI_LOG_TRACE(  BEZIER_DBG, "cubicParabolicApprox: NaN detected" );
             break;
         }
 
         if( c->isFlat( aMaxError ) )
         {
-            KI_TRACE( BEZIER_DBG, "cubicParabolicApprox: General Flatness detected, adding %f %f",
+            KI_LOG_TRACE( BEZIER_DBG, "cubicParabolicApprox: General Flatness detected, adding %f %f",
                         c->m_ctrlPts[3].x, c->m_ctrlPts[3].y );
             // If the subsegment deviation satisfies the flatness criterion, store the last point and stop
             aOutput.push_back( c->m_ctrlPts[3] );
@@ -466,11 +466,11 @@ void BEZIER_POLY::cubicParabolicApprox( std::vector<VECTOR2D>& aOutput, double a
         double d = c->thirdControlPointDeviation();
         double t = 2 * std::sqrt( aMaxError / ( 3.0 * d ) ); // Forumla 2 in Hain et al.
 
-        KI_TRACE( BEZIER_DBG, "cubicParabolicApprox: split point t = %f", t );
+        KI_LOG_TRACE( BEZIER_DBG, "cubicParabolicApprox: split point t = %f", t );
 
         if( t > 1.0 )
         {
-            KI_TRACE( BEZIER_DBG, "cubicParabolicApprox: Invalid t value detected" );
+            KI_LOG_TRACE( BEZIER_DBG, "cubicParabolicApprox: Invalid t value detected" );
             // Case where the t value calculated is invalid, so use recursive subdivision
             c->recursiveSegmentation( aOutput, aMaxError );
             break;
@@ -482,7 +482,7 @@ void BEZIER_POLY::cubicParabolicApprox( std::vector<VECTOR2D>& aOutput, double a
         // First subsegment should have its deviation equal to flatness
         if( b1->isFlat( aMaxError ) )
         {
-            KI_TRACE( BEZIER_DBG, "cubicParabolicApprox: Flatness detected, adding %f %f", b1->m_ctrlPts[3].x, b1->m_ctrlPts[3].y );
+            KI_LOG_TRACE( BEZIER_DBG, "cubicParabolicApprox: Flatness detected, adding %f %f", b1->m_ctrlPts[3].x, b1->m_ctrlPts[3].y );
             aOutput.push_back( b1->m_ctrlPts[3] );
         }
         else
@@ -514,7 +514,7 @@ void BEZIER_POLY::getCubicPoly( std::vector<VECTOR2D>& aOutput, double aMaxError
 
     if( numberOfInflectionPoints() == 0 )
     {
-        KI_TRACE( BEZIER_DBG, "getCubicPoly Short circuit to PA" );
+        KI_LOG_TRACE( BEZIER_DBG, "getCubicPoly Short circuit to PA" );
         // If no inflection points then apply PA on the full Bezier segment.
         cubicParabolicApprox( aOutput, aMaxError );
         return;
@@ -526,7 +526,7 @@ void BEZIER_POLY::getCubicPoly( std::vector<VECTOR2D>& aOutput, double aMaxError
 
     if( numOfIfP == 2 )
     {
-        KI_TRACE( BEZIER_DBG, "getCubicPoly: 2 inflection points" );
+        KI_LOG_TRACE( BEZIER_DBG, "getCubicPoly: 2 inflection points" );
         // Case when 2 inflection points then divide at the smallest one first
         BEZIER_POLY sub1( std::vector<VECTOR2D>( 4 ) );
         BEZIER_POLY tmp1( std::vector<VECTOR2D>( 4 ) );
@@ -547,7 +547,7 @@ void BEZIER_POLY::getCubicPoly( std::vector<VECTOR2D>& aOutput, double aMaxError
             tmp1.subdivide( t1, sub2, sub3 );
         else
         {
-            KI_TRACE( BEZIER_DBG, "getCubicPoly: 2nd inflection point not found" );
+            KI_LOG_TRACE( BEZIER_DBG, "getCubicPoly: 2nd inflection point not found" );
             aOutput.push_back( tmp1.m_ctrlPts[3] );
             return;
         }
@@ -560,7 +560,7 @@ void BEZIER_POLY::getCubicPoly( std::vector<VECTOR2D>& aOutput, double aMaxError
     }
     else if( numOfIfP == 1 )
     {
-        KI_TRACE( BEZIER_DBG, "getCubicPoly: 1 inflection point" );
+        KI_LOG_TRACE( BEZIER_DBG, "getCubicPoly: 1 inflection point" );
         // Case where there is one inflection point, subdivide once and use PA on both subsegments
         BEZIER_POLY sub1( std::vector<VECTOR2D>( 4 ) );
         BEZIER_POLY sub2( std::vector<VECTOR2D>( 4 ) );
@@ -570,7 +570,7 @@ void BEZIER_POLY::getCubicPoly( std::vector<VECTOR2D>& aOutput, double aMaxError
     }
     else
     {
-        KI_TRACE( BEZIER_DBG, "getCubicPoly: Unknown inflection points" );
+        KI_LOG_TRACE( BEZIER_DBG, "getCubicPoly: Unknown inflection points" );
         // Case where there is no inflection, use PA directly
         cubicParabolicApprox( aOutput, aMaxError );
     }
@@ -595,7 +595,7 @@ void BEZIER_POLY::GetPoly( std::vector<VECTOR2D>& aOutput, double aMaxError )
         KI_ASSERT( false );
     }
 
-    KI_TRACE( BEZIER_DBG, "GetPoly generated %zu points", aOutput.size() );
+    KI_LOG_TRACE( BEZIER_DBG, "GetPoly generated %zu points", aOutput.size() );
 }
 
 

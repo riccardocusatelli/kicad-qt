@@ -35,6 +35,7 @@
 #include <view/view.h>
 #include <gerbview_painter.h>
 #include <math/util.h>      // for KiROUND
+#include <core/ki_assert.h>
 
 
 GERBVIEW_PRINTOUT::GERBVIEW_PRINTOUT( GBR_LAYOUT* aLayout, const BOARD_PRINTOUT_SETTINGS& aParams,
@@ -52,7 +53,7 @@ bool GERBVIEW_PRINTOUT::OnPrintPage( int aPage )
     LSET lset = m_settings.m_LayerSet;
 
     LSEQ seq = lset.UIOrder();
-    wxCHECK( unsigned( aPage - 1 ) < seq.size(), false );
+    KI_CHECK( unsigned( aPage - 1 ) < seq.size(), false );
     auto layerId = seq[aPage - 1];
 
     // In gerbview, draw layers are always printed on separate pages because handling negative

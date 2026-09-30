@@ -26,6 +26,7 @@
 #include "pns_segment.h"
 #include "pns_solid.h"
 #include "pns_arc.h"
+#include <core/ki_assert.h>
 
 namespace PNS {
 
@@ -77,7 +78,7 @@ int MEANDER_PLACER_BASE::Clearance()
     Router()->GetRuleResolver()->QueryConstraint( PNS::CONSTRAINT_TYPE::CT_CLEARANCE, itemToCheck,
                                                   nullptr, CurrentLayer(), &constraint );
 
-    wxCHECK_MSG( constraint.m_Value.HasMin(), m_currentWidth, wxT( "No minimum clearance?" ) );
+    KI_CHECK_MSG( constraint.m_Value.HasMin(), m_currentWidth, wxT( "No minimum clearance?" ) );
 
     return constraint.m_Value.Min();
 }
@@ -267,7 +268,7 @@ VECTOR2I MEANDER_PLACER_BASE::getSnappedStartPoint( LINKED_ITEM* aStartItem, VEC
     }
     else
     {
-        wxASSERT( aStartItem->Kind() == ITEM::ARC_T );
+        KI_ASSERT( aStartItem->Kind() == ITEM::ARC_T );
         ARC* arc = static_cast<ARC*>( aStartItem );
 
         if( ( VECTOR2I( arc->Anchor( 0 ) - aStartPoint ) ).SquaredEuclideanNorm() <=

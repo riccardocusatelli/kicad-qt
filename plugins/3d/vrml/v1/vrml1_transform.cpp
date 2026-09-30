@@ -29,6 +29,8 @@
 #include "vrml1_base.h"
 #include "vrml1_transform.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL1TRANSFORM::WRL1TRANSFORM( NAMEREGISTER* aDictionary ) : WRL1NODE( aDictionary )
@@ -50,7 +52,7 @@ WRL1TRANSFORM::WRL1TRANSFORM( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1TRANSFORM::~WRL1TRANSFORM()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Transform node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -71,7 +73,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
      * }
      */
 
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     center.x = 0.0;
     center.y = 0.0;
@@ -94,7 +96,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -103,7 +105,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -124,7 +126,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -142,7 +144,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( center ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                                   " * [INFO] invalid center %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -161,7 +163,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadSFRotation( rotation ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                                   " * [INFO] invalid rotation %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -175,7 +177,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( scale ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                                   " * [INFO] invalid scale %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -189,7 +191,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadSFRotation( scaleOrientation ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                                   " * [INFO] invalid scaleOrientation %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -203,7 +205,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( translation ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                                   " * [INFO] invalid translation %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -220,7 +222,7 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d"
                                               " * [INFO] invalid Transform %s\n"
                                               " * [INFO] file: '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(),
@@ -237,14 +239,14 @@ bool WRL1TRANSFORM::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 bool WRL1TRANSFORM::AddRefNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable" ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable" ) );
 }
 
 
 bool WRL1TRANSFORM::AddChildNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
@@ -256,7 +258,7 @@ SGNODE* WRL1TRANSFORM::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
     if( WRL1NODES::WRL1_BASE == m_Parent->GetNodeType() )
         return nullptr;
 
-    wxCHECK_MSG( sp, nullptr, wxT( "Bad model: no base data given" ) );
+    KI_CHECK_MSG( sp, nullptr, wxT( "Bad model: no base data given" ) );
 
     // rotation
     float rX, rY, rZ, rW;

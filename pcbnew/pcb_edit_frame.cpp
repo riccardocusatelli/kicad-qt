@@ -140,6 +140,8 @@
 #include <footprint_chooser_frame.h>
 #include <toolbars_pcb_editor.h>
 #include <drc/rule_editor/dialog_drc_rule_editor.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 #ifdef KICAD_IPC_API
 #include <api/api_server.h>
@@ -633,14 +635,14 @@ void PCB_EDIT_FRAME::StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItem
 {
     if( !GetPcbNewSettings()->m_CrossProbing.flash_selection )
     {
-        wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): aborted (setting disabled) items=%zu",
+        KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): aborted (setting disabled) items=%zu",
                     aItems.size() );
         return;
     }
 
     if( aItems.empty() )
     {
-        wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): aborted (no items)" );
+        KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): aborted (no items)" );
         return;
     }
 
@@ -650,7 +652,7 @@ void PCB_EDIT_FRAME::StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItem
     {
         if( item->IsMoving() )
         {
-            wxLogTrace( traceCrossProbeFlash,
+            KI_LOG_TRACE( traceCrossProbeFlash,
                         "StartCrossProbeFlash(PCB): aborted (items are moving)" );
             return;
         }
@@ -658,12 +660,12 @@ void PCB_EDIT_FRAME::StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItem
 
     if( m_crossProbeFlashing )
     {
-        wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): restarting existing flash (phase=%d)",
+        KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): restarting existing flash (phase=%d)",
                     m_crossProbeFlashPhase );
         m_crossProbeFlashTimer.Stop();
     }
 
-    wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): starting with %zu items", aItems.size() );
+    KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): starting with %zu items", aItems.size() );
 
     // Store uuids
     m_crossProbeFlashItems.clear();
@@ -677,19 +679,19 @@ void PCB_EDIT_FRAME::StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItem
         m_crossProbeFlashTimer.SetOwner( this );
 
     bool started = m_crossProbeFlashTimer.Start( 500, wxTIMER_CONTINUOUS ); // 0.5s intervals -> 3s total for 6 phases
-    wxLogTrace( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): timer start=%d id=%d",
+    KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): timer start=%d id=%d",
                 (int) started, m_crossProbeFlashTimer.GetId() );
 }
 
 
 void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
 {
-    wxLogTrace( traceCrossProbeFlash, "Timer(PCB) fired: phase=%d running=%d items=%zu",
+    KI_LOG_TRACE( traceCrossProbeFlash, "Timer(PCB) fired: phase=%d running=%d items=%zu",
                 m_crossProbeFlashPhase, (int) m_crossProbeFlashing, m_crossProbeFlashItems.size() );
 
     if( !m_crossProbeFlashing )
     {
-        wxLogTrace( traceCrossProbeFlash, "Timer(PCB) fired but not flashing (ignored)" );
+        KI_LOG_TRACE( traceCrossProbeFlash, "Timer(PCB) fired but not flashing (ignored)" );
         return;
     }
 
@@ -707,7 +709,7 @@ void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
         {
             if( item->IsMoving() )
             {
-                wxLogTrace( traceCrossProbeFlash,
+                KI_LOG_TRACE( traceCrossProbeFlash,
                             "Timer(PCB) phase=%d: items are moving, stopping flash",
                             m_crossProbeFlashPhase );
                 m_crossProbeFlashing = false;
@@ -725,7 +727,7 @@ void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
     {
         // Hide selection
         selTool->ClearSelection( true );
-        wxLogTrace( traceCrossProbeFlash, "Phase %d (PCB): cleared selection", m_crossProbeFlashPhase );
+        KI_LOG_TRACE( traceCrossProbeFlash, "Phase %d (PCB): cleared selection", m_crossProbeFlashPhase );
     }
     else
     {
@@ -736,7 +738,7 @@ void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
                 selTool->AddItemToSel( item, true );
         }
 
-        wxLogTrace( traceCrossProbeFlash, "Phase %d (PCB): restored %zu items",
+        KI_LOG_TRACE( traceCrossProbeFlash, "Phase %d (PCB): restored %zu items",
                     m_crossProbeFlashPhase, m_crossProbeFlashItems.size() );
     }
 
@@ -744,7 +746,7 @@ void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
     if( GetCanvas() )
     {
         GetCanvas()->ForceRefresh();
-        wxLogTrace( traceCrossProbeFlash, "Phase %d (PCB): forced canvas refresh",
+        KI_LOG_TRACE( traceCrossProbeFlash, "Phase %d (PCB): forced canvas refresh",
                     m_crossProbeFlashPhase );
     }
 
@@ -764,7 +766,7 @@ void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
         m_crossProbeFlashing = false;
         m_crossProbeFlashTimer.Stop();
 
-        wxLogTrace( traceCrossProbeFlash, "Flashing complete (PCB). Final selection size=%zu",
+        KI_LOG_TRACE( traceCrossProbeFlash, "Flashing complete (PCB). Final selection size=%zu",
                     m_crossProbeFlashItems.size() );
     }
 }
@@ -1029,7 +1031,7 @@ void PCB_EDIT_FRAME::setupUIConditions()
                 return group->HasDesignBlockLink();
             };
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )
@@ -1567,7 +1569,7 @@ void PCB_EDIT_FRAME::doCloseWindow()
     }
     else
     {
-        wxLogTrace( traceAutoSave, wxT( "Skipping auto-save of migrated local settings" ) );
+        KI_LOG_TRACE( traceAutoSave, wxT( "Skipping auto-save of migrated local settings" ) );
     }
 
     // Do not show the layer manager during closing to avoid flicker
@@ -1731,7 +1733,7 @@ void PCB_EDIT_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
     PCB_BASE_FRAME::LoadSettings( aCfg );
 
     PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg );
-    wxASSERT( cfg );
+    KI_ASSERT( cfg );
 
     if( cfg )
     {
@@ -1747,7 +1749,7 @@ void PCB_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
     PCB_BASE_FRAME::SaveSettings( aCfg );
 
     PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg );
-    wxASSERT( cfg );
+    KI_ASSERT( cfg );
 
     if( cfg )
     {
@@ -2799,7 +2801,7 @@ void PCB_EDIT_FRAME::ExchangeFootprint( FOOTPRINT* aExisting, FOOTPRINT* aNew,
 
     for( PCB_FIELD* field : aExisting->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->IsReference() || field->IsValue() )
             continue;
@@ -2811,7 +2813,7 @@ void PCB_EDIT_FRAME::ExchangeFootprint( FOOTPRINT* aExisting, FOOTPRINT* aNew,
 
     for( PCB_FIELD* field : aNew->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->IsReference() || field->IsValue() )
             continue;
@@ -2923,7 +2925,7 @@ void PCB_EDIT_FRAME::ExchangeFootprint( FOOTPRINT* aExisting, FOOTPRINT* aNew,
     // Copy fields in accordance with the reset* flags
     for( PCB_FIELD* oldField : aExisting->GetFields() )
     {
-        wxCHECK2( oldField, continue );
+        KI_CHECK2( oldField, continue );
 
         // Reference and value are already handled
         if( oldField->IsReference() || oldField->IsValue() )
@@ -2957,7 +2959,7 @@ void PCB_EDIT_FRAME::ExchangeFootprint( FOOTPRINT* aExisting, FOOTPRINT* aNew,
     // Check for any newly-added fields and set the update flag as appropriate
     for( PCB_FIELD* newField : aNew->GetFields() )
     {
-        wxCHECK2( newField, continue );
+        KI_CHECK2( newField, continue );
 
         // Reference and value are already handled
         if( newField->IsReference() || newField->IsValue() )
@@ -3347,7 +3349,7 @@ void PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent 
 #ifdef KICAD_IPC_API
 void PCB_EDIT_FRAME::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
 {
-    wxLogTrace( traceApi, "PCB frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
+    KI_LOG_TRACE( traceApi, "PCB frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
     RecreateToolbars();
     aEvt.Skip();
 }

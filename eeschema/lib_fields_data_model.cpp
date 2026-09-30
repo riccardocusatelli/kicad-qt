@@ -30,6 +30,8 @@
 #include <trace_helpers.h>
 
 #include "lib_fields_data_model.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 const wxString LIB_FIELDS_EDITOR_GRID_DATA_MODEL::ITEM_NUMBER_VARIABLE = wxS( "${ITEM_NUMBER}" );
@@ -185,7 +187,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SetFieldsOrder( const std::vector<wxStri
     size_t foundCount = 0;
 
     if( aNewOrder.size() > m_cols.size() )
-        wxLogDebug( "New order contains more fields than existing columns." );
+        KI_LOG_DEBUG( "New order contains more fields than existing columns." );
 
     for( const wxString& newField : aNewOrder )
     {
@@ -202,12 +204,12 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SetFieldsOrder( const std::vector<wxStri
         }
 
         if( !found )
-            wxLogDebug( "Field '%s' not found in existing columns.", newField );
+            KI_LOG_DEBUG( "Field '%s' not found in existing columns.", newField );
     }
 
     if( foundCount != m_cols.size() && foundCount != aNewOrder.size() )
     {
-        wxLogDebug( "Not all fields in the new order were found in the existing columns." );
+        KI_LOG_DEBUG( "Not all fields in the new order were found in the existing columns." );
     }
 }
 
@@ -237,7 +239,7 @@ wxString LIB_FIELDS_EDITOR_GRID_DATA_MODEL::GetValue( const LIB_DATA_MODEL_ROW& 
     std::set<wxString> mixedValues;
     bool               listMixedValues = ColIsSymbolName( aCol );
     wxString           fieldValue = INDETERMINATE_STATE;
-    wxCHECK( aCol >= 0 && aCol < (int) m_cols.size(), fieldValue );
+    KI_CHECK( aCol >= 0 && aCol < (int) m_cols.size(), fieldValue );
 
     LIB_DATA_MODEL_COL& col = m_cols[aCol];
 
@@ -279,7 +281,7 @@ wxString LIB_FIELDS_EDITOR_GRID_DATA_MODEL::GetValue( const LIB_DATA_MODEL_ROW& 
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString& aValue )
 {
-    wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), wxS( "Invalid column number" ) );
+    KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), wxS( "Invalid column number" ) );
 
     if( ColIsSymbolName( aCol ) )
         return;
@@ -300,14 +302,14 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxSt
 
 bool LIB_FIELDS_EDITOR_GRID_DATA_MODEL::ColIsSymbolName( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SYMBOL_NAME;
 }
 
 
 bool LIB_FIELDS_EDITOR_GRID_DATA_MODEL::ColIsCheck( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_isCheckbox;
 }
 
@@ -475,8 +477,8 @@ wxGridCellAttr* LIB_FIELDS_EDITOR_GRID_DATA_MODEL::GetAttr( int aRow, int aCol, 
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CreateDerivedSymbol( int aRow, int aCol, wxString& aNewSymbolName )
 {
-    wxCHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), "Invalid Row Number" );
-    wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+    KI_CHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), "Invalid Row Number" );
+    KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
 
     const LIB_SYMBOL* parentSymbol = m_rows[aRow].m_Refs[0];
     const wxString& fieldName = m_cols[aCol].m_fieldName;
@@ -494,9 +496,9 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CreateDerivedSymbol( int aRow, int aCol,
     targetElement.m_isModified = true;
     targetElement.m_originalData = parentSymbol->m_Uuid.AsString();
 
-    wxLogTrace( traceLibFieldTable, "CreateDerivedSymbol: Parent symbol name='%s', UUID='%s'",
+    KI_LOG_TRACE( traceLibFieldTable, "CreateDerivedSymbol: Parent symbol name='%s', UUID='%s'",
                 parentSymbol->GetName(), parentSymbol->m_Uuid.AsString() );
-    wxLogTrace( traceLibFieldTable, "CreateDerivedSymbol: Stored creation request for symbol '%s' under parent UUID %s, special field '%s'",
+    KI_LOG_TRACE( traceLibFieldTable, "CreateDerivedSymbol: Stored creation request for symbol '%s' under parent UUID %s, special field '%s'",
                 aNewSymbolName, parentSymbol->m_Uuid.AsString(), derivedSymbolFieldName );
 
     m_edited = true;
@@ -504,12 +506,12 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CreateDerivedSymbol( int aRow, int aCol,
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CreateDerivedSymbolImmediate( int aRow, int aCol, wxString& aNewSymbolName )
 {
-    wxCHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), "Invalid Row Number" );
-    wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+    KI_CHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), "Invalid Row Number" );
+    KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
 
     const LIB_SYMBOL* parentSymbol = m_rows[aRow].m_Refs[0];
 
-    wxLogTrace( traceLibFieldTable, "CreateDerivedSymbolImmediate: Creating '%s' from parent '%s' immediately",
+    KI_LOG_TRACE( traceLibFieldTable, "CreateDerivedSymbolImmediate: Creating '%s' from parent '%s' immediately",
                 aNewSymbolName, parentSymbol->GetName() );
 
     // Generate a fresh UUID for the new derived symbol
@@ -526,7 +528,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CreateDerivedSymbolImmediate( int aRow, 
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::createActualDerivedSymbol( const LIB_SYMBOL* aParentSymbol, const wxString& aNewSymbolName, const KIID& aNewSymbolUuid )
 {
-    wxLogTrace( traceLibFieldTable, "createActualDerivedSymbol: Creating '%s' from parent '%s', symbol list size before: %zu",
+    KI_LOG_TRACE( traceLibFieldTable, "createActualDerivedSymbol: Creating '%s' from parent '%s', symbol list size before: %zu",
                 aNewSymbolName, aParentSymbol->GetName(), m_symbolsList.size() );
 
     LIB_SYMBOL* newSymbol = nullptr;
@@ -553,7 +555,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::createActualDerivedSymbol( const LIB_SYM
         const_cast<KIID&>( newSymbol->m_Uuid ) = aNewSymbolUuid;
         m_symbolsList.push_back( newSymbol );
 
-        wxLogTrace( traceLibFieldTable, "createActualDerivedSymbol: Added new symbol to list, size now: %zu",
+        KI_LOG_TRACE( traceLibFieldTable, "createActualDerivedSymbol: Added new symbol to list, size now: %zu",
                     m_symbolsList.size() );
 
         // Initialize field data for the new symbol in the data store
@@ -562,14 +564,14 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::createActualDerivedSymbol( const LIB_SYM
             updateDataStoreSymbolField( newSymbol, col.m_fieldName );
         }
 
-        wxLogTrace( traceLibFieldTable, "createActualDerivedSymbol: Initialized field data for new symbol" );
+        KI_LOG_TRACE( traceLibFieldTable, "createActualDerivedSymbol: Initialized field data for new symbol" );
     }
 
     // Note: Not adding to symbolLibrary directly - this will be handled by the dialog's library manager integration
     wxString libraryName = aParentSymbol->GetLibId().GetLibNickname();
     m_createdDerivedSymbols.emplace_back( newSymbol, libraryName );
 
-    wxLogTrace( traceLibFieldTable, "Created derived symbol '%s' for library '%s', total tracked: %zu",
+    KI_LOG_TRACE( traceLibFieldTable, "Created derived symbol '%s' for library '%s', total tracked: %zu",
                 aNewSymbolName, libraryName, m_createdDerivedSymbols.size() );
 }
 
@@ -607,7 +609,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RevertRow( int aRow )
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::ClearCell( int aRow, int aCol )
 {
-    wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), wxS( "Invalid column number" ) );
+    KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), wxS( "Invalid column number" ) );
 
     LIB_DATA_MODEL_ROW& rowGroup = m_rows[aRow];
 
@@ -785,13 +787,13 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::setAttributeValue( LIB_SYMBOL* aSymbol,
             aSymbol->SetGlobalPower();
     }
     else
-        wxLogDebug( "Unknown attribute name: %s", aAttributeName );
+        KI_LOG_DEBUG( "Unknown attribute name: %s", aAttributeName );
 }
 
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
 {
-    wxLogTrace( traceLibFieldTable, "RebuildRows: Starting rebuild with %zu symbols in list", m_symbolsList.size() );
+    KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: Starting rebuild with %zu symbols in list", m_symbolsList.size() );
 
     if( GetView() )
     {
@@ -805,11 +807,11 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
 
     m_rows.clear();
 
-    wxLogTrace( traceLibFieldTable, "RebuildRows: About to process %zu symbols", m_symbolsList.size() );
+    KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: About to process %zu symbols", m_symbolsList.size() );
 
     for( LIB_SYMBOL* ref : m_symbolsList )
     {
-        wxLogTrace( traceLibFieldTable, "RebuildRows: Processing symbol '%s' (UUID: %s)",
+        KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: Processing symbol '%s' (UUID: %s)",
                     ref->GetName(), ref->m_Uuid.AsString() );
 
         if( !m_filter.IsEmpty() )
@@ -867,7 +869,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
         GetView()->ProcessTableMessage( msg );
     }
 
-    wxLogTrace( traceLibFieldTable, "RebuildRows: Completed rebuild with %zu rows created", m_rows.size() );
+    KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: Completed rebuild with %zu rows created", m_rows.size() );
     Sort();
 }
 
@@ -1192,7 +1194,7 @@ wxString LIB_FIELDS_EDITOR_GRID_DATA_MODEL::GetTypeName( int row, int col )
 
 wxGridCellRenderer* LIB_FIELDS_EDITOR_GRID_DATA_MODEL::getStripedRenderer( int aCol ) const
 {
-    wxCHECK( aCol >= 0 && aCol < (int) m_cols.size(), nullptr );
+    KI_CHECK( aCol >= 0 && aCol < (int) m_cols.size(), nullptr );
 
     const wxString& fieldName = m_cols[aCol].m_fieldName;
 
@@ -1221,7 +1223,7 @@ wxGridCellRenderer* LIB_FIELDS_EDITOR_GRID_DATA_MODEL::getStripedRenderer( int a
 // lib_fields_data_model.cpp - Add the isStripeableField method
 bool LIB_FIELDS_EDITOR_GRID_DATA_MODEL::isStripeableField( int aCol )
 {
-    wxCHECK( aCol >= 0 && aCol < (int) m_cols.size(), false );
+    KI_CHECK( aCol >= 0 && aCol < (int) m_cols.size(), false );
 
     // Don't apply stripes to checkbox fields
     return !ColIsCheck( aCol );

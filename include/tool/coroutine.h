@@ -30,6 +30,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <type_traits>
+#include <core/ki_log.h>
 
 #ifdef KICAD_USE_VALGRIND
 #include <valgrind/valgrind.h>
@@ -294,7 +295,7 @@ public:
         m_caller.own_tsan_fiber = false;
 #endif
 
-        wxLogTrace( kicadTraceCoroutineStack,  "COROUTINE::Call (from root)" );
+        KI_LOG_TRACE( kicadTraceCoroutineStack,  "COROUTINE::Call (from root)" );
 
         ctx.Continue( doCall( &args, aArg ) );
 
@@ -313,7 +314,7 @@ public:
     {
         INVOCATION_ARGS args{ INVOCATION_ARGS::FROM_ROUTINE, this, aCor.m_callContext };
 
-        wxLogTrace( kicadTraceCoroutineStack, wxT( "COROUTINE::Call (from routine)" ) );
+        KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "COROUTINE::Call (from routine)" ) );
 
         doCall( &args, aArg );
 
@@ -340,7 +341,7 @@ public:
         m_caller.own_tsan_fiber = false;
 #endif
 
-        wxLogTrace( kicadTraceCoroutineStack, wxT( "COROUTINE::Resume (from root)" ) );
+        KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "COROUTINE::Resume (from root)" ) );
 
         ctx.Continue( doResume( &args ) );
 
@@ -359,7 +360,7 @@ public:
     {
         INVOCATION_ARGS args{ INVOCATION_ARGS::FROM_ROUTINE, this, aCor.m_callContext };
 
-        wxLogTrace( kicadTraceCoroutineStack, wxT( "COROUTINE::Resume (from routine)" ) );
+        KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "COROUTINE::Resume (from routine)" ) );
 
         doResume( &args );
 
@@ -394,7 +395,7 @@ private:
         std::size_t stackSize = m_stacksize;
         void* sp = nullptr;
 
-        wxLogTrace( kicadTraceCoroutineStack, wxT( "COROUTINE::doCall" ) );
+        KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "COROUTINE::doCall" ) );
 
 #ifndef LIBCONTEXT_HAS_OWN_STACK
         assert( !m_stack );
@@ -505,7 +506,7 @@ private:
         bool res = ( 0 == ::mprotect( aAddress, aGuardSize, PROT_NONE ) );
 #endif
         if( !res )
-            wxLogTrace( kicadTraceCoroutineStack, wxT( "COROUTINE::GuardMemory has failed" ) );
+            KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "COROUTINE::GuardMemory has failed" ) );
     }
 #endif // LIBCONTEXT_HAS_OWN_STACK
 
@@ -557,7 +558,7 @@ private:
         __sanitizer_start_switch_fiber( &fake_stack_save, m_asanStackBottom, m_asanStackSize );
 #endif
 
-        wxLogTrace( kicadTraceCoroutineStack, wxT( "COROUTINE::jumpIn" ) );
+        KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "COROUTINE::jumpIn" ) );
 
         args = reinterpret_cast<INVOCATION_ARGS*>(
             libcontext::jump_fcontext( &( m_caller.ctx ), m_callee.ctx,
@@ -587,7 +588,7 @@ private:
                                         m_asanCallerStackBottom, m_asanCallerStackSize );
 #endif
 
-        wxLogTrace( kicadTraceCoroutineStack, wxT( "COROUTINE::jumpOut" ) );
+        KI_LOG_TRACE( kicadTraceCoroutineStack, wxT( "COROUTINE::jumpOut" ) );
 
         ret = reinterpret_cast<INVOCATION_ARGS*>(
             libcontext::jump_fcontext( &( m_callee.ctx ), m_caller.ctx,

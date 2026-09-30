@@ -30,6 +30,7 @@
 #include <wx/dcclient.h>
 #include <wx/renderer.h>
 #include <wx/settings.h>
+#include <core/ki_assert.h>
 
 #define wxCONTROL_SEPARATOR wxCONTROL_SPECIAL
 
@@ -406,7 +407,7 @@ void BITMAP_BUTTON::SetIsSeparator()
 
 void BITMAP_BUTTON::Check( bool aCheck )
 {
-    wxASSERT_MSG( hasFlag( wxCONTROL_CHECKABLE ), wxS( "Button is not a checkButton." ) );
+    KI_ASSERT_MSG( hasFlag( wxCONTROL_CHECKABLE ), wxS( "Button is not a checkButton." ) );
 
     if( aCheck && !hasFlag( wxCONTROL_CHECKED ) )
     {
@@ -424,7 +425,7 @@ void BITMAP_BUTTON::Check( bool aCheck )
 
 bool BITMAP_BUTTON::IsChecked() const
 {
-    wxASSERT_MSG( hasFlag( wxCONTROL_CHECKABLE ), wxS( "Button is not a checkButton." ) );
+    KI_ASSERT_MSG( hasFlag( wxCONTROL_CHECKABLE ), wxS( "Button is not a checkButton." ) );
 
     return hasFlag( wxCONTROL_CHECKED );
 }

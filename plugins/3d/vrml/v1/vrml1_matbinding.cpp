@@ -30,6 +30,8 @@
 #include "vrml1_base.h"
 #include "vrml1_matbinding.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 WRL1MATBINDING::WRL1MATBINDING( NAMEREGISTER* aDictionary ) : WRL1NODE( aDictionary )
@@ -53,33 +55,33 @@ WRL1MATBINDING::WRL1MATBINDING( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1MATBINDING::~WRL1MATBINDING()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying MaterialBinding node\n" ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying MaterialBinding node\n" ) );
 }
 
 
 bool WRL1MATBINDING::AddRefNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL1MATBINDING::AddChildNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
 bool WRL1MATBINDING::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 {
-    wxCHECK_MSG( aTopNode, false, wxT( "aTopNode is NULL." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "aTopNode is NULL." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
@@ -89,7 +91,7 @@ bool WRL1MATBINDING::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -110,7 +112,7 @@ bool WRL1MATBINDING::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetError() );
 
@@ -119,7 +121,7 @@ bool WRL1MATBINDING::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( glob.compare( "value" ) )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad MaterialBinding %s (expecting keyword 'value').\n"
                              " * [INFO] file: '%s'." ),
@@ -131,7 +133,7 @@ bool WRL1MATBINDING::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetError() );
 
@@ -182,7 +184,7 @@ bool WRL1MATBINDING::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               " * [INFO] bad MaterialBinding %s\n"
                                               " * [INFO] file: '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(),
@@ -198,7 +200,7 @@ bool WRL1MATBINDING::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
 SGNODE* WRL1MATBINDING::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 {
-    wxCHECK_MSG ( sp, nullptr, wxT( "Bad model: no base data given." ) );
+    KI_CHECK_MSG ( sp, nullptr, wxT( "Bad model: no base data given." ) );
 
     sp->matbind = m_binding;
 
