@@ -29,7 +29,6 @@
 #include <memory>
 #include <kicommon.h>
 #include <wx/debug.h>
-#include <wx/colour.h>
 #include <wx/string.h>
 #include <hash.h>
 #include <nlohmann/json_fwd.hpp>
@@ -96,6 +95,8 @@ struct KICOMMON_API StructColors
 /// Global list of legacy color names, still used all over the place for constructing COLOR4D's
 KICOMMON_API const StructColors* colorRefs();
 
+
+class wxColour;   // conversions are implemented in color4d.cpp
 
 namespace KIGFX
 {

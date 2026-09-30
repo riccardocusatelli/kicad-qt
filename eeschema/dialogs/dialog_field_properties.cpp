@@ -24,6 +24,7 @@
  */
 
 #include <widgets/bitmap_button.h>
+#include <widgets/sch_field_autocomplete.h>
 #include <widgets/std_bitmap_button.h>
 #include <widgets/font_choice.h>
 #include <widgets/color_swatch.h>
@@ -616,7 +617,7 @@ void DIALOG_FIELD_PROPERTIES::UpdateField( SCH_FIELD* aField )
 
 void DIALOG_FIELD_PROPERTIES::onScintillaCharAdded( wxStyledTextEvent &aEvent )
 {
-    m_field->OnScintillaCharAdded( m_scintillaTricks, aEvent );
+    SchFieldOnScintillaCharAdded( m_field, m_scintillaTricks, aEvent );
 }
 
 

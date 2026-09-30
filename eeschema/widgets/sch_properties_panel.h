@@ -91,5 +91,4 @@ protected:
 
     static std::set<wxString> m_currentSymbolFieldNames;
     static std::set<wxString> m_currentSheetFieldNames;
-    wxPGChoices               m_nets;
 };

@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include <wx/aui/framemanager.h>
+class wxAuiPaneInfo;
+class wxWindow;
 
 #include <map>
 

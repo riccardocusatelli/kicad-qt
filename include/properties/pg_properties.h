@@ -28,8 +28,22 @@
 #include <wx/propgrid/props.h>
 #include <wx/propgrid/advprops.h>
 #include <common.h>
+#include <properties/property_choices.h>
 #include <gal/color4d.h>
 #include <origin_transforms.h>
+
+
+/// Convert the model's choice list into the wxPropertyGrid one.
+inline wxPGChoices ToWxPGChoices( const PROPERTY_CHOICES& aChoices )
+{
+    wxPGChoices choices;
+
+    for( const PROPERTY_CHOICE& entry : aChoices )
+        choices.Add( entry.GetText(), entry.GetValue() );
+
+    return choices;
+}
+
 
 class PROPERTY_BASE;
 class REGEX_VALIDATOR;

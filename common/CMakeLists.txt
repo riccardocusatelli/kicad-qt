@@ -793,6 +793,7 @@ set( COMMON_SRCS
     printout.cpp
     ptree.cpp
     rc_item.cpp
+    widgets/rc_tree_model.cpp
     refdes_utils.cpp
     reference_image.cpp
     render_settings.cpp

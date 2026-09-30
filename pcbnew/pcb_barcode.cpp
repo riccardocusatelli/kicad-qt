@@ -973,7 +973,7 @@ static struct PCB_BARCODE_DESC
                 .SetChoicesFunc( []( INSPECTABLE* aItem )
                                  {
                                      PCB_BARCODE* barcode = static_cast<PCB_BARCODE*>( aItem );
-                                     wxPGChoices  choices;
+                                     PROPERTY_CHOICES  choices;
 
                                      choices.Add( _( "L (Low)" ), static_cast<int>( BARCODE_ECC_T::L ) );
                                      choices.Add( _( "M (Medium)" ), static_cast<int>( BARCODE_ECC_T::M ) );

@@ -25,7 +25,7 @@
 #include <common.h>
 #include <pcb_edit_frame.h>
 #include <font/font.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <string_utils.h>
 #include <board.h>
 #include <pcb_table.h>

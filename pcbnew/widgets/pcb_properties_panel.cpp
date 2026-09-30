@@ -441,7 +441,7 @@ wxPGProperty* PCB_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProp
     {
         KI_ASSERT( aProperty->HasChoices() );
 
-        const wxPGChoices& canonicalLayers = aProperty->Choices();
+        const PROPERTY_CHOICES& canonicalLayers = aProperty->Choices();
         wxArrayString      boardLayerNames;
         wxArrayInt         boardLayerIDs;
 
@@ -646,10 +646,10 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
 
 void PCB_PROPERTIES_PANEL::updateLists( const BOARD* aBoard )
 {
-    wxPGChoices layersAll;
-    wxPGChoices layersCu;
-    wxPGChoices nets;
-    wxPGChoices fonts;
+    PROPERTY_CHOICES layersAll;
+    PROPERTY_CHOICES layersCu;
+    PROPERTY_CHOICES nets;
+    PROPERTY_CHOICES fonts;
 
     // Regenerate all layers
     for( PCB_LAYER_ID layer : aBoard->GetEnabledLayers().UIOrder() )

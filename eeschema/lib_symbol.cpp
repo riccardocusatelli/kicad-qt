@@ -25,6 +25,7 @@
  */
 
 #include <font/outline_font.h>
+#include <wx/tokenzr.h>
 #include <sch_draw_panel.h>
 #include <plotters/plotter.h>
 #include <sch_screen.h>
@@ -2754,7 +2755,7 @@ static struct LIB_SYMBOL_DESC
                 .SetChoicesFunc(
                         []( INSPECTABLE* aItem )
                         {
-                            wxPGChoices choices;
+                            PROPERTY_CHOICES choices;
 
                             if( LIB_SYMBOL* symbol = dynamic_cast<LIB_SYMBOL*>( aItem ) )
                             {

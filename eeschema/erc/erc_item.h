@@ -29,31 +29,6 @@
 #include "sch_sheet_path.h"
 #include <core/ki_assert.h>
 
-/**
- * A specialisation of the RC_TREE_MODEL class to enable ERC errors / warnings to be resolved in
- * a specific sheet path context. This allows the displayed ERC descriptions in the ERC dialog to
- * reflect component references on a per-sheet basis in hierarchical schematics.
- * @see RC_TREE_MODEL
- */
-class ERC_TREE_MODEL : public RC_TREE_MODEL
-{
-public:
-    ERC_TREE_MODEL( EDA_DRAW_FRAME* aParentFrame, wxDataViewCtrl* aView ) :
-            RC_TREE_MODEL( aParentFrame, aView )
-    {
-    }
-
-    ~ERC_TREE_MODEL() {}
-
-    /**
-     * Override of RC_TREE_MODEL::GetValue which returns item descriptions in a specific
-     * SCH_SHEET_PATH context, if a context is available on the given SCH_MARKER or ERC_ITEM
-     * targets.
-     */
-    void GetValue( wxVariant& aVariant, wxDataViewItem const& aItem,
-                   unsigned int aCol ) const override;
-};
-
 class ERC_ITEM : public RC_ITEM
 {
 public:

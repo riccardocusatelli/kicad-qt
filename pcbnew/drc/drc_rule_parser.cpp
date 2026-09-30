@@ -864,11 +864,11 @@ LSET DRC_RULES_PARSER::parseLayer( wxString* aSource )
     else
     {
         wxString     layerName = FromUTF8();
-        wxPGChoices& layerMap = ENUM_MAP<PCB_LAYER_ID>::Instance().Choices();
+        PROPERTY_CHOICES& layerMap = ENUM_MAP<PCB_LAYER_ID>::Instance().Choices();
 
         for( unsigned ii = 0; ii < layerMap.GetCount(); ++ii )
         {
-            wxPGChoiceEntry& entry = layerMap[ii];
+            PROPERTY_CHOICE& entry = layerMap[ii];
 
             if( entry.GetText().Matches( layerName ) )
             {

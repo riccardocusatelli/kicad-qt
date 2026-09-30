@@ -24,6 +24,7 @@
 #include <map>
 #include <set>
 #include <settings/app_settings.h>
+#include <wx/gdicmn.h>
 #define PCM_DEFAULT_REPOSITORY_URL "https://repository.kicad.org/repository.json"
 
 

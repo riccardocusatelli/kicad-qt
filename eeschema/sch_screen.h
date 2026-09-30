@@ -31,7 +31,6 @@
 #include <vector>
 #include <wx/arrstr.h>
 #include <wx/chartype.h>
-#include <wx/gdicmn.h>
 #include <wx/string.h>
 
 #include <base_screen.h>

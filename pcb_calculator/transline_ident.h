@@ -26,6 +26,7 @@
 #define TRANSLINE_IDENT_H
 
 #include <vector>
+#include <wx/arrstr.h>
 
 #include "transline/transline.h"
 

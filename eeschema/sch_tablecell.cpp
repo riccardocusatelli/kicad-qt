@@ -24,7 +24,7 @@
 #include <advanced_config.h>
 #include <common.h>
 #include <sch_edit_frame.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <string_utils.h>
 #include <sch_table.h>
 #include <sch_tablecell.h>

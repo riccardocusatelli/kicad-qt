@@ -67,7 +67,7 @@ public:
         // in the ENUM_MAP: one for the canonical layer name and one for the user layer name.
         // We need to check against both.
 
-        wxPGChoices&    layerMap = ENUM_MAP<PCB_LAYER_ID>::Instance().Choices();
+        PROPERTY_CHOICES&    layerMap = ENUM_MAP<PCB_LAYER_ID>::Instance().Choices();
         const wxString& layerName = b->AsString();
         BOARD*          board = static_cast<PCBEXPR_CONTEXT*>( aCtx )->GetBoard();
 
@@ -84,7 +84,7 @@ public:
 
         for( unsigned ii = 0; ii < layerMap.GetCount(); ++ii )
         {
-            wxPGChoiceEntry& entry = layerMap[ii];
+            PROPERTY_CHOICE& entry = layerMap[ii];
 
             if( entry.GetText().Matches( layerName ) )
                 mask.set( ToLAYER_ID( entry.GetValue() ) );

@@ -28,6 +28,7 @@
 #include <dialog_cleanup_graphics_base.h>
 #include <cleanup_item.h>
 #include <widgets/unit_binder.h>
+#include <widgets/rc_tree_model.h>
 
 
 class PCB_BASE_FRAME;

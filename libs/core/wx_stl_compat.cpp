@@ -28,32 +28,7 @@ size_t std::hash<wxString>::operator()( const wxString& s ) const
 }
 #endif
 
-#ifdef USE_KICAD_WXPOINT_LESS_AND_HASH
-bool std::less<wxPoint>::operator()( const wxPoint& aA, const wxPoint& aB ) const
-{
-    if( aA.x == aB.x )
-        return aA.y < aB.y;
-
-    return aA.x < aB.x;
-}
-#endif
-
-
 wxString TowxString( const std::string_view& view )
 {
     return wxString( view.data(), view.length() );
-}
-
-
-std::ostream& operator<<( std::ostream& out, const wxSize& size )
-{
-    out << " width=\"" << size.GetWidth() << "\" height=\"" << size.GetHeight() << "\"";
-    return out;
-}
-
-
-std::ostream& operator<<( std::ostream& out, const wxPoint& pt )
-{
-    out << " x=\"" << pt.x << "\" y=\"" << pt.y << "\"";
-    return out;
 }

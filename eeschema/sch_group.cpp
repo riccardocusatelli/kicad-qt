@@ -30,7 +30,7 @@
 #include <sch_symbol.h>
 #include <symbol.h>
 #include <confirm.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <view/view.h>
 
 #include <wx/debug.h>

@@ -29,7 +29,8 @@
 #include <memory>
 
 #include <rc_item.h>
-#include <gr_basic.h>
+#include <gal/color4d.h>
+#include <math/box2.h>
 
 
 class SHAPE_LINE_CHAIN;

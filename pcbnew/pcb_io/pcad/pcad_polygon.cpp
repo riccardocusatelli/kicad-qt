@@ -33,6 +33,7 @@
 #include <zone.h>
 
 #include <wx/string.h>
+#include <wx/gdicmn.h>     // wxRealPoint (TODO: VECTOR2D)
 
 namespace PCAD2KICAD {
 

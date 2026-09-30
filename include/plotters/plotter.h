@@ -36,6 +36,8 @@
 #include <font/font.h>
 #include <core/ki_assert.h>
 
+class wxImage;
+
 
 class COLOR_SETTINGS;
 class SHAPE_ARC;

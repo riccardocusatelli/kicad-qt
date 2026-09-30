@@ -22,6 +22,7 @@
  */
 
 #include <gr_text.h>
+#include <scintilla_tricks.h>
 #include <sch_edit_frame.h>
 #include <widgets/bitmap_button.h>
 #include <widgets/color_swatch.h>

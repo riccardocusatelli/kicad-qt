@@ -194,7 +194,7 @@ static struct CLASS_E_DESC
         wxArrayString labels;
         labels.Add( "T1" );
         labels.Add( "T3" );
-        wxPGChoices newChoices( labels, values );
+        PROPERTY_CHOICES newChoices( labels, values );
 
         PROPERTY_MANAGER& propMgr = PROPERTY_MANAGER::Instance();
         auto prop = new PROPERTY_ENUM<E, enum_glob, D>( "enumGlob",
@@ -297,7 +297,7 @@ BOOST_AUTO_TEST_CASE( EnumGlob )
     labels.Add( "TEST2" );
     labels.Add( "TEST3" );
 
-    const wxPGChoices& v = prop->Choices();
+    const PROPERTY_CHOICES& v = prop->Choices();
     BOOST_CHECK_EQUAL( v.GetCount(), values.GetCount() );
     BOOST_CHECK_EQUAL( v.GetCount(), labels.GetCount() );
 
@@ -337,7 +337,7 @@ BOOST_AUTO_TEST_CASE( EnumClass )
     labels.Add( "TESTB" );
     labels.Add( "TESTC" );
 
-    const wxPGChoices& v = prop->Choices();
+    const PROPERTY_CHOICES& v = prop->Choices();
     BOOST_CHECK_EQUAL( v.GetCount(), values.GetCount() );
     BOOST_CHECK_EQUAL( v.GetCount(), labels.GetCount() );
 
@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_CASE( AlternativeEnum )
     labels.Add( "T1" );
     labels.Add( "T3" );
 
-    const wxPGChoices& v = prop->Choices();
+    const PROPERTY_CHOICES& v = prop->Choices();
     BOOST_CHECK_EQUAL( v.GetCount(), values.GetCount() );
     BOOST_CHECK_EQUAL( v.GetCount(), labels.GetCount() );
 

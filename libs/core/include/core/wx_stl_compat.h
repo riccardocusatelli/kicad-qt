@@ -22,44 +22,11 @@
 
 #include <string_view>
 
-#include <wx/gdicmn.h>
 #include <wx/string.h>
-
-/// Required to use wxPoint as key type in maps
-#define USE_KICAD_WXPOINT_LESS_AND_HASH // for common.cpp
-namespace std
-{
-    template <> struct hash<wxPoint>
-    {
-        size_t operator() ( const wxPoint& k ) const = delete;
-    };
-}
-
-namespace std
-{
-    template<> struct less<wxPoint>
-    {
-        bool operator()( const wxPoint& aA, const wxPoint& aB ) const;
-    };
-}
 
 /***
  * Helper function to construct a wxString from a std::string_view.
  */
 wxString TowxString( const std::string_view& view );
-
-/**
- * Helper function to print the given wxSize to a stream.
- *
- * Used for debugging functions like EDA_ITEM::Show and also in unit testing fixtures.
- */
-std::ostream& operator<<( std::ostream& out, const wxSize& size );
-
-/**
- * Helper function to print the given wxPoint to a stream.
- *
- * Used for debugging functions like EDA_ITEM::Show and also in unit testing fixtures.
- */
-std::ostream& operator<<( std::ostream& out, const wxPoint& pt );
 
 #endif // KICAD_WX_STL_COMPAT_H

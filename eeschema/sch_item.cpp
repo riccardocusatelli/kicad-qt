@@ -886,7 +886,7 @@ static struct SCH_ITEM_DESC
                 .SetIsHiddenFromDesignEditors()
                 .SetChoicesFunc( []( INSPECTABLE* aItem )
                                  {
-                                     wxPGChoices choices;
+                                     PROPERTY_CHOICES choices;
                                      choices.Add( _HKI( "All units" ), 0 );
 
                                      if( SCH_ITEM* item = dynamic_cast<SCH_ITEM*>( aItem ) )
@@ -908,7 +908,7 @@ static struct SCH_ITEM_DESC
                 .SetIsHiddenFromDesignEditors()
                 .SetChoicesFunc( []( INSPECTABLE* aItem )
                                  {
-                                     wxPGChoices choices;
+                                     PROPERTY_CHOICES choices;
                                      choices.Add( _HKI( "All body styles" ) );
 
                                      if( SCH_ITEM* item = dynamic_cast<SCH_ITEM*>( aItem ) )

@@ -49,7 +49,7 @@ bool INSPECTABLE::Set( PROPERTY_BASE* aProperty, wxVariant aValue, bool aNotify 
 
     if( object )
     {
-        wxPGChoices choices = aProperty->GetChoices( this );
+        PROPERTY_CHOICES choices = aProperty->GetChoices( this );
 
         if( choices.GetCount() )
         {

@@ -32,7 +32,6 @@
 #include <map>
 #include <set>
 
-#include <wx/dc.h>
 
 #include <gal/gal.h>
 #include <gal/color4d.h>

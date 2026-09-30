@@ -34,7 +34,7 @@
 
 #include <pcb_base_frame.h>
 #include <string_utils.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <base_units.h>
 #include <board.h>
 #include <board_design_settings.h>

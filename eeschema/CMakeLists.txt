@@ -288,6 +288,7 @@ set( EESCHEMA_SIM_SRCS
 
     sim/legacy_workbook.cpp
 
+    widgets/sch_field_autocomplete.cpp
     widgets/tuner_slider.cpp
     widgets/tuner_slider_base.cpp
     )
@@ -352,6 +353,7 @@ set( SYNC_SHEET_PIN_SRCS
 set( EESCHEMA_ERC_SRCS
     erc/erc.cpp
     erc/erc_item.cpp
+    erc/erc_tree_model.cpp
     erc/erc_report.cpp
     erc/erc_sch_pin_context.cpp
     erc/erc_settings.cpp

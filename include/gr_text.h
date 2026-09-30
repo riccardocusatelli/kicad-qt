@@ -26,7 +26,7 @@
 #define GR_TEXT_H
 
 #include <font/text_attributes.h>
-#include <wx/gdicmn.h>
+#include <math/vector2d.h>
 
 class wxDC;
 
@@ -63,26 +63,26 @@ int ClampTextPenSize( int aPenSize, const VECTOR2I& aSize, bool aStrict = false 
  * @return the "best" value for a pen size to draw/plot a bold text.
  */
 int GetPenSizeForBold( int aTextSize );
-int GetPenSizeForBold( const wxSize& aTextSize );
+int GetPenSizeForBold( const VECTOR2I& aTextSize );
 
 /**
  * @param aTextSize the char size (height or width).
  * @return the "best" value for a pen size to draw/plot a demibold text.
  */
 int GetPenSizeForDemiBold( int aTextSize );
-int GetPenSizeForDemiBold( const wxSize& aTextSize );
+int GetPenSizeForDemiBold( const VECTOR2I& aTextSize );
 
 /**
  * @param aTextSize = the char size (height or width).
  * @return the "best" value for a pen size to draw/plot a non-bold text.
  */
 int GetPenSizeForNormal( int aTextSize );
-int GetPenSizeForNormal( const wxSize& aTextSize );
+int GetPenSizeForNormal( const VECTOR2I& aTextSize );
 
 inline void InferBold( TEXT_ATTRIBUTES* aAttrs )
 {
     int    penSize( aAttrs->m_StrokeWidth );
-    wxSize textSize( aAttrs->m_Size.x, aAttrs->m_Size.y );
+    VECTOR2I textSize( aAttrs->m_Size.x, aAttrs->m_Size.y );
 
     aAttrs->m_Bold = abs( penSize - GetPenSizeForBold( textSize ) )
                    < abs( penSize - GetPenSizeForNormal( textSize ) );

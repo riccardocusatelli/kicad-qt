@@ -20,6 +20,7 @@
  */
 
 #include "properties_panel.h"
+#include <properties/pg_properties.h>
 #include <tool/selection.h>
 #include <eda_base_frame.h>
 #include <eda_item.h>
@@ -302,8 +303,8 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
             continue;
 
         wxVariant   dummy;
-        wxPGChoices choices;
-        bool        writable;
+        PROPERTY_CHOICES choices;
+        bool             writable;
 
         if( extractValueAndWritability( aSelection, name, dummy, writable, choices ) )
             availableProps.insert( name );
@@ -324,13 +325,13 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
         if( !availableProps.count( name ) )
             continue;
 
-        wxVariant   commonVal;
-        wxPGChoices choices;
+        wxVariant        commonVal;
+        PROPERTY_CHOICES choices;
 
         extractValueAndWritability( aSelection, name, commonVal, writeable, choices );
 
         if( choices.GetCount() > 0 )
-            pgProp->SetChoices( choices );
+            pgProp->SetChoices( ToWxPGChoices( choices ) );
 
         pgProp->SetValue( commonVal );
         pgProp->ChangeFlag( wxPG_PROP_READONLY, !writeable );
@@ -349,8 +350,8 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
     {
         PROPERTY_BASE* property = commonProps[name];
         wxPGProperty*  pgProp   = createPGProperty( property );
-        wxVariant      commonVal;
-        wxPGChoices    choices;
+        wxVariant        commonVal;
+        PROPERTY_CHOICES choices;
 
         if( !extractValueAndWritability( aSelection, name, commonVal, writeable, choices ) )
             continue;
@@ -358,7 +359,7 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
         if( pgProp )
         {
             if( choices.GetCount() )
-                pgProp->SetChoices( choices );
+                pgProp->SetChoices( ToWxPGChoices( choices ) );
 
             pgProp->SetValue( commonVal );
             pgProp->ChangeFlag( wxPG_PROP_READONLY, !writeable );
@@ -431,7 +432,7 @@ bool PROPERTIES_PANEL::getItemValue( EDA_ITEM* aItem, PROPERTY_BASE* aProperty, 
 
 
 bool PROPERTIES_PANEL::extractValueAndWritability( const SELECTION& aSelection, const wxString& aPropName,
-                                                   wxVariant& aValue, bool& aWritable, wxPGChoices& aChoices )
+                                                   wxVariant& aValue, bool& aWritable, PROPERTY_CHOICES& aChoices )
 {
     PROPERTY_MANAGER& propMgr = PROPERTY_MANAGER::Instance();
     bool              different = false;
@@ -452,7 +453,7 @@ bool PROPERTIES_PANEL::extractValueAndWritability( const SELECTION& aSelection, 
         if( property->IsHiddenFromPropertiesManager() )
             return false;
 
-        wxPGChoices choices = property->GetChoices( item );
+        PROPERTY_CHOICES choices = property->GetChoices( item );
 
         if( first )
         {

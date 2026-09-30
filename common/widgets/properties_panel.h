@@ -26,6 +26,7 @@
 
 #include <wx/panel.h>
 #include <wx/propgrid/propgrid.h>
+#include <properties/property_choices.h>
 
 #include <vector>
 #include <memory>
@@ -102,7 +103,7 @@ protected:
      * @return true if the property is available for all the items in the selection
      */
     bool extractValueAndWritability( const SELECTION& aSelection, const wxString& aPropName,
-                                     wxVariant& aValue, bool& aWritable, wxPGChoices& aChoices );
+                                     wxVariant& aValue, bool& aWritable, PROPERTY_CHOICES& aChoices );
 
 public:
     int                         m_SuppressGridChangeEvents;

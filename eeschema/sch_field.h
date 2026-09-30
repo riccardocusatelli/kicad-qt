@@ -31,7 +31,6 @@
 #include <template_fieldnames.h>
 #include <general.h>
 #include <string_utils.h>
-#include "scintilla_tricks.h"
 #include <algorithm>
 
 class SCH_EDIT_FRAME;
@@ -258,8 +257,6 @@ public:
 
     void BeginEdit( const VECTOR2I& aStartPoint ) override;
     void CalcEdit( const VECTOR2I& aPosition ) override;
-
-    void OnScintillaCharAdded( SCINTILLA_TRICKS* aScintillaTricks, wxStyledTextEvent &aEvent ) const;
 
     bool Matches( const EDA_SEARCH_DATA& aSearchData, void* aAuxData ) const override;
 

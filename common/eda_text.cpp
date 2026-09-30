@@ -1362,7 +1362,7 @@ static struct EDA_TEXT_DESC
                         []( INSPECTABLE* aItem )
                         {
                             EDA_ITEM*                eda_item = static_cast<EDA_ITEM*>( aItem );
-                            wxPGChoices              fonts;
+                            PROPERTY_CHOICES              fonts;
                             std::vector<std::string> fontNames;
 
                             Fontconfig()->ListFonts( fontNames, std::string( Pgm().GetLanguageTag().utf8_str() ),

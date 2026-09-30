@@ -23,6 +23,7 @@
  */
 
 #include <sch_draw_panel.h>
+#include <gr_basic.h>
 #include <common.h>
 #include <confirm.h>
 #include <kiface_base.h>

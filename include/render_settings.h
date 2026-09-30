@@ -32,7 +32,7 @@
 #include <lset.h>
 #include <memory>
 
-#include <wx/dc.h>
+class wxDC;
 
 class COLOR_SETTINGS;
 

@@ -249,7 +249,7 @@ wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME*
         break;
 
     case PROPERTY_DISPLAY::PT_NET:
-        ret = new PGPROPERTY_NET( aProperty->Choices() );
+        ret = new PGPROPERTY_NET( ToWxPGChoices( aProperty->Choices() ) );
         break;
 
     default:
@@ -266,9 +266,8 @@ wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME*
         {
             const_cast<PROPERTY_BASE*>( aProperty )->TranslateChoices();
 
-            // I do not know why enum property takes a non-const reference to wxPGChoices..
-            ret = new wxEnumProperty( wxPG_LABEL, wxPG_LABEL,
-                                      const_cast<wxPGChoices&>( aProperty->Choices() ) );
+            wxPGChoices choices = ToWxPGChoices( aProperty->Choices() );
+            ret = new wxEnumProperty( wxPG_LABEL, wxPG_LABEL, choices );
         }
         else if( typeId == TYPE_HASH( int ) || typeId == TYPE_HASH( long ) )
         {

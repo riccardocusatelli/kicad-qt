@@ -32,7 +32,7 @@
 #include <footprint.h>
 #include <pcb_generator.h>
 #include <string_utils.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <view/view.h>
 #include <api/api_enums.h>
 #include <api/api_utils.h>

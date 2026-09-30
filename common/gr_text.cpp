@@ -46,13 +46,13 @@ int GetPenSizeForDemiBold( int aTextSize )
 }
 
 
-int GetPenSizeForBold( const wxSize& aTextSize )
+int GetPenSizeForBold( const VECTOR2I& aTextSize )
 {
     return GetPenSizeForBold( std::min( aTextSize.x, aTextSize.y ) );
 }
 
 
-int GetPenSizeForDemiBold( const wxSize& aTextSize )
+int GetPenSizeForDemiBold( const VECTOR2I& aTextSize )
 {
     return GetPenSizeForDemiBold( std::min( aTextSize.x, aTextSize.y ) );
 }
@@ -64,7 +64,7 @@ int GetPenSizeForNormal( int aTextSize )
 }
 
 
-int GetPenSizeForNormal( const wxSize& aTextSize )
+int GetPenSizeForNormal( const VECTOR2I& aTextSize )
 {
     return GetPenSizeForNormal( std::min( aTextSize.x, aTextSize.y ) );
 }

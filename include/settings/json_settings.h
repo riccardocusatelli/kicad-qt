@@ -33,6 +33,10 @@
 
 #include <kicommon.h>
 
+class wxPoint;
+class wxSize;
+class wxRect;
+
 class wxConfigBase;
 class NESTED_SETTINGS;
 class PARAM_BASE;

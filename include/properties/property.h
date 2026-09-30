@@ -32,10 +32,8 @@
 
 #include <wx/any.h>
 #include <wx/string.h>
-#include <wx/bitmap.h>
-#include <wx/font.h>        // required for propgrid
-#include <wx/validate.h>    // required for propgrid
-#include <wx/propgrid/property.h>
+#include <wx/variant.h>
+#include <properties/property_choices.h>
 #include <core/ki_assert.h>
 
 #ifdef DEBUG
@@ -224,9 +222,9 @@ public:
      * Return a limited set of possible values (e.g. enum). Check with HasChoices() if a particular
      * PROPERTY provides such set.
      */
-    virtual const wxPGChoices& Choices() const
+    virtual const PROPERTY_CHOICES& Choices() const
     {
-        static wxPGChoices empty;
+        static PROPERTY_CHOICES empty;
         return empty;
     }
 
@@ -235,7 +233,7 @@ public:
     /**
      * Set the possible values for for the property.
      */
-    virtual void SetChoices( const wxPGChoices& aChoices )
+    virtual void SetChoices( const PROPERTY_CHOICES& aChoices )
     {
         KI_FAIL(); // only possible for PROPERTY_ENUM
     }
@@ -266,7 +264,7 @@ public:
         return *this;
     }
 
-    wxPGChoices GetChoices( INSPECTABLE* aObject ) const
+    PROPERTY_CHOICES GetChoices( INSPECTABLE* aObject ) const
     {
         if( m_choicesFunc )
             return m_choicesFunc( aObject );
@@ -274,7 +272,7 @@ public:
         return {};
     }
 
-    PROPERTY_BASE& SetChoicesFunc( std::function<wxPGChoices(INSPECTABLE*)> aFunc )
+    PROPERTY_BASE& SetChoicesFunc( std::function<PROPERTY_CHOICES(INSPECTABLE*)> aFunc )
     {
         m_choicesFunc = std::move( aFunc );
         return *this;
@@ -453,7 +451,7 @@ private:
 
     std::function<bool(INSPECTABLE*)> m_writeableFunc;   ///< Eval to determine if prop is read-only
 
-    std::function<wxPGChoices(INSPECTABLE*)> m_choicesFunc;
+    std::function<PROPERTY_CHOICES(INSPECTABLE*)> m_choicesFunc;
 
     PROPERTY_VALIDATOR_FN m_validator;
 
@@ -637,7 +635,7 @@ public:
         return res;
     }
 
-    const wxPGChoices& Choices() const override
+    const PROPERTY_CHOICES& Choices() const override
     {
         return m_choices.GetCount() > 0 ? m_choices : ENUM_MAP<T>::Instance().Choices();
     }
@@ -648,14 +646,14 @@ public:
         {
             m_choices.Clear();
 
-            wxPGChoices& choices = ENUM_MAP<T>::Instance().Choices();
+            PROPERTY_CHOICES& choices = ENUM_MAP<T>::Instance().Choices();
 
             for( unsigned ii = 0; ii < choices.GetCount(); ++ii )
                 m_choices.Add( wxGetTranslation( choices.GetLabel( ii ) ), choices.GetValue( ii ) );
         }
     }
 
-    void SetChoices( const wxPGChoices& aChoices ) override
+    void SetChoices( const PROPERTY_CHOICES& aChoices ) override
     {
         m_choices = aChoices;
         m_choicesFromENUM_MAP = false;
@@ -668,7 +666,7 @@ public:
 
 protected:
     bool        m_choicesFromENUM_MAP;
-    wxPGChoices m_choices;
+    PROPERTY_CHOICES m_choices;
 };
 
 
@@ -770,13 +768,13 @@ public:
             return m_undefined;
     }
 
-    wxPGChoices& Choices()
+    PROPERTY_CHOICES& Choices()
     {
         return m_choices;
     }
 
 private:
-    wxPGChoices                     m_choices;
+    PROPERTY_CHOICES                     m_choices;
     std::unordered_map<wxString, T> m_reverseMap;
     T                               m_undefined;      // Returned if the string is not recognized
 

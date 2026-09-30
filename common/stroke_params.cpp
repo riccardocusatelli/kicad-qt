@@ -32,7 +32,7 @@
 #include <geometry/shape_line_chain.h>
 #include <macros.h>
 #include <trigo.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <core/ki_assert.h>
 
 using namespace STROKEPARAMS_T;

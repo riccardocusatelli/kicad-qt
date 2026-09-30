@@ -26,7 +26,7 @@
 #include <macros.h>
 #include <plotters/plotter.h>
 #include <base_units.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
 #include <eda_draw_frame.h>
 #include <gr_basic.h>

@@ -107,7 +107,7 @@ static void existsOnLayerFunc( LIBEVAL::CONTEXT* aCtx, void *self )
             [item, arg, aCtx]() -> double
             {
                 const wxString& layerName = arg->AsString();
-                wxPGChoices& layerMap = ENUM_MAP<PCB_LAYER_ID>::Instance().Choices();
+                PROPERTY_CHOICES& layerMap = ENUM_MAP<PCB_LAYER_ID>::Instance().Choices();
 
                 if( aCtx->HasErrorCallback())
                 {
@@ -119,7 +119,7 @@ static void existsOnLayerFunc( LIBEVAL::CONTEXT* aCtx, void *self )
 
                     for( unsigned ii = 0; ii < layerMap.GetCount(); ++ii )
                     {
-                        wxPGChoiceEntry& entry = layerMap[ ii ];
+                        PROPERTY_CHOICE& entry = layerMap[ ii ];
 
                         if( entry.GetText().Matches( layerName ))
                         {
@@ -159,7 +159,7 @@ static void existsOnLayerFunc( LIBEVAL::CONTEXT* aCtx, void *self )
 
                     for( unsigned ii = 0; ii < layerMap.GetCount(); ++ii )
                     {
-                        wxPGChoiceEntry& entry = layerMap[ ii ];
+                        PROPERTY_CHOICE& entry = layerMap[ ii ];
 
                         if( entry.GetText().Matches( layerName ) )
                             mask.set( ToLAYER_ID( entry.GetValue() ) );

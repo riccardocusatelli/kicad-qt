@@ -32,7 +32,7 @@
 
 #include <kicommon.h>
 #include <wx/arrstr.h>
-#include <wx/event.h>
+class wxKeyEvent;
 #include <wx/string.h>
 
 #include <stdarg.h>

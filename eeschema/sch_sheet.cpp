@@ -34,7 +34,7 @@
 #include <plotters/plotter.h>
 #include <sch_plotter.h>
 #include <string_utils.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <math/util.h>      // for KiROUND
 #include <geometry/geometry_utils.h>
 #include <sch_sheet.h>

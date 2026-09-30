@@ -29,6 +29,7 @@
 #include <footprint.h>
 #include <pad.h>
 #include <pcb_shape.h>
+#include <widgets/rc_tree_model.h>
 
 
 BOOST_AUTO_TEST_SUITE( BoardItemIndex )

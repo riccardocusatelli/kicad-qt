@@ -35,64 +35,12 @@
 
 #include <gal/color4d.h>
 
+#include <widgets/msgpanel_item.h>
+
 #include <wx/window.h>
 #include <wx/panel.h>
 
 using KIGFX::COLOR4D;
-
-#define MSG_PANEL_DEFAULT_PAD      6  ///< The default number of spaces between each text string.
-
-
-class EDA_MSG_PANEL;
-class KIID;
-
-
-/**
- * #EDA_MSG_PANEL items for displaying messages.
- */
-class MSG_PANEL_ITEM
-{
-public:
-    MSG_PANEL_ITEM( const wxString& aUpperText, const wxString& aLowerText,
-                    int aPadding = MSG_PANEL_DEFAULT_PAD ) :
-            m_UpperText( aUpperText ),
-            m_LowerText( aLowerText ),
-            m_Padding( aPadding )
-    {
-        m_X = 0;
-        m_UpperY = 0;
-        m_LowerY = 0;
-    }
-
-    MSG_PANEL_ITEM() :
-            m_Padding( MSG_PANEL_DEFAULT_PAD )
-
-    {
-        m_X = 0;
-        m_UpperY = 0;
-        m_LowerY = 0;
-    }
-
-    void SetUpperText( const wxString& aUpperText ) { m_UpperText = aUpperText; }
-    const wxString& GetUpperText() const { return m_UpperText; }
-
-    void SetLowerText( const wxString& aLowerText )  { m_LowerText = aLowerText; }
-    const wxString& GetLowerText() const { return m_LowerText; }
-
-    void SetPadding( int aPadding )  { m_Padding = aPadding; }
-    int GetPadding() const { return m_Padding; }
-
-private:
-    friend class EDA_MSG_PANEL;
-
-    int         m_X;
-    int         m_UpperY;
-    int         m_LowerY;
-    wxString    m_UpperText;
-    wxString    m_LowerText;
-    int         m_Padding;
-};
-
 
 /**
  * A panel to display various information messages.
@@ -159,10 +107,3 @@ protected:
 };
 
 
-/**
- * Get a formatted UUID string for display in the message panel,
- * according to the current advanced configuration setting.
- *
- * This will be std::nullopt if the configuration setting disables UUID display.
- */
-std::optional<wxString> GetMsgPanelDisplayUuid( const KIID& aKiid );

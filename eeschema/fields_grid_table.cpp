@@ -22,6 +22,7 @@
  */
 
 #include <embedded_files.h>
+#include <widgets/sch_field_autocomplete.h>
 #include <kiway.h>
 #include <kiway_player.h>
 #include <dialog_shim.h>
@@ -302,7 +303,7 @@ void FIELDS_GRID_TABLE::initGrid( WX_GRID* aGrid )
                 [this]( wxStyledTextEvent& aEvent, SCINTILLA_TRICKS* aScintillaTricks )
                 {
                     SCH_FIELD* valueField = this->GetField( FIELD_T::VALUE );
-                    valueField->OnScintillaCharAdded( aScintillaTricks, aEvent );
+                    SchFieldOnScintillaCharAdded( valueField, aScintillaTricks, aEvent );
                 } );
 
         m_valueAttr->SetEditor( valueEditor );

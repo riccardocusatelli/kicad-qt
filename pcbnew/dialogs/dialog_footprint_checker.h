@@ -25,7 +25,7 @@
 #pragma once
 
 #include <dialog_footprint_checker_base.h>
-#include <rc_item.h>
+#include <widgets/rc_tree_model.h>
 
 class FOOTPRINT_EDIT_FRAME;
 class PCB_MARKER;

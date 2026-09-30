@@ -50,7 +50,7 @@
 #include <drc/drc_engine.h>
 #include <eda_units.h>
 #include <convert_basic_shapes_to_polygon.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <pcb_painter.h>
 #include <properties/property_validators.h>
 #include <properties/property.h>
@@ -3474,7 +3474,7 @@ static struct PAD_DESC
                 .SetIsHiddenFromLibraryEditors()
                 .SetChoicesFunc( []( INSPECTABLE* aItem )
                     {
-                        wxPGChoices choices;
+                        PROPERTY_CHOICES choices;
 
                         for( int ii = 0; ii < ELECTRICAL_PINTYPES_TOTAL; ii++ )
                             choices.Add( GetCanonicalElectricalTypeName( (ELECTRICAL_PINTYPE) ii ) );

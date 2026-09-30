@@ -28,6 +28,7 @@
 
 #include <dialog_erc_base.h>
 #include <widgets/progress_reporter_base.h>
+#include <erc/erc_tree_model.h>
 
 
 /**

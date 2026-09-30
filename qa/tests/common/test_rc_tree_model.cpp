@@ -27,6 +27,7 @@
 
 #include <rc_item.h>
 #include <marker_base.h>
+#include <widgets/rc_tree_model.h>
 
 
 class TEST_RC_TREE_MODEL : public RC_TREE_MODEL

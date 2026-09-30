@@ -92,7 +92,6 @@ protected:
     PG_URL_EDITOR*       m_urlEditorInstance;
 
     static std::set<wxString> m_currentFieldNames;
-    wxPGChoices m_nets;
 };
 
 #endif /* PCB_PROPERTIES_PANEL_H */

@@ -29,7 +29,7 @@
 #include <kicommon.h>
 #include "report_severity.h"      // enum SEVERITY
 #include <wx/string.h>
-#include <wx/font.h>
+class wxFont;
 
 class wxBitmapBundle;
 class wxSize;

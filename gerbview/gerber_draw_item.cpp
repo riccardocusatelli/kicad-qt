@@ -34,7 +34,7 @@
 #include <string_utils.h>
 #include <geometry/shape_arc.h>
 #include <math/util.h>      // for KiROUND
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 
 #include <wx/msgdlg.h>
 #include <core/ki_assert.h>

@@ -29,7 +29,7 @@
 #include <chrono>
 #include <core/throttle.h>
 #include <wx/htmllbox.h>
-#include <rc_item.h>
+#include <widgets/rc_tree_model.h>
 #include <pcb_marker.h>
 #include <board.h>
 #include <dialog_drc_base.h>

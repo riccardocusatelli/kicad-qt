@@ -25,7 +25,7 @@
 #include <sch_collectors.h>
 #include <sch_commit.h>
 #include <sch_edit_frame.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
 #include <common.h>
 #include <core/mirror.h>
@@ -4007,7 +4007,7 @@ static struct SCH_SYMBOL_DESC
                 .SetChoicesFunc(
                         []( INSPECTABLE* aItem )
                         {
-                            wxPGChoices choices;
+                            PROPERTY_CHOICES choices;
 
                             if( SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( aItem ) )
                             {
@@ -4024,7 +4024,7 @@ static struct SCH_SYMBOL_DESC
                 .SetChoicesFunc(
                         []( INSPECTABLE* aItem )
                         {
-                            wxPGChoices choices;
+                            PROPERTY_CHOICES choices;
 
                             if( SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( aItem ) )
                             {

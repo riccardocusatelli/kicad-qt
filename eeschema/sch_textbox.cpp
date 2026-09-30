@@ -26,7 +26,7 @@
 #include <pgm_base.h>
 #include <sch_edit_frame.h>
 #include <plotters/plotter.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
 #include <string_utils.h>
 #include <schematic.h>

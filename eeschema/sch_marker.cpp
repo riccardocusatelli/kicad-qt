@@ -24,7 +24,7 @@
 
 #include <sch_draw_panel.h>
 #include <trigo.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
 #include <base_units.h>
 #include <eda_draw_frame.h>
