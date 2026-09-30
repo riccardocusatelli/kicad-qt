@@ -41,8 +41,19 @@ static void wxAssertBridge( const char* aFile, int aLine, const char* aFunc, con
                             std::string_view aMsg )
 {
 #if wxDEBUG_LEVEL
-    wxOnAssert( aFile, aLine, aFunc, aCond,
-                wxString::FromUTF8( aMsg.data(), aMsg.size() ) );
+    // Same contract as wxASSERT: a null handler (wxSetAssertHandler( nullptr ), as kicad-cli
+    // does) disables assertions, and wxOnAssert() must not be called then.
+    if( !wxTheAssertHandler )
+        return;
+
+    wxOnAssert( aFile, aLine, aFunc, aCond, wxString::FromUTF8( aMsg.data(), aMsg.size() ) );
+
+    // The assert dialog's "Stop" button asks to break into the debugger
+    if( wxTrapInAssert )
+    {
+        wxTrapInAssert = false;
+        wxTrap();
+    }
 #else
     wxUnusedVar( aFile ), wxUnusedVar( aLine ), wxUnusedVar( aFunc ), wxUnusedVar( aCond );
     wxUnusedVar( aMsg );
