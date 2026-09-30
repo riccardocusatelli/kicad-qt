@@ -45,7 +45,6 @@
 #include <wx/dir.h>
 #include <wx/datetime.h>
 #include <wx/log.h>
-#include <wx/msgdlg.h>
 
 #include <vector>
 #include <string>

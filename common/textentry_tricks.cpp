@@ -24,7 +24,6 @@
 #include <wx/event.h>
 #include <wx/gdicmn.h>
 #include <textentry_tricks.h>
-#include <dialog_shim.h>
 
 
 void TEXTENTRY_TRICKS::OnCharHook( wxTextEntry* aTextEntry, wxKeyEvent& aEvent )

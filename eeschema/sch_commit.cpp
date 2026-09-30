@@ -22,7 +22,6 @@
  */
 
 #include <macros.h>
-#include <tool/tool_manager.h>
 #include <tools/sch_tool_base.h>
 
 #include <lib_symbol.h>

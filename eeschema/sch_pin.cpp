@@ -26,14 +26,12 @@
  */
 
 #include "sch_pin.h"
+#include <sch_sheet_context.h>
 
 #include <base_units.h>
 #include <pgm_base.h>
 #include <pin_layout_cache.h>
 #include <plotters/plotter.h>
-#include <sch_draw_panel.h>
-#include <sch_edit_frame.h>
-#include <symbol_edit_frame.h>
 #include <settings/settings_manager.h>
 #include <symbol_editor/symbol_editor_settings.h>
 #include <trace_helpers.h>
@@ -1425,13 +1423,13 @@ void SCH_PIN::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& aP
 }
 
 
-void SCH_PIN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_PIN::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     SYMBOL*  symbol = GetParentSymbol();
 
     aList.emplace_back( _( "Type" ), _( "Pin" ) );
 
-    SCH_ITEM::GetMsgPanelInfo( aFrame, aList );
+    SCH_ITEM::GetMsgPanelInfo( aContext, aList );
 
     aList.emplace_back( _( "Name" ), UnescapeString( GetShownName() ) );
     aList.emplace_back( _( "Number" ), GetShownNumber() );
@@ -1441,18 +1439,18 @@ void SCH_PIN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITE
     aList.emplace_back( _( "Visible" ), IsVisible() ? _( "Yes" ) : _( "No" ) );
 
     // Display pin length
-    aList.emplace_back( _( "Length" ), aFrame->MessageTextFromValue( GetLength(), true ) );
+    aList.emplace_back( _( "Length" ), aContext->MessageTextFromValue( GetLength(), true ) );
 
     aList.emplace_back( _( "Orientation" ), PinOrientationName( GetOrientation() ) );
 
     if( dynamic_cast<LIB_SYMBOL*>( symbol ) )
     {
-        aList.emplace_back( _( "Pos X" ), aFrame->MessageTextFromValue( GetPosition().x, true ) );
-        aList.emplace_back( _( "Pos Y" ), aFrame->MessageTextFromValue( GetPosition().y, true ) );
+        aList.emplace_back( _( "Pos X" ), aContext->MessageTextFromValue( GetPosition().x, true ) );
+        aList.emplace_back( _( "Pos Y" ), aContext->MessageTextFromValue( GetPosition().y, true ) );
     }
     else if( SCH_SYMBOL* schsymbol = dynamic_cast<SCH_SYMBOL*>( symbol ) )
     {
-        SCH_EDIT_FRAME* schframe = dynamic_cast<SCH_EDIT_FRAME*>( aFrame );
+        SCH_SHEET_CONTEXT* schframe = dynamic_cast<SCH_SHEET_CONTEXT*>( aContext );
         SCH_SHEET_PATH* currentSheet = schframe ? &schframe->GetCurrentSheet() : nullptr;
 
         // Don't use GetShownText(); we want to see the variable references here
@@ -1461,7 +1459,7 @@ void SCH_PIN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITE
     }
 
 #if defined(DEBUG)
-    if( !IsConnectivityDirty() && dynamic_cast<SCH_EDIT_FRAME*>( aFrame ) )
+    if( !IsConnectivityDirty() && dynamic_cast<SCH_SHEET_CONTEXT*>( aContext ) )
     {
         SCH_CONNECTION* conn = Connection();
 

@@ -39,7 +39,6 @@
 #include <project_sch.h>
 #include <reporter.h>
 #include <trace_helpers.h>
-#include <sch_edit_frame.h>
 #include <sch_item.h>
 
 #include <libraries/legacy_symbol_library.h>

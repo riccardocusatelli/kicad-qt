@@ -29,7 +29,6 @@
  */
 
 #include <trigo.h>
-#include <gerbview_frame.h>
 #include <gerber_file_image.h>
 #include <eda_units.h>
 #include <convert_basic_shapes_to_polygon.h>

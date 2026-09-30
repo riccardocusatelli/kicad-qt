@@ -22,11 +22,9 @@
  */
 
 #include <build_version.h>
-#include <confirm.h>
 
 #include <connection_graph.h>
 #include <string_utils.h>
-#include <sch_edit_frame.h>
 #include <sch_reference_list.h>
 #include <fmt.h>
 #include <system_error>

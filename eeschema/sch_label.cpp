@@ -24,10 +24,10 @@
  */
 
 #include <advanced_config.h>
+#include <sch_sheet_context.h>
 #include <base_units.h>
 #include <increment.h>
 #include <pgm_base.h>
-#include <sch_edit_frame.h>
 #include <sch_plotter.h>
 #include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
@@ -1389,7 +1389,7 @@ bool SCH_LABEL_BASE::HasConnectivityChanges( const SCH_ITEM* aItem, const SCH_SH
 }
 
 
-void SCH_LABEL_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_LABEL_BASE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
 
@@ -1416,7 +1416,7 @@ void SCH_LABEL_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PA
     int      style = IsBold() && IsItalic() ? 3 : IsBold() ? 2 : IsItalic() ? 1 : 0;
     aList.emplace_back( _( "Style" ), textStyle[style] );
 
-    aList.emplace_back( _( "Text Size" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Text Size" ), aContext->MessageTextFromValue( GetTextWidth() ) );
 
     switch( GetSpinStyle() )
     {
@@ -1431,7 +1431,7 @@ void SCH_LABEL_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PA
 
     SCH_CONNECTION* conn = nullptr;
 
-    if( !IsConnectivityDirty() && dynamic_cast<SCH_EDIT_FRAME*>( aFrame ) )
+    if( !IsConnectivityDirty() && dynamic_cast<SCH_SHEET_CONTEXT*>( aContext ) )
         conn = Connection();
 
     if( conn )

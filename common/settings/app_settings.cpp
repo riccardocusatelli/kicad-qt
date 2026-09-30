@@ -19,7 +19,6 @@
  */
 
 #include <advanced_config.h>
-#include <class_draw_panel_gal.h>
 #include <common.h>
 #include <eda_units.h>
 #include <gal/gal_display_options.h>

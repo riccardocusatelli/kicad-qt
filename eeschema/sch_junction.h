@@ -130,7 +130,7 @@ public:
 
     virtual bool operator <( const SCH_ITEM& aItem ) const override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     double Similarity( const SCH_ITEM& aOther ) const override;
 

@@ -22,14 +22,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <sch_draw_panel.h>
 #include <macros.h>
 #include <plotters/plotter.h>
 #include <base_units.h>
 #include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
-#include <eda_draw_frame.h>
-#include <gr_basic.h>
 #include <geometry/geometry_utils.h>
 #include <schematic.h>
 #include <sch_shape.h>
@@ -372,11 +369,11 @@ const BOX2I SCH_SHAPE::GetBoundingBox() const
 }
 
 
-void SCH_SHAPE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_SHAPE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
-    SCH_ITEM::GetMsgPanelInfo( aFrame, aList );
+    SCH_ITEM::GetMsgPanelInfo( aContext, aList );
 
-    ShapeGetMsgPanelInfo( aFrame, aList );
+    ShapeGetMsgPanelInfo( aContext, aList );
 }
 
 

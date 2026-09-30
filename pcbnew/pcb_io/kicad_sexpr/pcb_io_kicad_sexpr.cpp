@@ -25,14 +25,12 @@
 #include <wx/dir.h>
 #include <wx/ffile.h>
 #include <wx/log.h>
-#include <wx/msgdlg.h>
 #include <wx/mstream.h>
 
 #include <board.h>
 #include <board_design_settings.h>
 #include <callback_gal.h>
 #include <component_classes/component_class.h>
-#include <confirm.h>
 #include <convert_basic_shapes_to_polygon.h> // for enum RECT_CHAMFER_POSITIONS definition
 #include <fmt/core.h>
 #include <font/fontconfig.h>

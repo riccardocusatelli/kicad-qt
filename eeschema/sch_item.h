@@ -646,7 +646,7 @@ public:
 
     virtual void SetStroke( const STROKE_PARAMS& aStroke ) { KI_CHECK( false, /* void */ ); }
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     /**
      * Plot the item to \a aPlotter.

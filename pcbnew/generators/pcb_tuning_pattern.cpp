@@ -1991,7 +1991,7 @@ std::vector<EDA_ITEM*> PCB_TUNING_PATTERN::GetPreviewItems( GENERATOR_TOOL* aToo
 }
 
 
-void PCB_TUNING_PATTERN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
+void PCB_TUNING_PATTERN::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
                                           std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString      msg;
@@ -2050,7 +2050,7 @@ void PCB_TUNING_PATTERN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
     aList.emplace_back( _( "Layer" ), LayerMaskDescribe() );
 
     if( width && !mixedWidth )
-        aList.emplace_back( _( "Width" ), aFrame->MessageTextFromValue( width ) );
+        aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( width ) );
 
     BOARD*                       board = GetBoard();
     std::shared_ptr<DRC_ENGINE>& drcEngine = board->GetDesignSettings().m_DRCEngine;
@@ -2079,44 +2079,44 @@ void PCB_TUNING_PATTERN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
 
             if( trackDelay == 0.0 || coupledTrackDelay == 0.0 )
             {
-                aList.emplace_back( _( "Routed Lengths" ), aFrame->MessageTextFromValue( trackLen ) + wxS( ", " )
-                                                                   + aFrame->MessageTextFromValue( coupledLen ) );
+                aList.emplace_back( _( "Routed Lengths" ), aContext->MessageTextFromValue( trackLen ) + wxS( ", " )
+                                                                   + aContext->MessageTextFromValue( coupledLen ) );
             }
             else
             {
                 aList.emplace_back(
                         _( "Routed Delays" ),
-                        aFrame->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) + wxS( ", " )
-                                + aFrame->MessageTextFromValue( coupledTrackDelay, true, EDA_DATA_TYPE::TIME ) );
+                        aContext->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) + wxS( ", " )
+                                + aContext->MessageTextFromValue( coupledTrackDelay, true, EDA_DATA_TYPE::TIME ) );
             }
         }
         else
         {
             if( trackDelay == 0.0 )
             {
-                aList.emplace_back( _( "Routed Length" ), aFrame->MessageTextFromValue( trackLen ) );
+                aList.emplace_back( _( "Routed Length" ), aContext->MessageTextFromValue( trackLen ) );
             }
             else
             {
                 aList.emplace_back( _( "Routed Delay" ),
-                                    aFrame->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) );
+                                    aContext->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) );
             }
         }
 
         if( lenPadToDie != 0 && delayPadToDie == 0.0 )
         {
-            msg = aFrame->MessageTextFromValue( lenPadToDie );
+            msg = aContext->MessageTextFromValue( lenPadToDie );
             aList.emplace_back( _( "Pad To Die Length" ), msg );
 
-            msg = aFrame->MessageTextFromValue( trackLen + lenPadToDie );
+            msg = aContext->MessageTextFromValue( trackLen + lenPadToDie );
             aList.emplace_back( _( "Full Length" ), msg );
         }
         else if( delayPadToDie > 0.0 )
         {
-            msg = aFrame->MessageTextFromValue( delayPadToDie, true, EDA_DATA_TYPE::TIME );
+            msg = aContext->MessageTextFromValue( delayPadToDie, true, EDA_DATA_TYPE::TIME );
             aList.emplace_back( _( "Pad To Die Delay" ), msg );
 
-            msg = aFrame->MessageTextFromValue( trackDelay + delayPadToDie, true, EDA_DATA_TYPE::TIME );
+            msg = aContext->MessageTextFromValue( trackDelay + delayPadToDie, true, EDA_DATA_TYPE::TIME );
             aList.emplace_back( _( "Full Delay" ), msg );
         }
     }
@@ -2127,14 +2127,14 @@ void PCB_TUNING_PATTERN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
 
         if( constraint.IsNull() || m_settings.m_overrideCustomRules )
         {
-            msg = aFrame->MessageTextFromValue( m_settings.m_targetSkew.Opt() );
+            msg = aContext->MessageTextFromValue( m_settings.m_targetSkew.Opt() );
 
             aList.emplace_back( wxString::Format( _( "Target Skew: %s" ), msg ),
                                 wxString::Format( _( "(from tuning pattern properties)" ) ) );
         }
         else
         {
-            msg = aFrame->MessageTextFromMinOptMax( constraint.GetValue() );
+            msg = aContext->MessageTextFromMinOptMax( constraint.GetValue() );
 
             if( !msg.IsEmpty() )
             {
@@ -2154,13 +2154,13 @@ void PCB_TUNING_PATTERN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
             if( m_settings.m_isTimeDomain )
             {
                 caption = _( "Target Delay: %s" );
-                msg = aFrame->MessageTextFromValue( static_cast<double>( m_settings.m_targetLengthDelay.Opt() ), true,
+                msg = aContext->MessageTextFromValue( static_cast<double>( m_settings.m_targetLengthDelay.Opt() ), true,
                                                     EDA_DATA_TYPE::TIME );
             }
             else
             {
                 caption = _( "Target Length: %s" );
-                msg = aFrame->MessageTextFromValue( static_cast<double>( m_settings.m_targetLength.Opt() ) );
+                msg = aContext->MessageTextFromValue( static_cast<double>( m_settings.m_targetLength.Opt() ) );
             }
 
             aList.emplace_back( wxString::Format( caption, msg ),
@@ -2168,7 +2168,7 @@ void PCB_TUNING_PATTERN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
         }
         else
         {
-            msg = aFrame->MessageTextFromMinOptMax( constraint.GetValue(), unitType );
+            msg = aContext->MessageTextFromMinOptMax( constraint.GetValue(), unitType );
 
             wxString caption = m_settings.m_isTimeDomain ? _( "Delay Constraints: %s" ) : _( "Length Constraints: %s" );
 

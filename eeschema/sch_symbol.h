@@ -378,7 +378,7 @@ public:
     bool ResolveTextVar( const SCH_SHEET_PATH* aPath, wxString* token,
                          const wxString& aVariantName, int aDepth = 0 ) const;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     /**
      * Clear exiting symbol annotation.

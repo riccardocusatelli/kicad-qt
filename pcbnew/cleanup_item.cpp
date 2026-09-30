@@ -23,7 +23,6 @@
 
 
 #include <cleanup_item.h>
-#include <pcb_base_frame.h>
 #include <core/ki_assert.h>
 
 

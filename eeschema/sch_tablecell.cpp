@@ -23,7 +23,6 @@
 
 #include <advanced_config.h>
 #include <common.h>
-#include <sch_edit_frame.h>
 #include <widgets/msgpanel_item.h>
 #include <string_utils.h>
 #include <sch_table.h>
@@ -351,15 +350,15 @@ void SCH_TABLECELL::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OP
 }
 
 
-void SCH_TABLECELL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_TABLECELL::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Table Cell" ), GetAddr() );
 
     // Don't use GetShownText() here; we want to show the user the variable references
-    aList.emplace_back( _( "Text" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Text" ), aContext->EllipsizeStatusText( GetText() ) );
 
-    aList.emplace_back( _( "Cell Width" ), aFrame->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
-    aList.emplace_back( _( "Cell Height" ), aFrame->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
+    aList.emplace_back( _( "Cell Width" ), aContext->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
+    aList.emplace_back( _( "Cell Height" ), aContext->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
 
     aList.emplace_back( _( "Font" ), GetFont() ? GetFont()->GetName() : _( "Default" ) );
 
@@ -367,7 +366,7 @@ void SCH_TABLECELL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PAN
     int      style = IsBold() && IsItalic() ? 3 : IsBold() ? 2 : IsItalic() ? 1 : 0;
     aList.emplace_back( _( "Style" ), textStyle[style] );
 
-    aList.emplace_back( _( "Text Size" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Text Size" ), aContext->MessageTextFromValue( GetTextWidth() ) );
 }
 
 

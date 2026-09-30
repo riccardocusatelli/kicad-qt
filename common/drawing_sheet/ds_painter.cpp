@@ -26,7 +26,6 @@
 #include <common.h>
 #include <pgm_base.h>
 #include <base_screen.h>
-#include <eda_draw_frame.h>
 #include <title_block.h>
 #include <build_version.h>
 #include <settings/color_settings.h>
@@ -37,7 +36,6 @@
 #include <drawing_sheet/ds_painter.h>
 #include <drawing_sheet/ds_data_item.h>
 
-#include <wx/app.h>
 
 using namespace KIGFX;
 

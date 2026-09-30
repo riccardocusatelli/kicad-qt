@@ -30,7 +30,6 @@
 #include "layer_ids.h"
 #include <cerrno>
 #include <charconv>
-#include <confirm.h>
 #include <macros.h>
 #include <fmt/format.h>
 #include <title_block.h>

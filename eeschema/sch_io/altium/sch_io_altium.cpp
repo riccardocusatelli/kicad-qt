@@ -65,7 +65,6 @@
 #include <geometry/ellipse.h>
 #include <geometry/shape_utils.h>
 #include <string_utils.h>
-#include <sch_edit_frame.h>
 #include <wildcards_and_files_ext.h>
 #include <wx/log.h>
 #include <wx/dir.h>

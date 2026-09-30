@@ -27,7 +27,6 @@
 #include <advanced_config.h>
 #include <base_units.h>
 #include <pgm_base.h>
-#include <sch_edit_frame.h>
 #include <sch_plotter.h>
 #include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
@@ -40,7 +39,6 @@
 #include <default_values.h>
 #include <wx/debug.h>
 #include <wx/log.h>
-#include <dialogs/html_message_box.h>
 #include <project/project_file.h>
 #include <project/net_settings.h>
 #include <core/mirror.h>
@@ -622,14 +620,14 @@ void SCH_TEXT::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& a
 }
 
 
-void SCH_TEXT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_TEXT::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
 
     // Don't use GetShownText() here; we want to show the user the variable references
-    aList.emplace_back( _( "Text" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Text" ), aContext->EllipsizeStatusText( GetText() ) );
 
-    SCH_ITEM::GetMsgPanelInfo( aFrame, aList );
+    SCH_ITEM::GetMsgPanelInfo( aContext, aList );
 
     if( m_excludedFromSim )
         aList.emplace_back( _( "Exclude from" ), _( "Simulation" ) );
@@ -640,7 +638,7 @@ void SCH_TEXT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_IT
     int      style = IsBold() && IsItalic() ? 3 : IsBold() ? 2 : IsItalic() ? 1 : 0;
     aList.emplace_back( _( "Style" ), textStyle[style] );
 
-    aList.emplace_back( _( "Text Size" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Text Size" ), aContext->MessageTextFromValue( GetTextWidth() ) );
 
     switch( GetHorizJustify() )
     {

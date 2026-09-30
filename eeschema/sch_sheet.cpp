@@ -24,6 +24,7 @@
  */
 
 #include <cstdlib>
+#include <sch_sheet_context.h>
 
 #include <bitmaps.h>
 #include <core/mirror.h>
@@ -984,12 +985,12 @@ int SCH_SHEET::CountActiveSheets() const
 }
 
 
-void SCH_SHEET::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_SHEET::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     // Don't use GetShownText(); we want to see the variable references here
-    aList.emplace_back( _( "Sheet Name" ), KIUI::EllipsizeStatusText( aFrame, GetName() ) );
+    aList.emplace_back( _( "Sheet Name" ), aContext->EllipsizeStatusText( GetName() ) );
 
-    SCH_EDIT_FRAME* schframe = dynamic_cast<SCH_EDIT_FRAME*>( aFrame );
+    SCH_SHEET_CONTEXT* schframe = dynamic_cast<SCH_SHEET_CONTEXT*>( aContext );
     SCH_SHEET_PATH* currentSheet = nullptr;
     wxString        currentVariant;
 
@@ -1004,7 +1005,7 @@ void SCH_SHEET::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
     }
 
     // Don't use GetShownText(); we want to see the variable references here
-    aList.emplace_back( _( "File Name" ), KIUI::EllipsizeStatusText( aFrame, GetFileName() ) );
+    aList.emplace_back( _( "File Name" ), aContext->EllipsizeStatusText( GetFileName() ) );
 
     wxArrayString msgs;
     wxString      msg;

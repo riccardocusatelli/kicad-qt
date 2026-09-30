@@ -106,7 +106,7 @@ public:
 
     void Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     bool TextHitTest( const VECTOR2I& aPoint, int aAccuracy = 0 ) const override;
     bool TextHitTest( const BOX2I& aRect, bool aContains, int aAccuracy = 0 ) const override;

@@ -48,7 +48,6 @@
  * describes the drawing sheet (can be the default drawing sheet or a custom file).
  */
 
-#include <eda_draw_frame.h>
 #include <drawing_sheet/ds_draw_item.h>
 #include <drawing_sheet/ds_data_item.h>
 #include <drawing_sheet/ds_data_model.h>
@@ -105,7 +104,7 @@ bool DS_DRAW_ITEM_BASE::HitTest( const BOX2I& aRect, bool aContained, int aAccur
 }
 
 
-void DS_DRAW_ITEM_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
+void DS_DRAW_ITEM_BASE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
                                          std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString      msg;
@@ -130,7 +129,7 @@ void DS_DRAW_ITEM_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
         DS_DRAW_ITEM_TEXT* textItem = static_cast<DS_DRAW_ITEM_TEXT*>( this );
 
         // Don't use GetShownText(); we want to see the variable references here
-        aList.emplace_back( _( "Text" ), KIUI::EllipsizeStatusText( aFrame, textItem->GetText() ) );
+        aList.emplace_back( _( "Text" ), aContext->EllipsizeStatusText( textItem->GetText() ) );
         break;
     }
 
@@ -161,8 +160,8 @@ void DS_DRAW_ITEM_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
     aList.emplace_back( _( "Repeat Label Increment" ), msg );
 
     msg.Printf( wxT( "(%s, %s)" ),
-                aFrame->MessageTextFromValue( dataItem->m_IncrementVector.x ),
-                aFrame->MessageTextFromValue( dataItem->m_IncrementVector.y ) );
+                aContext->MessageTextFromValue( dataItem->m_IncrementVector.x ),
+                aContext->MessageTextFromValue( dataItem->m_IncrementVector.y ) );
 
     aList.emplace_back( _( "Repeat Position Increment" ), msg );
 

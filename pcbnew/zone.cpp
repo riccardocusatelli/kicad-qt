@@ -27,7 +27,9 @@
 #include <bitmaps.h>
 #include <geometry/geometry_utils.h>
 #include <geometry/shape_null.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <view/view.h>
 #include <pcb_screen.h>
 #include <board.h>
 #include <board_design_settings.h>
@@ -950,7 +952,7 @@ bool ZONE::HitTestCutout( const VECTOR2I& aRefPos, int* aOutlineIdx, int* aHoleI
 }
 
 
-void ZONE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void ZONE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg = GetFriendlyName();
 
@@ -983,7 +985,7 @@ void ZONE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>&
     }
     else if( IsOnCopperLayer() )
     {
-        if( aFrame->GetName() == PCB_EDIT_FRAME_NAME )
+        if( aContext->IsType( FRAME_PCB_EDITOR ) )
         {
             aList.emplace_back( _( "Net" ), UnescapeString( GetNetname() ) );
 
@@ -995,7 +997,7 @@ void ZONE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>&
         aList.emplace_back( _( "Priority" ), wxString::Format( wxT( "%d" ), GetAssignedPriority() ) );
     }
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) )
     {
         if( IsLocked() )
             aList.emplace_back( _( "Status" ), _( "Locked" ) );
@@ -1046,14 +1048,14 @@ void ZONE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>&
         aList.emplace_back( _( "Fill Mode" ), msg );
 
         aList.emplace_back( _( "Filled Area" ),
-                            aFrame->MessageTextFromValue( m_area, true, EDA_DATA_TYPE::AREA ) );
+                            aContext->MessageTextFromValue( m_area, true, EDA_DATA_TYPE::AREA ) );
 
         wxString source;
         int      clearance = GetOwnClearance( UNDEFINED_LAYER, &source );
 
         if( !source.IsEmpty() )
         {
-            aList.emplace_back( wxString::Format( _( "Min Clearance: %s" ), aFrame->MessageTextFromValue( clearance ) ),
+            aList.emplace_back( wxString::Format( _( "Min Clearance: %s" ), aContext->MessageTextFromValue( clearance ) ),
                                 wxString::Format( _( "(from %s)" ), source ) );
         }
     }
@@ -1064,7 +1066,7 @@ void ZONE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>&
     {
         double outline_area = CalculateOutlineArea();
         aList.emplace_back( _( "Outline Area" ),
-                            aFrame->MessageTextFromValue( outline_area, true, EDA_DATA_TYPE::AREA ) );
+                            aContext->MessageTextFromValue( outline_area, true, EDA_DATA_TYPE::AREA ) );
 
         const SHAPE_POLY_SET* area_outline = Outline();
         count = area_outline->FullPointCount();

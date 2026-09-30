@@ -653,7 +653,7 @@ void GERBER_DRAW_ITEM::PrintGerberPoly( wxDC* aDC, const COLOR4D& aColor, const 
 }
 
 
-void GERBER_DRAW_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void GERBER_DRAW_ITEM::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
     wxString text;
@@ -689,10 +689,10 @@ void GERBER_DRAW_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_
     aList.emplace_back( _( "Graphic Layer" ), msg );
 
     // Display item position
-    auto xStart = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aFrame->GetUserUnits(), m_Start.x );
-    auto yStart = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aFrame->GetUserUnits(), m_Start.y );
-    auto xEnd = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aFrame->GetUserUnits(), m_End.x );
-    auto yEnd = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aFrame->GetUserUnits(), m_End.y );
+    auto xStart = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aContext->GetUserUnits(), m_Start.x );
+    auto yStart = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aContext->GetUserUnits(), m_Start.y );
+    auto xEnd = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aContext->GetUserUnits(), m_End.x );
+    auto yEnd = EDA_UNIT_UTILS::UI::ToUserUnit( gerbIUScale, aContext->GetUserUnits(), m_End.y );
 
     if( m_Flashed )
     {

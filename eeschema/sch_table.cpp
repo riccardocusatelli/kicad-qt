@@ -22,7 +22,6 @@
  */
 
 #include <pgm_base.h>
-#include <sch_edit_frame.h>
 #include <plotters/plotter.h>
 #include <geometry/shape_segment.h>
 #include <geometry/shape_rect.h>
@@ -465,12 +464,12 @@ void SCH_TABLE::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& 
 }
 
 
-void SCH_TABLE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_TABLE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     // Don't use GetShownText() here; we want to show the user the variable references
     aList.emplace_back( _( "Table" ), wxString::Format( _( "%d Columns" ), m_colCount ) );
 
-    SCH_ITEM::GetMsgPanelInfo( aFrame, aList );
+    SCH_ITEM::GetMsgPanelInfo( aContext, aList );
 }
 
 

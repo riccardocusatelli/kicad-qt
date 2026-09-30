@@ -31,7 +31,10 @@
 
 #include <bitmaps.h>
 #include <macros.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
+#include <view/view.h>
 #include <board_design_settings.h>
 #include <board.h>
 #include <footprint.h>
@@ -702,9 +705,9 @@ std::vector<int> PCB_SHAPE::ViewGetLayers() const
 }
 
 
-void PCB_SHAPE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_SHAPE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) )
     {
         if( FOOTPRINT* parent = GetParentFootprint() )
             aList.emplace_back( _( "Footprint" ), parent->GetReference() );
@@ -712,10 +715,10 @@ void PCB_SHAPE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
 
     aList.emplace_back( _( "Type" ), _( "Drawing" ) );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 
-    ShapeGetMsgPanelInfo( aFrame, aList );
+    ShapeGetMsgPanelInfo( aContext, aList );
 
     aList.emplace_back( _( "Layer" ), GetLayerName() );
 

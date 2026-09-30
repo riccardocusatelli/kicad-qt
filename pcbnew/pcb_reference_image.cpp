@@ -33,9 +33,11 @@
 #include <board.h>
 #include <common.h>
 #include <core/mirror.h>
-#include <eda_draw_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
 #include <footprint.h>
-#include <pcb_draw_panel_gal.h>
+#include <view/view.h>
 #include <pcb_painter.h>
 #include <plotters/plotter.h>
 #include <geometry/geometry_utils.h>
@@ -302,7 +304,7 @@ BITMAPS PCB_REFERENCE_IMAGE::GetMenuImage() const
 }
 
 
-void PCB_REFERENCE_IMAGE::GetMsgPanelInfo( EDA_DRAW_FRAME*              aFrame,
+void PCB_REFERENCE_IMAGE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
                                            std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Reference Image" ), wxEmptyString );
@@ -313,9 +315,9 @@ void PCB_REFERENCE_IMAGE::GetMsgPanelInfo( EDA_DRAW_FRAME*              aFrame,
                         wxString::Format( wxT( "%f " ), m_referenceImage.GetImageScale() ) );
 
     aList.emplace_back( _( "Width" ),
-                        aFrame->MessageTextFromValue( m_referenceImage.GetSize().x ) );
+                        aContext->MessageTextFromValue( m_referenceImage.GetSize().x ) );
     aList.emplace_back( _( "Height" ),
-                        aFrame->MessageTextFromValue( m_referenceImage.GetSize().y ) );
+                        aContext->MessageTextFromValue( m_referenceImage.GetSize().y ) );
     aList.emplace_back( _( "Layer" ), LayerName( m_layer ) );
 }
 

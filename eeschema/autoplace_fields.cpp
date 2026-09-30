@@ -53,11 +53,9 @@
 #include <boost/range/adaptor/reversed.hpp>
 
 #include <drawing_sheet/ds_data_model.h>
-#include <sch_edit_frame.h>
 #include <sch_line.h>
 #include <kiface_base.h>
 #include <algorithm>
-#include <tool/tool_manager.h>
 #include <core/arraydim.h>
 #include <core/ki_assert.h>
 

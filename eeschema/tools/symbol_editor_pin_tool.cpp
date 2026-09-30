@@ -228,7 +228,7 @@ bool SYMBOL_EDITOR_PIN_TOOL::EditPinProperties( SCH_PIN* aPin, bool aFocusPinNum
     }
 
     std::vector<MSG_PANEL_ITEM> items;
-    aPin->GetMsgPanelInfo( m_frame, items );
+    aPin->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), items );
     m_frame->SetMsgPanel( items );
 
     // Save the pin properties to use for the next new pin.

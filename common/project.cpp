@@ -27,7 +27,6 @@
 
 #include <algorithm>
 #include <pgm_base.h>
-#include <confirm.h>
 #include <core/kicad_algo.h>
 #include <design_block_library_adapter.h>
 #include <string_utils.h>

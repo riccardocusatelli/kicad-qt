@@ -34,13 +34,11 @@
 #include <wx/checkbox.h>
 #include <wx/filedlg.h>
 #include <wx/filedlgcustomize.h>
-#include <wx/msgdlg.h>
 #include <kiplatform/ui.h>
 
 #include <confirm.h>
 #include <gestfich.h>
 #include <kiface_base.h>
-#include <pcb_edit_frame.h>
 #include <trigo.h>
 #include <build_version.h>
 #include <macros.h>

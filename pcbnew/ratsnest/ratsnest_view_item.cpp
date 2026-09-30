@@ -36,7 +36,6 @@
 #include <pcb_painter.h>
 #include <ratsnest/ratsnest_data.h>
 #include <layer_ids.h>
-#include <pcb_base_frame.h>
 #include <view/view.h>
 
 #include <memory>

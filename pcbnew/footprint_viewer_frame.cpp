@@ -331,7 +331,7 @@ void FOOTPRINT_VIEWER_FRAME::UpdateMsgPanel()
     if( FOOTPRINT* fp = static_cast<FOOTPRINT*>( GetModel() ) )
     {
         std::vector<MSG_PANEL_ITEM> msgItems;
-        fp->GetMsgPanelInfo( this, msgItems );
+        fp->GetMsgPanelInfo( GetMsgPanelContext(), msgItems );
         SetMsgPanel( msgItems );
     }
 }

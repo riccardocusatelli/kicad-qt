@@ -964,7 +964,7 @@ void SYMBOL_EDITOR_EDIT_TOOL::editShapeProperties( SCH_SHAPE* aShape )
     drawingTools->SetDrawSpecificUnit( !dlg.GetApplyToAllUnits() );
 
     std::vector<MSG_PANEL_ITEM> items;
-    aShape->GetMsgPanelInfo( m_frame, items );
+    aShape->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), items );
     m_frame->SetMsgPanel( items );
 }
 

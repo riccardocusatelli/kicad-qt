@@ -976,8 +976,62 @@ void EDA_DRAW_FRAME::SetMsgPanel( EDA_ITEM* aItem )
     KI_CHECK_RET( aItem, wxT( "Invalid EDA_ITEM pointer.  Bad programmer." ) );
 
     std::vector<MSG_PANEL_ITEM> items;
-    aItem->GetMsgPanelInfo( this, items );
+    aItem->GetMsgPanelInfo( GetMsgPanelContext(), items );
     SetMsgPanel( items );
+}
+
+
+FRAME_MSG_PANEL_CONTEXT::FRAME_MSG_PANEL_CONTEXT( EDA_DRAW_FRAME* aFrame ) :
+        MSG_PANEL_CONTEXT( aFrame->GetIuScale(), aFrame->GetUserUnits() ),
+        m_frame( aFrame )
+{
+}
+
+
+void FRAME_MSG_PANEL_CONTEXT::GetUnitPair( EDA_UNITS& aPrimaryUnit, EDA_UNITS& aSecondaryUnits )
+{
+    m_frame->GetUnitPair( aPrimaryUnit, aSecondaryUnits );
+}
+
+
+ORIGIN_TRANSFORMS& FRAME_MSG_PANEL_CONTEXT::GetOriginTransforms()
+{
+    return m_frame->GetOriginTransforms();
+}
+
+
+FRAME_T FRAME_MSG_PANEL_CONTEXT::GetFrameType() const
+{
+    return m_frame->GetFrameType();
+}
+
+
+wxString FRAME_MSG_PANEL_CONTEXT::EllipsizeStatusText( const wxString& aText ) const
+{
+    return KIUI::EllipsizeStatusText( m_frame, aText );
+}
+
+
+EDA_ITEM* FRAME_MSG_PANEL_CONTEXT::ResolveItem( const KIID& aId, bool aAllowNullptrReturn ) const
+{
+    return m_frame->ResolveItem( aId, aAllowNullptrReturn );
+}
+
+
+std::unique_ptr<MSG_PANEL_CONTEXT> EDA_DRAW_FRAME::createMsgPanelContext()
+{
+    return std::make_unique<FRAME_MSG_PANEL_CONTEXT>( this );
+}
+
+
+MSG_PANEL_CONTEXT* EDA_DRAW_FRAME::GetMsgPanelContext()
+{
+    if( !m_msgPanelContext )
+        m_msgPanelContext = createMsgPanelContext();
+
+    // Units can change at any time; the scale is fixed per frame.
+    m_msgPanelContext->SetUserUnits( GetUserUnits() );
+    return m_msgPanelContext.get();
 }
 
 

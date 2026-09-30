@@ -29,9 +29,7 @@
 #include <settings/common_settings.h>
 #include <project/project_file.h>
 #include <widgets/wx_progress_reporters.h>
-#include <dialogs/html_message_box.h>
 #include <generate_alias_info.h>
-#include <sch_base_frame.h>
 #include <locale_io.h>
 #include <string_utils.h>
 #include <trace_helpers.h>

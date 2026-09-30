@@ -27,7 +27,6 @@
 #include <board_item.h>
 #include <pcb_table.h>
 #include <pcb_tablecell.h>
-#include <pcb_edit_frame.h>
 #include <board_statistics_report.h>
 
 

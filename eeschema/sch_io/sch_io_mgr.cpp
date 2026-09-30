@@ -40,7 +40,6 @@
 #include <common.h>     // for ExpandEnvVarSubstitutions
 
 #include <wildcards_and_files_ext.h>
-#include <kiway_player.h>
 #include <string_utils.h>
 #include <libraries/library_table_parser.h>
 

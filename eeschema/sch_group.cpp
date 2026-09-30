@@ -21,7 +21,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 #include <bitmaps.h>
-#include <eda_draw_frame.h>
 #include <eda_group.h>
 #include <geometry/shape_compound.h>
 #include <sch_item.h>
@@ -29,7 +28,6 @@
 #include <sch_screen.h>
 #include <sch_symbol.h>
 #include <symbol.h>
-#include <confirm.h>
 #include <widgets/msgpanel_item.h>
 #include <view/view.h>
 
@@ -359,7 +357,7 @@ BITMAPS SCH_GROUP::GetMenuImage() const
 }
 
 
-void SCH_GROUP::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_GROUP::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Group" ), m_name.empty() ? _( "<unnamed>" ) : m_name );
     aList.emplace_back( _( "Members" ), wxString::Format( wxT( "%zu" ), m_items.size() ) );

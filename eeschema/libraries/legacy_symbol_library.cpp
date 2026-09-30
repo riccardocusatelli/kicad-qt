@@ -26,7 +26,6 @@
 
 #include <algorithm>
 #include <kiface_base.h>
-#include <eda_base_frame.h>
 #include <string_utils.h>
 #include <macros.h>
 #include <richio.h>

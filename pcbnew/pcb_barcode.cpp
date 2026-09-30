@@ -24,9 +24,10 @@
 
 #include <core/type_helpers.h>
 #include <bitmaps.h>
-#include <gr_basic.h>
 #include <macros.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
 #include <richio.h>
 #include <trigo.h>
 
@@ -543,26 +544,26 @@ void PCB_BARCODE::ComputeBarcode()
 }
 
 
-void PCB_BARCODE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_BARCODE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     FOOTPRINT* parentFP = GetParentFootprint();
 
-    if( parentFP && aFrame->GetName() == PCB_EDIT_FRAME_NAME )
+    if( parentFP && aContext->IsType( FRAME_PCB_EDITOR ) )
         aList.emplace_back( _( "Footprint" ), parentFP->GetReference() );
 
     aList.emplace_back( _( "Barcode" ), ENUM_MAP<BARCODE_T>::Instance().ToString( m_kind ) );
 
     // Don't use GetShownText() here; we want to show the user the variable references
-    aList.emplace_back( _( "Text" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Text" ), aContext->EllipsizeStatusText( GetText() ) );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 
     aList.emplace_back( _( "Layer" ), GetLayerName() );
 
     aList.emplace_back( _( "Angle" ), wxString::Format( wxT( "%g" ), m_angle.AsDegrees() ) );
 
-    aList.emplace_back( _( "Text Height" ), aFrame->MessageTextFromValue( m_text.GetTextHeight() ) );
+    aList.emplace_back( _( "Text Height" ), aContext->MessageTextFromValue( m_text.GetTextHeight() ) );
 }
 
 

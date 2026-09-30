@@ -22,7 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <sch_draw_panel.h>
+#include <sch_sheet_context.h>
 #include <trigo.h>
 #include <common.h>
 #include <plotters/plotter.h>
@@ -32,7 +32,6 @@
 #include <geometry/geometry_utils.h>
 #include <sch_painter.h>
 #include <sch_junction.h>
-#include <sch_edit_frame.h>
 #include <sch_connection.h>
 #include <schematic.h>
 #include <settings/color_settings.h>
@@ -298,15 +297,15 @@ bool SCH_JUNCTION::operator <( const SCH_ITEM& aItem ) const
 }
 
 
-void SCH_JUNCTION::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_JUNCTION::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Junction" ), wxEmptyString );
 
-    aList.emplace_back( _( "Size" ), aFrame->MessageTextFromValue( GetEffectiveDiameter() ) );
+    aList.emplace_back( _( "Size" ), aContext->MessageTextFromValue( GetEffectiveDiameter() ) );
 
     SCH_CONNECTION* conn = nullptr;
 
-    if( !IsConnectivityDirty() && dynamic_cast<SCH_EDIT_FRAME*>( aFrame ) )
+    if( !IsConnectivityDirty() && dynamic_cast<SCH_SHEET_CONTEXT*>( aContext ) )
         conn = Connection();
 
     if( conn )

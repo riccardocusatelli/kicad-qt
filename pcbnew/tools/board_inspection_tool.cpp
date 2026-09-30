@@ -2211,7 +2211,7 @@ int BOARD_INSPECTION_TOOL::HighlightItem( const TOOL_EVENT& aEvent )
         if( netinfo )
         {
             std::vector<MSG_PANEL_ITEM> items;
-            netinfo->GetMsgPanelInfo( m_frame, items );
+            netinfo->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), items );
             m_frame->SetMsgPanel( items );
             m_frame->SendCrossProbeNetName( netinfo->GetNetname() );
         }

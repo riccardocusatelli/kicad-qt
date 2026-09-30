@@ -38,6 +38,7 @@ class LINE_READER;
 class EDA_DRAW_FRAME;
 class FOOTPRINT;
 class MSG_PANEL_ITEM;
+class MSG_PANEL_CONTEXT;
 
 using KIGFX::COLOR4D;
 
@@ -407,7 +408,7 @@ public:
      */
     std::vector<SHAPE*> MakeEffectiveShapesForStroking() const;
 
-    void ShapeGetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList );
+    void ShapeGetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList );
 
     void SetRectangleHeight( const int& aHeight );
 

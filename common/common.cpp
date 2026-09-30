@@ -23,7 +23,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <eda_base_frame.h>
 #include <kiplatform/app.h>
 #include <project.h>
 #include <common.h>
@@ -37,7 +36,6 @@
 #include <mutex>
 #include <wx/config.h>
 #include <wx/log.h>
-#include <wx/msgdlg.h>
 #include <wx/stdpaths.h>
 #include <wx/url.h>
 #include <wx/utils.h>

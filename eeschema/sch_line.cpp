@@ -23,6 +23,7 @@
  */
 
 #include <base_units.h>
+#include <sch_sheet_context.h>
 #include <bitmaps.h>
 #include <string_utils.h>
 #include <core/mirror.h>
@@ -31,7 +32,6 @@
 #include <geometry/shape_segment.h>
 #include <geometry/geometry_utils.h>
 #include <sch_line.h>
-#include <sch_edit_frame.h>
 #include <settings/color_settings.h>
 #include <connection_graph.h>
 #include <project/project_file.h>
@@ -946,7 +946,7 @@ void SCH_LINE::SetPosition( const VECTOR2I& aPosition )
 }
 
 
-void SCH_LINE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_LINE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
 
@@ -964,11 +964,11 @@ void SCH_LINE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_IT
     if( GetEffectiveLineStyle() != lineStyle )
         aList.emplace_back( _( "Line Style" ), _( "from netclass" ) );
     else
-        m_stroke.GetMsgPanelInfo( aFrame, aList, true, false );
+        m_stroke.GetMsgPanelInfo( aContext, aList, true, false );
 
     SCH_CONNECTION* conn = nullptr;
 
-    if( !IsConnectivityDirty() && dynamic_cast<SCH_EDIT_FRAME*>( aFrame ) )
+    if( !IsConnectivityDirty() && dynamic_cast<SCH_SHEET_CONTEXT*>( aContext ) )
         conn = Connection();
 
     if( conn )

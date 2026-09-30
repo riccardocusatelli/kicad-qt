@@ -62,6 +62,7 @@ class UNITS_PROVIDER;
 class EDA_DRAW_FRAME;
 class EDA_GROUP;
 class MSG_PANEL_ITEM;
+class MSG_PANEL_CONTEXT;
 class EMBEDDED_FILES;
 
 namespace google { namespace protobuf { class Any; } }
@@ -230,7 +231,7 @@ public:
      * @param aFrame is the EDA_DRAW_FRAME that displays the message panel
      * @param aList is the list to populate.
      */
-    virtual void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+    virtual void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
     {
     }
 

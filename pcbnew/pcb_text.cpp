@@ -27,7 +27,10 @@
 
 #include <advanced_config.h>
 #include <common.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
+#include <view/view.h>
 #include <base_units.h>
 #include <bitmaps.h>
 #include <board.h>
@@ -299,11 +302,11 @@ double PCB_TEXT::ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const
 }
 
 
-void PCB_TEXT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_TEXT::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     FOOTPRINT* parentFP = GetParentFootprint();
 
-    if( parentFP && aFrame->GetName() == PCB_EDIT_FRAME_NAME )
+    if( parentFP && aContext->IsType( FRAME_PCB_EDITOR ) )
         aList.emplace_back( _( "Footprint" ), parentFP->GetReference() );
 
     // Don't use GetShownText() here; we want to show the user the variable references
@@ -321,17 +324,17 @@ void PCB_TEXT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_IT
             value = parentFP->GetFieldValueForVariant( variant, field->GetName() );
         }
 
-        aList.emplace_back( _( "Text" ), KIUI::EllipsizeStatusText( aFrame, value ) );
+        aList.emplace_back( _( "Text" ), aContext->EllipsizeStatusText( value ) );
     }
     else
     {
-        aList.emplace_back( _( "PCB Text" ), KIUI::EllipsizeStatusText( aFrame, value ) );
+        aList.emplace_back( _( "PCB Text" ), aContext->EllipsizeStatusText( value ) );
     }
 
     if( parentFP )
         aList.emplace_back( _( "Type" ), GetTextTypeDescription() );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 
     aList.emplace_back( _( "Layer" ), GetLayerName() );
@@ -343,12 +346,12 @@ void PCB_TEXT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_IT
     aList.emplace_back( _( "Font" ), GetFont() ? GetFont()->GetName() : _( "Default" ) );
 
     if( GetTextThickness() )
-        aList.emplace_back( _( "Text Thickness" ), aFrame->MessageTextFromValue( GetEffectiveTextPenWidth() ) );
+        aList.emplace_back( _( "Text Thickness" ), aContext->MessageTextFromValue( GetEffectiveTextPenWidth() ) );
     else
         aList.emplace_back( _( "Text Thickness" ), _( "Auto" ) );
 
-    aList.emplace_back( _( "Width" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
-    aList.emplace_back( _( "Height" ), aFrame->MessageTextFromValue( GetTextHeight() ) );
+    aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Height" ), aContext->MessageTextFromValue( GetTextHeight() ) );
 }
 
 

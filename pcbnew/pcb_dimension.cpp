@@ -26,7 +26,10 @@
  */
 
 #include <bitmaps.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
+#include <view/view.h>
 #include <base_units.h>
 #include <convert_basic_shapes_to_polygon.h>
 #include <font/font.h>
@@ -626,7 +629,7 @@ void PCB_DIMENSION_BASE::StyleFromSettings( const BOARD_DESIGN_SETTINGS& setting
 }
 
 
-void PCB_DIMENSION_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
+void PCB_DIMENSION_BASE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
                                           std::vector<MSG_PANEL_ITEM>& aList )
 {
     // for now, display only the text within the DIMENSION using class PCB_TEXT.
@@ -635,7 +638,7 @@ void PCB_DIMENSION_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
     KI_CHECK_RET( m_parent != nullptr, wxT( "PCB_TEXT::GetMsgPanelInfo() m_Parent is NULL." ) );
 
     // Don't use GetShownText(); we want to see the variable references here
-    aList.emplace_back( _( "Dimension" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Dimension" ), aContext->EllipsizeStatusText( GetText() ) );
 
     aList.emplace_back( _( "Prefix" ), GetPrefix() );
 
@@ -673,14 +676,14 @@ void PCB_DIMENSION_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
     aList.emplace_back( _( "Text Width" ), unitsProvider.MessageTextFromValue( GetTextWidth() ) );
     aList.emplace_back( _( "Text Height" ), unitsProvider.MessageTextFromValue( GetTextHeight() ) );
 
-    ORIGIN_TRANSFORMS& originTransforms = aFrame->GetOriginTransforms();
+    ORIGIN_TRANSFORMS& originTransforms = aContext->GetOriginTransforms();
 
     if( Type() == PCB_DIM_CENTER_T )
     {
         VECTOR2I startCoord = originTransforms.ToDisplayAbs( GetStart() );
         wxString start = wxString::Format( wxT( "@(%s, %s)" ),
-                                           aFrame->MessageTextFromValue( startCoord.x ),
-                                           aFrame->MessageTextFromValue( startCoord.y ) );
+                                           aContext->MessageTextFromValue( startCoord.x ),
+                                           aContext->MessageTextFromValue( startCoord.y ) );
 
         aList.emplace_back( start, wxEmptyString );
     }
@@ -688,17 +691,17 @@ void PCB_DIMENSION_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
     {
         VECTOR2I startCoord = originTransforms.ToDisplayAbs( GetStart() );
         wxString start = wxString::Format( wxT( "@(%s, %s)" ),
-                                           aFrame->MessageTextFromValue( startCoord.x ),
-                                           aFrame->MessageTextFromValue( startCoord.y ) );
+                                           aContext->MessageTextFromValue( startCoord.x ),
+                                           aContext->MessageTextFromValue( startCoord.y ) );
         VECTOR2I endCoord = originTransforms.ToDisplayAbs( GetEnd() );
         wxString end   = wxString::Format( wxT( "@(%s, %s)" ),
-                                           aFrame->MessageTextFromValue( endCoord.x ),
-                                           aFrame->MessageTextFromValue( endCoord.y ) );
+                                           aContext->MessageTextFromValue( endCoord.x ),
+                                           aContext->MessageTextFromValue( endCoord.y ) );
 
         aList.emplace_back( start, end );
     }
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 
     aList.emplace_back( _( "Layer" ), GetLayerName() );
@@ -1072,9 +1075,9 @@ void PCB_DIM_ALIGNED::updateText()
 }
 
 
-void PCB_DIM_ALIGNED::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_DIM_ALIGNED::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
-    PCB_DIMENSION_BASE::GetMsgPanelInfo( aFrame, aList );
+    PCB_DIMENSION_BASE::GetMsgPanelInfo( aContext, aList );
 
     // Use our own UNITS_PROVIDER to report dimension info in dimension's units rather than
     // in frame's units.
@@ -1537,17 +1540,17 @@ void PCB_DIM_LEADER::updateGeometry()
 }
 
 
-void PCB_DIM_LEADER::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_DIM_LEADER::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     // Don't use GetShownText(); we want to see the variable references here
-    aList.emplace_back( _( "Leader" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Leader" ), aContext->EllipsizeStatusText( GetText() ) );
 
-    ORIGIN_TRANSFORMS& originTransforms = aFrame->GetOriginTransforms();
+    ORIGIN_TRANSFORMS& originTransforms = aContext->GetOriginTransforms();
 
     VECTOR2I startCoord = originTransforms.ToDisplayAbs( GetStart() );
     wxString start = wxString::Format( wxT( "@(%s, %s)" ),
-                                       aFrame->MessageTextFromValue( startCoord.x ),
-                                       aFrame->MessageTextFromValue( startCoord.y ) );
+                                       aContext->MessageTextFromValue( startCoord.x ),
+                                       aContext->MessageTextFromValue( startCoord.y ) );
 
     aList.emplace_back( start, wxEmptyString );
 

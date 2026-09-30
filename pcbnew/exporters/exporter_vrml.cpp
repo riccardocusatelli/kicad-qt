@@ -25,7 +25,6 @@
 #include <iomanip>
 #include <vector>
 #include <wx/dir.h>
-#include <wx/msgdlg.h>
 #include <wx/wfstream.h>
 #include <wx/zstream.h>
 
@@ -44,7 +43,6 @@
 #include "plugins/3dapi/ifsg_all.h"
 #include "streamwrapper.h"
 #include "vrml_layer.h"
-#include "pcb_edit_frame.h"
 
 #include <convert_basic_shapes_to_polygon.h>
 #include <geometry/geometry_utils.h>

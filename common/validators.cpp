@@ -29,7 +29,6 @@
  */
 
 #include <string_utils.h>
-#include <confirm.h>
 #include <validators.h>
 #include <template_fieldnames.h>
 
@@ -38,7 +37,6 @@
 #include <wx/textentry.h>
 #include <wx/log.h>
 #include <wx/combo.h>
-#include <wx/msgdlg.h>
 #include <refdes_utils.h>
 #include <core/ki_assert.h>
 

@@ -116,7 +116,7 @@ public:
     bool IsProxyItem() const override { return m_proxyItem; }
     void SetIsProxyItem( bool aIsProxy = true ) override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     const BOX2I GetBoundingBox() const override { return getBoundingBox(); }
 

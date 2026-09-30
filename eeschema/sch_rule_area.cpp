@@ -26,7 +26,6 @@
 #include <map>
 #include <vector>
 
-#include <eda_draw_frame.h>
 #include <erc/erc_item.h>
 #include <erc/erc_settings.h>
 #include <geometry/shape_segment.h>
@@ -387,7 +386,7 @@ SCH_RULE_AREA::GetResolvedNetclasses( const SCH_SHEET_PATH* aSheetPath ) const
 }
 
 
-void SCH_RULE_AREA::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_RULE_AREA::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Rule Area" ), wxEmptyString );
 
@@ -395,7 +394,7 @@ void SCH_RULE_AREA::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PAN
     msg.Printf( wxS( "%d" ), GetPolyShape().Outline( 0 ).PointCount() );
     aList.emplace_back( _( "Points" ), msg );
 
-    m_stroke.GetMsgPanelInfo( aFrame, aList );
+    m_stroke.GetMsgPanelInfo( aContext, aList );
 
     const std::vector<std::pair<wxString, SCH_ITEM*>> netclasses = SCH_RULE_AREA::GetResolvedNetclasses( nullptr );
     wxString resolvedNetclass = _( "<None>" );

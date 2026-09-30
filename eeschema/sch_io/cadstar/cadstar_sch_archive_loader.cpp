@@ -34,7 +34,6 @@
 #include <progress_reporter.h>
 #include <string_utils.h>
 #include <sch_bus_entry.h>
-#include <sch_edit_frame.h> //SYMBOL_ORIENTATION_T
 #include <sch_io/sch_io_mgr.h>
 #include <sch_junction.h>
 #include <sch_line.h>

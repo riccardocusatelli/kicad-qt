@@ -27,7 +27,6 @@
  * @brief Class SCH_NO_CONNECT implementation.
  */
 
-#include <sch_draw_panel.h>
 #include <plotters/plotter.h>
 #include <bitmaps.h>
 #include <schematic.h>
@@ -37,7 +36,6 @@
 #include <default_values.h>    // For some default values
 #include <core/mirror.h>
 #include <trigo.h>
-#include <gr_basic.h>
 #include <core/ki_assert.h>
 
 

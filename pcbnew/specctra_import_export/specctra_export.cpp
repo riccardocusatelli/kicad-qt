@@ -39,7 +39,6 @@
 
 #include <wx/log.h>
 
-#include <pcb_edit_frame.h>
 #include <confirm.h>            // DisplayErrorMessage()
 #include <gestfich.h>           // EDA_FileSelector()
 #include <locale_io.h>

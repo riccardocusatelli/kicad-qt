@@ -87,7 +87,7 @@ public:
 
     BITMAPS GetMenuImage() const override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     /**
      * Get the position of the image (this is the center of the image).

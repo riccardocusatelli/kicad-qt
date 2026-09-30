@@ -29,8 +29,6 @@
 #include <geometry/shape_line_chain.h>
 #include <string_utils.h>
 #include <plotters/plotter.h>
-#include <sch_draw_panel.h>
-#include <sch_edit_frame.h>
 #include <sch_sheet.h>
 #include <sch_sheet_pin.h>
 #include <sch_painter.h>

@@ -33,7 +33,6 @@
 #include <pgm_base.h>
 #include <trace_helpers.h>
 
-#include <sch_edit_frame.h>
 #include <sch_painter.h>
 #include <schematic.h>
 #include <sch_screen.h>

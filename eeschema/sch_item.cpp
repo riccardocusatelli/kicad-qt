@@ -29,8 +29,6 @@
 #include <sch_connection.h>
 #include <sch_group.h>
 #include <sch_rule_area.h>
-#include <sch_draw_panel.h>
-#include <sch_edit_frame.h>
 #include <connection_graph.h>
 #include <netclass.h>
 #include <project/project_file.h>
@@ -811,7 +809,7 @@ bool SCH_ITEM::RenderAsBitmap( double aWorldScale ) const
 }
 
 
-void SCH_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_ITEM::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     if( SYMBOL* symbol = GetParentSymbol() )
     {

@@ -30,7 +30,6 @@ using namespace std::placeholders;
 #include <confirm.h>
 #include <kiway.h>
 #include <drc/drc_engine.h>
-#include <pcb_edit_frame.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <netlist_reader/netlist_reader.h>
 #include <reporter.h>
@@ -48,7 +47,6 @@ using namespace std::placeholders;
 #include <tool/tool_manager.h>
 #include <tools/drc_tool.h>
 #include <tools/pcb_actions.h>
-#include <tools/pcb_selection_tool.h>
 #include <project/project_file.h>  // LAST_PATH_TYPE
 #include <project_pcb.h>
 

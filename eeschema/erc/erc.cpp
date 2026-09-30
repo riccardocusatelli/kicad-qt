@@ -40,7 +40,6 @@
 #include <project/project_file.h>
 #include <project/net_settings.h>
 #include <sch_bus_entry.h>
-#include <sch_edit_frame.h>
 #include <sch_marker.h>
 #include <sch_reference_list.h>
 #include <sch_rule_area.h>

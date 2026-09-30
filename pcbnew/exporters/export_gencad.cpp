@@ -32,7 +32,6 @@
 #include <board_design_settings.h>
 #include <confirm.h>
 #include <dialogs/dialog_gencad_export_options.h>
-#include <pcb_edit_frame.h>
 #include <tools/board_editor_control.h>
 #include <project/project_file.h> // LAST_PATH_TYPE
 

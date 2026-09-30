@@ -34,7 +34,6 @@
 #include <build_version.h>
 #include <common.h>
 #include <locale_io.h>
-#include <pcb_edit_frame.h>
 #include <plotters/plotter.h>
 
 #include <board.h>

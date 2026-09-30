@@ -37,7 +37,6 @@
 #include <io/kicad/kicad_io_utils.h>
 #include <string_utils.h>
 
-#include <wx/msgdlg.h>
 #include <wx/mstream.h>
 #include <core/ki_assert.h>
 

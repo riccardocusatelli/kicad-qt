@@ -40,7 +40,6 @@
 #include <board_design_settings.h>
 #include <collectors.h>
 #include <component_classes/component_class_manager.h>
-#include <confirm.h>
 #include <convert_basic_shapes_to_polygon.h>
 #include <convert_shape_list_to_polygon.h>
 #include <component_classes/component_class.h>
@@ -2085,7 +2084,7 @@ SHAPE_POLY_SET FOOTPRINT::GetBoundingHull( PCB_LAYER_ID aLayer ) const
 }
 
 
-void FOOTPRINT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void FOOTPRINT::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg, msg2;
     wxString variant;
@@ -2097,9 +2096,9 @@ void FOOTPRINT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
     aList.emplace_back( UnescapeString( Reference().GetText() ),
                         UnescapeString( GetFieldValueForVariant( variant, GetCanonicalFieldName( FIELD_T::VALUE ) ) ) );
 
-    if( aFrame->IsType( FRAME_FOOTPRINT_VIEWER )
-        || aFrame->IsType( FRAME_FOOTPRINT_CHOOSER )
-        || aFrame->IsType( FRAME_FOOTPRINT_EDITOR ) )
+    if( aContext->IsType( FRAME_FOOTPRINT_VIEWER )
+        || aContext->IsType( FRAME_FOOTPRINT_CHOOSER )
+        || aContext->IsType( FRAME_FOOTPRINT_EDITOR ) )
     {
         size_t     padCount = GetPadCount( DO_NOT_INCLUDE_NPTH );
 
@@ -2115,7 +2114,7 @@ void FOOTPRINT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
         return;
     }
 
-    // aFrame is the board editor:
+    // aContext is the board editor:
 
     switch( GetSide() )
     {

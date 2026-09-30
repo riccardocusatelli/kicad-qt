@@ -543,7 +543,7 @@ int SCH_INSPECTION_TOOL::UpdateMessagePanel( const TOOL_EVENT& aEvent )
             if( std::optional<wxString> uuid = GetMsgPanelDisplayUuid( item->m_Uuid ) )
                 msgItems.emplace_back( _( "UUID" ), *uuid );
 
-            item->GetMsgPanelInfo( m_frame, msgItems );
+            item->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), msgItems );
             m_frame->SetMsgPanel( msgItems );
         }
         else

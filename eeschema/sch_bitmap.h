@@ -93,7 +93,7 @@ public:
 
     BITMAPS GetMenuImage() const override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     VECTOR2I GetPosition() const override;
     void     SetPosition( const VECTOR2I& aPosition ) override;

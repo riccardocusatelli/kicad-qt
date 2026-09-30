@@ -28,7 +28,6 @@
  */
 
 #include <wx/combo.h>
-#include <wx/msgdlg.h>
 
 #include <sch_connection.h>
 #include <sch_validators.h>

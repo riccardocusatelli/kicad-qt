@@ -26,7 +26,6 @@
 
 #include <font/outline_font.h>
 #include <wx/tokenzr.h>
-#include <sch_draw_panel.h>
 #include <plotters/plotter.h>
 #include <sch_screen.h>
 #include <template_fieldnames.h>

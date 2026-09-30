@@ -173,7 +173,7 @@ public:
 
     GBR_BASIC_SHAPE_TYPE ShapeType() const { return m_ShapeType; }
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     wxString ShowGBRShape() const;
 

@@ -26,7 +26,9 @@
 
 #include "pcb_track.h"
 
-#include <pcb_base_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
 #include <core/mirror.h>
 #include <connectivity/connectivity_data.h>
 #include <board.h>
@@ -2338,23 +2340,23 @@ wxString PCB_TRACK::GetFriendlyName() const
 }
 
 
-void PCB_TRACK::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_TRACK::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString  msg;
     BOARD*    board = GetBoard();
 
     aList.emplace_back( _( "Type" ), GetFriendlyName() );
 
-    GetMsgPanelInfoBase_Common( aFrame, aList );
+    GetMsgPanelInfoBase_Common( aContext, aList );
 
     aList.emplace_back( _( "Layer" ), LayerMaskDescribe() );
 
-    aList.emplace_back( _( "Width" ), aFrame->MessageTextFromValue( m_width ) );
+    aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( m_width ) );
 
     if( Type() == PCB_ARC_T )
     {
         double radius = static_cast<PCB_ARC*>( this )->GetRadius();
-        aList.emplace_back( _( "Radius" ), aFrame->MessageTextFromValue( radius ) );
+        aList.emplace_back( _( "Radius" ), aContext->MessageTextFromValue( radius ) );
 
         aList.emplace_back( _( "Angle" ), wxString::Format( "%.2fdeg",
                             static_cast<PCB_ARC*>(this)->GetAngle().AsDegrees() ) );
@@ -2365,12 +2367,12 @@ void PCB_TRACK::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
 
     if( segmentDelay == 0.0 )
     {
-        aList.emplace_back( _( "Segment Length" ), aFrame->MessageTextFromValue( segmentLength ) );
+        aList.emplace_back( _( "Segment Length" ), aContext->MessageTextFromValue( segmentLength ) );
     }
     else
     {
         aList.emplace_back( _( "Segment Delay" ),
-                            aFrame->MessageTextFromValue( segmentDelay, true, EDA_DATA_TYPE::TIME ) );
+                            aContext->MessageTextFromValue( segmentDelay, true, EDA_DATA_TYPE::TIME ) );
     }
 
     // Display full track length (in Pcbnew)
@@ -2386,28 +2388,28 @@ void PCB_TRACK::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
 
         if( trackDelay == 0.0 )
         {
-            aList.emplace_back( _( "Routed Length" ), aFrame->MessageTextFromValue( trackLen ) );
+            aList.emplace_back( _( "Routed Length" ), aContext->MessageTextFromValue( trackLen ) );
 
             if( lenPadToDie != 0 )
             {
-                msg = aFrame->MessageTextFromValue( lenPadToDie );
+                msg = aContext->MessageTextFromValue( lenPadToDie );
                 aList.emplace_back( _( "Pad To Die Length" ), msg );
 
-                msg = aFrame->MessageTextFromValue( trackLen + lenPadToDie );
+                msg = aContext->MessageTextFromValue( trackLen + lenPadToDie );
                 aList.emplace_back( _( "Full Length" ), msg );
             }
         }
         else
         {
             aList.emplace_back( _( "Routed Delay" ),
-                                aFrame->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) );
+                                aContext->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) );
 
             if( delayPadToDie != 0.0 )
             {
-                msg = aFrame->MessageTextFromValue( delayPadToDie, true, EDA_DATA_TYPE::TIME );
+                msg = aContext->MessageTextFromValue( delayPadToDie, true, EDA_DATA_TYPE::TIME );
                 aList.emplace_back( _( "Pad To Die Delay" ), msg );
 
-                msg = aFrame->MessageTextFromValue( trackDelay + delayPadToDie, true, EDA_DATA_TYPE::TIME );
+                msg = aContext->MessageTextFromValue( trackDelay + delayPadToDie, true, EDA_DATA_TYPE::TIME );
                 aList.emplace_back( _( "Full Delay" ), msg );
             }
         }
@@ -2416,17 +2418,17 @@ void PCB_TRACK::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
     SHAPE_POLY_SET copper;
     TransformShapeToPolySet( copper, GetLayer(), 0, ARC_LOW_DEF, ERROR_INSIDE );
     aList.emplace_back( _( "Copper Area" ),
-                        aFrame->MessageTextFromValue( copper.Area(), true, EDA_DATA_TYPE::AREA ) );
+                        aContext->MessageTextFromValue( copper.Area(), true, EDA_DATA_TYPE::AREA ) );
 
     wxString source;
     int clearance = GetOwnClearance( GetLayer(), &source );
 
     aList.emplace_back( wxString::Format( _( "Min Clearance: %s" ),
-                                          aFrame->MessageTextFromValue( clearance ) ),
+                                          aContext->MessageTextFromValue( clearance ) ),
                         wxString::Format( _( "(from %s)" ), source ) );
 
     MINOPTMAX<int> constraintValue = GetWidthConstraint( &source );
-    msg = aFrame->MessageTextFromMinOptMax( constraintValue );
+    msg = aContext->MessageTextFromMinOptMax( constraintValue );
 
     if( !msg.IsEmpty() )
     {
@@ -2436,7 +2438,7 @@ void PCB_TRACK::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
 }
 
 
-void PCB_VIA::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_VIA::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString  msg;
 
@@ -2451,27 +2453,27 @@ void PCB_VIA::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITE
 
     aList.emplace_back( _( "Type" ), msg );
 
-    GetMsgPanelInfoBase_Common( aFrame, aList );
+    GetMsgPanelInfoBase_Common( aContext, aList );
 
     aList.emplace_back( _( "Layer" ), LayerMaskDescribe() );
     // TODO(JE) padstacks
-    aList.emplace_back( _( "Diameter" ), aFrame->MessageTextFromValue( GetWidth( PADSTACK::ALL_LAYERS ) ) );
-    aList.emplace_back( _( "Hole" ), aFrame->MessageTextFromValue( GetDrillValue() ) );
+    aList.emplace_back( _( "Diameter" ), aContext->MessageTextFromValue( GetWidth( PADSTACK::ALL_LAYERS ) ) );
+    aList.emplace_back( _( "Hole" ), aContext->MessageTextFromValue( GetDrillValue() ) );
 
     wxString  source;
     int clearance = GetOwnClearance( GetLayer(), &source );
 
-    aList.emplace_back( wxString::Format( _( "Min Clearance: %s" ), aFrame->MessageTextFromValue( clearance ) ),
+    aList.emplace_back( wxString::Format( _( "Min Clearance: %s" ), aContext->MessageTextFromValue( clearance ) ),
                         wxString::Format( _( "(from %s)" ), source ) );
 
     int minAnnulus = GetMinAnnulus( GetLayer(), &source );
 
-    aList.emplace_back( wxString::Format( _( "Min Annular Width: %s" ), aFrame->MessageTextFromValue( minAnnulus ) ),
+    aList.emplace_back( wxString::Format( _( "Min Annular Width: %s" ), aContext->MessageTextFromValue( minAnnulus ) ),
                         wxString::Format( _( "(from %s)" ), source ) );
 }
 
 
-void PCB_TRACK::GetMsgPanelInfoBase_Common( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) const
+void PCB_TRACK::GetMsgPanelInfoBase_Common( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) const
 {
     aList.emplace_back( _( "Net" ), UnescapeString( GetNetname() ) );
 
@@ -2488,7 +2490,7 @@ void PCB_TRACK::GetMsgPanelInfoBase_Common( EDA_DRAW_FRAME* aFrame, std::vector<
     aList.emplace_back( wxT( "End pos" ), fmt::format( "{} {}", m_End.x, m_End.y ) );
 #endif
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 }
 

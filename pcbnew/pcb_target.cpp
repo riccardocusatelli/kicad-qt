@@ -34,7 +34,9 @@
 #include <trigo.h>
 #include <i18n_utility.h>
 #include <geometry/shape_circle.h>
-#include <eda_draw_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <view/view.h>
 #include <pcb_shape.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
@@ -149,14 +151,14 @@ void PCB_TARGET::swapData( BOARD_ITEM* aImage )
 }
 
 
-void PCB_TARGET::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_TARGET::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "PCB Target" ), wxEmptyString );
 
     aList.emplace_back( _( "Layer" ), GetLayerName() );
 
-    aList.emplace_back( _( "Size" ), aFrame->MessageTextFromValue( GetSize() ) );
-    aList.emplace_back( _( "Width" ), aFrame->MessageTextFromValue( GetWidth() ) );
+    aList.emplace_back( _( "Size" ), aContext->MessageTextFromValue( GetSize() ) );
+    aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( GetWidth() ) );
     aList.emplace_back( _( "Shape" ), GetShape() == 0 ? wxT( "+" ) : wxT( "X" ) );
 }
 

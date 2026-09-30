@@ -23,7 +23,6 @@
 
 #include <confirm.h>
 #include <refdes_utils.h>
-#include <sch_edit_frame.h>
 #include <sch_reference_list.h>
 #include <string_utils.h>
 #include <connection_graph.h>

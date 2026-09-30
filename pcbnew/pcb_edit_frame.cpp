@@ -2111,7 +2111,7 @@ void PCB_EDIT_FRAME::HardRedraw()
     GetCanvas()->RedrawRatsnest();
 
     std::vector<MSG_PANEL_ITEM> msg_list;
-    GetBoard()->GetMsgPanelInfo( this, msg_list );
+    GetBoard()->GetMsgPanelInfo( GetMsgPanelContext(), msg_list );
     SetMsgPanel( msg_list );
 }
 

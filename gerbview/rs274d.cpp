@@ -29,7 +29,6 @@
 
 #include <geometry/geometry_utils.h>
 #include <gerbview.h>
-#include <gerbview_frame.h>
 #include <gerber_file_image.h>
 #include <trigo.h>
 #include <X2_gerber_attributes.h>

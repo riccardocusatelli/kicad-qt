@@ -26,7 +26,7 @@
 #include <base_units.h>
 #include <bitmaps.h>
 #include <math/util.h>      // for KiROUND
-#include <eda_draw_frame.h>
+#include <msg_panel_context.h>
 #include <geometry/shape_circle.h>
 #include <geometry/shape_segment.h>
 #include <geometry/shape_simple.h>
@@ -1888,12 +1888,12 @@ int PAD::GetLocalThermalGapOverride( wxString* aSource ) const
 }
 
 
-void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PAD::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString   msg;
     FOOTPRINT* parentFootprint = static_cast<FOOTPRINT*>( m_parent );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) )
     {
         if( parentFootprint )
             aList.emplace_back( _( "Footprint" ), parentFootprint->GetReference() );
@@ -1907,7 +1907,7 @@ void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& 
     if( !GetPinType().IsEmpty() )
         aList.emplace_back( _( "Pin Type" ), GetPinType() );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) )
     {
         aList.emplace_back( _( "Net" ), UnescapeString( GetNetname() ) );
 
@@ -1921,7 +1921,7 @@ void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& 
     if( GetAttribute() == PAD_ATTRIB::SMD || GetAttribute() == PAD_ATTRIB::CONN )
         aList.emplace_back( _( "Layer" ), LayerMaskDescribe() );
 
-    if( aFrame->GetName() == FOOTPRINT_EDIT_FRAME_NAME )
+    if( aContext->IsType( FRAME_FOOTPRINT_EDITOR ) )
     {
         if( GetAttribute() == PAD_ATTRIB::SMD )
         {
@@ -1929,7 +1929,7 @@ void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& 
             const std::shared_ptr<SHAPE_POLY_SET>& poly = GetEffectivePolygon( PADSTACK::ALL_LAYERS );
             double area = poly->Area();
 
-            aList.emplace_back( _( "Area" ), aFrame->MessageTextFromValue( area, true, EDA_DATA_TYPE::AREA ) );
+            aList.emplace_back( _( "Area" ), aContext->MessageTextFromValue( area, true, EDA_DATA_TYPE::AREA ) );
         }
     }
 
@@ -1961,12 +1961,12 @@ void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& 
     if( ( padShape == PAD_SHAPE::CIRCLE || padShape == PAD_SHAPE::OVAL )
             && padSize.x == padSize.y )
     {
-        aList.emplace_back( _( "Diameter" ), aFrame->MessageTextFromValue( padSize.x ) );
+        aList.emplace_back( _( "Diameter" ), aContext->MessageTextFromValue( padSize.x ) );
     }
     else
     {
-        aList.emplace_back( _( "Width" ), aFrame->MessageTextFromValue( padSize.x ) );
-        aList.emplace_back( _( "Height" ), aFrame->MessageTextFromValue( padSize.y ) );
+        aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( padSize.x ) );
+        aList.emplace_back( _( "Height" ), aContext->MessageTextFromValue( padSize.y ) );
     }
 
     EDA_ANGLE fp_orient = parentFootprint ? parentFootprint->GetOrientation() : ANGLE_0;
@@ -1983,7 +1983,7 @@ void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& 
     if( GetPadToDieLength() )
     {
         aList.emplace_back( _( "Length in Package" ),
-                            aFrame->MessageTextFromValue( GetPadToDieLength() ) );
+                            aContext->MessageTextFromValue( GetPadToDieLength() ) );
     }
 
     const VECTOR2I& drill = m_padStack.Drill().size;
@@ -1994,14 +1994,14 @@ void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& 
         {
             aList.emplace_back( _( "Hole" ),
                                 wxString::Format( wxT( "%s" ),
-                                                  aFrame->MessageTextFromValue( drill.x ) ) );
+                                                  aContext->MessageTextFromValue( drill.x ) ) );
         }
         else
         {
             aList.emplace_back( _( "Hole X / Y" ),
                                 wxString::Format( wxT( "%s / %s" ),
-                                                  aFrame->MessageTextFromValue( drill.x ),
-                                                  aFrame->MessageTextFromValue( drill.y ) ) );
+                                                  aContext->MessageTextFromValue( drill.x ),
+                                                  aContext->MessageTextFromValue( drill.y ) ) );
         }
     }
 
@@ -2011,7 +2011,7 @@ void PAD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& 
     if( !source.IsEmpty() )
     {
         aList.emplace_back( wxString::Format( _( "Min Clearance: %s" ),
-                                              aFrame->MessageTextFromValue( clearance ) ),
+                                              aContext->MessageTextFromValue( clearance ) ),
                             wxString::Format( _( "(from %s)" ),
                                               source ) );
     }

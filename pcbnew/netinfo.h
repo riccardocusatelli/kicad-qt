@@ -141,7 +141,7 @@ public:
      *
      * @param aList is the list in which to place the  status information.
      */
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     /**
      * Set all fields to their default values.

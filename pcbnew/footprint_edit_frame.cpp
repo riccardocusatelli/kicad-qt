@@ -360,7 +360,7 @@ void FOOTPRINT_EDIT_FRAME::UpdateMsgPanel()
     if( fp )
     {
         std::vector<MSG_PANEL_ITEM> msgItems;
-        fp->GetMsgPanelInfo( this, msgItems );
+        fp->GetMsgPanelInfo( GetMsgPanelContext(), msgItems );
         SetMsgPanel( msgItems );
     }
 }

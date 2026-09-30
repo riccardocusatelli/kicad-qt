@@ -23,7 +23,10 @@
 
 #include <advanced_config.h>
 #include <common.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
+#include <view/view.h>
 #include <base_units.h>
 #include <bitmaps.h>
 #include <board.h>
@@ -495,12 +498,12 @@ bool PCB_TEXTBOX::Matches( const EDA_SEARCH_DATA& aSearchData, void* aAuxData ) 
 }
 
 
-void PCB_TEXTBOX::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_TEXTBOX::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     // Don't use GetShownText() here; we want to show the user the variable references
-    aList.emplace_back( _( "Text Box" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Text Box" ), aContext->EllipsizeStatusText( GetText() ) );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 
     aList.emplace_back( _( "Layer" ), GetLayerName() );
@@ -510,18 +513,18 @@ void PCB_TEXTBOX::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL
     aList.emplace_back( _( "Font" ), GetFont() ? GetFont()->GetName() : _( "Default" ) );
 
     if( GetTextThickness() )
-        aList.emplace_back( _( "Text Thickness" ), aFrame->MessageTextFromValue( GetEffectiveTextPenWidth() ) );
+        aList.emplace_back( _( "Text Thickness" ), aContext->MessageTextFromValue( GetEffectiveTextPenWidth() ) );
     else
         aList.emplace_back( _( "Text Thickness" ), _( "Auto" ) );
 
-    aList.emplace_back( _( "Text Width" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
-    aList.emplace_back( _( "Text Height" ), aFrame->MessageTextFromValue( GetTextHeight() ) );
+    aList.emplace_back( _( "Text Width" ), aContext->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Text Height" ), aContext->MessageTextFromValue( GetTextHeight() ) );
 
-    aList.emplace_back( _( "Box Width" ), aFrame->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
+    aList.emplace_back( _( "Box Width" ), aContext->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
 
-    aList.emplace_back( _( "Box Height" ), aFrame->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
+    aList.emplace_back( _( "Box Height" ), aContext->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
 
-    m_stroke.GetMsgPanelInfo( aFrame, aList );
+    m_stroke.GetMsgPanelInfo( aContext, aList );
 }
 
 

@@ -2401,7 +2401,7 @@ int PCB_CONTROL::UpdateMessagePanel( const TOOL_EVENT& aEvent )
         if( !pcbFrame )
         {
             FOOTPRINT* fp = static_cast<FOOTPRINT*>( m_frame->GetModel() );
-            fp->GetMsgPanelInfo( m_frame, msgItems );
+            fp->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), msgItems );
         }
         else
         {
@@ -2415,7 +2415,7 @@ int PCB_CONTROL::UpdateMessagePanel( const TOOL_EVENT& aEvent )
         if( std::optional<wxString> uuid = GetMsgPanelDisplayUuid( item->m_Uuid ) )
             msgItems.emplace_back( _( "UUID" ), *uuid );
 
-        item->GetMsgPanelInfo( m_frame, msgItems );
+        item->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), msgItems );
 
         PCB_TRACK*    track = dynamic_cast<PCB_TRACK*>( item );
         NETINFO_ITEM* net = track ? track->GetNet() : nullptr;
@@ -2867,7 +2867,7 @@ int PCB_CONTROL::UpdateMessagePanel( const TOOL_EVENT& aEvent )
     }
     else
     {
-        m_frame->GetBoard()->GetMsgPanelInfo( m_frame, msgItems );
+        m_frame->GetBoard()->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), msgItems );
     }
 
     m_frame->SetMsgPanel( msgItems );

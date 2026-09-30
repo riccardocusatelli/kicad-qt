@@ -922,7 +922,7 @@ public:
         return true;
     }
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     bool IsOnLayer( PCB_LAYER_ID aLayer ) const override
     {

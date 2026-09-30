@@ -275,7 +275,7 @@ public:
      * @param aFrame parent draw frame used for context.
      * @param aList vector to append MSG_PANEL_ITEM entries to.
      */
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     /**
      * Hit-test a point against the barcode (text and symbol area).

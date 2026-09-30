@@ -42,7 +42,6 @@
 #include <zone.h>
 #include <string_utils.h>
 #include <pcbnew_settings.h>
-#include <pcb_edit_frame.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <connectivity/connectivity_data.h>
 #include <reporter.h>

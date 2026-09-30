@@ -342,7 +342,7 @@ public:
 
     EDA_ITEM* Clone() const override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     const wxString& GetOperatingPoint() const { return m_operatingPoint; }
     void SetOperatingPoint( const wxString& aText ) { m_operatingPoint = aText; }

@@ -25,8 +25,6 @@
 
 #include "symbol_library_manager.h"
 
-#include <dialogs/html_message_box.h>
-#include <symbol_edit_frame.h>
 #include <env_paths.h>
 #include <pgm_base.h>
 #include <project_sch.h>

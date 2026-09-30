@@ -28,7 +28,6 @@
  */
 
 #include <gerbview.h>
-#include <gerbview_frame.h>
 #include <gerber_file_image.h>
 #include <gerber_file_image_list.h>
 #include <X2_gerber_attributes.h>

@@ -23,7 +23,6 @@
 
 #include "project_pcb.h"
 #include <project.h>
-#include <confirm.h>
 #include <pgm_base.h>
 #include <3d_cache/3d_cache.h>
 #include <paths.h>

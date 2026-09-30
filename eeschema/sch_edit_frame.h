@@ -922,6 +922,8 @@ public:
     DECLARE_EVENT_TABLE()
 
 protected:
+    /// Items also get the current sheet (SCH_SHEET_CONTEXT).
+    std::unique_ptr<MSG_PANEL_CONTEXT> createMsgPanelContext() override;
     /**
      * Save the schematic files that have been modified and not yet saved.
      *

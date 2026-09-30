@@ -24,7 +24,6 @@
 #include <advanced_config.h>
 #include <base_units.h>
 #include <pgm_base.h>
-#include <sch_edit_frame.h>
 #include <plotters/plotter.h>
 #include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
@@ -33,7 +32,6 @@
 #include <settings/color_settings.h>
 #include <sch_painter.h>
 #include <wx/log.h>
-#include <dialogs/html_message_box.h>
 #include <project/project_file.h>
 #include <trigo.h>
 #include <geometry/geometry_utils.h>
@@ -453,12 +451,12 @@ void SCH_TEXTBOX::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS
 }
 
 
-void SCH_TEXTBOX::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_TEXTBOX::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     // Don't use GetShownText() here; we want to show the user the variable references
-    aList.emplace_back( _( "Text Box" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Text Box" ), aContext->EllipsizeStatusText( GetText() ) );
 
-    SCH_ITEM::GetMsgPanelInfo( aFrame, aList );
+    SCH_ITEM::GetMsgPanelInfo( aContext, aList );
 
     if( m_excludedFromSim )
         aList.emplace_back( _( "Exclude from" ), _( "Simulation" ) );
@@ -469,13 +467,13 @@ void SCH_TEXTBOX::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL
     int      style = IsBold() && IsItalic() ? 3 : IsBold() ? 2 : IsItalic() ? 1 : 0;
     aList.emplace_back( _( "Style" ), textStyle[style] );
 
-    aList.emplace_back( _( "Text Size" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Text Size" ), aContext->MessageTextFromValue( GetTextWidth() ) );
 
-    aList.emplace_back( _( "Box Width" ), aFrame->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
+    aList.emplace_back( _( "Box Width" ), aContext->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
 
-    aList.emplace_back( _( "Box Height" ), aFrame->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
+    aList.emplace_back( _( "Box Height" ), aContext->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
 
-    m_stroke.GetMsgPanelInfo( aFrame, aList );
+    m_stroke.GetMsgPanelInfo( aContext, aList );
 }
 
 

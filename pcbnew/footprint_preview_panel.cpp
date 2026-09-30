@@ -30,20 +30,16 @@
 #include <pad.h>
 #include <pcb_dimension.h>
 #include <dpi_scaling_common.h>
-#include <eda_draw_frame.h>
 #include <footprint_preview_panel.h>
 #include <footprint_library_adapter.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <kiway.h>
 #include <math/box2.h>
 #include <pcb_painter.h>
-#include <pcb_draw_panel_gal.h>
-#include <pcb_edit_frame.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 #include <view/view.h>
 #include <wx/stattext.h>
-#include <dialog_shim.h>
 #include <project_pcb.h>
 #include <core/ki_assert.h>
 

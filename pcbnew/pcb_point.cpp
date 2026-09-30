@@ -28,7 +28,9 @@
 #include <base_units.h>
 #include <bitmaps.h>
 #include <board.h>
-#include <eda_draw_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
 #include <geometry/geometry_utils.h>
 #include <geometry/shape_circle.h>
 #include <geometry/shape_rect.h>
@@ -184,13 +186,13 @@ void PCB_POINT::swapData( BOARD_ITEM* aOther )
 }
 
 
-void PCB_POINT::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_POINT::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "PCB Point" ), wxEmptyString );
 
-    aList.emplace_back( _( "Position X" ), aFrame->MessageTextFromValue( GetPosition().x ) );
-    aList.emplace_back( _( "Position Y" ), aFrame->MessageTextFromValue( GetPosition().y ) );
-    aList.emplace_back( _( "Size" ), aFrame->MessageTextFromValue( GetSize() ) );
+    aList.emplace_back( _( "Position X" ), aContext->MessageTextFromValue( GetPosition().x ) );
+    aList.emplace_back( _( "Position Y" ), aContext->MessageTextFromValue( GetPosition().y ) );
+    aList.emplace_back( _( "Size" ), aContext->MessageTextFromValue( GetSize() ) );
     aList.emplace_back( _( "Layer" ), GetLayerName() );
 }
 

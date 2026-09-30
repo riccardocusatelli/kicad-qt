@@ -38,7 +38,6 @@
 #include <lset.h>
 #include <pad.h>
 #include <pcb_track.h>
-#include <tool/tool_manager.h>
 #include <tools/pcb_actions.h>
 #include <tools/global_edit_tool.h>
 

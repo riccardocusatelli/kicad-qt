@@ -22,7 +22,6 @@
 #include <wx/stdpaths.h>
 #include <wx/string.h>
 #include <wx/utils.h>
-#include <wx/msgdlg.h>
 
 #include <kiplatform/environment.h>
 #include <paths.h>

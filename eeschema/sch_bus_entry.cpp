@@ -22,14 +22,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <sch_draw_panel.h>
+#include <sch_sheet_context.h>
 #include <bitmaps.h>
 #include <core/mirror.h>
 #include <schematic.h>
 #include <geometry/shape_segment.h>
 #include <geometry/geometry_utils.h>
 #include <sch_bus_entry.h>
-#include <sch_edit_frame.h>
 #include <sch_junction.h>
 #include <sch_line.h>
 #include <project/net_settings.h>
@@ -500,7 +499,7 @@ void SCH_BUS_ENTRY_BASE::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PL
 }
 
 
-void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
+void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
                                           std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
@@ -516,7 +515,7 @@ void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
 
     SCH_CONNECTION* conn = nullptr;
 
-    if( !IsConnectivityDirty() && dynamic_cast<SCH_EDIT_FRAME*>( aFrame ) )
+    if( !IsConnectivityDirty() && dynamic_cast<SCH_SHEET_CONTEXT*>( aContext ) )
         conn = Connection();
 
     if( conn )

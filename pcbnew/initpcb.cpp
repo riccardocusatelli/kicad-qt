@@ -24,7 +24,6 @@
 
 #include <confirm.h>
 #include <lset.h>
-#include <pcb_edit_frame.h>
 #include <project.h>
 #include <tool/tool_manager.h>
 #include <project/net_settings.h>

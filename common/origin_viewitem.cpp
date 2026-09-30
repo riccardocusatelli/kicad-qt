@@ -24,7 +24,6 @@
  */
 
 #include <array>
-#include <eda_draw_frame.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <geometry/geometry_utils.h>
 #include <origin_viewitem.h>

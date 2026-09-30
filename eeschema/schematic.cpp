@@ -56,7 +56,6 @@
 #include <trace_helpers.h>
 #include <string_utils.h>
 #include <text_eval/text_eval_wrapper.h>
-#include <tool/tool_manager.h>
 #include <undo_redo_container.h>
 #include <local_history.h>
 #include <richio.h>

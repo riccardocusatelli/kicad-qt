@@ -27,7 +27,6 @@
 
 #include <build_version.h>
 #include <common.h>     // for ExpandTextVars
-#include <sch_base_frame.h>
 #include <sch_group.h>
 #include <sch_sheet.h>
 #include <string_utils.h>

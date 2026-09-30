@@ -22,16 +22,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <sch_draw_panel.h>
 #include <trigo.h>
 #include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
 #include <base_units.h>
-#include <eda_draw_frame.h>
 #include <erc/erc_settings.h>
 #include <sch_marker.h>
 #include <schematic.h>
-#include <widgets/ui_common.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 #include <settings/color_settings.h>
@@ -355,7 +352,7 @@ const BOX2I SCH_MARKER::GetBoundingBox() const
 }
 
 
-void SCH_MARKER::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_MARKER::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Type" ), _( "Marker" ) );
     aList.emplace_back( _( "Violation" ), m_rcItem->GetErrorMessage( true ) );
@@ -387,16 +384,16 @@ void SCH_MARKER::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_
         EDA_ITEM* auxItem = nullptr;
 
         if( m_rcItem->GetMainItemID() != niluuid )
-            mainItem = aFrame->ResolveItem( m_rcItem->GetMainItemID() );
+            mainItem = aContext->ResolveItem( m_rcItem->GetMainItemID() );
 
         if( m_rcItem->GetAuxItemID() != niluuid )
-            auxItem = aFrame->ResolveItem( m_rcItem->GetAuxItemID() );
+            auxItem = aContext->ResolveItem( m_rcItem->GetAuxItemID() );
 
         if( mainItem )
-            mainText = mainItem->GetItemDescription( aFrame, true );
+            mainText = mainItem->GetItemDescription( aContext, true );
 
         if( auxItem )
-            auxText = auxItem->GetItemDescription( aFrame, true );
+            auxText = auxItem->GetItemDescription( aContext, true );
 
         aList.emplace_back( mainText, auxText );
     }

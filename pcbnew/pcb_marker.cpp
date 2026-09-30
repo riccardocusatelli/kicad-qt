@@ -26,7 +26,10 @@
 #include "connectivity/connectivity_data.h"
 #include <bitmaps.h>
 #include <base_units.h>
-#include <eda_draw_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
+#include <view/view.h>
 #include <board.h>
 #include <board_design_settings.h>
 #include <pcb_marker.h>
@@ -34,7 +37,6 @@
 #include <settings/color_settings.h>
 #include <settings/settings_manager.h>
 #include <geometry/shape_null.h>
-#include <widgets/ui_common.h>
 #include <pgm_base.h>
 #include <drc/drc_item.h>
 #include <drc/drc_rule.h>
@@ -224,7 +226,7 @@ PCB_MARKER* PCB_MARKER::DeserializeFromString( const wxString& data )
 }
 
 
-void PCB_MARKER::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_MARKER::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Type" ), _( "Marker" ) );
     aList.emplace_back( _( "Violation" ), m_rcItem->GetErrorMessage( true ) );
@@ -252,14 +254,14 @@ void PCB_MARKER::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_
     {
         wxString  mainText;
         wxString  auxText;
-        EDA_ITEM* mainItem = aFrame->ResolveItem( m_rcItem->GetMainItemID() );
-        EDA_ITEM* auxItem = aFrame->ResolveItem( m_rcItem->GetAuxItemID() );
+        EDA_ITEM* mainItem = aContext->ResolveItem( m_rcItem->GetMainItemID() );
+        EDA_ITEM* auxItem = aContext->ResolveItem( m_rcItem->GetAuxItemID() );
 
         if( mainItem )
-            mainText = mainItem->GetItemDescription( aFrame, true );
+            mainText = mainItem->GetItemDescription( aContext, true );
 
         if( auxItem )
-            auxText = auxItem->GetItemDescription( aFrame, true );
+            auxText = auxItem->GetItemDescription( aContext, true );
 
         aList.emplace_back( mainText, auxText );
     }

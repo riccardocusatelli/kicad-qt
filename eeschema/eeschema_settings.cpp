@@ -24,7 +24,6 @@
 #include <functional>
 
 #include <dialogs/dialog_bom_cfg_lexer.h>
-#include <eda_draw_frame.h>
 #include <eeschema_settings.h>
 #include <layer_ids.h>
 #include <symbol_editor_settings.h>
@@ -37,7 +36,6 @@
 #include <settings/settings_manager.h>
 #include <settings/aui_settings.h>
 #include <wx/config.h>
-#include <widgets/ui_common.h>
 #include <default_values.h>    // For some default values
 #include <core/ki_assert.h>
 

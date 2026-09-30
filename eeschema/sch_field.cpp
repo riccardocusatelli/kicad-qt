@@ -28,7 +28,6 @@
 #include <advanced_config.h>
 #include <base_units.h>
 #include <common.h> // for ExpandTextVars
-#include <sch_edit_frame.h>
 #include <plotters/plotter.h>
 #include <bitmaps.h>
 #include <kiway.h>
@@ -36,7 +35,6 @@
 #include <string_utils.h>
 #include <geometry/geometry_utils.h>
 #include <trace_helpers.h>
-#include <tool/tool_manager.h>
 #include <tools/sch_navigate_tool.h>
 #include <font/outline_font.h>
 #include "sim/sim_lib_mgr.h"
@@ -815,14 +813,14 @@ wxString SCH_FIELD::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFu
 }
 
 
-void SCH_FIELD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_FIELD::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
 
     aList.emplace_back( _( "Symbol Field" ), UnescapeString( GetName() ) );
 
     // Don't use GetShownText() here; we want to show the user the variable references
-    aList.emplace_back( _( "Text" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Text" ), aContext->EllipsizeStatusText( GetText() ) );
 
     aList.emplace_back( _( "Visible" ), IsVisible() ? _( "Yes" ) : _( "No" ) );
 
@@ -830,7 +828,7 @@ void SCH_FIELD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_I
 
     aList.emplace_back( _( "Style" ), GetTextStyleName() );
 
-    aList.emplace_back( _( "Text Size" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Text Size" ), aContext->MessageTextFromValue( GetTextWidth() ) );
 
     switch( GetHorizJustify() )
     {

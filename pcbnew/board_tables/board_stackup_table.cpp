@@ -27,7 +27,6 @@
 #include <board_item.h>
 #include <pcb_table.h>
 #include <pcb_tablecell.h>
-#include <pcb_edit_frame.h>
 #include <units_provider.h>
 #include <board_stackup_manager/stackup_predefined_prms.h>
 #include <string_utils.h>

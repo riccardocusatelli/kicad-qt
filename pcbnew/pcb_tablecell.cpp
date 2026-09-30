@@ -23,7 +23,9 @@
 
 #include <advanced_config.h>
 #include <common.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <i18n_utility.h>
+#include <view/view.h>
 #include <font/font.h>
 #include <widgets/msgpanel_item.h>
 #include <string_utils.h>
@@ -196,31 +198,31 @@ void PCB_TABLECELL::SetRowHeight( int aHeight )
 }
 
 
-void PCB_TABLECELL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_TABLECELL::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Table Cell" ), GetAddr() );
 
     // Don't use GetShownText() here; we want to show the user the variable references
-    aList.emplace_back( _( "Text" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
+    aList.emplace_back( _( "Text" ), aContext->EllipsizeStatusText( GetText() ) );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 
     aList.emplace_back( _( "Layer" ), GetLayerName() );
     aList.emplace_back( _( "Mirror" ), IsMirrored() ? _( "Yes" ) : _( "No" ) );
 
-    aList.emplace_back( _( "Cell Width" ), aFrame->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
-    aList.emplace_back( _( "Cell Height" ), aFrame->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
+    aList.emplace_back( _( "Cell Width" ), aContext->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
+    aList.emplace_back( _( "Cell Height" ), aContext->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
 
     aList.emplace_back( _( "Font" ), GetFont() ? GetFont()->GetName() : _( "Default" ) );
 
     if( GetTextThickness() )
-        aList.emplace_back( _( "Text Thickness" ), aFrame->MessageTextFromValue( GetEffectiveTextPenWidth() ) );
+        aList.emplace_back( _( "Text Thickness" ), aContext->MessageTextFromValue( GetEffectiveTextPenWidth() ) );
     else
         aList.emplace_back( _( "Text Thickness" ), _( "Auto" ) );
 
-    aList.emplace_back( _( "Text Width" ), aFrame->MessageTextFromValue( GetTextWidth() ) );
-    aList.emplace_back( _( "Text Height" ), aFrame->MessageTextFromValue( GetTextHeight() ) );
+    aList.emplace_back( _( "Text Width" ), aContext->MessageTextFromValue( GetTextWidth() ) );
+    aList.emplace_back( _( "Text Height" ), aContext->MessageTextFromValue( GetTextHeight() ) );
 }
 
 

@@ -160,7 +160,7 @@ int PL_EDITOR_CONTROL::UpdateMessagePanel( const TOOL_EVENT& aEvent )
         if( std::optional<wxString> uuid = GetMsgPanelDisplayUuid( item->m_Uuid ) )
             msgItems.emplace_back( _( "UUID" ), *uuid );
 
-        item->GetMsgPanelInfo( m_frame, msgItems );
+        item->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), msgItems );
         m_frame->SetMsgPanel( msgItems );
 
         DS_DATA_ITEM* dataItem = static_cast<DS_DRAW_ITEM_BASE*>( item )->GetPeer();

@@ -30,7 +30,6 @@
 #include <kidialog.h>
 #include <macros.h>
 #include <string_utils.h>
-#include <pcb_edit_frame.h>
 #include <eda_list_dialog.h>
 #include <filter_reader.h>
 #include <footprint_library_adapter.h>

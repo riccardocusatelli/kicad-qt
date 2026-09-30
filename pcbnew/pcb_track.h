@@ -183,7 +183,7 @@ public:
         return ( Type() == PCB_VIA_T ) || ( m_Start == m_End );
     }
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
     wxString GetFriendlyName() const override;
 
     INSPECT_RESULT Visit( INSPECTOR inspector, void* testData,
@@ -242,7 +242,7 @@ public:
 protected:
     virtual void swapData( BOARD_ITEM* aImage ) override;
 
-    void GetMsgPanelInfoBase_Common( EDA_DRAW_FRAME* aFrame,
+    void GetMsgPanelInfoBase_Common( MSG_PANEL_CONTEXT* aContext,
                                      std::vector<MSG_PANEL_ITEM>& aList ) const;
 
 protected:
@@ -557,7 +557,7 @@ public:
     VECTOR2I GetPosition() const override               { return m_Start; }
     void SetPosition( const VECTOR2I& aPoint ) override { m_Start = aPoint;  m_End = aPoint; }
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     bool HitTest( const VECTOR2I& aPosition, int aAccuracy = 0 ) const override;
     bool HitTest( const BOX2I& aRect, bool aContained, int aAccuracy = 0 ) const override;

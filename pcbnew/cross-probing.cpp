@@ -151,7 +151,7 @@ void PCB_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
             netcode = netinfo->GetNetCode();
 
             std::vector<MSG_PANEL_ITEM> items;
-            netinfo->GetMsgPanelInfo( this, items );
+            netinfo->GetMsgPanelInfo( GetMsgPanelContext(), items );
             SetMsgPanel( items );
         }
 
@@ -175,7 +175,7 @@ void PCB_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
                 {
                     // TODO: Once buses are included in netlist, show bus name
                     std::vector<MSG_PANEL_ITEM> items;
-                    netinfo->GetMsgPanelInfo( this, items );
+                    netinfo->GetMsgPanelInfo( GetMsgPanelContext(), items );
                     SetMsgPanel( items );
                     first = false;
 

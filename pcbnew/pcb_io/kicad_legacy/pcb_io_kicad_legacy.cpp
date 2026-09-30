@@ -91,7 +91,6 @@
 #include <pcb_plot_params.h>
 #include <pcb_plot_params_parser.h>
 #include <trigo.h>
-#include <confirm.h>
 #include <math/util.h>      // for KiROUND
 #include <progress_reporter.h>
 #include <core/ki_assert.h>

@@ -24,7 +24,6 @@
 
 #include "teardrop/teardrop.h"
 
-#include <confirm.h>
 
 #include <board_design_settings.h>
 #include <pcb_track.h>

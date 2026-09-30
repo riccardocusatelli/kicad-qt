@@ -26,7 +26,6 @@
 #include "netlist_exporter_kicad.h"
 
 #include <algorithm>
-#include <confirm.h>
 
 #include <connection_graph.h>
 #include <richio.h>

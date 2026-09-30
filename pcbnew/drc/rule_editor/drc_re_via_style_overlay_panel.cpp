@@ -26,7 +26,6 @@
 #include "drc_rule_editor_utils.h"
 
 #include <dialogs/rule_editor_dialog_base.h>
-#include <eda_base_frame.h>
 #include <base_units.h>
 #include <widgets/unit_binder.h>
 

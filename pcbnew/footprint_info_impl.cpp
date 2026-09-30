@@ -22,7 +22,6 @@
 
 #include <footprint_info_impl.h>
 
-#include <dialogs/html_message_box.h>
 #include <footprint.h>
 #include <footprint_info.h>
 #include <footprint_library_adapter.h>

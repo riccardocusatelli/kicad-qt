@@ -33,7 +33,6 @@
 #include <pin_type.h>
 #include <sch_bus_entry.h>
 #include <sch_symbol.h>
-#include <sch_edit_frame.h>
 #include <sch_line.h>
 #include <sch_marker.h>
 #include <sch_pin.h>
@@ -47,7 +46,6 @@
 #include <connection_graph.h>
 #include <project/project_file.h>
 #include <project/net_settings.h>
-#include <widgets/ui_common.h>
 #include <string_utils.h>
 #include <thread_pool.h>
 #include <wx/log.h>

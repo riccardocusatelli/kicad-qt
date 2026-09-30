@@ -24,7 +24,6 @@
 
 #include <board_design_settings.h>
 #include <netclass.h>
-#include <pcb_edit_frame.h>
 #include <pcbnew_id.h>
 #include <pcb_track.h>
 #include <tools/pcb_actions.h>

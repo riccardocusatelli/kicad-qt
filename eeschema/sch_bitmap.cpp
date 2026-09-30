@@ -189,7 +189,7 @@ BITMAPS SCH_BITMAP::GetMenuImage() const
 }
 
 
-void SCH_BITMAP::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_BITMAP::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Bitmap" ), wxEmptyString );
 
@@ -199,9 +199,9 @@ void SCH_BITMAP::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_
                         wxString::Format( wxT( "%f " ), m_referenceImage.GetImageScale() ) );
 
     aList.emplace_back( _( "Width" ),
-                        aFrame->MessageTextFromValue( m_referenceImage.GetSize().x ) );
+                        aContext->MessageTextFromValue( m_referenceImage.GetSize().x ) );
     aList.emplace_back( _( "Height" ),
-                        aFrame->MessageTextFromValue( m_referenceImage.GetSize().y ) );
+                        aContext->MessageTextFromValue( m_referenceImage.GetSize().y ) );
 }
 
 

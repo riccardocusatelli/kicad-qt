@@ -23,6 +23,7 @@
  */
 
 #include <algorithm>
+#include <sch_sheet_context.h>
 #include <api/api_handler_sch.h>
 #include <api/api_server.h>
 #include <base_units.h>
@@ -3201,4 +3202,31 @@ bool SCH_EDIT_FRAME::canRunAutoSave() const
         return pointEditor && !pointEditor->IsDragging();
 
     return currentTool == mgr->GetTool<SCH_SELECTION_TOOL>();
+}
+
+
+namespace
+{
+
+/// The schematic editor's message-panel context: the common one plus the current sheet.
+class SCH_EDIT_FRAME_MSG_PANEL_CONTEXT : public FRAME_MSG_PANEL_CONTEXT, public SCH_SHEET_CONTEXT
+{
+public:
+    explicit SCH_EDIT_FRAME_MSG_PANEL_CONTEXT( SCH_EDIT_FRAME* aFrame ) :
+            FRAME_MSG_PANEL_CONTEXT( aFrame ),
+            m_schFrame( aFrame )
+    {}
+
+    SCH_SHEET_PATH& GetCurrentSheet() const override { return m_schFrame->GetCurrentSheet(); }
+
+private:
+    SCH_EDIT_FRAME* m_schFrame;
+};
+
+} // namespace
+
+
+std::unique_ptr<MSG_PANEL_CONTEXT> SCH_EDIT_FRAME::createMsgPanelContext()
+{
+    return std::make_unique<SCH_EDIT_FRAME_MSG_PANEL_CONTEXT>( this );
 }

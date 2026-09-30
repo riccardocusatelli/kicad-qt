@@ -26,7 +26,6 @@
 #include <list>
 #include <locale_io.h>
 #include <macros.h>
-#include <pcb_edit_frame.h>
 #include <board.h>
 #include <board_design_settings.h>
 #include <footprint.h>
@@ -36,7 +35,6 @@
 #include <pcb_shape.h>
 #include <build_version.h>
 #include <project_pcb.h>
-#include <wx/msgdlg.h>
 #include "project.h"
 #include "kiway.h"
 #include "3d_cache/3d_cache.h"

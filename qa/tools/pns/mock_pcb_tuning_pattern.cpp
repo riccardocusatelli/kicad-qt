@@ -345,7 +345,7 @@ std::vector<EDA_ITEM*> PCB_TUNING_PATTERN::GetPreviewItems( GENERATOR_TOOL* aToo
 }
 
 
-void PCB_TUNING_PATTERN::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
+void PCB_TUNING_PATTERN::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
                                           std::vector<MSG_PANEL_ITEM>& aList )
 {
 }

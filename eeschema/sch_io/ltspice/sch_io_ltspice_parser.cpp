@@ -30,7 +30,6 @@
 #include <sch_line.h>
 #include <sch_label.h>
 #include <sch_text.h>
-#include <sch_edit_frame.h>
 #include <sch_shape.h>
 #include <sch_bus_entry.h>
 #include <wx/buffer.h>

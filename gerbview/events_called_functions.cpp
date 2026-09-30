@@ -23,12 +23,10 @@
  */
 
 #include <gerbview.h>
-#include <gerbview_frame.h>
 #include <gerbview_id.h>
 #include <gerber_file_image.h>
 #include <gerber_file_image_list.h>
 #include <gal/graphics_abstraction_layer.h>
-#include <tool/tool_manager.h>
 #include <tool/selection.h>
 #include <tools/gerbview_selection_tool.h>
 #include <gerbview_painter.h>

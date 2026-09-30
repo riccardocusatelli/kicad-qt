@@ -445,7 +445,7 @@ void DISPLAY_FOOTPRINTS_FRAME::UpdateMsgPanel()
     std::vector<MSG_PANEL_ITEM> items;
 
     if( footprint )
-        footprint->GetMsgPanelInfo( this, items );
+        footprint->GetMsgPanelInfo( GetMsgPanelContext(), items );
 
     SetMsgPanel( items );
 }

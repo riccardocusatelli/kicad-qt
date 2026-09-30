@@ -44,7 +44,6 @@
 #include <project/net_settings.h>
 #include <project_sch.h>
 #include <sch_bus_entry.h>
-#include <sch_edit_frame.h>
 #include <sch_io/kicad_sexpr/sch_io_kicad_sexpr.h>
 #include <sch_junction.h>
 #include <sch_label.h>

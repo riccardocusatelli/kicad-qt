@@ -34,7 +34,6 @@
 #include <pcb_group.h>
 #include <pcb_track.h>
 #include <pcb_shape.h>
-#include <tool/tool_manager.h>
 #include <tools/pcb_selection_tool.h>
 #include <tools/zone_filler_tool.h>
 #include <view/view.h>
@@ -671,7 +670,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
         if( !itemsDeselected && !autofillZones && !selectedModified )
         {
             std::vector<MSG_PANEL_ITEM> msg_list;
-            board->GetMsgPanelInfo( frame, msg_list );
+            board->GetMsgPanelInfo( frame->GetMsgPanelContext(), msg_list );
             frame->SetMsgPanel( msg_list );
         }
     }

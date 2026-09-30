@@ -42,7 +42,6 @@
 #include <schematic_lexer.h>
 #include <sch_bitmap.h>
 #include <sch_bus_entry.h>
-#include <sch_edit_frame.h>       // SYMBOL_ORIENTATION_T
 #include <sch_group.h>
 #include <sch_io/kicad_sexpr/sch_io_kicad_sexpr.h>
 #include <sch_io/kicad_sexpr/sch_io_kicad_sexpr_common.h>

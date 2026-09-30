@@ -29,7 +29,6 @@
 
 #include <bezier_curves.h>
 #include <convert_basic_shapes_to_polygon.h>
-#include <eda_draw_frame.h>
 #include <geometry/shape_arc.h>
 #include <geometry/shape_circle.h>
 #include <geometry/shape_simple.h>
@@ -1291,7 +1290,7 @@ wxString EDA_SHAPE::getFriendlyName() const
 }
 
 
-void EDA_SHAPE::ShapeGetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void EDA_SHAPE::ShapeGetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
 
@@ -1301,20 +1300,20 @@ void EDA_SHAPE::ShapeGetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PA
     switch( m_shape )
     {
     case SHAPE_T::CIRCLE:
-        aList.emplace_back( _( "Radius" ), aFrame->MessageTextFromValue( GetRadius() ) );
+        aList.emplace_back( _( "Radius" ), aContext->MessageTextFromValue( GetRadius() ) );
         break;
 
     case SHAPE_T::ARC:
-        aList.emplace_back( _( "Length" ), aFrame->MessageTextFromValue( GetLength() ) );
+        aList.emplace_back( _( "Length" ), aContext->MessageTextFromValue( GetLength() ) );
 
         msg = EDA_UNIT_UTILS::UI::MessageTextFromValue( GetArcAngle() );
         aList.emplace_back( _( "Angle" ), msg );
 
-        aList.emplace_back( _( "Radius" ), aFrame->MessageTextFromValue( GetRadius() ) );
+        aList.emplace_back( _( "Radius" ), aContext->MessageTextFromValue( GetRadius() ) );
         break;
 
     case SHAPE_T::BEZIER:
-        aList.emplace_back( _( "Length" ), aFrame->MessageTextFromValue( GetLength() ) );
+        aList.emplace_back( _( "Length" ), aContext->MessageTextFromValue( GetLength() ) );
         break;
 
     case SHAPE_T::POLY:
@@ -1323,13 +1322,13 @@ void EDA_SHAPE::ShapeGetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PA
         break;
 
     case SHAPE_T::RECTANGLE:
-        aList.emplace_back( _( "Width" ), aFrame->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
-        aList.emplace_back( _( "Height" ), aFrame->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
+        aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( std::abs( GetEnd().x - GetStart().x ) ) );
+        aList.emplace_back( _( "Height" ), aContext->MessageTextFromValue( std::abs( GetEnd().y - GetStart().y ) ) );
         break;
 
     case SHAPE_T::SEGMENT:
     {
-        aList.emplace_back( _( "Length" ), aFrame->MessageTextFromValue( GetStart().Distance( GetEnd() ) ));
+        aList.emplace_back( _( "Length" ), aContext->MessageTextFromValue( GetStart().Distance( GetEnd() ) ));
 
         // angle counter-clockwise from 3'o-clock
         EDA_ANGLE angle( atan2( (double)( GetStart().y - GetEnd().y ), (double)( GetEnd().x - GetStart().x ) ),
@@ -1342,7 +1341,7 @@ void EDA_SHAPE::ShapeGetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PA
         break;
     }
 
-    m_stroke.GetMsgPanelInfo( aFrame, aList );
+    m_stroke.GetMsgPanelInfo( aContext, aList );
 }
 
 

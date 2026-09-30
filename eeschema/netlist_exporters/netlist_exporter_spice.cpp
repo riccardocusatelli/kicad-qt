@@ -29,7 +29,6 @@
 #include <sim/sim_library_spice.h>
 #include <sim/sim_model_raw_spice.h>
 #include <common.h>
-#include <confirm.h>
 #include <pgm_base.h>
 #include <env_paths.h>
 #include <richio.h>
@@ -41,7 +40,6 @@
 #include <algorithm>
 #include <ki_exception.h>
 
-#include <dialogs/html_message_box.h>
 #include <fmt/core.h>
 #include <paths.h>
 #include <wx/dir.h>

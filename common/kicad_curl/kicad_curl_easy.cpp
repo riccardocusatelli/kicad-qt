@@ -34,7 +34,6 @@
 #include <exception>
 #include <sstream>
 #include <shared_mutex>
-#include <wx/app.h>
 
 #include <build_version.h>
 #include <ki_exception.h>   // THROW_IO_ERROR

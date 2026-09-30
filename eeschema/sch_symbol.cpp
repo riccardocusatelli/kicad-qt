@@ -23,8 +23,8 @@
  */
 
 #include <sch_collectors.h>
+#include <sch_sheet_context.h>
 #include <sch_commit.h>
-#include <sch_edit_frame.h>
 #include <widgets/msgpanel_item.h>
 #include <bitmaps.h>
 #include <common.h>
@@ -2699,11 +2699,11 @@ const BOX2I SCH_SYMBOL::GetBoundingBox() const
 }
 
 
-void SCH_SYMBOL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void SCH_SYMBOL::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     wxString msg;
 
-    SCH_EDIT_FRAME* schframe = dynamic_cast<SCH_EDIT_FRAME*>( aFrame );
+    SCH_SHEET_CONTEXT* schframe = dynamic_cast<SCH_SHEET_CONTEXT*>( aContext );
     SCH_SHEET_PATH* currentSheet = schframe ? &schframe->GetCurrentSheet() : nullptr;
     wxString        currentVariant = Schematic() ? Schematic()->GetCurrentVariant() : wxString();
 
@@ -2739,7 +2739,7 @@ void SCH_SYMBOL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_
             {
                 // Don't use GetShownText(); we want to see the variable references here
                 aList.emplace_back( _( "Power symbol" ),
-                                    KIUI::EllipsizeStatusText( aFrame, GetField( FIELD_T::VALUE )->GetText() ) );
+                                    aContext->EllipsizeStatusText( GetField( FIELD_T::VALUE )->GetText() ) );
             }
             else
             {
@@ -2747,9 +2747,9 @@ void SCH_SYMBOL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_
 
                 // Don't use GetShownText(); we want to see the variable references here
                 aList.emplace_back( _( "Value" ),
-                                    KIUI::EllipsizeStatusText( aFrame, GetField( FIELD_T::VALUE )->GetText() ) );
+                                    aContext->EllipsizeStatusText( GetField( FIELD_T::VALUE )->GetText() ) );
                 addExcludes();
-                aList.emplace_back( _( "Name" ), KIUI::EllipsizeStatusText( aFrame, GetLibId().GetLibItemName() ) );
+                aList.emplace_back( _( "Name" ), aContext->EllipsizeStatusText( GetLibId().GetLibItemName() ) );
             }
 
 #if 0 // Display symbol flags, for debug only
@@ -2778,7 +2778,7 @@ void SCH_SYMBOL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_
 
             // Display the current associated footprint, if exists.
             // Don't use GetShownText(); we want to see the variable references here
-            msg = KIUI::EllipsizeStatusText( aFrame, GetField( FIELD_T::FOOTPRINT )->GetText() );
+            msg = aContext->EllipsizeStatusText( GetField( FIELD_T::FOOTPRINT )->GetText() );
 
             if( msg.IsEmpty() )
                 msg = _( "<Unknown>" );
@@ -2795,9 +2795,9 @@ void SCH_SYMBOL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_
         aList.emplace_back( _( "Reference" ), GetRef( currentSheet ) );
 
         // Don't use GetShownText(); we want to see the variable references here
-        aList.emplace_back( _( "Value" ), KIUI::EllipsizeStatusText( aFrame, GetField( FIELD_T::VALUE )->GetText() ) );
+        aList.emplace_back( _( "Value" ), aContext->EllipsizeStatusText( GetField( FIELD_T::VALUE )->GetText() ) );
         addExcludes();
-        aList.emplace_back( _( "Name" ), KIUI::EllipsizeStatusText( aFrame, GetLibId().GetLibItemName() ) );
+        aList.emplace_back( _( "Name" ), aContext->EllipsizeStatusText( GetLibId().GetLibItemName() ) );
 
         wxString libNickname = GetLibId().GetLibNickname();
 

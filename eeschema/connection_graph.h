@@ -30,7 +30,6 @@
 #include <erc/erc_settings.h>
 #include <sch_connection.h>
 #include <sch_item.h>
-#include <wx/treectrl.h>
 #include <advanced_config.h>
 #include <progress_reporter.h>
 

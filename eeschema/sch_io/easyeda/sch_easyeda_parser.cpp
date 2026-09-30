@@ -31,7 +31,6 @@
 #include <sch_no_connect.h>
 #include <sch_label.h>
 #include <sch_junction.h>
-#include <sch_edit_frame.h>
 #include <sch_shape.h>
 #include <sch_bitmap.h>
 #include <string_utils.h>

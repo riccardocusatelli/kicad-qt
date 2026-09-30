@@ -30,7 +30,6 @@
 #include <sch_preview_panel.h>
 #include <sch_view.h>
 #include <sch_painter.h>
-#include <sch_edit_frame.h>
 #include <settings/settings_manager.h>
 #include <preview_items/selection_area.h>
 #include <zoom_defines.h>

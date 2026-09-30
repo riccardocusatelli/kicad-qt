@@ -25,7 +25,6 @@
 #include <drawing_sheet/ds_data_item.h>
 #include <drawing_sheet/ds_data_model.h>
 #include <view/view.h>
-#include <eda_draw_frame.h>
 #include <string_utils.h>
 
 using namespace KIGFX;

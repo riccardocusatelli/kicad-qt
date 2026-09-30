@@ -34,7 +34,6 @@
 #include <wx/clipbrd.h>
 #include <wx/log.h>
 #include <wx/settings.h>
-#include <confirm.h>
 #include <grid_tricks.h>
 
 SCINTILLA_TRICKS::SCINTILLA_TRICKS( wxStyledTextCtrl* aScintilla, const wxString& aBraces,

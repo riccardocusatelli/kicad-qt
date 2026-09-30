@@ -29,7 +29,6 @@
  */
 
 #include <footprint_info.h>
-#include <dialogs/html_message_box.h>
 #include <string_utils.h>
 #include <lib_id.h>
 #include <wx/tokenzr.h>

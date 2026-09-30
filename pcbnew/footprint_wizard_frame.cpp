@@ -318,7 +318,7 @@ void FOOTPRINT_WIZARD_FRAME::UpdateMsgPanel()
     {
         std::vector<MSG_PANEL_ITEM> items;
 
-        footprint->GetMsgPanelInfo( this, items );
+        footprint->GetMsgPanelInfo( GetMsgPanelContext(), items );
         SetMsgPanel( items );
     }
     else

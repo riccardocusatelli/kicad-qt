@@ -28,7 +28,6 @@
 #include <geometry/geometry_utils.h>
 #include <geometry/shape_segment.h>
 #include <trigo.h>
-#include <pcb_base_frame.h>
 #include <math/util.h>      // for KiROUND
 #include <board.h>
 #include <footprint.h>

@@ -21,7 +21,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
 #include <footprint.h>
 #include <pcb_table.h>
 #include <board.h>
@@ -673,7 +675,7 @@ bool PCB_TABLE::HitTest( const SHAPE_LINE_CHAIN& aPoly, bool aContained ) const
 }
 
 
-void PCB_TABLE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_TABLE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     // Don't use GetShownText() here; we want to show the user the variable references
     aList.emplace_back( _( "Table" ), wxString::Format( _( "%d Columns" ), m_colCount ) );

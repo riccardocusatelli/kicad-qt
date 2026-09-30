@@ -26,12 +26,10 @@
 #include <algorithm>
 #include <vector>
 
-#include <confirm.h>
 #include <refdes_utils.h>
 #include <fmt.h>
 #include <system_error>
 
-#include <sch_edit_frame.h>
 #include <sch_reference_list.h>
 #include <string_utils.h>
 

@@ -70,7 +70,6 @@
 #include <project/project_local_settings.h>
 #include <ratsnest/ratsnest_data.h>
 #include <reporter.h>
-#include <tool/tool_manager.h>
 #include <tool/selection_conditions.h>
 #include <string_utils.h>
 #include <thread_pool.h>
@@ -2521,7 +2520,7 @@ BOX2I BOARD::ComputeBoundingBox( bool aBoardEdgesOnly, bool aPhysicalLayersOnly 
 }
 
 
-void BOARD::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void BOARD::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     int           padCount = 0;
     int           viaCount = 0;

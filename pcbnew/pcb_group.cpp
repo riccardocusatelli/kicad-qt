@@ -24,11 +24,11 @@
 #include "pcb_group.h"
 
 #include <bitmaps.h>
-#include <eda_draw_frame.h>
+#include <msg_panel_context.h>
+#include <i18n_utility.h>
 #include <geometry/shape_compound.h>
 #include <board.h>
 #include <board_item.h>
-#include <confirm.h>
 #include <footprint.h>
 #include <pcb_generator.h>
 #include <string_utils.h>
@@ -429,12 +429,12 @@ BITMAPS PCB_GROUP::GetMenuImage() const
 }
 
 
-void PCB_GROUP::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_GROUP::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Group" ), m_name.empty() ? _( "<unnamed>" ) : m_name );
     aList.emplace_back( _( "Members" ), wxString::Format( wxT( "%zu" ), m_items.size() ) );
 
-    if( aFrame->GetName() == PCB_EDIT_FRAME_NAME && IsLocked() )
+    if( aContext->IsType( FRAME_PCB_EDITOR ) && IsLocked() )
         aList.emplace_back( _( "Status" ), _( "Locked" ) );
 }
 

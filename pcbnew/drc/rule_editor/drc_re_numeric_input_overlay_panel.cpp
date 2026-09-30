@@ -27,7 +27,6 @@
 #include "drc_re_validator_numeric_ctrl.h"
 
 #include <dialogs/rule_editor_dialog_base.h>
-#include <eda_base_frame.h>
 #include <base_units.h>
 #include <widgets/unit_binder.h>
 

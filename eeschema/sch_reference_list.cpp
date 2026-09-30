@@ -40,7 +40,6 @@
 #include <erc/erc_settings.h>
 #include <refdes_tracker.h>
 #include <sch_symbol.h>
-#include <sch_edit_frame.h>
 #include <core/ki_assert.h>
 
 

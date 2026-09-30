@@ -21,7 +21,6 @@
 #include <dialogs/html_message_box.h>
 #include <kiface_base.h>
 #include <pgm_base.h>
-#include <wx/app.h>
 #include <core/utf8.h>
 #include <project_sch.h>
 #include <libraries/legacy_symbol_library.h>

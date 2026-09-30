@@ -26,10 +26,8 @@
 #include <erc/erc.h>
 #include <erc/erc_item.h>
 #include <erc/erc_tree_model.h>
-#include <eda_draw_frame.h>
 #include <marker_base.h>
 #include <schematic.h>
-#include <sch_edit_frame.h>
 #include <sch_marker.h>
 #include <i18n_utility.h>
 #include <units_provider.h>

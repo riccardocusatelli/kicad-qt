@@ -28,6 +28,7 @@
 
 #include <api/plugin_action_scope.h>
 #include <eda_base_frame.h>
+#include <msg_panel_context.h>
 #include <kiway_player.h>
 #include <gal/gal_display_options.h>
 #include <gal_display_options_common.h>
@@ -83,6 +84,28 @@ using KIGFX::RENDER_SETTINGS;
  * The Eeschema, Pcbnew and GerbView main windows are just a few examples of classes
  * derived from EDA_DRAW_FRAME.
  */
+/**
+ * MSG_PANEL_CONTEXT backed by an EDA_DRAW_FRAME.  Derived frames extend it (see
+ * SCH_EDIT_FRAME) when items need more than the common context.
+ */
+class FRAME_MSG_PANEL_CONTEXT : public MSG_PANEL_CONTEXT
+{
+public:
+    explicit FRAME_MSG_PANEL_CONTEXT( EDA_DRAW_FRAME* aFrame );
+
+    void               GetUnitPair( EDA_UNITS& aPrimaryUnit, EDA_UNITS& aSecondaryUnits ) override;
+    ORIGIN_TRANSFORMS& GetOriginTransforms() override;
+    FRAME_T            GetFrameType() const override;
+    wxString           EllipsizeStatusText( const wxString& aText ) const override;
+    EDA_ITEM*          ResolveItem( const KIID& aId, bool aAllowNullptrReturn = false ) const override;
+
+    EDA_DRAW_FRAME* GetFrame() const { return m_frame; }
+
+private:
+    EDA_DRAW_FRAME* m_frame;
+};
+
+
 class EDA_DRAW_FRAME : public KIWAY_PLAYER
 {
 public:
@@ -453,6 +476,12 @@ public:
     }
 
     /**
+     * What items receive in EDA_ITEM::GetMsgPanelInfo(): this frame's units, type, text
+     * ellipsizing and item lookup, without exposing the frame itself to the data model.
+     */
+    MSG_PANEL_CONTEXT* GetMsgPanelContext();
+
+    /**
      * Use to start up the GAL drawing canvas.
      */
     virtual void ActivateGalCanvas();
@@ -549,6 +578,10 @@ public:
     DECLARE_EVENT_TABLE()
 
 protected:
+    /// Frames that give items more context (e.g. the schematic editor's current sheet)
+    /// return their own MSG_PANEL_CONTEXT implementation.
+    virtual std::unique_ptr<MSG_PANEL_CONTEXT> createMsgPanelContext();
+
     void configureToolbars() override;
 
     virtual void SetScreen( BASE_SCREEN* aScreen )  { m_currentScreen = aScreen; }
@@ -607,6 +640,7 @@ protected:
     int                  m_zoomCustomEntry; // index of the non-preset zoom entry, or wxNOT_FOUND
     wxCheckBox*          m_overrideLocksCb;
 
+    std::unique_ptr<MSG_PANEL_CONTEXT> m_msgPanelContext;
     std::unique_ptr<EDA_SEARCH_DATA> m_findReplaceData;
     wxArrayString        m_findStringHistoryList;
     wxArrayString        m_replaceStringHistoryList;
