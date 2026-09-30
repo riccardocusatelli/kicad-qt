@@ -24,8 +24,11 @@ add_library( kinng STATIC
     )
 
 target_link_libraries( kinng
+    core_base
     ${NNG_LIBRARY}
     )
+
+target_compile_definitions( kinng PRIVATE KICAD_NO_WX )
 
 target_include_directories( kinng PUBLIC
     ${PROJECT_BINARY_DIR}

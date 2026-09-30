@@ -40,7 +40,8 @@
 #include <math/vector2d.h>              // for VECTOR2I
 #include <trigo.h>
 
-#include <wx/log.h>
+#include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 void TransformCircleToPolygon( SHAPE_LINE_CHAIN& aBuffer, const VECTOR2I& aCenter, int aRadius,
                                int aError, ERROR_LOC aErrorLoc, int aMinSegCount )
@@ -342,7 +343,7 @@ void CornerListToPolygon( SHAPE_POLY_SET& outline, std::vector<ROUNDED_CORNER>& 
                     {
                         OPT_VECTOR2I intersect = outlineIn.IntersectLines( SEG( prevPt, pt ) );
 
-                        wxCHECK_RET( intersect, wxT( "No solutions exist!" ) );
+                        KI_CHECK_RET( intersect, "No solutions exist!" );
                         outline.Append( *intersect );
                         outline.Append( pt );
                         arcEnd = SEG( cornerPosition, arcCenter ).ReflectPoint( *intersect );
@@ -561,7 +562,7 @@ int ConvertArcToPolyline( SHAPE_LINE_CHAIN& aPolyline, const VECTOR2I& aStart, c
         if( !std::isfinite( x ) || !std::isfinite( y )
             || std::abs( x ) > max_coord || std::abs( y ) > max_coord )
         {
-            wxLogDebug( wxT( "Arc approximation overflow: falling back to straight segment." ) );
+            KI_LOG_DEBUG( "Arc approximation overflow: falling back to straight segment." );
             aPolyline.Clear();
             aPolyline.Append( aStart );
             aPolyline.Append( aEnd );

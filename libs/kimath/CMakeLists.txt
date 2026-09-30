@@ -52,12 +52,13 @@ add_library( kimath STATIC
 )
 
 target_link_libraries( kimath
-    core
+    core_base
     clipper2
     rtree
     Boost::headers
-    ${wxWidgets_LIBRARIES}      # wxLogDebug, wxASSERT
 )
+
+target_compile_definitions( kimath PRIVATE KICAD_NO_WX )
 
 target_include_directories( kimath PUBLIC
     ${PROJECT_BINARY_DIR}
@@ -70,5 +71,4 @@ target_include_directories( kimath PUBLIC
 target_include_directories( kimath PRIVATE
     # This include REALLY shouldn't be here, but shape_arc grew a dependency on the units somehow
     ${CMAKE_SOURCE_DIR}/include
-    ${wxWidgets_INCLUDE_DIRS}
 )

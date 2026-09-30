@@ -24,6 +24,7 @@
  */
 
 #include <core/kicad_algo.h>
+#include <core/ki_assert.h>
 #include <geometry/geometry_utils.h>
 #include <geometry/seg.h>               // for SEG
 #include <geometry/shape_arc.h>
@@ -125,7 +126,7 @@ SHAPE_ARC::SHAPE_ARC( const SEG& aSegmentA, const SEG& aSegmentB, int aRadius, i
     if( !p || aSegmentA.Length() == 0 || aSegmentB.Length() == 0 )
     {
         // Catch bugs in debug
-        wxASSERT_MSG( false, "The input segments do not intersect or one is zero length." );
+        KI_ASSERT_MSG( false, "The input segments do not intersect or one is zero length." );
 
         // Make a 180 degree arc around aSegmentA in case we end up here in release
         m_start = aSegmentA.A;

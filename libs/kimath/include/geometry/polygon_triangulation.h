@@ -50,24 +50,26 @@
 #include <deque>
 #include <cmath>
 
-#include <advanced_config.h>
+#include <core/geometry_tuning.h>
+
+#ifndef KICAD_NO_WX
+#include <advanced_config.h>  // transitional: consumers still rely on this include
+#endif
 #include <geometry/shape_line_chain.h>
 #include <geometry/shape_poly_set.h>
 #include <geometry/vertex_set.h>
 #include <math/box2.h>
 #include <math/vector2d.h>
 
-#include <wx/log.h>
+#include <core/ki_assert.h>
+#include <core/ki_log.h>
 
-// ADVANCED_CFG::GetCfg() cannot be used on msys2/mingw builds (link failure)
-// So we use the ADVANCED_CFG default values
-#if defined( __MINGW32__ )
-    #define TRIANGULATESIMPLIFICATIONLEVEL 50
-    #define TRIANGULATEMINIMUMAREA 1000
-#else
-    #define TRIANGULATESIMPLIFICATIONLEVEL ADVANCED_CFG::GetCfg().m_TriangulateSimplificationLevel
-    #define TRIANGULATEMINIMUMAREA ADVANCED_CFG::GetCfg().m_TriangulateMinimumArea
+#ifndef KICAD_NO_WX
+#include <wx/log.h>  // transitional: consumers still rely on this include
 #endif
+
+#define TRIANGULATESIMPLIFICATIONLEVEL GeometryTuning().triangulateSimplificationLevel
+#define TRIANGULATEMINIMUMAREA GeometryTuning().triangulateMinimumArea
 
 #define TRIANGULATE_TRACE "triangulate"
 
@@ -99,7 +101,7 @@ public:
         if( !firstVertex || firstVertex->prev == firstVertex->next )
             return true;
 
-        wxLogTrace( TRIANGULATE_TRACE, "Created list with %f area", firstVertex->area() );
+        KI_TRACE( TRIANGULATE_TRACE, "Created list with %f area", firstVertex->area() );
 
         m_vertices_original_size = m_vertices.size();
         firstVertex->updateList();
@@ -119,7 +121,7 @@ public:
 
             if( !retval )
             {
-                wxLogTrace( TRIANGULATE_TRACE, "Tesselation failed, logging remaining vertices" );
+                KI_TRACE( TRIANGULATE_TRACE, "Tesselation failed, logging remaining vertices" );
                 logRemaining();
             }
 
@@ -136,7 +138,6 @@ private:
     void logRemaining()
     {
         std::set<VERTEX*> seen;
-        wxLog::EnableLogging();
         for( VERTEX& p : m_vertices )
         {
             if( !p.next || p.next == &p || seen.find( &p ) != seen.end() )
@@ -156,12 +157,12 @@ private:
 
         int count = 1;
         VERTEX* p = aStart->next;
-        wxString msg = wxString::Format( "Vertices: %d,%d,", static_cast<int>( aStart->x ),
-                                         static_cast<int>( aStart->y ) );
+        std::string msg = KiStrFormat( "Vertices: %d,%d,", static_cast<int>( aStart->x ),
+                                       static_cast<int>( aStart->y ) );
 
         do
         {
-            msg += wxString::Format( "%d,%d,", static_cast<int>( p->x ), static_cast<int>( p->y ) );
+            msg += KiStrFormat( "%d,%d,", static_cast<int>( p->x ), static_cast<int>( p->y ) );
 
             if( aSeen )
                 aSeen->insert( p );
@@ -173,8 +174,8 @@ private:
         if( count < 3 )   // Don't log anything that only has 2 or fewer points
             return;
 
-        msg.RemoveLast();
-        wxLogTrace( TRIANGULATE_TRACE, msg );
+        msg.pop_back();
+        KI_TRACE( TRIANGULATE_TRACE, "%s", msg.c_str() );
     }
 
     /**
@@ -220,7 +221,7 @@ private:
             }
         } while( p != aStart && next && p );
 
-        wxLogTrace( TRIANGULATE_TRACE, "Removed %d points in simplifyList", count );
+        KI_TRACE( TRIANGULATE_TRACE, "Removed %d points in simplifyList", count );
 
         if( count )
             return retval;
@@ -244,7 +245,7 @@ private:
         if( ( retval = simplifyList( aStart ) ) )
             aStart = retval;
 
-        wxASSERT( aStart->next && aStart->prev );
+        KI_ASSERT( aStart->next && aStart->prev );
 
         VERTEX* p = aStart->next;
 
@@ -298,7 +299,7 @@ private:
             ++count;
         }
 
-        wxLogTrace( TRIANGULATE_TRACE, "Removed %zu NULL triangles", count );
+        KI_TRACE( TRIANGULATE_TRACE, "Removed %zu NULL triangles", count );
 
         return retval;
     }
@@ -318,7 +319,7 @@ private:
      */
     bool earcutList( VERTEX* aPoint, int pass = 0 )
     {
-        wxLogTrace( TRIANGULATE_TRACE, "earcutList starting at %p for pass %d", aPoint, pass );
+        KI_TRACE( TRIANGULATE_TRACE, "earcutList starting at %p for pass %d", aPoint, pass );
 
         if( !aPoint )
             return true;
@@ -342,7 +343,7 @@ private:
                 }
                 else
                 {
-                    wxLogTrace( TRIANGULATE_TRACE, "Ignoring tiny ear with area %f",
+                    KI_TRACE( TRIANGULATE_TRACE, "Ignoring tiny ear with area %f",
                                 area( prev, aPoint, next ) );
                 }
 
@@ -361,7 +362,7 @@ private:
                     locallyInside( prev, nextNext ) &&
                     locallyInside( nextNext, prev ) )
             {
-                wxLogTrace( TRIANGULATE_TRACE,
+                KI_TRACE( TRIANGULATE_TRACE,
                             "Local intersection detected.  Merging minor triangle with area %f",
                             area( prev, aPoint, nextNext ) );
                 m_result.AddTriangle( prev->i, aPoint->i, nextNext->i );
@@ -409,13 +410,13 @@ private:
                 // again, this time adding one point to each long edge (and thereby changing the locations)
                 if( internal_pass < 4 )
                 {
-                    wxLogTrace( TRIANGULATE_TRACE, "Subdividing polygon" );
+                    KI_TRACE( TRIANGULATE_TRACE, "Subdividing polygon" );
                     subdividePolygon( aPoint, internal_pass );
                     continue;
                 }
 
                 // If we don't have any NULL triangles left, cut the polygon in two and try again
-                wxLogTrace( TRIANGULATE_TRACE, "Splitting polygon" );
+                KI_TRACE( TRIANGULATE_TRACE, "Splitting polygon" );
 
                 if( !splitPolygon( aPoint ) )
                     return false;
@@ -487,11 +488,11 @@ private:
         } while (p != aStart);
 
         avg /= longest.size();
-        wxLogTrace( TRIANGULATE_TRACE, "Average length: %f", avg );
+        KI_TRACE( TRIANGULATE_TRACE, "Average length: %f", avg );
 
         for( auto it = longest.begin(); it != longest.end() && it->second > avg; ++it )
         {
-            wxLogTrace( TRIANGULATE_TRACE, "Subdividing edge with length %f", it->second );
+            KI_TRACE( TRIANGULATE_TRACE, "Subdividing edge with length %f", it->second );
             VERTEX* a = it->first;
             VERTEX* b = a->next;
             VERTEX* last = a;
@@ -559,12 +560,12 @@ private:
 
             if( overlapPoints[0]->area( overlapPoints[1] ) < 0 || overlapPoints[1]->area( overlapPoints[0] ) < 0 )
             {
-                wxLogTrace( TRIANGULATE_TRACE, "Split generated a hole, skipping" );
+                KI_TRACE( TRIANGULATE_TRACE, "Split generated a hole, skipping" );
                 origPoly = origPoly->next;
                 continue;
             }
 
-            wxLogTrace( TRIANGULATE_TRACE, "Splitting at overlap point %f, %f", overlapPoints[0]->x, overlapPoints[0]->y );
+            KI_TRACE( TRIANGULATE_TRACE, "Splitting at overlap point %f, %f", overlapPoints[0]->x, overlapPoints[0]->y );
             std::swap( overlapPoints[0]->next, overlapPoints[1]->next );
             overlapPoints[0]->next->prev = overlapPoints[0];
             overlapPoints[1]->next->prev = overlapPoints[1];
@@ -575,7 +576,7 @@ private:
             logVertices( overlapPoints[1], nullptr );
             bool retval = earcutList( overlapPoints[0] ) && earcutList( overlapPoints[1] );
 
-            wxLogTrace( TRIANGULATE_TRACE, "%s at first overlap split", retval ? "Success" : "Failed" );
+            KI_TRACE( TRIANGULATE_TRACE, "%s at first overlap split", retval ? "Success" : "Failed" );
             return retval;
 
 
@@ -601,7 +602,7 @@ private:
 
                     bool retval = earcutList( origPoly ) && earcutList( newPoly );
 
-                    wxLogTrace( TRIANGULATE_TRACE, "%s at split", retval ? "Success" : "Failed" );
+                    KI_TRACE( TRIANGULATE_TRACE, "%s at split", retval ? "Success" : "Failed" );
                     return retval;
                 }
 
@@ -611,7 +612,7 @@ private:
             origPoly = origPoly->next;
         } while( origPoly != start );
 
-        wxLogTrace( TRIANGULATE_TRACE, "Could not find a valid split point" );
+        KI_TRACE( TRIANGULATE_TRACE, "Could not find a valid split point" );
         return false;
     }
 

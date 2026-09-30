@@ -1,0 +1,4 @@
+// Minimal configuration for the headless core build.
+#pragma once
+#cmakedefine HAVE_CLOCK_GETTIME
+#cmakedefine HAVE_GETTIMEOFDAY_FUNC

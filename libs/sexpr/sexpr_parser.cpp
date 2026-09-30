@@ -22,12 +22,12 @@
 #include <iterator>
 #include <stdexcept>
 
+#include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <streambuf>
-#include <wx/file.h>
-#include <wx/ffile.h>
 
-#include <string_utils.h>
+#include <fast_float/fast_float.h>
 
 namespace SEXPR
 {
@@ -59,34 +59,25 @@ namespace SEXPR
     {
         std::string str;
 
-        // the filename is not always a UTF7 string, so do not use ifstream
-        // that do not work with unicode chars.
-        #if defined(  __MINGW32__ )
-        // On msys2 currently using From_UTF8( defined in string_utils.cpp) creates a link
-        // issue. (From_UTF8() undefined symbol). So redefine it here (duplicate) for now.
-        wxString fname( wxString::FromUTF8( aFileName.c_str() ) );
+        // aFileName is UTF-8: build the path from char8_t so non-ASCII names work on every
+        // platform (on Windows the path is then opened through its wide representation).
+        std::u8string u8name( aFileName.begin(), aFileName.end() );
+        std::ifstream file( std::filesystem::path( u8name ), std::ios::binary | std::ios::ate );
 
-        if( fname.IsEmpty() )  // happens when aString is not a valid UTF8 sequence
-        {
-            fname = wxConvCurrent->cMB2WC( aFileName.c_str() );    // try to use locale conversion
+        if( !file )
+            throw PARSE_EXCEPTION( "Error occurred attempting to read in file or empty file" );
 
-            if( fname.IsEmpty() )
-                fname = wxString::From8BitData( aFileName.c_str() );    // try to use native string
-        }
-        #else
-        wxString fname( From_UTF8( aFileName.c_str() ) );
-        #endif
-        wxFFile file( fname, "rb" );
-        size_t length = file.Length();
+        std::streamoff length = file.tellg();
 
         if( length <= 0 )
         {
             throw PARSE_EXCEPTION( "Error occurred attempting to read in file or empty file" );
         }
 
+        file.seekg( 0 );
 
-        str.resize( length );
-        file.Read( &str[0], str.length() );
+        str.resize( static_cast<size_t>( length ) );
+        file.read( &str[0], static_cast<std::streamsize>( str.length() ) );
 
         return str;
     }
@@ -185,9 +176,8 @@ namespace SEXPR
                         if( tmp.find( '.' ) != std::string::npos )
                         {
                             // floating point type. Use only a "C" string to double conversion
-                            wxString stmp( tmp );
-                            double fnumb;
-                            stmp.ToCDouble( &fnumb );
+                            double fnumb = 0.0;
+                            fast_float::from_chars( tmp.data(), tmp.data() + tmp.size(), fnumb );
                             res = std::make_unique<SEXPR_DOUBLE>( fnumb, m_lineNumber );
                         }
                         else

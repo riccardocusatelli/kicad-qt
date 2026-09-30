@@ -23,7 +23,11 @@
 #include <iostream>
 #include <stdint.h>
 #include <limits>
-#include <wx/debug.h>
+#include <core/ki_assert.h>
+
+#ifndef KICAD_NO_WX
+#include <wx/debug.h>  // transitional: consumers still rely on this include
+#endif
 
 /**
  * Traits class for VECTOR2.
@@ -161,7 +165,7 @@ VECTOR3<T> VECTOR3<T>::Normalize()
 {
     T norm = EuclideanNorm();
 
-    wxCHECK_MSG( norm > T( 0 ), *this, wxT( "Invalid element length 0" ) );
+    KI_CHECK_MSG( norm > T( 0 ), *this, "Invalid element length 0" );
 
     x /= norm;
     y /= norm;

@@ -29,6 +29,7 @@
 #define __SHAPE_POLY_SET_H
 
 #include <atomic>
+#include <core/ki_assert.h>
 #include <cstdio>
 #include <deque>                        // for deque
 #include <iosfwd>                       // for string, stringstream
@@ -104,7 +105,7 @@ public:
                     case 0: return parent->m_vertices[a];
                     case 1: return parent->m_vertices[b];
                     case 2: return parent->m_vertices[c];
-                    default: wxCHECK( false, VECTOR2I() );
+                    default: KI_CHECK( false, VECTOR2I() );
                 }
             }
 
@@ -115,7 +116,7 @@ public:
                     case 0: return SEG( parent->m_vertices[a], parent->m_vertices[b] );
                     case 1: return SEG( parent->m_vertices[b], parent->m_vertices[c] );
                     case 2: return SEG( parent->m_vertices[c], parent->m_vertices[a] );
-                    default: wxCHECK( false, SEG() );
+                    default: KI_CHECK( false, SEG() );
                 }
             }
 

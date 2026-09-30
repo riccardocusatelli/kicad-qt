@@ -23,7 +23,6 @@
 
 #include "geometry/nearest.h"
 
-#include <wx/debug.h>
 
 #include <core/type_helpers.h>
 

@@ -28,7 +28,6 @@
 #include <geometry/shape_poly_set.h>
 #include <geometry/shape_utils.h>
 
-#include <wx/log.h>
 
 
 namespace

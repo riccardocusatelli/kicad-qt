@@ -22,7 +22,6 @@
 #include <stdexcept>
 #include <iomanip>
 #include <sstream>
-#include <wx/debug.h>
 #include <fmt/core.h>
 
 namespace SEXPR

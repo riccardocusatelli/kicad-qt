@@ -29,7 +29,13 @@
 
 #include <iostream>
 #include <string>
-#include <wx/string.h>
+#include <core/ki_assert.h>
+
+#ifdef KICAD_NO_WX
+class wxString;         // conversions are implemented in utf8_wx.cpp ("core" target)
+#else
+#include <wx/string.h>  // transitional: many consumers still get wxString through this header
+#endif
 
 #if defined(DEBUG)
  #define UTF8_VERIFY    // Might someday be a hidden cmake config option
@@ -45,7 +51,7 @@ bool IsUTF8( const char* aString );
 
 
 #if defined(UTF8_VERIFY)
- #define MAYBE_VERIFY_UTF8(x)       wxASSERT( IsUTF8(x) )
+ #define MAYBE_VERIFY_UTF8(x)       KI_ASSERT( IsUTF8(x) )
 #else
  #define MAYBE_VERIFY_UTF8(x)       // nothing
 #endif

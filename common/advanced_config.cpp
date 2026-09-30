@@ -26,6 +26,8 @@
 #include <config_params.h>
 #include <paths.h>
 
+#include <core/geometry_tuning.h>
+
 #include <wx/app.h>
 #include <wx/config.h>
 #include <wx/filename.h>
@@ -222,6 +224,35 @@ static wxFileName getAdvancedCfgFilename()
     const static wxString cfg_filename{ wxS( "kicad_advanced" ) };
     return wxFileName( PATHS::GetUserSettingsPath(), cfg_filename );
 }
+
+
+/// Geometry tuning handed to kimath (which cannot depend on this class); refreshed on every load.
+static GEOMETRY_TUNING s_geometryTuning;
+
+
+static void syncGeometryTuning( const ADVANCED_CFG& aCfg )
+{
+    s_geometryTuning.triangulateSimplificationLevel = aCfg.m_TriangulateSimplificationLevel;
+    s_geometryTuning.triangulateMinimumArea = aCfg.m_TriangulateMinimumArea;
+    s_geometryTuning.enableCacheFriendlyFracture = aCfg.m_EnableCacheFriendlyFracture;
+}
+
+
+static const GEOMETRY_TUNING& geometryTuningProvider()
+{
+    ADVANCED_CFG::GetCfg();   // loads the config on first use, as kimath used to do
+    return s_geometryTuning;
+}
+
+
+namespace
+{
+struct GEOMETRY_TUNING_REGISTRAR
+{
+    GEOMETRY_TUNING_REGISTRAR() { SetGeometryTuningProvider( &geometryTuningProvider ); }
+    ~GEOMETRY_TUNING_REGISTRAR() { SetGeometryTuningProvider( nullptr ); }
+} s_geometryTuningRegistrar;
+} // namespace
 
 
 ADVANCED_CFG::ADVANCED_CFG()
@@ -712,4 +743,6 @@ void ADVANCED_CFG::loadSettings( wxConfigBase& aCfg )
     dumpCfg( m_entries );
 
     wxLogTrace( kicadTraceCoroutineStack, wxT( "Using coroutine stack size %d" ), m_CoroutineStackSize );
+
+    syncGeometryTuning( *this );
 }

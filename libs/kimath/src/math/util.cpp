@@ -28,37 +28,47 @@
 #include <cstdlib>
 #include <limits>
 #include <math/util.h>
-#include <wx/log.h>
-#include <wx/string.h>
+#include <core/ki_assert.h>
+#include <core/ki_log.h>
+
+#include <cstdarg>
+#include <cstdio>
+#include <string>
 
 #ifdef _MSC_VER
 #include <windows.h>
 #include <intrin.h>
 #endif
 
-// Fix compatibility with wxWidgets version < 3.1.4
-#ifndef wxASCII_STR
-    #define wxASCII_STR(s) wxString::FromAscii(s)
-#endif
 
 void kimathLogDebug( const char* aFormatString, ... )
 {
-    if( wxLog::IsLevelEnabled( wxLOG_Debug, wxString::FromAscii( wxLOG_COMPONENT ) ) )
+    if( KI_LOG::IsEnabled( KI_LOG::LEVEL::DEBUG ) )
     {
         va_list argList;
         va_start( argList, aFormatString );
 
-        wxVLogWarning( aFormatString, argList );
+        va_list copy;
+        va_copy( copy, argList );
+        int len = std::vsnprintf( nullptr, 0, aFormatString, copy );
+        va_end( copy );
+
+        std::string msg( len > 0 ? size_t( len ) : 0, '\0' );
+
+        if( len > 0 )
+            std::vsnprintf( msg.data(), msg.size() + 1, aFormatString, argList );
 
         va_end( argList );
+
+        // Same routing as before: debug-enabled, reported at warning level.
+        KI_LOG::Write( KI_LOG::LEVEL::WARNING, nullptr, "%s", msg.c_str() );
     }
 }
 
 
 void kimathLogOverflow( double v, const char* aTypeName )
 {
-    wxString typeName( aTypeName );
-    wxFAIL_MSG( wxString::Format( wxT( "\n\nOverflow converting value %f to %s." ), v, typeName ) );
+    KI_FAIL_MSG( KiStrFormat( "\n\nOverflow converting value %f to %s.", v, aTypeName ) );
 }
 
 

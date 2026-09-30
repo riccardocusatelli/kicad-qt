@@ -23,6 +23,7 @@
  */
 
 #include <hash.h>
+#include <core/ki_assert.h>
 #include <trigo.h>
 #include <transform.h>
 #include <math/util.h>      // for KiROUND
@@ -82,8 +83,8 @@ bool TRANSFORM::MapAngles( EDA_ANGLE* aAngle1, EDA_ANGLE* aAngle2 ) const
 {
     static const EDA_ANGLE epsilon( 0.1, DEGREES_T );
 
-    wxCHECK_MSG( aAngle1 != nullptr && aAngle2 != nullptr, false,
-                 wxT( "Cannot map NULL point angles." ) );
+    KI_CHECK_MSG( aAngle1 != nullptr && aAngle2 != nullptr, false,
+                 "Cannot map NULL point angles." );
 
     double   x, y;
     VECTOR2D v;

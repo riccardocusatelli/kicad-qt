@@ -36,11 +36,12 @@ target_include_directories( sexpr PUBLIC
     include
 )
 
-# the s-exp parser has a dep on the wxFile methods
 target_link_libraries( sexpr
     fmt::fmt
-    ${wxWidgets_LIBRARIES}
+    FastFloat::fast_float
 )
+
+target_compile_definitions( sexpr PRIVATE KICAD_NO_WX )
 
 # TODO get deps from here out of common
 target_include_directories( sexpr PRIVATE

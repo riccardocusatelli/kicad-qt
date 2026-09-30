@@ -28,7 +28,11 @@
 #ifndef MULTIVECTOR_H
 #define MULTIVECTOR_H
 
-#include <wx/debug.h>
+#include <core/ki_assert.h>
+
+#ifndef KICAD_NO_WX
+#include <wx/debug.h>  // transitional: consumers still rely on this include
+#endif
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <stdexcept>
 
@@ -267,7 +271,7 @@ public:
     {
         if( ( aType < FIRST_TYPE ) || ( aType > LAST_TYPE ) )
         {
-            wxFAIL_MSG( wxT( "Attempted access to type not within MULTIVECTOR" ) );
+            KI_FAIL_MSG( "Attempted access to type not within MULTIVECTOR" );
 
             // return type is a reference so we have to return something...
             aType = FIRST_TYPE;
@@ -280,7 +284,7 @@ public:
     {
         if( ( aType < FIRST_TYPE ) || ( aType > LAST_TYPE ) )
         {
-            wxFAIL_MSG( wxT( "Attempted access to type not within MULTIVECTOR" ) );
+            KI_FAIL_MSG( "Attempted access to type not within MULTIVECTOR" );
 
             // return type is a reference so we have to return something...
             aType = FIRST_TYPE;

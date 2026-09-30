@@ -23,42 +23,12 @@
  */
 
 #include <core/utf8.h>
-#include <wx/strconv.h>
-#include <wx/buffer.h>
+#include <core/ki_assert.h>
+#include <cstdint>
+#include <cstring>
 #include <vector>
 
 #include <cassert>
-
-
-/*
-    These are not inlined so that code space is saved by encapsulating the
-    creation of intermediate objects and the referencing of wxConvUTF8.
-*/
-
-
-UTF8::UTF8( const wxString& o ) :
-    m_s( (const char*) o.utf8_str() )
-{
-}
-
-
-wxString UTF8::wx_str() const
-{
-    return wxString( c_str(), wxConvUTF8 );
-}
-
-
-UTF8::operator wxString () const
-{
-    return wxString( c_str(), wxConvUTF8 );
-}
-
-
-UTF8& UTF8::operator=( const wxString& o )
-{
-    m_s = (const char*) o.utf8_str();
-    return *this;
-}
 
 
 // There is no wxWidgets function that does this, because wchar_t is 16 bits
@@ -107,7 +77,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
     default:
     case 0:
         if( aResult )
-            wxFAIL_MSG( wxS( "uni_forward: invalid start byte" ) );
+            KI_FAIL_MSG( ( "uni_forward: invalid start byte" ) );
 
         return 0;
         break;
@@ -116,7 +86,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
         if( ( s[1] & 0xc0 ) != 0x80 )
         {
             if( aResult )
-                wxFAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
+                KI_FAIL_MSG( ( "uni_forward: invalid continuation byte" ) );
 
             return 0;
         }
@@ -135,7 +105,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
         )
         {
             if( aResult )
-                wxFAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
+                KI_FAIL_MSG( ( "uni_forward: invalid continuation byte" ) );
 
             return 0;
         }
@@ -155,7 +125,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
             (s[0] == 0xF4 && s[1] > 0x8F) )
         {
             if( aResult )
-                wxFAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
+                KI_FAIL_MSG( ( "uni_forward: invalid continuation byte" ) );
 
             return 0;
         }
@@ -204,18 +174,54 @@ bool IsUTF8( const char* aString )
 }
 
 
+/// Append the UTF-8 encoding of code point @a aCp (invalid values become U+FFFD).
+static void appendCodePoint( std::string& aOut, uint32_t aCp )
+{
+    if( aCp > 0x10FFFF || ( aCp >= 0xD800 && aCp <= 0xDFFF ) )
+        aCp = 0xFFFD;
+
+    if( aCp <= 0x7F )
+    {
+        aOut += char( aCp );
+    }
+    else if( aCp <= 0x7FF )
+    {
+        aOut += char( 0xC0 | ( aCp >> 6 ) );
+        aOut += char( 0x80 | ( aCp & 0x3F ) );
+    }
+    else if( aCp <= 0xFFFF )
+    {
+        aOut += char( 0xE0 | ( aCp >> 12 ) );
+        aOut += char( 0x80 | ( ( aCp >> 6 ) & 0x3F ) );
+        aOut += char( 0x80 | ( aCp & 0x3F ) );
+    }
+    else
+    {
+        aOut += char( 0xF0 | ( aCp >> 18 ) );
+        aOut += char( 0x80 | ( ( aCp >> 12 ) & 0x3F ) );
+        aOut += char( 0x80 | ( ( aCp >> 6 ) & 0x3F ) );
+        aOut += char( 0x80 | ( aCp & 0x3F ) );
+    }
+}
+
+
 UTF8::UTF8( const wchar_t* txt )
 {
-    try
+    // wchar_t is UTF-16 on Windows (surrogate pairs) and UTF-32 elsewhere.
+    for( const wchar_t* p = txt; p && *p; ++p )
     {
-        std::vector< char > temp( wcslen( txt ) * 4 + 1 );
-        wxConvUTF8.WC2MB( temp.data(), txt, temp.size() );
-        m_s.assign( temp.data() );
-    }
-    catch(...)
-    {
-        auto string = wxSafeConvertWX2MB( txt );
-        m_s.assign( string );
+        uint32_t cp = static_cast<uint32_t>( *p );
+
+        if constexpr( sizeof( wchar_t ) == 2 )
+        {
+            if( cp >= 0xD800 && cp <= 0xDBFF && p[1] >= 0xDC00 && p[1] <= 0xDFFF )
+            {
+                cp = 0x10000 + ( ( cp - 0xD800 ) << 10 ) + ( static_cast<uint32_t>( p[1] ) - 0xDC00 );
+                ++p;
+            }
+        }
+
+        appendCodePoint( m_s, cp );
     }
 
     m_s.shrink_to_fit();
@@ -224,19 +230,7 @@ UTF8::UTF8( const wchar_t* txt )
 
 UTF8& UTF8::operator+=( unsigned w_ch )
 {
-    if( w_ch <= 0x7F )
-    {
-        m_s.operator+=( char( w_ch ) );
-    }
-    else
-    {
-        wchar_t wide_chr[2];    // buffer to store wide chars (UTF16) read from aText
-        wide_chr[1] = 0;
-        wide_chr[0] = w_ch;
-        UTF8 substr( wide_chr );
-        m_s += substr.m_s;
-    }
-
+    appendCodePoint( m_s, w_ch );
     return *this;
 }
 
