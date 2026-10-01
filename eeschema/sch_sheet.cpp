@@ -29,9 +29,7 @@
 #include <bitmaps.h>
 #include <core/mirror.h>
 #include <core/kicad_algo.h>
-#include <sch_draw_panel.h>
 #include <trigo.h>
-#include <sch_edit_frame.h>
 #include <plotters/plotter.h>
 #include <sch_plotter.h>
 #include <string_utils.h>

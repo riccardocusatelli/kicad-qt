@@ -47,7 +47,10 @@
 #include <length_delay_calculation/length_delay_calculation.h>
 #include <lset.h>
 #include <pad.h>
-#include <pcb_base_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <i18n_utility.h>
+#include <view/view.h>
 #include <pcb_track.h>
 #include <pcb_marker.h>
 #include <pcb_group.h>

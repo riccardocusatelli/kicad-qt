@@ -35,6 +35,7 @@
 #include <cairo.h>
 
 #include <gal/gal.h>
+#include <gal/cursors.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <wx/dcbuffer.h>
 

@@ -57,7 +57,10 @@
 #include <macros.h>
 #include <pad.h>
 #include <pcb_dimension.h>
-#include <pcb_edit_frame.h>
+#include <msg_panel_context.h>
+#include <widgets/msgpanel_item.h>
+#include <ranges>
+#include <tool/tool_manager.h>
 #include <pcb_field.h>
 #include <pcb_group.h>
 #include <pcb_marker.h>

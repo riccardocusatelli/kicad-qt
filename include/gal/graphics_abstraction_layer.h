@@ -35,7 +35,7 @@
 
 #include <gal/gal.h>
 #include <gal/color4d.h>
-#include <gal/cursors.h>
+#include <gal/kicursor.h>
 #include <gal/definitions.h>
 #include <gal/gal_display_options.h>
 #include <font/stroke_font.h>

@@ -31,6 +31,7 @@
 
 // GAL imports
 #include <gal/gal.h>
+#include <gal/cursors.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <gal/gal_display_options.h>
 #include <gal/opengl/shader.h>

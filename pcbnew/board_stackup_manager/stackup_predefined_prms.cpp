@@ -56,17 +56,24 @@ static wxString copperFinishType[] =
 // .gbrjob files.
 // For other colors (user defined), the defined value is the html color syntax in .kicad_pcb files
 // and R<integer>G<integer>B<integer> in .gbrjob file.
+/// Color from 8-bit components (same values as the former wxColor initializers).
+static KIGFX::COLOR4D fabColor( int aRed, int aGreen, int aBlue, int aAlpha = 255 )
+{
+    return KIGFX::COLOR4D( aRed / 255.0, aGreen / 255.0, aBlue / 255.0, aAlpha / 255.0 );
+}
+
+
 static std::vector<FAB_LAYER_COLOR> gbrjobColors  =
 {
-    { NotSpecifiedPrm(),      wxColor(  80,  80,  80 ) },  // Not specified, not in .gbrjob file
-    { _HKI( "Green" ),        wxColor(  60, 150,  80 ) },  // used in .gbrjob file
-    { _HKI( "Red" ),          wxColor( 128,   0,   0 ) },  // used in .gbrjob file
-    { _HKI( "Blue" ),         wxColor(   0,   0, 128 ) },  // used in .gbrjob file
-    { _HKI( "Purple" ),       wxColor(  80,   0,  80 ) },  // used in .gbrjob file
-    { _HKI( "Black" ),        wxColor(  20,  20,  20 ) },  // used in .gbrjob file
-    { _HKI( "White" ),        wxColor( 200, 200, 200 ) },  // used in .gbrjob file
-    { _HKI( "Yellow" ),       wxColor( 128, 128,   0 ) },  // used in .gbrjob file
-    { _HKI( "User defined" ), wxColor( 128, 128, 128 ) }   // Free; the name is a dummy name here
+    { NotSpecifiedPrm(),      fabColor( 80, 80, 80 ) },  // Not specified, not in .gbrjob file
+    { _HKI( "Green" ),        fabColor( 60, 150, 80 ) },  // used in .gbrjob file
+    { _HKI( "Red" ),          fabColor( 128, 0, 0 ) },  // used in .gbrjob file
+    { _HKI( "Blue" ),         fabColor( 0, 0, 128 ) },  // used in .gbrjob file
+    { _HKI( "Purple" ),       fabColor( 80, 0, 80 ) },  // used in .gbrjob file
+    { _HKI( "Black" ),        fabColor( 20, 20, 20 ) },  // used in .gbrjob file
+    { _HKI( "White" ),        fabColor( 200, 200, 200 ) },  // used in .gbrjob file
+    { _HKI( "Yellow" ),       fabColor( 128, 128, 0 ) },  // used in .gbrjob file
+    { _HKI( "User defined" ), fabColor( 128, 128, 128 ) }   // Free; the name is a dummy name here
 };
 
 
@@ -74,13 +81,13 @@ static std::vector<FAB_LAYER_COLOR> gbrjobColors  =
 // as R<integer>G<integer>B<integer>  to the .gbrjob file.
 static std::vector<FAB_LAYER_COLOR> dielectricColors =
 {
-    { NotSpecifiedPrm(),          wxColor(  80,  80,  80, 255 ) },
-    { _HKI( "FR4 natural" ),      wxColor( 109, 116,  75, 212 ) },
-    { _HKI( "PTFE natural" ),     wxColor( 252, 252, 250, 230 ) },
-    { _HKI( "Polyimide" ),        wxColor( 205, 130,   0, 170 ) },
-    { _HKI( "Phenolic natural" ), wxColor(  92,  17,   6, 230 ) },
-    { _HKI( "Aluminum" ),         wxColor( 213, 213, 213, 255 ) },
-    { _HKI( "User defined" ),     wxColor( 128, 128, 128, 212 ) }
+    { NotSpecifiedPrm(),          fabColor( 80, 80, 80, 255 ) },
+    { _HKI( "FR4 natural" ),      fabColor( 109, 116, 75, 212 ) },
+    { _HKI( "PTFE natural" ),     fabColor( 252, 252, 250, 230 ) },
+    { _HKI( "Polyimide" ),        fabColor( 205, 130, 0, 170 ) },
+    { _HKI( "Phenolic natural" ), fabColor( 92, 17, 6, 230 ) },
+    { _HKI( "Aluminum" ),         fabColor( 213, 213, 213, 255 ) },
+    { _HKI( "User defined" ),     fabColor( 128, 128, 128, 212 ) }
 };
 
 

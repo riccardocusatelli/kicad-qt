@@ -29,7 +29,6 @@
 
 #include <wx/filename.h>
 #include <wx/string.h>
-#include <wx/gdicmn.h>
 #include <page_info.h>
 #include <sch_render_settings.h>
 #include <sch_sheet_path.h>

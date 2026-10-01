@@ -32,10 +32,8 @@
 #include <base_units.h>
 #include <common.h>
 #include <core/mirror.h>
-#include <eda_draw_frame.h>
 #include <geometry/geometry_utils.h>
 #include <plotters/plotter.h>
-#include <sch_draw_panel.h>
 #include <settings/color_settings.h>
 #include <trigo.h>
 

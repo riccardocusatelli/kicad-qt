@@ -38,7 +38,7 @@
 #include <wx/arrstr.h>
 #include <wx/datetime.h>
 #include <wx/string.h>
-#include <wx/window.h>
+class wxWindow;
 
 class PROGRESS_REPORTER;
 

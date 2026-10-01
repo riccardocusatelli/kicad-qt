@@ -32,7 +32,6 @@
 
 #include <wx/string.h>
 #include <wx/arrstr.h>
-#include <wx/colour.h>
 
 #include <layer_ids.h>
 #include <i18n_utility.h>       // For _HKI definition
@@ -75,7 +74,7 @@ public:
     FAB_LAYER_COLOR()
     {}
 
-    FAB_LAYER_COLOR( const wxString& aColorName, const wxColor& aColor ) :
+    FAB_LAYER_COLOR( const wxString& aColorName, const KIGFX::COLOR4D& aColor ) :
         m_colorName( aColorName ),
         m_color( aColor )
     {}
