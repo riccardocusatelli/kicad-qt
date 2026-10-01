@@ -141,4 +141,4 @@ wxString JOB_PCB_RENDER::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_render, _HKI( "PCB: Render" ), KIWAY::FACE_PCB, JOB_PCB_RENDER );
+REGISTER_JOB( pcb_render, _HKI( "PCB: Render" ), KIWAY_FACES::FACE_PCB, JOB_PCB_RENDER );

@@ -47,8 +47,8 @@
 #include <confirm.h>
 #include <core/ki_assert.h>
 
-std::array<KIFACE*, KIWAY::FACE_T::KIWAY_FACE_COUNT> KIWAY::m_kiface;
-std::array<int, KIWAY::FACE_T::KIWAY_FACE_COUNT>     KIWAY::m_kiface_version;
+std::array<KIFACE*, KIWAY_FACES::FACE_T::KIWAY_FACE_COUNT> KIWAY::m_kiface;
+std::array<int, KIWAY_FACES::FACE_T::KIWAY_FACE_COUNT>     KIWAY::m_kiface_version;
 
 
 
@@ -343,7 +343,7 @@ KIFACE* KIWAY::KiFACE( FACE_T aFaceId, bool doLoad )
 }
 
 
-KIWAY::FACE_T KIWAY::KifaceType( FRAME_T aFrameType )
+KIWAY_FACES::FACE_T KIWAY::KifaceType( FRAME_T aFrameType )
 {
     switch( aFrameType )
     {
@@ -677,10 +677,10 @@ void KIWAY::ProjectChanged()
     // Cancel an in-progress load of libraries; handled through the schematic and PCB ifaces.
     // Use doLoad=false: only notify already-loaded kifaces, don't force-load absent ones
     // (e.g. eeschema kiface isn't available in standalone pcbnew).
-    if ( KIFACE* schface = KiFACE( KIWAY::FACE_SCH, false ) )
+    if ( KIFACE* schface = KiFACE( KIWAY_FACES::FACE_SCH, false ) )
         schface->ProjectChanged();
 
-    if ( KIFACE* pcbface = KiFACE( KIWAY::FACE_PCB, false ) )
+    if ( KIFACE* pcbface = KiFACE( KIWAY_FACES::FACE_PCB, false ) )
         pcbface->ProjectChanged();
 
     for( unsigned i=0;  i < KIWAY_PLAYER_COUNT;  ++i )
@@ -753,7 +753,7 @@ void KIWAY::QueueEvent( wxEvent* aEvent )
 }
 
 
-int KIWAY::ProcessJob( KIWAY::FACE_T aFace, JOB* job, REPORTER* aReporter, PROGRESS_REPORTER* aProgressReporter )
+int KIWAY::ProcessJob( KIWAY_FACES::FACE_T aFace, JOB* job, REPORTER* aReporter, PROGRESS_REPORTER* aProgressReporter )
 {
     KIFACE* kiface = KiFACE( aFace );
 
@@ -761,7 +761,7 @@ int KIWAY::ProcessJob( KIWAY::FACE_T aFace, JOB* job, REPORTER* aReporter, PROGR
 }
 
 
-bool KIWAY::ProcessJobConfigDialog( KIWAY::FACE_T aFace, JOB* aJob, wxWindow* aWindow )
+bool KIWAY::ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, wxWindow* aWindow )
 {
     KIFACE* kiface = KiFACE( aFace );
 

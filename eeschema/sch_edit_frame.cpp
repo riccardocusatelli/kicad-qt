@@ -1496,7 +1496,7 @@ void SCH_EDIT_FRAME::LoadProject()
     CallAfter(
             [&]()
             {
-                KIFACE *schface = Kiway().KiFACE( KIWAY::FACE_SCH );
+                KIFACE *schface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
                 schface->PreloadLibraries( &Kiway() );
 
                 Pgm().PreloadDesignBlockLibraries( &Kiway() );

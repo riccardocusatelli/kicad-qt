@@ -36,6 +36,7 @@
 #include <wx/settings.h>
 #include <wx/msgdlg.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 using namespace std::placeholders;
 
@@ -164,11 +165,11 @@ int CVPCB_CONTROL::ShowFootprintViewer( const TOOL_EVENT& aEvent )
         // DISPLAY_FOOTPRINTS_FRAME needs a PCBNEW_SETTINGS because most of its settings
         // come from it, and needs _pcbnew.dll/so code. So load it if the dll is not yet loaded
         // (for instance if the board editor was never loaded)
-        if( !m_frame->Kiway().KiFACE( KIWAY::FACE_PCB, false ) )
+        if( !m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PCB, false ) )
         {
             try
             {
-                m_frame->Kiway().KiFACE( KIWAY::FACE_PCB, true );
+                m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PCB, true );
             }
             catch( ... )
             {

@@ -572,10 +572,10 @@ void KICAD_MANAGER_FRAME::PreloadAllLibraries()
     CallAfter(
             [&]()
             {
-                KIFACE *schface = Kiway().KiFACE( KIWAY::FACE_SCH );
+                KIFACE *schface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
                 schface->PreloadLibraries( &Kiway() );
 
-                KIFACE *pcbface = Kiway().KiFACE( KIWAY::FACE_PCB );
+                KIFACE *pcbface = Kiway().KiFACE( KIWAY_FACES::FACE_PCB );
                 pcbface->PreloadLibraries( &Kiway() );
 
                 Pgm().PreloadDesignBlockLibraries( &Kiway() );
@@ -813,10 +813,10 @@ bool KICAD_MANAGER_FRAME::CloseProject( bool aSave )
         return false;
 
     // Abort any in-progress background load, since the threads depend on the project not changing
-    KIFACE *schface = Kiway().KiFACE( KIWAY::FACE_SCH );
+    KIFACE *schface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
     schface->CancelPreload();
 
-    KIFACE *pcbface = Kiway().KiFACE( KIWAY::FACE_PCB );
+    KIFACE *pcbface = Kiway().KiFACE( KIWAY_FACES::FACE_PCB );
     pcbface->CancelPreload();
 
     // Save the project file for the currently loaded project.

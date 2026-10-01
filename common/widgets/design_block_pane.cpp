@@ -42,6 +42,7 @@
 #include <wildcards_and_files_ext.h>
 #include <tool/tool_manager.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 DESIGN_BLOCK_PANE::DESIGN_BLOCK_PANE( EDA_DRAW_FRAME* aParent, const LIB_ID* aPreselect,
                                       std::vector<LIB_ID>& aHistoryList ) :

@@ -28,6 +28,7 @@
 
 #include <macros.h>
 #include <wx/tokenzr.h>
+#include <kiway.h>
 
 #define ARG_FORMAT "--format"
 #define ARG_ALL_TRACK_ERRORS "--all-track-errors"
@@ -176,7 +177,7 @@ int CLI::PCB_DRC_COMMAND::doPerform( KIWAY& aKiway )
     drcJob->m_refillZones = m_argParser.get<bool>( ARG_ZONE_FILL );
     drcJob->m_saveBoard = m_argParser.get<bool>( ARG_SAVE_BOARD );
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, drcJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, drcJob.get() );
 
     return exitCode;
 }

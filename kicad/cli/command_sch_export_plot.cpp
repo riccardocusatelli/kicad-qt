@@ -30,6 +30,7 @@
 
 #include <macros.h>
 #include <wx/tokenzr.h>
+#include <kiway.h>
 
 #define ARG_EXCLUDE_DRAWING_SHEET "--exclude-drawing-sheet"
 #define ARG_NO_BACKGROUND_COLOR "--no-background-color"
@@ -192,7 +193,7 @@ int CLI::SCH_EXPORT_PLOT_COMMAND::doPerform( KIWAY& aKiway )
         plotJob->m_PDFMetadata = !m_argParser.get<bool>( ARG_EXCLUDE_PDF_METADATA );
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_SCH, plotJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, plotJob.get() );
 
     return exitCode;
 }

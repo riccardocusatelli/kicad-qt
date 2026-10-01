@@ -28,7 +28,6 @@
 #include <env_paths.h>
 #include <pgm_base.h>
 #include <project_sch.h>
-#include <kiway.h>
 #include <core/profile.h>
 #include <core/wx_stl_compat.h>
 #include <unordered_map>

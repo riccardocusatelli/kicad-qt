@@ -69,6 +69,7 @@
 #include <wx/log.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 /* Execute a remote command sent via a socket on port KICAD_PCB_PORT_SERVICE_NUMBER
  *

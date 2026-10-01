@@ -49,4 +49,4 @@ wxString JOB_PCB_DRC::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_drc, _HKI( "PCB: Perform DRC" ), KIWAY::FACE_PCB, JOB_PCB_DRC );
+REGISTER_JOB( pcb_drc, _HKI( "PCB: Perform DRC" ), KIWAY_FACES::FACE_PCB, JOB_PCB_DRC );

@@ -67,6 +67,7 @@
 #include <kiplatform/ui.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 #if defined(__linux__) || defined(__FreeBSD__)
 #include <spacenav/spnav_2d_plugin.h>

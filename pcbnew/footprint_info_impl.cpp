@@ -25,7 +25,6 @@
 #include <footprint.h>
 #include <footprint_info.h>
 #include <footprint_library_adapter.h>
-#include <kiway.h>
 #include <lib_id.h>
 #include <progress_reporter.h>
 #include <string_utils.h>

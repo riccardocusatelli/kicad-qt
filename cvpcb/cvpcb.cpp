@@ -68,7 +68,7 @@ static struct IFACE : public KIFACE_BASE
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType )
     {}
 
@@ -109,7 +109,7 @@ static struct IFACE : public KIFACE_BASE
         }
     }
 
-} kiface( "cvpcb", KIWAY::FACE_CVPCB );
+} kiface( "cvpcb", KIWAY_FACES::FACE_CVPCB );
 
 } // namespace
 

@@ -70,4 +70,4 @@ wxString JOB_EXPORT_PCB_PDF::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_pdf, _HKI( "PCB: Export PDF" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_PDF );
+REGISTER_JOB( pcb_export_pdf, _HKI( "PCB: Export PDF" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_PDF );

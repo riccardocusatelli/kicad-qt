@@ -813,7 +813,7 @@ void PANEL_FP_LIB_TABLE::onReset( wxCommandEvent& event )
     // Go ahead and reload here because this action takes place even if the dialog is canceled
     Pgm().GetLibraryManager().LoadGlobalTables( { LIBRARY_TABLE_TYPE::FOOTPRINT } );
 
-    if( KIFACE *face = m_parent->Kiway().KiFACE( KIWAY::FACE_PCB ) )
+    if( KIFACE *face = m_parent->Kiway().KiFACE( KIWAY_FACES::FACE_PCB ) )
         face->PreloadLibraries( &m_parent->Kiway() );
 
     grid->Freeze();
@@ -1008,7 +1008,7 @@ void InvokePcbLibTableEditor( KIWAY* aKiway, wxWindow* aCaller )
     }
 
     // Trigger a reload in case any libraries have been added or removed
-    if( KIFACE *face = aKiway->KiFACE( KIWAY::FACE_PCB ) )
+    if( KIFACE *face = aKiway->KiFACE( KIWAY_FACES::FACE_PCB ) )
         face->PreloadLibraries( aKiway );
 
     std::string payload = "";

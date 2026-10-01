@@ -93,7 +93,7 @@ bool SCRIPTING_TOOL::Init()
 
     if( !SCRIPTING::IsModuleLoaded( pymodule ) )
     {
-        KIFACE* kiface = frame()->Kiway().KiFACE( KIWAY::FACE_PCB );
+        KIFACE* kiface = frame()->Kiway().KiFACE( KIWAY_FACES::FACE_PCB );
         initfunc pcbnew_init = reinterpret_cast<initfunc>( kiface->IfaceOrAddress( KIFACE_SCRIPTING_LEGACY ) );
 
         // swig-4.4.0 implements PEP-489 multi-phase initialization.

@@ -28,6 +28,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
+#include <kiway.h>
 
 #define ARG_DRILL_ORIGIN "--drill-origin"
 #define ARG_GRID_ORIGIN "--grid-origin"
@@ -391,7 +392,7 @@ int CLI::PCB_EXPORT_3D_COMMAND::doPerform( KIWAY& aKiway )
         }
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, step.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, step.get() );
 
     return exitCode;
 }

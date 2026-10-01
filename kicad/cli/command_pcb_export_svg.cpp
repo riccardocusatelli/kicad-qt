@@ -27,6 +27,7 @@
 #include <string_utils.h>
 #include <regex>
 #include <wx/crt.h>
+#include <kiway.h>
 
 
 #define ARG_EXCLUDE_DRAWING_SHEET "--exclude-drawing-sheet"
@@ -202,5 +203,5 @@ int CLI::PCB_EXPORT_SVG_COMMAND::doPerform( KIWAY& aKiway )
                    _( "The new behavior will match --mode-multi" ) );
     }
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, svgJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, svgJob.get() );
 }

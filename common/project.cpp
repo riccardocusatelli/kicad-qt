@@ -430,7 +430,7 @@ const wxString PROJECT::AbsolutePath( const wxString& aFileName ) const
 
 FOOTPRINT_LIBRARY_ADAPTER* PROJECT::FootprintLibAdapter( KIWAY& aKiway )
 {
-    KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_PCB );
+    KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_PCB );
     return static_cast<FOOTPRINT_LIBRARY_ADAPTER*>( kiface->IfaceOrAddress( KIFACE_FOOTPRINT_LIBRARY_ADAPTER ) );
 }
 

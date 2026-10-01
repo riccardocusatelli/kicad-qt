@@ -108,7 +108,7 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
              || ext == FILEEXT::NetlistFileExtension
              || destFile.GetName() == FILEEXT::SymbolLibraryTableFileName ) )
     {
-        KIFACE* eeschema = m_frame->Kiway().KiFACE( KIWAY::FACE_SCH );
+        KIFACE* eeschema = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
         eeschema->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
                               m_newProjectName, aSrcFilePath, m_errors );
     }
@@ -120,13 +120,13 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
              || ext == FILEEXT::FootprintAssignmentFileExtension
              || destFile.GetName() == FILEEXT::FootprintLibraryTableFileName ) )
     {
-        KIFACE* pcbnew = m_frame->Kiway().KiFACE( KIWAY::FACE_PCB );
+        KIFACE* pcbnew = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PCB );
         pcbnew->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
                             m_newProjectName, aSrcFilePath, m_errors );
     }
     else if( m_frame && ext == FILEEXT::DrawingSheetFileExtension )
     {
-        KIFACE* pleditor = m_frame->Kiway().KiFACE( KIWAY::FACE_PL_EDITOR );
+        KIFACE* pleditor = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PL_EDITOR );
         pleditor->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
                               m_newProjectName, aSrcFilePath, m_errors );
     }
@@ -134,7 +134,7 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
            || ext == FILEEXT::DrillFileExtension
              || FILEEXT::IsGerberFileExtension( ext ) ) )
     {
-        KIFACE* gerbview = m_frame->Kiway().KiFACE( KIWAY::FACE_GERBVIEW );
+        KIFACE* gerbview = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_GERBVIEW );
         gerbview->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
                               m_newProjectName, aSrcFilePath, m_errors );
     }

@@ -54,6 +54,7 @@
 #include <wx/hyperlink.h>
 #include <wx/msgdlg.h>
 #include <sch_edit_tool.h>
+#include <kiway.h>
 
 
 wxDEFINE_EVENT( EDA_EVT_CLOSE_ERC_DIALOG, wxCommandEvent );
@@ -611,7 +612,7 @@ void DIALOG_ERC::testErc()
     {
         wxBusyCursor dummy;
         tester.RunTests( m_parent->GetCanvas()->GetView()->GetDrawingSheet(), m_parent,
-                         m_parent->Kiway().KiFACE( KIWAY::FACE_CVPCB ), &m_parent->Prj(), this );
+                         m_parent->Kiway().KiFACE( KIWAY_FACES::FACE_CVPCB ), &m_parent->Prj(), this );
     }
 
     // Update marker list:

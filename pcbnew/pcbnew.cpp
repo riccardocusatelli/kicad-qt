@@ -28,11 +28,9 @@
 #include <eda_pattern_match.h>
 #include <background_jobs_monitor.h>
 #include <cli_progress_reporter.h>
-#include <confirm.h>
 #include <kiface_base.h>
 #include <kiface_ids.h>
 #include <kiway_holder.h>
-#include <pcb_edit_frame.h>
 #include <eda_dde.h>
 #include <macros.h>
 #include <wx/snglinst.h>
@@ -87,6 +85,7 @@
 #include <wx/crt.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 /* init functions defined by swig */
 
@@ -237,7 +236,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType ),
             UNITS_PROVIDER( pcbIUScale, EDA_UNITS::MM )
     {}
@@ -579,7 +578,7 @@ private:
     std::atomic_bool                     m_libraryPreloadInProgress;
     std::atomic_bool                     m_libraryPreloadAbort;
 
-} kiface( "pcbnew", KIWAY::FACE_PCB );
+} kiface( "pcbnew", KIWAY_FACES::FACE_PCB );
 
 } // namespace
 

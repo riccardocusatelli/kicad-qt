@@ -40,7 +40,6 @@ using namespace std::placeholders;
 #include <kiway.h>
 #include <lib_id.h>
 #include <macros.h>
-#include <pcb_edit_frame.h>
 #include <pcbnew_settings.h>
 #include <board_design_settings.h>
 #include <drc/drc_item.h>

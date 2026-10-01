@@ -26,6 +26,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
+#include <kiway.h>
 
 #define ARG_USE_CONTOURS "--use-contours"
 #define ARG_OUTPUT_UNITS "--output-units"
@@ -190,5 +191,5 @@ int CLI::PCB_EXPORT_DXF_COMMAND::doPerform( KIWAY& aKiway )
                    _( "The new behavior will match --mode-multi" ) );
     }
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, dxfJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, dxfJob.get() );
 }

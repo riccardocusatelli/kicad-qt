@@ -59,6 +59,7 @@
 #include <project_sch.h>
 #include <jobs/job_export_sch_bom.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 wxDEFINE_EVENT( EDA_EVT_CLOSE_DIALOG_SYMBOL_FIELDS_TABLE, wxCommandEvent );
 

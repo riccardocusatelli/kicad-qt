@@ -91,5 +91,5 @@ void JOB_EXPORT_PCB_IPC2581::SetDefaultOutputPath( const wxString& aReferenceNam
     SetConfiguredOutputPath( fn.GetFullName() );
 }
 
-REGISTER_JOB( pcb_export_ipc2581, _HKI( "PCB: Export IPC-2581" ), KIWAY::FACE_PCB,
+REGISTER_JOB( pcb_export_ipc2581, _HKI( "PCB: Export IPC-2581" ), KIWAY_FACES::FACE_PCB,
               JOB_EXPORT_PCB_IPC2581 );

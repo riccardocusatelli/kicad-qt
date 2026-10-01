@@ -191,13 +191,13 @@ wxString JOB_EXPORT_SCH_PLOT_HPGL::GetDefaultDescription() const
 }
 
 
-REGISTER_JOB( sch_export_plot_svg, _HKI( "Schematic: Export SVG" ), KIWAY::FACE_SCH,
+REGISTER_JOB( sch_export_plot_svg, _HKI( "Schematic: Export SVG" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_PLOT_SVG );
-REGISTER_DEPRECATED_JOB( sch_export_plot_hpgl, _HKI( "Schematic: Export HPGL" ), KIWAY::FACE_SCH,
+REGISTER_DEPRECATED_JOB( sch_export_plot_hpgl, _HKI( "Schematic: Export HPGL" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_PLOT_HPGL );
-REGISTER_JOB( sch_export_plot_ps, _HKI( "Schematic: Export Postscript" ), KIWAY::FACE_SCH,
+REGISTER_JOB( sch_export_plot_ps, _HKI( "Schematic: Export Postscript" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_PLOT_PS );
-REGISTER_JOB( sch_export_plot_dxf, _HKI( "Schematic: Export DXF" ), KIWAY::FACE_SCH,
+REGISTER_JOB( sch_export_plot_dxf, _HKI( "Schematic: Export DXF" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_PLOT_DXF );
-REGISTER_JOB( sch_export_plot_pdf, _HKI( "Schematic: Export PDF" ), KIWAY::FACE_SCH,
+REGISTER_JOB( sch_export_plot_pdf, _HKI( "Schematic: Export PDF" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_PLOT_PDF );

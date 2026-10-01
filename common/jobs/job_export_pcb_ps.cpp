@@ -64,4 +64,4 @@ wxString JOB_EXPORT_PCB_PS::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_ps, _HKI( "PCB: Export Postscript" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_PS );
+REGISTER_JOB( pcb_export_ps, _HKI( "PCB: Export Postscript" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_PS );

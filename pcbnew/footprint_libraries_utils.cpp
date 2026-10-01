@@ -58,6 +58,7 @@
 #include <view/view_controls.h>
 #include <wx/filedlg.h>
 #include <wx/fswatcher.h>
+#include <kiway.h>
 
 
 static constexpr int ID_MAKE_NEW_LIBRARY = 4173;

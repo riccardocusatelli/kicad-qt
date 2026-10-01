@@ -57,4 +57,4 @@ wxString JOB_EXPORT_PCB_SVG::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_svg, _HKI( "PCB: Export SVG" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_SVG );
+REGISTER_JOB( pcb_export_svg, _HKI( "PCB: Export SVG" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_SVG );

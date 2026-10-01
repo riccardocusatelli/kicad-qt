@@ -35,7 +35,6 @@
 
 #include <bitmap_base.h>
 #include <fmt/format.h>
-#include <kiway.h>
 #include <string_utils.h>
 #include <richio.h>
 #include <trace_helpers.h>

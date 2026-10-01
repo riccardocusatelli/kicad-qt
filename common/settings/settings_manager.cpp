@@ -1019,7 +1019,7 @@ bool SETTINGS_MANAGER::LoadProject( const wxString& aFullPath, bool aSetActive )
         // invalid when the project list is modified.
         if( m_kiway )
         {
-            if( KIFACE* pcbFace = m_kiway->KiFACE( KIWAY::FACE_PCB, false ) )
+            if( KIFACE* pcbFace = m_kiway->KiFACE( KIWAY_FACES::FACE_PCB, false ) )
                 pcbFace->CancelPreload( true );
         }
 
@@ -1129,7 +1129,7 @@ bool SETTINGS_MANAGER::UnloadProject( PROJECT* aProject, bool aSave )
     // invalid when the project list is modified.
     if( wasActiveProject && m_kiway )
     {
-        if( KIFACE* pcbFace = m_kiway->KiFACE( KIWAY::FACE_PCB, false ) )
+        if( KIFACE* pcbFace = m_kiway->KiFACE( KIWAY_FACES::FACE_PCB, false ) )
             pcbFace->CancelPreload( true );
     }
 

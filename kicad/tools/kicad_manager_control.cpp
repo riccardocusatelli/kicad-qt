@@ -913,10 +913,10 @@ int KICAD_MANAGER_CONTROL::ShowPluginManager( const TOOL_EVENT& aEvent )
         KIWAY& kiway = m_frame->Kiway();
 
         // Reset state containing global lib tables
-        if( KIFACE* kiface = kiway.KiFACE( KIWAY::FACE_SCH, false ) )
+        if( KIFACE* kiface = kiway.KiFACE( KIWAY_FACES::FACE_SCH, false ) )
             kiface->Reset();
 
-        if( KIFACE* kiface = kiway.KiFACE( KIWAY::FACE_PCB, false ) )
+        if( KIFACE* kiface = kiway.KiFACE( KIWAY_FACES::FACE_PCB, false ) )
             kiface->Reset();
 
         // Reload lib tables

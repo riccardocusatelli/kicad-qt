@@ -30,6 +30,7 @@
 #include <board.h>
 #include <footprint.h>
 #include <project_pcb.h>
+#include <kiway.h>
 
 
 DIALOG_FOOTPRINT_ASSOCIATIONS::DIALOG_FOOTPRINT_ASSOCIATIONS( PCB_BASE_FRAME* aFrame,

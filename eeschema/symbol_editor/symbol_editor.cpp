@@ -30,7 +30,6 @@
 #include <kiway.h>
 #include <widgets/wx_infobar.h>
 #include <tools/symbol_editor_drawing_tools.h>
-#include <symbol_edit_frame.h>
 #include <template_fieldnames.h>
 #include <wildcards_and_files_ext.h>
 #include <lib_symbol_library_manager.h>

@@ -26,6 +26,7 @@
 
 #include <macros.h>
 #include <locale_io.h>
+#include <kiway.h>
 
 #define ARG_COMPRESS "--compression"
 #define ARG_UNITS "--units"
@@ -98,5 +99,5 @@ int CLI::PCB_EXPORT_ODB_COMMAND::doPerform( KIWAY& aKiway )
         job->m_compressionMode = JOB_EXPORT_PCB_ODB::ODB_COMPRESSION::NONE;
 
     LOCALE_IO dummy;
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, job.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, job.get() );
 }

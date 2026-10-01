@@ -705,7 +705,7 @@ void PANEL_SYM_LIB_TABLE::onReset( wxCommandEvent& event )
     // Go ahead and reload here because this action takes place even if the dialog is canceled
     Pgm().GetLibraryManager().LoadGlobalTables( { LIBRARY_TABLE_TYPE::SYMBOL } );
 
-    if( KIFACE *schface = m_parent->Kiway().KiFACE( KIWAY::FACE_SCH ) )
+    if( KIFACE *schface = m_parent->Kiway().KiFACE( KIWAY_FACES::FACE_SCH ) )
         schface->PreloadLibraries( &m_parent->Kiway() );
 
     grid->Freeze();
@@ -1077,7 +1077,7 @@ void InvokeSchEditSymbolLibTable( KIWAY* aKiway, wxWindow *aParent )
     }
 
     // Trigger a reload in case any libraries have been added or removed
-    if( KIFACE *schface = aKiway->KiFACE( KIWAY::FACE_SCH ) )
+    if( KIFACE *schface = aKiway->KiFACE( KIWAY_FACES::FACE_SCH ) )
         schface->PreloadLibraries( aKiway );
 
     if( symbolEditor )

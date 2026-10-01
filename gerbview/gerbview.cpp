@@ -47,6 +47,7 @@
 #include <dialogs/panel_toolbar_customization.h>
 #include <toolbars_gerber.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 using json = nlohmann::json;
 
@@ -57,7 +58,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType ),
             UNITS_PROVIDER( gerbIUScale, EDA_UNITS::MM )
     {}
@@ -142,7 +143,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
                      const wxString& aNewProjectBasePath, const wxString& aNewProjectName,
                      const wxString& aSrcFilePath, wxString& aErrors ) override;
 
-} kiface( "gerbview", KIWAY::FACE_GERBVIEW );
+} kiface( "gerbview", KIWAY_FACES::FACE_GERBVIEW );
 
 } // namespace
 

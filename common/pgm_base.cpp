@@ -75,6 +75,8 @@
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
+#include <kiway.h>
+
 #ifdef KICAD_IPC_API
 #include <api/api_plugin_manager.h>
 #include <api/api_server.h>

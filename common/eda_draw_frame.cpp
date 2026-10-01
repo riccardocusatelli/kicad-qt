@@ -83,6 +83,7 @@
 #include <wx/fdrepdlg.h>
 #include <tool/editor_conditions.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
 

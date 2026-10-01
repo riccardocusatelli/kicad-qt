@@ -53,6 +53,7 @@
 #include <wx/textdlg.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 using DIALOG_NEW_SYMBOL = DIALOG_LIB_NEW_SYMBOL;
 

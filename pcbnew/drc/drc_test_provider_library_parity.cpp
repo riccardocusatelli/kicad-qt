@@ -23,7 +23,6 @@
 
 #include <layer_range.h>
 #include <layer_utils.h>
-#include <kiway.h>
 #include <macros.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <footprint_library_adapter.h>

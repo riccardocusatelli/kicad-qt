@@ -49,6 +49,7 @@
 #include <dialogs/dialog_executecommand_job_settings.h>
 #include <common.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 
 extern KICOMMON_API
@@ -103,14 +104,14 @@ public:
             m_jobList->SetItem( itemIndex, jobNoColId, wxString::Format( "%d", num++ ) );
             m_jobList->SetItem( itemIndex, jobDescColId, job.GetDescription() );
 
-            KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+            KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
             wxString source = wxEmptyString;
 
-            if( iface < KIWAY::KIWAY_FACE_COUNT )
+            if( iface < KIWAY_FACES::KIWAY_FACE_COUNT )
             {
-                if( iface == KIWAY::FACE_PCB )
+                if( iface == KIWAY_FACES::FACE_PCB )
                     source = wxT( "PCB" );
-                else if( iface == KIWAY::FACE_SCH )
+                else if( iface == KIWAY_FACES::FACE_SCH )
 					source = wxT( "SCH" );
             }
 
@@ -581,14 +582,14 @@ void PANEL_JOBSET::rebuildJobList()
 
         m_jobsGrid->SetReadOnly( num - 1, COL_SOURCE );
 
-        KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+        KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
         wxString      source = wxEmptyString;
 
-        if( iface < KIWAY::KIWAY_FACE_COUNT )
+        if( iface < KIWAY_FACES::KIWAY_FACE_COUNT )
         {
-            if( iface == KIWAY::FACE_PCB )
+            if( iface == KIWAY_FACES::FACE_PCB )
                 source = wxT( "PCB" );
-            else if( iface == KIWAY::FACE_SCH )
+            else if( iface == KIWAY_FACES::FACE_SCH )
                 source = wxT( "SCH" );
         }
 
@@ -665,9 +666,9 @@ bool PANEL_JOBSET::OpenJobOptionsForListItem( size_t aItemIndex )
 {
     bool          success = false;
     JOBSET_JOB&   job = m_jobsFile->GetJobs()[aItemIndex];
-    KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+    KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
 
-    if( iface < KIWAY::KIWAY_FACE_COUNT )
+    if( iface < KIWAY_FACES::KIWAY_FACE_COUNT )
     {
         EnsurePcbSchFramesOpen();
         success = m_frame->Kiway().ProcessJobConfigDialog( iface, job.m_job.get(), m_frame );

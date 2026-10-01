@@ -65,4 +65,4 @@ wxString JOB_EXPORT_PCB_DXF::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_dxf, _HKI( "PCB: Export DXF" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_DXF );
+REGISTER_JOB( pcb_export_dxf, _HKI( "PCB: Export DXF" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_DXF );

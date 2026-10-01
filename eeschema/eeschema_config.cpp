@@ -20,17 +20,14 @@
 #include <mutex>
 #include <wx/ffile.h>
 
-#include <confirm.h>
 #include <dialogs/dialog_schematic_setup.h>
 #include <kiway.h>
-#include <symbol_edit_frame.h>
 #include <dialogs/panel_base_display_options.h>
 #include <filename_resolver.h>
 #include <pgm_base.h>
 #include <project/project_file.h>
 #include <project/project_local_settings.h>
 #include <project/net_settings.h>
-#include <sch_edit_frame.h>
 #include <settings/color_settings.h>
 #include <sch_painter.h>
 #include <schematic.h>

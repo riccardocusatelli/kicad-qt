@@ -109,18 +109,18 @@ void LIBRARY_EDITOR_CONTROL::changeSelectedPinStatus( const bool aPin )
         {
             if( lib && lib->m_Type == LIB_TREE_NODE::TYPE::LIBRARY && lib->m_Pinned != aPin )
             {
-                const KIWAY::FACE_T kifaceType = KIWAY::KifaceType( m_frame->GetFrameType() );
+                const KIWAY_FACES::FACE_T kifaceType = KIWAY::KifaceType( m_frame->GetFrameType() );
 
-                if( kifaceType == KIWAY::FACE_SCH || kifaceType == KIWAY::FACE_PCB )
+                if( kifaceType == KIWAY_FACES::FACE_SCH || kifaceType == KIWAY_FACES::FACE_PCB )
                 {
                     if( aPin )
                         m_frame->Prj().PinLibrary( lib->m_LibId.GetLibNickname(),
-                                                   kifaceType == KIWAY::FACE_SCH
+                                                   kifaceType == KIWAY_FACES::FACE_SCH
                                                            ? PROJECT::LIB_TYPE_T::SYMBOL_LIB
                                                            : PROJECT::LIB_TYPE_T::FOOTPRINT_LIB );
                     else
                         m_frame->Prj().UnpinLibrary( lib->m_LibId.GetLibNickname(),
-                                                     kifaceType == KIWAY::FACE_SCH
+                                                     kifaceType == KIWAY_FACES::FACE_SCH
                                                              ? PROJECT::LIB_TYPE_T::SYMBOL_LIB
                                                              : PROJECT::LIB_TYPE_T::FOOTPRINT_LIB );
 

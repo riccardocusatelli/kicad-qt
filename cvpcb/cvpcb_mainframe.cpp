@@ -69,6 +69,7 @@
 #include <wx/ffile.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 
 CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :

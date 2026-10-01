@@ -23,12 +23,7 @@
 
 #include <board.h>
 #include <footprint.h>
-#include <footprint_edit_frame.h>
-#include <kiway.h>
-#include <kiway_player.h>
 #include <pcb_fields_grid_table.h>
-#include <pcb_base_frame.h>
-#include <pcb_edit_frame.h>
 #include <project.h>
 #include <trigo.h>
 #include <widgets/grid_combobox.h>

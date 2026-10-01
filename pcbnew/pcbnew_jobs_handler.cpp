@@ -87,7 +87,6 @@
 #include <pcbnew_settings.h>
 #include <pcbplot.h>
 #include <pcb_plotter.h>
-#include <pcb_edit_frame.h>
 #include <pcb_track.h>
 #include <pgm_base.h>
 #include <3d_rendering/raytracing/render_3d_raytrace_ram.h>
@@ -117,6 +116,7 @@
 #include <locale_io.h>
 #include <confirm.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 
 #ifdef _WIN32
@@ -2379,7 +2379,7 @@ int PCBNEW_JOBS_HANDLER::JobExportDrc( JOB* aJob )
             else
             {
                 typedef bool ( *NETLIST_FN_PTR )( const wxString&, std::string& );
-                KIFACE* eeschema = m_kiway->KiFACE( KIWAY::FACE_SCH );
+                KIFACE* eeschema = m_kiway->KiFACE( KIWAY_FACES::FACE_SCH );
                 NETLIST_FN_PTR netlister =
                         (NETLIST_FN_PTR) eeschema->IfaceOrAddress( KIFACE_NETLIST_SCHEMATIC );
                 ( *netlister )( schematicPath.GetFullPath(), netlist_str );

@@ -53,7 +53,7 @@ static struct IFACE : public KIFACE_BASE
 {
     // Of course all are overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType )
     {}
 
@@ -86,7 +86,7 @@ static struct IFACE : public KIFACE_BASE
         return nullptr;
     }
 }
-kiface( "pcb_test_frame", KIWAY::FACE_PCB );
+kiface( "pcb_test_frame", KIWAY_FACES::FACE_PCB );
 
 
 KIWAY    Kiway( KFCTL_STANDALONE );

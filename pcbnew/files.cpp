@@ -98,6 +98,7 @@
 #include "widgets/filedlg_hook_save_project.h"
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 //#define     USE_INSTRUMENTATION     1
 #define     USE_INSTRUMENTATION     0

@@ -28,7 +28,6 @@
 using namespace std::placeholders;
 
 #include <confirm.h>
-#include <kiway.h>
 #include <drc/drc_engine.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <netlist_reader/netlist_reader.h>

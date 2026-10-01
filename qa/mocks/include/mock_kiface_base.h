@@ -35,7 +35,7 @@
 
 MOCK_BASE_CLASS( MOCK_KIFACE_BASE, KIFACE_BASE )
 {
-    MOCK_KIFACE_BASE() : KIFACE_BASE( "common_test", KIWAY::KIWAY_FACE_COUNT ) {};
+    MOCK_KIFACE_BASE() : KIFACE_BASE( "common_test", KIWAY_FACES::KIWAY_FACE_COUNT ) {};
     virtual ~MOCK_KIFACE_BASE() {};
 
     MOCK_METHOD( OnKifaceStart, 3, bool( PGM_BASE*, int, KIWAY* ) );

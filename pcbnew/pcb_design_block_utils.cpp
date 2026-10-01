@@ -22,7 +22,6 @@
  */
 
 #include <pgm_base.h>
-#include <kiway.h>
 #include <board_commit.h>
 #include <design_block.h>
 #include <design_block_library_adapter.h>
@@ -31,11 +30,9 @@
 #include <pcb_generator.h>
 #include <pcb_group.h>
 #include <widgets/pcb_design_block_pane.h>
-#include <pcb_edit_frame.h>
 #include <pcb_io/pcb_io.h>
 #include <pcb_io/pcb_io_mgr.h>
 #include <wx/choicdlg.h>
-#include <wx/msgdlg.h>
 #include <wx/textdlg.h>
 #include <wildcards_and_files_ext.h>
 #include <paths.h>

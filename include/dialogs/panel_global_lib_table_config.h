@@ -48,7 +48,7 @@ class PANEL_GLOBAL_LIB_TABLE_CONFIG : public PANEL_GLOBAL_LIB_TABLE_CONFIG_BASE
 public:
     PANEL_GLOBAL_LIB_TABLE_CONFIG( wxWindow* aParent, const wxString& aTableName,
                                    std::shared_ptr<PANEL_GLOBAL_LIB_TABLE_CONFIG_MODEL> aModel,
-                                   const KIWAY::FACE_T                  aFaceType );
+                                   const KIWAY_FACES::FACE_T                  aFaceType );
     virtual ~PANEL_GLOBAL_LIB_TABLE_CONFIG();
 
     virtual wxFileName GetGlobalTableFileName() = 0;
@@ -62,7 +62,7 @@ protected:
 
     wxString m_tableName;
     bool m_defaultFileFound;
-    KIWAY::FACE_T m_faceType;
+    KIWAY_FACES::FACE_T m_faceType;
     std::shared_ptr<PANEL_GLOBAL_LIB_TABLE_CONFIG_MODEL> m_model;
 };
 

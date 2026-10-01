@@ -90,6 +90,7 @@
 #include <kiface_ids.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 #ifdef KICAD_IPC_API
 #include <api/api_server.h>
@@ -1633,7 +1634,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_SCH ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 
@@ -1667,7 +1668,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_PCB ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_PCB ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 
@@ -1713,7 +1714,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_GERBVIEW ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_GERBVIEW ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 
@@ -1734,7 +1735,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_PL_EDITOR ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_PL_EDITOR ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 

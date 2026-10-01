@@ -34,4 +34,4 @@ wxString JOB_EXPORT_PCB_HPGL::GetDefaultDescription() const
 }
 
 
-REGISTER_DEPRECATED_JOB( pcb_export_hpgl, _HKI( "PCB: Export HPGL" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_HPGL );
+REGISTER_DEPRECATED_JOB( pcb_export_hpgl, _HKI( "PCB: Export HPGL" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_HPGL );

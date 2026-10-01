@@ -25,6 +25,7 @@
 #include <macros.h>
 #include <wx/crt.h>
 #include <wx/filename.h>
+#include <kiway.h>
 
 
 #define ARG_FORMAT "--format"
@@ -127,7 +128,7 @@ int CLI::PCB_IMPORT_COMMAND::doPerform( KIWAY& aKiway )
     wxString reportFile = From_UTF8( m_argParser.get<std::string>( ARG_REPORT_FILE ).c_str() );
     importJob->m_reportFile = reportFile;
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, importJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, importJob.get() );
 
     return exitCode;
 }

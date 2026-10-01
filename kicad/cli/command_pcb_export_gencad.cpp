@@ -24,6 +24,7 @@
 #include <kiface_base.h>
 #include <string_utils.h>
 #include <wx/crt.h>
+#include <kiway.h>
 
 
 CLI::PCB_EXPORT_GENCAD_COMMAND::PCB_EXPORT_GENCAD_COMMAND() :
@@ -75,5 +76,5 @@ int CLI::PCB_EXPORT_GENCAD_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_INVALID_INPUT_FILE;
     }
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, gencadJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, gencadJob.get() );
 }

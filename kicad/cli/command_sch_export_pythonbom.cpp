@@ -26,6 +26,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
+#include <kiway.h>
 
 
 CLI::SCH_EXPORT_PYTHONBOM_COMMAND::SCH_EXPORT_PYTHONBOM_COMMAND() :
@@ -53,7 +54,7 @@ int CLI::SCH_EXPORT_PYTHONBOM_COMMAND::doPerform( KIWAY& aKiway )
     }
 
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_SCH, bomJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, bomJob.get() );
 
     return exitCode;
 }

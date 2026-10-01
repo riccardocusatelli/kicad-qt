@@ -29,6 +29,7 @@
 #include <wx/tokenzr.h>
 
 #include <locale_io.h>
+#include <kiway.h>
 
 #define ARG_COMPRESS "--compress"
 
@@ -154,5 +155,5 @@ int CLI::PCB_EXPORT_IPC2581_COMMAND::doPerform( KIWAY& aKiway )
             From_UTF8( m_argParser.get<std::string>( ARG_BOM_REV ).c_str() );
 
     LOCALE_IO dummy;
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, ipc2581Job.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, ipc2581Job.get() );
 }

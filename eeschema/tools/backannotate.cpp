@@ -51,6 +51,7 @@
 #include <fmt/ranges.h>
 #include <fmt/xchar.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 // Compare nets in the deterministic library order so diode arrays and similar map cleanly.
 static std::vector<wxString> netsInUnitOrder( const std::vector<wxString>&        aPins,

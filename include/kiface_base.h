@@ -24,9 +24,8 @@
 #ifndef KIFACE_BASE_H
 #define KIFACE_BASE_H
 
-#include <kiway.h>
+#include <kiface.h>
 #include <bin_mod.h>
-#include <tool/action_manager.h>
 
 
 /**
@@ -64,7 +63,7 @@ public:
      * @param aId is the type of DSO ( #FACE_SCH, #FACE_PCB, #FACE_CVPCB, #FACE_GERBVIEW,
      *            #FACE_PL_EDITOR, #FACE_PCB_CALCULATOR, #FACE_BMP2CMP)
      */
-    KIFACE_BASE( const char* aKifaceName, KIWAY::FACE_T aId ) :
+    KIFACE_BASE( const char* aKifaceName, KIWAY_FACES::FACE_T aId ) :
         m_start_flags( 0 ),
         m_id( aId ),
         m_bm( aKifaceName )
@@ -115,17 +114,13 @@ public:
     /// (The library search path is in the PROJECT class.)
     SEARCH_STACK&       KifaceSearch()                { return m_bm.m_search; }
 
-    void GetActions( std::vector<TOOL_ACTION*>& aActions ) const override
-    {
-        for( TOOL_ACTION* action : ACTION_MANAGER::GetActionList() )
-            aActions.push_back( action );
-    }
+    void GetActions( std::vector<TOOL_ACTION*>& aActions ) const override;
 
 protected:
     int m_start_flags;      ///< flags provided in OnKifaceStart()
 
 private:
-    KIWAY::FACE_T m_id;
+    KIWAY_FACES::FACE_T m_id;
     BIN_MOD       m_bm;
 };
 

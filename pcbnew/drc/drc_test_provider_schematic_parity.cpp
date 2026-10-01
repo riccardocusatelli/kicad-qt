@@ -29,7 +29,6 @@
 #include <drc/drc_rule.h>
 #include <drc/drc_test_provider.h>
 
-#include <kiway.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <core/ki_assert.h>
 

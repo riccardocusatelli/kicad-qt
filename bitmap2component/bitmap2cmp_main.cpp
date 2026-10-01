@@ -25,7 +25,6 @@
 #include <bitmap2cmp_frame.h>
 #include <bitmap2cmp_settings.h>
 #include <kiface_base.h>
-#include <kiway.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 
@@ -59,11 +58,11 @@ static struct IFACE : public KIFACE_BASE
         return nullptr;
     }
 
-    IFACE( const char* aDSOname, KIWAY::FACE_T aType ) :
+    IFACE( const char* aDSOname, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aDSOname, aType )
     {}
 
-} kiface( "BMP2CMP", KIWAY::FACE_BMP2CMP );
+} kiface( "BMP2CMP", KIWAY_FACES::FACE_BMP2CMP );
 
 }   // namespace BMP2CMP
 

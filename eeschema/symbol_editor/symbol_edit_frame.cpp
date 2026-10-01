@@ -92,6 +92,7 @@
 #include <trace_helpers.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 
 bool SYMBOL_EDIT_FRAME::m_showDeMorgan = false;

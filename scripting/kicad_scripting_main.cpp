@@ -22,7 +22,6 @@
 #include <kiface_ids.h>
 #include <kipython_frame.h>
 #include <kipython_settings.h>
-#include <kiway.h>
 #include <pgm_base.h>
 #include <python_scripting.h>
 #include <settings/settings_manager.h>
@@ -69,11 +68,11 @@ static struct IFACE : public KIFACE_BASE
         return NULL;
     }
 
-    IFACE( const char* aDSOname, KIWAY::FACE_T aType ) :
+    IFACE( const char* aDSOname, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aDSOname, aType )
     {}
 
-} kiface( "KIPYTHON", KIWAY::FACE_PYTHON );
+} kiface( "KIPYTHON", KIWAY_FACES::FACE_PYTHON );
 
 }   // namespace KIPYTHON
 

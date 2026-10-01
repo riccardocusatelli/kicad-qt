@@ -31,6 +31,8 @@
 
 #include <wx/sizer.h>
 #include <wx/button.h>
+#include <kiway.h>
+#include <tool/action_manager.h>
 
 DIALOG_LIST_HOTKEYS::DIALOG_LIST_HOTKEYS( EDA_BASE_FRAME* aParent ):
     DIALOG_SHIM( aParent, wxID_ANY, _( "Hotkey List" ) )
@@ -50,16 +52,16 @@ DIALOG_LIST_HOTKEYS::DIALOG_LIST_HOTKEYS( EDA_BASE_FRAME* aParent ):
             m_hk_list->ActionsList().push_back( action );
     }
 
-    kiface = Kiway().KiFACE( KIWAY::FACE_SCH );
+    kiface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
     kiface->GetActions( m_hk_list->ActionsList() );
 
-    kiface = Kiway().KiFACE( KIWAY::FACE_PCB );
+    kiface = Kiway().KiFACE( KIWAY_FACES::FACE_PCB );
     kiface->GetActions( m_hk_list->ActionsList() );
 
-    kiface = Kiway().KiFACE( KIWAY::FACE_GERBVIEW );
+    kiface = Kiway().KiFACE( KIWAY_FACES::FACE_GERBVIEW );
     kiface->GetActions( m_hk_list->ActionsList() );
 
-    kiface = Kiway().KiFACE( KIWAY::FACE_PL_EDITOR );
+    kiface = Kiway().KiFACE( KIWAY_FACES::FACE_PL_EDITOR );
     kiface->GetActions( m_hk_list->ActionsList() );
 
     // Update all of the action hotkeys. The process of loading the actions through

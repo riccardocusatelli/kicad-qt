@@ -46,6 +46,7 @@
 #include <widgets/ui_common.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <tool/action_manager.h>
 
 using namespace std::placeholders;
 

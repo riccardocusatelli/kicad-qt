@@ -17,7 +17,6 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <eda_draw_frame.h>
 #include <properties/color4d_variant.h>
 #include <properties/std_optional_variants.h>
 #include <properties/eda_angle_variant.h>
@@ -27,7 +26,6 @@
 #include <widgets/unit_binder.h>
 #include <bitmaps.h>
 #include <frame_type.h>
-#include <kiway_player.h>
 #include <kiway.h>
 #include <wx/filedlg.h>
 #include <wx/intl.h>

@@ -140,7 +140,7 @@ bool FOOTPRINT_SELECT_WIDGET::UpdateList()
     // Get the filter function from pcbnew via KIWAY
     try
     {
-        KIFACE* kiface = m_kiway->KiFACE( KIWAY::FACE_PCB );
+        KIFACE* kiface = m_kiway->KiFACE( KIWAY_FACES::FACE_PCB );
 
         if( !kiface )
         {

@@ -23,6 +23,7 @@
 #include "jobs/job_export_pcb_gerbers.h"
 #include <kiface_base.h>
 #include <string_utils.h>
+#include <kiway.h>
 
 #define ARG_USE_BOARD_PLOT_PARAMS "--board-plot-params"
 
@@ -53,5 +54,5 @@ int CLI::PCB_EXPORT_GERBERS_COMMAND::doPerform( KIWAY& aKiway )
     gerberJob->m_argCommonLayers = From_UTF8( m_argParser.get<std::string>( ARG_COMMON_LAYERS ).c_str() );
     gerberJob->m_useBoardPlotParams = m_argParser.get<bool>( ARG_USE_BOARD_PLOT_PARAMS );
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, gerberJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, gerberJob.get() );
 }

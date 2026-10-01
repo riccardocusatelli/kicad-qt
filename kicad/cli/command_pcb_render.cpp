@@ -32,6 +32,7 @@
 #include <wx/tokenzr.h>
 #include "../../3d-viewer/3d_viewer/eda_3d_viewer_settings.h"
 #include <math/vector3.h>
+#include <kiway.h>
 
 #define ARG_BACKGROUND "--background"
 #define ARG_QUALITY "--quality"
@@ -424,7 +425,7 @@ int CLI::PCB_RENDER_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_ARGS;
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, renderJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, renderJob.get() );
 
     return exitCode;
 }

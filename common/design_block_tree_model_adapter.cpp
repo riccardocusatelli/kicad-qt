@@ -19,7 +19,6 @@
 
 #include <pgm_base.h>
 #include <kiface_base.h>
-#include <eda_base_frame.h>
 #include <core/kicad_algo.h>
 #include <settings/common_settings.h>
 #include <project/project_file.h>
@@ -32,6 +31,7 @@
 #include <design_block_library_adapter.h>
 #include <design_block_tree_model_adapter.h>
 #include <kiplatform/ui.h>
+#include <kiway.h>
 
 wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER>
 DESIGN_BLOCK_TREE_MODEL_ADAPTER::Create( EDA_BASE_FRAME* aParent, DESIGN_BLOCK_LIBRARY_ADAPTER* aLibs,

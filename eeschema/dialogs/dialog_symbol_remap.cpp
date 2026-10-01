@@ -49,6 +49,7 @@
 
 #include <dialog_symbol_remap.h>
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 
 DIALOG_SYMBOL_REMAP::DIALOG_SYMBOL_REMAP( SCH_EDIT_FRAME* aParent ) :

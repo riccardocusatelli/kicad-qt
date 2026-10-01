@@ -29,6 +29,7 @@
 #include <schematic_settings.h>
 
 #include <macros.h>
+#include <kiway.h>
 
 
 CLI::SCH_EXPORT_BOM_COMMAND::SCH_EXPORT_BOM_COMMAND() : COMMAND( "bom" )
@@ -177,7 +178,7 @@ int CLI::SCH_EXPORT_BOM_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_INVALID_INPUT_FILE;
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_SCH, bomJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, bomJob.get() );
 
     return exitCode;
 }

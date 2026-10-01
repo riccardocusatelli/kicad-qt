@@ -257,7 +257,7 @@ bool JOBS_RUNNER::RunJobsForDestination( JOBSET_DESTINATION* aDestination, bool 
 
         jobNum++;
 
-        KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+        KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
 
         job.m_job->SetTempOutputDirectory( tempDirPath );
 
@@ -275,7 +275,7 @@ bool JOBS_RUNNER::RunJobsForDestination( JOBSET_DESTINATION* aDestination, bool 
         REDIRECT_REPORTER isolatedReporter( targetReporter );
         int               result = CLI::EXIT_CODES::SUCCESS;
 
-        if( iface < KIWAY::KIWAY_FACE_COUNT )
+        if( iface < KIWAY_FACES::KIWAY_FACE_COUNT )
         {
             result = m_kiway->ProcessJob( iface, job.m_job.get(), &isolatedReporter, m_progressReporter );
         }

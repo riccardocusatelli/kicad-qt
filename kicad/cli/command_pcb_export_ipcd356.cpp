@@ -26,6 +26,7 @@
 #include <wx/crt.h>
 
 #include <locale_io.h>
+#include <kiway.h>
 
 CLI::PCB_EXPORT_IPCD356_COMMAND::PCB_EXPORT_IPCD356_COMMAND() :
         PCB_EXPORT_BASE_COMMAND( "ipcd356" )
@@ -47,5 +48,5 @@ int CLI::PCB_EXPORT_IPCD356_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_INVALID_INPUT_FILE;
     }
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, ipcd356Job.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, ipcd356Job.get() );
 }

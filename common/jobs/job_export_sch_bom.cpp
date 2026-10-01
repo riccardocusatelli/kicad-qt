@@ -118,5 +118,5 @@ wxString JOB_EXPORT_SCH_BOM::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( sch_export_bom, _HKI( "Schematic: Generate Bill of Materials" ), KIWAY::FACE_SCH,
+REGISTER_JOB( sch_export_bom, _HKI( "Schematic: Generate Bill of Materials" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_BOM );

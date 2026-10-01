@@ -55,7 +55,7 @@
 #include <wx/ffile.h>
 #include <sim/sim_lib_mgr.h>
 #include <progress_reporter.h>
-#include <kiway.h>
+#include <kiface.h>
 #include <pgm_base.h>
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_assert.h>

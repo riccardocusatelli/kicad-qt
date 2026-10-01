@@ -27,7 +27,6 @@
 #include <wx/snglinst.h>
 
 #include <kiface_base.h>
-#include <confirm.h>
 #include <gestfich.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
@@ -41,6 +40,7 @@
 #include "pl_editor_frame.h"
 #include "pl_editor_settings.h"
 #include <core/ki_assert.h>
+#include <kiway.h>
 
 
 namespace PGE {
@@ -49,7 +49,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType ),
             UNITS_PROVIDER( drawSheetIUScale, EDA_UNITS::MM )
     {}
@@ -131,7 +131,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
                      const wxString& aNewProjectBasePath, const wxString& aNewProjectName,
                      const wxString& aSrcFilePath, wxString& aErrors ) override;
 
-} kiface( "pl_editor", KIWAY::FACE_PL_EDITOR );
+} kiface( "pl_editor", KIWAY_FACES::FACE_PL_EDITOR );
 
 } // namespace
 

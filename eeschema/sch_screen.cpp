@@ -32,7 +32,6 @@
 #include <eda_item.h>
 #include <id.h>
 #include <string_utils.h>
-#include <kiway.h>
 #include <plotters/plotter.h>
 #include <sch_plotter.h>
 #include <project.h>

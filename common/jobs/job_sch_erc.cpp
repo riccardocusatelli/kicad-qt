@@ -40,4 +40,4 @@ wxString JOB_SCH_ERC::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( sch_erc, _HKI( "Schematic: Perform ERC" ), KIWAY::FACE_SCH, JOB_SCH_ERC );
+REGISTER_JOB( sch_erc, _HKI( "Schematic: Perform ERC" ), KIWAY_FACES::FACE_SCH, JOB_SCH_ERC );

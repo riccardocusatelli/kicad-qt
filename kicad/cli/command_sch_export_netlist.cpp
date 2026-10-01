@@ -27,6 +27,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
+#include <kiway.h>
 
 #define ARG_FORMAT "--format"
 
@@ -98,7 +99,7 @@ int CLI::SCH_EXPORT_NETLIST_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_ARGS;
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_SCH, netJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, netJob.get() );
 
     return exitCode;
 }

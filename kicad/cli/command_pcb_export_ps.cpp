@@ -25,6 +25,7 @@
 #include <kiface_base.h>
 #include <string_utils.h>
 #include <wx/crt.h>
+#include <kiway.h>
 
 #define ARG_MODE_SINGLE "--mode-single"
 #define ARG_MODE_MULTI "--mode-multi"
@@ -200,5 +201,5 @@ int CLI::PCB_EXPORT_PS_COMMAND::doPerform( KIWAY& aKiway )
     psJob->m_YScaleAdjust = m_argParser.get<double>( ARG_Y_SCALE_FACTOR );
     psJob->m_forceA4 = m_argParser.get<bool>( ARG_FORCE_A4 );
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, psJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, psJob.get() );
 }

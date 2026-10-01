@@ -22,19 +22,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <sch_draw_panel.h>
 #include <libraries/legacy_symbol_library.h>
 #include <confirm.h>
 #include <connection_graph.h>
 #include <invoke_sch_dialog.h>
-#include <kiway.h>
 #include <symbol_viewer_frame.h>
 #include <project_rescue.h>
 #include <project_sch.h>
-#include <sch_edit_frame.h>
 #include <string_utils.h>
 #include <wildcards_and_files_ext.h>
-#include <wx/msgdlg.h>
 
 #include <cctype>
 #include <map>

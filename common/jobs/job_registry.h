@@ -21,12 +21,12 @@
 #pragma once
 
 #include <jobs/job.h>
-#include <kiway.h>
+#include <kiface.h>
 
 struct KICOMMON_API JOB_REGISTRY_ENTRY
 {
 public:
-    KIWAY::FACE_T         kifaceType;
+    KIWAY_FACES::FACE_T         kifaceType;
     std::function<JOB*()> createFunc;
     wxString              title;
     bool                  deprecated = false;
@@ -39,7 +39,7 @@ public:
 
     static bool Add( const wxString& aName, JOB_REGISTRY_ENTRY entry, bool aDeprecated = false );
 
-    static KIWAY::FACE_T GetKifaceType( const wxString& aName );
+    static KIWAY_FACES::FACE_T GetKifaceType( const wxString& aName );
 
     template <typename T>
     static T* CreateInstance( const wxString& aName )

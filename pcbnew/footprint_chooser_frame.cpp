@@ -56,6 +56,7 @@
 #include <tools/pcb_editor_conditions.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <tool/action_manager.h>
 
 
 static wxArrayString s_FootprintHistoryList;

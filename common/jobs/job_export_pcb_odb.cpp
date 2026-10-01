@@ -76,5 +76,5 @@ void JOB_EXPORT_PCB_ODB::SetDefaultOutputPath( const wxString& aReferenceName )
     SetConfiguredOutputPath( fn.GetFullName() );
 }
 
-REGISTER_JOB( pcb_export_odb, _HKI( "PCB: Export ODB++" ), KIWAY::FACE_PCB,
+REGISTER_JOB( pcb_export_odb, _HKI( "PCB: Export ODB++" ), KIWAY_FACES::FACE_PCB,
               JOB_EXPORT_PCB_ODB );
