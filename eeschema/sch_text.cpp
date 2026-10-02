@@ -43,7 +43,6 @@
 #include <project/net_settings.h>
 #include <core/mirror.h>
 #include <core/kicad_algo.h>
-#include <tools/sch_navigate_tool.h>
 #include <trigo.h>
 #include <markup_parser.h>
 #include <properties/property.h>
@@ -373,14 +372,12 @@ bool SCH_TEXT::HasHoveredHypertext() const
 }
 
 
-void SCH_TEXT::DoHypertextAction( EDA_DRAW_FRAME* aFrame, const VECTOR2I& aMousePos ) const
+wxString SCH_TEXT::GetHypertextTarget() const
 {
-    SCH_NAVIGATE_TOOL* navTool = aFrame->GetToolManager()->GetTool<SCH_NAVIGATE_TOOL>();
-
     if( HasHyperlink() )
-        navTool->HypertextCommand( m_hyperlink );
-    else if( !m_activeUrl.IsEmpty() )
-        navTool->HypertextCommand( m_activeUrl );
+        return m_hyperlink;
+
+    return m_activeUrl;
 }
 
 

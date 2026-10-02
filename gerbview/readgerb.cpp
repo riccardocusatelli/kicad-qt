@@ -25,91 +25,14 @@
 #include "ki_exception.h"
 #include <string_utils.h>
 #include <gerbview.h>
-#include <gerbview_frame.h>
 #include <gerber_file_image.h>
 #include <gerber_file_image_list.h>
 #include <richio.h>
-#include <view/view.h>
 
-#include <dialogs/html_message_box.h>
 #include <macros.h>
 
-#include <wx/msgdlg.h>
 #include <core/ki_assert.h>
 
-/* Read a gerber file, RS274D, RS274X or RS274X2 format.
- */
-bool GERBVIEW_FRAME::Read_GERBER_File( const wxString& GERBER_FullFileName )
-{
-    wxString msg;
-
-    int layer = GetActiveLayer();
-    GERBER_FILE_IMAGE_LIST* images = GetImagesList();
-    GERBER_FILE_IMAGE* gerber = GetGbrImage( layer );
-
-    if( gerber != nullptr )
-    {
-        Erase_Current_DrawLayer( false );
-    }
-
-    // use an unique ptr while we load to free on exception properly
-    std::unique_ptr<GERBER_FILE_IMAGE> gerber_uptr = std::make_unique<GERBER_FILE_IMAGE>( layer );
-
-    // Read the gerber file. The image will be added only if it can be read
-    // to avoid broken data.
-    bool success = gerber_uptr->LoadGerberFile( GERBER_FullFileName );
-
-    if( !success )
-    {
-        gerber_uptr.reset();
-        msg.Printf( _( "File '%s' not found" ), GERBER_FullFileName );
-        ShowInfoBarError( msg );
-        return false;
-    }
-
-    gerber = gerber_uptr.release();
-    KI_ASSERT( gerber != nullptr );
-    images->AddGbrImage( gerber, layer );
-
-    // Display errors list
-    if( gerber->GetMessages().size() > 0 )
-    {
-        HTML_MESSAGE_BOX dlg( this, _( "Errors" ) );
-        dlg.ListSet( gerber->GetMessages() );
-        dlg.ShowModal();
-    }
-
-    /* if the gerber file has items using D codes but missing D codes definitions,
-     * it can be a deprecated RS274D file (i.e. without any aperture information),
-     * or has missing definitions,
-     * warn the user:
-     */
-    if( gerber->GetItemsCount() && gerber->m_Has_MissingDCode )
-    {
-        if( !gerber->m_Has_DCode )
-            msg = _("Warning: this file has no D-Code definition\n"
-                    "Therefore the size of some items is undefined");
-        else
-            msg = _("Warning: this file has some missing D-Code definitions\n"
-                    "Therefore the size of some items is undefined");
-
-        wxMessageBox( msg );
-    }
-
-    if( GetCanvas() )
-    {
-        if( gerber->m_ImageNegative )
-        {
-            // TODO: find a way to handle negative images
-            // (maybe convert geometry into positives?)
-        }
-
-        for( GERBER_DRAW_ITEM* item : gerber->GetItems() )
-            GetCanvas()->GetView()->Add( (KIGFX::VIEW_ITEM*) item );
-    }
-
-    return true;
-}
 
 
 /*

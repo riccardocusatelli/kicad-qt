@@ -334,7 +334,11 @@ public:
      */
     virtual bool HasHoveredHypertext() const { return HasHypertext() && IsRollover(); }
 
-    virtual void DoHypertextAction( EDA_DRAW_FRAME* aFrame, const VECTOR2I& aMousePos ) const { }
+    /**
+     * The target of the hypertext currently active on this item (a URL, a "#page" link, a file
+     * link...), or an empty string.  The schematic editor follows it (SCH_NAVIGATE_TOOL).
+     */
+    virtual wxString GetHypertextTarget() const { return wxEmptyString; }
 
     /**
      * Return the layer this item is on.

@@ -66,7 +66,6 @@
 #include <trigo.h>          // for RotatePoint
 
 #include <gerbview.h>
-#include <gerbview_frame.h>
 #include <gerber_file_image.h>
 #include <gerber_file_image_list.h>
 #include <excellon_image.h>
@@ -75,13 +74,11 @@
 #include <richio.h>
 #include <string_utils.h>
 #include <X2_gerber_attributes.h>
-#include <view/view.h>
 #include <gerbview_settings.h>
 
 #include <cmath>
 #include <charconv>
 
-#include <dialogs/html_message_box.h>
 
 // A helper function to calculate the arc center of an arc
 // known by 2 end points, the radius, and the angle direction (CW or CCW)
@@ -244,62 +241,6 @@ static EXCELLON_CMD excellon_G_CmdList[] =
     { "",    DRILL_G_UNKNOWN,     0 },  // last item in list
 };
 
-
-bool GERBVIEW_FRAME::Read_EXCELLON_File( const wxString& aFullFileName )
-{
-    wxString msg;
-    int layerId = GetActiveLayer();      // current layer used in GerbView
-    GERBER_FILE_IMAGE_LIST* images = GetGerberLayout()->GetImagesList();
-    GERBER_FILE_IMAGE* gerber_layer = images->GetGbrImage( layerId );
-
-    // If the active layer contains old gerber or nc drill data, remove it
-    if( gerber_layer )
-        Erase_Current_DrawLayer( false );
-
-    std::unique_ptr<EXCELLON_IMAGE> drill_layer_uptr = std::make_unique<EXCELLON_IMAGE>( layerId );
-
-    EXCELLON_DEFAULTS nc_defaults;
-    GERBVIEW_SETTINGS* cfg = static_cast<GERBVIEW_SETTINGS*>( config() );
-    cfg->GetExcellonDefaults( nc_defaults );
-
-    // Read the Excellon drill file:
-    bool success = drill_layer_uptr->LoadFile( aFullFileName, &nc_defaults );
-
-    if( !success )
-    {
-        drill_layer_uptr.reset();
-        msg.Printf( _( "File %s not found." ), aFullFileName );
-        ShowInfoBarError( msg );
-        return false;
-    }
-
-    EXCELLON_IMAGE* drill_layer = drill_layer_uptr.release();
-
-    layerId = images->AddGbrImage( drill_layer, layerId );
-
-    if( layerId < 0 )
-    {
-        delete drill_layer;
-        ShowInfoBarError( _( "No empty layers to load file into." ) );
-        return false;
-    }
-
-    // Display errors list
-    if( drill_layer->GetMessages().size() > 0 )
-    {
-        HTML_MESSAGE_BOX dlg( this, _( "Error reading EXCELLON drill file" ) );
-        dlg.ListSet( drill_layer->GetMessages() );
-        dlg.ShowModal();
-    }
-
-    if( GetCanvas() )
-    {
-        for( GERBER_DRAW_ITEM* item : drill_layer->GetItems() )
-            GetCanvas()->GetView()->Add( (KIGFX::VIEW_ITEM*) item );
-    }
-
-    return success;
-}
 
 
 void EXCELLON_IMAGE::ResetDefaultValues()

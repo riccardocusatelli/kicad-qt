@@ -25,6 +25,8 @@
 #ifndef EXCELLON_IMAGE_H
 #define EXCELLON_IMAGE_H
 
+#include <gerber_file_image.h>
+
 struct EXCELLON_DEFAULTS;
 
 
@@ -146,7 +148,7 @@ public: EXCELLON_IMAGE( int layer ) :
     }
 
 
-    ~EXCELLON_IMAGE() {};
+    ~EXCELLON_IMAGE() override {};
 
     /**
      * Set all parameters to a default value, before reading a file

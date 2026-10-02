@@ -36,11 +36,11 @@
 #include <build_version.h>
 #include <project_pcb.h>
 #include "project.h"
-#include "kiway.h"
 #include "3d_cache/3d_cache.h"
 #include "filename_resolver.h"
 
 
+#include <exporters/export_idf.h>
 #include <base_units.h>     // to define pcbIUScale.FromMillimeter(x)
 
 
@@ -599,16 +599,16 @@ static void idf_export_footprint( BOARD* aPcb, FOOTPRINT* aFootprint, IDF3_BOARD
  * Generate IDFv3 compliant board (*.emn) and library (*.emp) files representing the user's
  * PCB design.
  */
-bool PCB_EDIT_FRAME::Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
-                                  bool aUseThou, double aXRef, double aYRef,
-                                  bool aIncludeUnspecified, bool aIncludeDNP )
+bool ExportBoardToIDF3( BOARD* aPcb, PROJECT* aProject, const wxString& aFullFileName,
+                        bool aUseThou, double aXRef, double aYRef, bool aIncludeUnspecified,
+                        bool aIncludeDNP, wxString* aErrorMsg )
 {
     IDF3_BOARD idfBoard( IDF3::CAD_ELEC );
 
     // Switch the locale to standard C (needed to print floating point numbers)
     LOCALE_IO toggle;
 
-    resolver = PROJECT_PCB::Get3DCacheManager( &Prj() )->GetResolver();
+    resolver = PROJECT_PCB::Get3DCacheManager( aProject )->GetResolver();
 
     bool ok = true;
     double scale = pcbIUScale.MM_PER_IU;   // we must scale internal units to mm for IDF
@@ -653,7 +653,8 @@ bool PCB_EDIT_FRAME::Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
         {
             wxString msg;
             msg << _( "IDF Export Failed:\n" ) << From_UTF8( idfBoard.GetError().c_str() );
-            wxMessageBox( msg );
+            if( aErrorMsg )
+                *aErrorMsg = msg;
 
             ok = false;
         }
@@ -662,7 +663,8 @@ bool PCB_EDIT_FRAME::Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
     {
         wxString msg;
         msg << _( "IDF Export Failed:\n" ) << ioe.What();
-        wxMessageBox( msg );
+        if( aErrorMsg )
+            *aErrorMsg = msg;
 
         ok = false;
     }
@@ -670,7 +672,8 @@ bool PCB_EDIT_FRAME::Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
     {
         wxString msg;
         msg << _( "IDF Export Failed:\n" ) << From_UTF8( e.what() );
-        wxMessageBox( msg );
+        if( aErrorMsg )
+            *aErrorMsg = msg;
         ok = false;
     }
 

@@ -26,10 +26,7 @@
 #include <vector>
 
 #include <wx/log.h>
-#include <wx/filedlg.h>
-#include <kiplatform/ui.h>
 
-#include <kiface_base.h>
 #include <macros.h>
 #include <board.h>
 #include <board_design_settings.h>
@@ -43,8 +40,8 @@
 #include <reporter.h>
 #include <richio.h>
 #include <string_utils.h>
-#include <tools/board_editor_control.h>
 #include <exporters/board_exporter_base.h>
+#include <exporters/export_hyperlynx.h>
 #include <board_stackup_manager/stackup_predefined_prms.h>
 
 
@@ -684,31 +681,10 @@ bool HYPERLYNX_EXPORTER::Run()
 }
 
 
-int BOARD_EDITOR_CONTROL::ExportHyperlynx( const TOOL_EVENT& aEvent )
+bool ExportBoardToHyperlynx( BOARD* aBoard, const wxFileName& aPath )
 {
-    wxString    wildcard =  wxT( "*.hyp" );
-    BOARD*      board = m_frame->GetBoard();
-    wxFileName  fn = board->GetFileName();
-
-    fn.SetExt( wxT("hyp") );
-
-    wxFileDialog dlg( m_frame, _( "Export Hyperlynx Layout" ), fn.GetPath(), fn.GetFullName(),
-                      wildcard, wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
-
-    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
-
-    if( dlg.ShowModal() != wxID_OK )
-        return 0;
-
-    fn = dlg.GetPath();
-
-    // always enforce filename extension, user may not have entered it.
-    fn.SetExt( wxT( "hyp" ) );
-
     HYPERLYNX_EXPORTER exporter;
-    exporter.SetBoard( board );
-    exporter.SetOutputFilename( fn );
-    exporter.Run();
-
-    return 0;
+    exporter.SetBoard( aBoard );
+    exporter.SetOutputFilename( aPath );
+    return exporter.Run();
 }

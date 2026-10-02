@@ -22,6 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <dialogs/sch_text_syntax_help.h>
 #include "tools/sch_inspection_tool.h"
 #include "dialog_change_symbols.h"
 
@@ -307,7 +308,7 @@ int SCH_INSPECTION_TOOL::ShowBusSyntaxHelp( const TOOL_EVENT& aEvent )
         return 0;
     }
 
-    m_busSyntaxHelp = SCH_TEXT::ShowSyntaxHelp( m_frame );
+    m_busSyntaxHelp = ShowSchTextSyntaxHelp( m_frame );
     return 0;
 }
 

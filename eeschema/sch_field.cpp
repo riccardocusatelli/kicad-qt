@@ -34,7 +34,6 @@
 #include <string_utils.h>
 #include <geometry/geometry_utils.h>
 #include <trace_helpers.h>
-#include <tools/sch_navigate_tool.h>
 #include <font/outline_font.h>
 #include "sim/sim_lib_mgr.h"
 #include <properties/property.h>
@@ -860,48 +859,16 @@ bool SCH_FIELD::HasHypertext() const
 }
 
 
-void SCH_FIELD::DoHypertextAction( EDA_DRAW_FRAME* aFrame, const VECTOR2I& aMousePos ) const
+wxString SCH_FIELD::GetHypertextTarget() const
 {
-    constexpr int START_ID = 1;
-
-    wxString href;
-
+    // Intersheet references offer a choice of pages; SCH_NAVIGATE_TOOL handles them.
     if( m_id == FIELD_T::INTERSHEET_REFS )
-    {
-        SCH_LABEL_BASE* label = static_cast<SCH_LABEL_BASE*>( m_parent );
-        SCH_SHEET_PATH* sheet = &label->Schematic()->CurrentSheet();
-        wxMenu          menu;
+        return wxEmptyString;
 
-        std::vector<std::pair<wxString, wxString>> pages;
+    if( IsURL( GetShownText( false ) ) || m_name == SIM_LIBRARY::LIBRARY_FIELD )
+        return GetShownText( false );
 
-        label->GetIntersheetRefs( sheet, &pages );
-
-        for( int i = 0; i < (int) pages.size(); ++i )
-        {
-            menu.Append( i + START_ID,
-                         wxString::Format( _( "Go to Page %s (%s)" ), pages[i].first, pages[i].second ) );
-        }
-
-        menu.AppendSeparator();
-        menu.Append( 999 + START_ID, _( "Back to Previous Selected Sheet" ) );
-
-        int sel = aFrame->GetPopupMenuSelectionFromUser( menu ) - START_ID;
-
-        if( sel >= 0 && sel < (int) pages.size() )
-            href = wxT( "#" ) + pages[sel].first;
-        else if( sel == 999 )
-            href = SCH_NAVIGATE_TOOL::g_BackLink;
-    }
-    else if( IsURL( GetShownText( false ) ) || m_name == SIM_LIBRARY::LIBRARY_FIELD )
-    {
-        href = GetShownText( false );
-    }
-
-    if( !href.IsEmpty() )
-    {
-        SCH_NAVIGATE_TOOL* navTool = aFrame->GetToolManager()->GetTool<SCH_NAVIGATE_TOOL>();
-        navTool->HypertextCommand( href );
-    }
+    return wxEmptyString;
 }
 
 

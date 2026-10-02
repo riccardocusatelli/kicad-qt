@@ -1329,26 +1329,6 @@ bool EXPORTER_PCB_VRML::ExportVRML_File( PROJECT* aProject, wxString *aMessages,
     return success;
 }
 
-bool PCB_EDIT_FRAME::ExportVRML_File( const wxString& aFullFileName, double aMMtoWRMLunit,
-                                      bool aIncludeUnspecified, bool aIncludeDNP,
-                                      bool aExport3DFiles, bool aUseRelativePaths,
-                                      const wxString& a3D_Subdir,
-                                      double aXRef, double aYRef )
-{
-    bool     success;
-    wxString msgs;
-    EXPORTER_VRML model3d( GetBoard() );
-
-    success = model3d.ExportVRML_File( &Prj(), &msgs, aFullFileName, aMMtoWRMLunit,
-                                       aIncludeUnspecified, aIncludeDNP,
-                                       aExport3DFiles, aUseRelativePaths,
-                                       a3D_Subdir, aXRef, aYRef );
-
-    if( !msgs.IsEmpty() )
-        wxMessageBox( msgs );
-
-    return success;
-}
 
 
 void EXPORTER_PCB_VRML::ExportFp3DModelsAsLinkedFile( const wxString& aFullFileName )

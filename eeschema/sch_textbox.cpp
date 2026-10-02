@@ -36,7 +36,6 @@
 #include <trigo.h>
 #include <geometry/geometry_utils.h>
 #include <sch_textbox.h>
-#include <tools/sch_navigate_tool.h>
 #include <markup_parser.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
@@ -346,14 +345,12 @@ bool SCH_TEXTBOX::HasHoveredHypertext() const
 }
 
 
-void SCH_TEXTBOX::DoHypertextAction( EDA_DRAW_FRAME* aFrame, const VECTOR2I& aMousePos ) const
+wxString SCH_TEXTBOX::GetHypertextTarget() const
 {
-    SCH_NAVIGATE_TOOL* navTool = aFrame->GetToolManager()->GetTool<SCH_NAVIGATE_TOOL>();
-
     if( HasHyperlink() )
-        navTool->HypertextCommand( m_hyperlink );
-    else if( !m_activeUrl.IsEmpty() )
-        navTool->HypertextCommand( m_activeUrl );
+        return m_hyperlink;
+
+    return m_activeUrl;
 }
 
 

@@ -25,17 +25,14 @@
 /* build_BOM_from_board.cpp */
 
 
-#include <confirm.h>
 #include <macros.h>
 #include <string_utils.h>
 #include <board.h>
 #include <project.h>
 #include <wildcards_and_files_ext.h>
 #include <footprint.h>
-#include <tools/board_editor_control.h>
-#include <wx/filedlg.h>
+#include <build_BOM_from_board.h>
 #include <vector>
-#include <kiplatform/ui.h>
 
 
 /* creates a BOM list from board
@@ -65,41 +62,12 @@ public:
 };
 
 
-int BOARD_EDITOR_CONTROL::GenBOMFileFromBoard( const TOOL_EVENT& aEvent )
+bool WriteBoardBOM( BOARD* aBoard, const wxString& aFullFileName )
 {
-    BOARD*     board = m_frame->GetBoard();
-    wxFileName fn;
-    FILE*      fp_bom;
-
-    if( board->Footprints().empty() )
-    {
-        m_frame->ShowInfoBarError( _( "Cannot export BOM: there are no footprints on the PCB." ) );
-        return 0;
-    }
-
-    /* Set the file extension: */
-    fn = board->GetFileName();
-    fn.SetExt( FILEEXT::CsvFileExtension );
-
-    wxString pro_dir = wxPathOnly( m_frame->Prj().GetProjectFullName() );
-
-    wxFileDialog dlg( m_frame, _( "Save Bill of Materials" ), pro_dir, fn.GetFullName(),
-                      FILEEXT::CsvFileWildcard(), wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
-
-    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
-
-    if( dlg.ShowModal() == wxID_CANCEL )
-        return 0;
-
-    fn = dlg.GetPath();
-
-    fp_bom = wxFopen( fn.GetFullPath(), wxT( "wt" ) );
+    FILE* fp_bom = wxFopen( aFullFileName, wxT( "wt" ) );
 
     if( fp_bom == nullptr )
-    {
-        DisplayError( m_frame, wxString::Format( _( "Failed to create file '%s'." ), fn.GetFullPath() ) );
-        return 0;
-    }
+        return false;
 
     // Write header:
     wxString msg = wxT( "\"" );
@@ -114,7 +82,7 @@ int BOARD_EDITOR_CONTROL::GenBOMFileFromBoard( const TOOL_EVENT& aEvent )
     // Build list
     std::vector<BOM_ENTRY> list;
 
-    for( FOOTPRINT* footprint : board->Footprints() )
+    for( FOOTPRINT* footprint : aBoard->Footprints() )
     {
         if( footprint->GetAttributes() & FP_EXCLUDE_FROM_BOM )
             continue;
@@ -185,5 +153,5 @@ int BOARD_EDITOR_CONTROL::GenBOMFileFromBoard( const TOOL_EVENT& aEvent )
 
     fclose( fp_bom );
 
-    return 0;
+    return true;
 }

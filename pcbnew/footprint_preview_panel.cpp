@@ -41,6 +41,7 @@
 #include <wx/stattext.h>
 #include <project_pcb.h>
 #include <core/ki_assert.h>
+#include <settings/common_settings.h>
 
 
 FOOTPRINT_PREVIEW_PANEL::FOOTPRINT_PREVIEW_PANEL( KIWAY* aKiway, wxWindow* aParent,

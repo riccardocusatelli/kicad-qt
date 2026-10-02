@@ -26,6 +26,9 @@
 #include <eeschema_id.h>
 #include <tools/sch_actions.h>
 #include <tools/sch_navigate_tool.h>
+#include <sch_field.h>
+#include <sch_label.h>
+#include <wx/menu.h>
 #include <common.h>
 #include "eda_doc.h"
 #include <core/ki_assert.h>
@@ -73,6 +76,50 @@ void SCH_NAVIGATE_TOOL::CleanHistory()
         m_navIndex = m_navHistory.begin();
     else
         m_navIndex = --m_navHistory.end();
+}
+
+
+void SCH_NAVIGATE_TOOL::HypertextAction( const SCH_ITEM* aItem )
+{
+    constexpr int START_ID = 1;
+
+    wxString href;
+
+    const SCH_FIELD* field = dynamic_cast<const SCH_FIELD*>( aItem );
+
+    if( field && field->GetId() == FIELD_T::INTERSHEET_REFS )
+    {
+        SCH_LABEL_BASE* label = static_cast<SCH_LABEL_BASE*>( field->GetParent() );
+        SCH_SHEET_PATH* sheet = &label->Schematic()->CurrentSheet();
+        wxMenu          menu;
+
+        std::vector<std::pair<wxString, wxString>> pages;
+
+        label->GetIntersheetRefs( sheet, &pages );
+
+        for( int i = 0; i < (int) pages.size(); ++i )
+        {
+            menu.Append( i + START_ID,
+                         wxString::Format( _( "Go to Page %s (%s)" ), pages[i].first, pages[i].second ) );
+        }
+
+        menu.AppendSeparator();
+        menu.Append( 999 + START_ID, _( "Back to Previous Selected Sheet" ) );
+
+        int sel = m_frame->GetPopupMenuSelectionFromUser( menu ) - START_ID;
+
+        if( sel >= 0 && sel < (int) pages.size() )
+            href = wxT( "#" ) + pages[sel].first;
+        else if( sel == 999 )
+            href = g_BackLink;
+    }
+    else
+    {
+        href = aItem->GetHypertextTarget();
+    }
+
+    if( !href.IsEmpty() )
+        HypertextCommand( href );
 }
 
 

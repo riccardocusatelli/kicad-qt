@@ -29,10 +29,13 @@
 #include <set>
 
 #include <dcode.h>
+#include <widgets/msgpanel_item.h>
 #include <gerber_draw_item.h>
 #include <am_primitive.h>
 #include <aperture_macro.h>
 #include <gbr_netlist_metadata.h>
+
+class UNITS_PROVIDER;
 
 typedef std::vector<GERBER_DRAW_ITEM*> GERBER_DRAW_ITEMS;
 
@@ -296,7 +299,10 @@ public:
      *
      * @param aMainFrame The #GERBVIEW_FRAME to display messages.
      */
-    void DisplayImageInfo( GERBVIEW_FRAME* aMainFrame );
+    /**
+     * Describe the image parameters (valid for the whole file) for the message panel.
+     */
+    void GetImageInfo( UNITS_PROVIDER* aUnitsProvider, std::vector<MSG_PANEL_ITEM>& aList ) const;
 
     /**
      * Set the offset and rotation to draw a file image

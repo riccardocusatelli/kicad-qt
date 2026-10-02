@@ -23,7 +23,10 @@
 
 #pragma once
 
+#include <functional>
 #include <mutex>
+
+#include <wx/string.h>
 
 class PROJECT;
 class SEARCH_STACK;
@@ -39,6 +42,16 @@ public:
      */
     static LEGACY_SYMBOL_LIBS* LegacySchLibs( PROJECT* aProject );
 
+    /**
+     * Report a failure to load the legacy symbol libraries: either @a aMissingLibs (the
+     * libraries not found, one per line) or @a aError (an I/O error) is set.
+     */
+    using LEGACY_LIBS_ERROR_HANDLER =
+            std::function<void( const wxString& aMissingLibs, const wxString& aError )>;
+
+    /// Set by the schematic editor to show the error.  Without a handler errors are logged.
+    static void SetLegacyLibsErrorHandler( LEGACY_LIBS_ERROR_HANDLER aHandler );
+
     /// Accessor for Eeschema search stack.
     static SEARCH_STACK* SchSearchS( PROJECT* aProject );
 
@@ -50,4 +63,6 @@ private:
 
     /// Used to synchronise access to SymbolLibAdapter
     static std::mutex s_libAdapterMutex;
+
+    static LEGACY_LIBS_ERROR_HANDLER s_legacyLibsErrorHandler;
 };

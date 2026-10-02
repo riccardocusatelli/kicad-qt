@@ -21,16 +21,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <confirm.h>
+#include <exporters/export_footprint_associations.h>
 #include <string_utils.h>
 #include <macros.h>
 #include <board.h>
 #include <footprint.h>
 #include <project.h>
 #include <wildcards_and_files_ext.h>
-#include <tools/board_editor_control.h>
-#include <wx/filedlg.h>
-#include <kiplatform/ui.h>
 
 
 
@@ -61,31 +58,3 @@ bool RecreateCmpFile( BOARD * aBrd, const wxString& aFullCmpFileName )
 
     return true;
 }
-
-
-int BOARD_EDITOR_CONTROL::ExportCmpFile( const TOOL_EVENT& aEvent )
-{
-    // Build the .cmp file name from the board name
-    BOARD*     board = m_frame->GetBoard();
-    wxString   projectDir = wxPathOnly( m_frame->Prj().GetProjectFullName() );
-    wxFileName fn = board->GetFileName();
-
-    fn.SetExt( FILEEXT::FootprintAssignmentFileExtension );
-
-    wxFileDialog dlg( m_frame, _( "Save Footprint Association File" ), projectDir, fn.GetFullName(),
-                      FILEEXT::FootprintAssignmentFileWildcard(),
-                      wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
-
-    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
-
-    if( dlg.ShowModal() == wxID_CANCEL )
-        return 0;
-
-    wxString path = dlg.GetPath();
-
-    if( !RecreateCmpFile( board, path ) )
-        DisplayError( m_frame, wxString::Format( _( "Failed to create file '%s'." ), path ) );
-
-    return 0;
-}
-

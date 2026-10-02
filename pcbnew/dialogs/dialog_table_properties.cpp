@@ -21,6 +21,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <dialogs/pcb_text_syntax_help.h>
 #include "dialog_table_properties.h"
 
 #include <wx/hyperlink.h>
@@ -465,5 +466,5 @@ void DIALOG_TABLE_PROPERTIES::onSize( wxSizeEvent& aEvent )
 
 void DIALOG_TABLE_PROPERTIES::onSyntaxHelp( wxHyperlinkEvent& aEvent )
 {
-    m_helpWindow = PCB_TEXT::ShowSyntaxHelp( this );
+    m_helpWindow = ShowPcbTextSyntaxHelp( this );
 }

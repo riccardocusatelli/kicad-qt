@@ -39,8 +39,6 @@
 
 #include <wx/log.h>
 
-#include <confirm.h>            // DisplayErrorMessage()
-#include <gestfich.h>           // EDA_FileSelector()
 #include <locale_io.h>
 #include <macros.h>
 #include <math/util.h>          // for KiROUND
@@ -73,38 +71,6 @@ using namespace DSN;
 // I am guessing non convex polygons with holes linked could create issues with any Router.
 #define EXPORT_CUSTOM_PADS_CONVEX_HULL
 
-
-bool PCB_EDIT_FRAME::ExportSpecctraFile( const wxString& aFullFilename )
-{
-    BASE_SCREEN* screen = GetScreen();
-    bool         wasModified = screen->IsContentModified();
-    wxString     errorText;
-    bool         ok = true;
-
-    try
-    {
-        DSN::ExportBoardToSpecctraFile( GetBoard(), aFullFilename );
-    }
-    catch( const IO_ERROR& ioe )
-    {
-        ok = false;
-
-        // copy the error string to safe place, ioe is in this scope only.
-        errorText = ioe.What();
-    }
-
-    // The two calls to FOOTPRINT::Flip() in ExportBoardToSpecctraFile both set the modified flag,
-    // yet their actions cancel each other out, so it should be ok to clear the flag.
-    if( !wasModified )
-        screen->SetContentModified( false );
-
-    if( ok )
-        SetStatusText( wxString( _( "BOARD exported OK." ) ) );
-    else
-        DisplayErrorMessage( this, _( "Unable to export, please fix and try again" ), errorText );
-
-    return ok;
-}
 
 namespace DSN
 {

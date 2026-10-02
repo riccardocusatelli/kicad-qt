@@ -173,6 +173,7 @@ set( EESCHEMA_DLGS
     dialogs/dialog_tablecell_properties.cpp
     dialogs/dialog_tablecell_properties_base.cpp
     dialogs/dialog_text_properties.cpp
+    dialogs/sch_text_syntax_help.cpp
     dialogs/dialog_text_properties_base.cpp
     dialogs/dialog_update_from_pcb.cpp
     dialogs/dialog_update_from_pcb_base.cpp
@@ -541,7 +542,7 @@ add_custom_command(
        from ${CMAKE_CURRENT_SOURCE_DIR}/sch_text_help.md"
     )
 
-set_source_files_properties( sch_text.cpp
+set_source_files_properties( dialogs/sch_text_syntax_help.cpp
     PROPERTIES
         OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sch_text_help_md.h
     )

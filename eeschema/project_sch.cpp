@@ -17,8 +17,6 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <confirm.h>
-#include <dialogs/html_message_box.h>
 #include <kiface_base.h>
 #include <pgm_base.h>
 #include <core/utf8.h>
@@ -26,8 +24,16 @@
 #include <libraries/legacy_symbol_library.h>
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
-std::mutex        PROJECT_SCH::s_libAdapterMutex;
+std::mutex                             PROJECT_SCH::s_libAdapterMutex;
+PROJECT_SCH::LEGACY_LIBS_ERROR_HANDLER PROJECT_SCH::s_legacyLibsErrorHandler;
+
+
+void PROJECT_SCH::SetLegacyLibsErrorHandler( LEGACY_LIBS_ERROR_HANDLER aHandler )
+{
+    s_legacyLibsErrorHandler = std::move( aHandler );
+}
 
 // non-member so it can be moved easily, and kept REALLY private.
 // Do NOT Clear() in here.
@@ -106,23 +112,19 @@ LEGACY_SYMBOL_LIBS* PROJECT_SCH::LegacySchLibs( PROJECT* aProject )
         }
         catch( const PARSE_ERROR& pe )
         {
-            wxString    lib_list = UTF8( pe.inputLine );
-            wxWindow*   parent = Pgm().App().GetTopWindow();
+            wxString libList = UTF8( pe.inputLine );
 
-            // parent of this dialog cannot be NULL since that breaks the Kiway() chain.
-            HTML_MESSAGE_BOX dlg( parent, _( "Not Found" ) );
-
-            dlg.MessageSet( _( "The following libraries were not found:" ) );
-            dlg.ListSet( lib_list );
-            dlg.Layout();
-
-            dlg.ShowModal();
+            if( s_legacyLibsErrorHandler )
+                s_legacyLibsErrorHandler( libList, wxEmptyString );
+            else
+                KI_LOG_WARNING( "Legacy symbol libraries not found: %s", libList );
         }
         catch( const IO_ERROR& ioe )
         {
-            wxWindow* parent = Pgm().App().GetTopWindow();
-
-            DisplayError( parent, ioe.What() );
+            if( s_legacyLibsErrorHandler )
+                s_legacyLibsErrorHandler( wxEmptyString, ioe.What() );
+            else
+                KI_LOG_WARNING( "Cannot load legacy symbol libraries: %s", ioe.What() );
         }
     }
 

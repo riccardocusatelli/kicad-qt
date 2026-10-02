@@ -25,7 +25,6 @@
 #define DPI_SCALING__H
 
 #include <kicommon.h>
-#include <wx/window.h>
 
 /**
  * Class to handle configuration and automatic determination of the DPI

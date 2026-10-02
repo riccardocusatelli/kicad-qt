@@ -22,6 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <dialogs/pcb_text_syntax_help.h>
 #include "dialog_text_properties.h"
 
 #include <wx/valnum.h>
@@ -605,5 +606,5 @@ void DIALOG_TEXT_PROPERTIES::onMultiLineTCLostFocus( wxFocusEvent& event )
 
 void DIALOG_TEXT_PROPERTIES::onSyntaxHelp( wxHyperlinkEvent& aEvent )
 {
-    m_helpWindow = PCB_TEXT::ShowSyntaxHelp( this );
+    m_helpWindow = ShowPcbTextSyntaxHelp( this );
 }

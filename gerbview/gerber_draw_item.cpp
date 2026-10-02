@@ -26,7 +26,6 @@
 #include <trigo.h>
 #include <bitmaps.h>
 #include <eda_text.h>
-#include <gerbview_frame.h>
 #include <convert_basic_shapes_to_polygon.h>
 #include <gerber_draw_item.h>
 #include <gerber_file_image.h>
@@ -38,6 +37,9 @@
 
 #include <wx/msgdlg.h>
 #include <core/ki_assert.h>
+#include <eda_units.h>
+#include <gbr_display_options.h>
+#include <msg_panel_context.h>
 
 GERBER_DRAW_ITEM::GERBER_DRAW_ITEM( GERBER_FILE_IMAGE* aGerberImageFile ) :
     EDA_ITEM( nullptr, GERBER_DRAW_ITEM_T )
@@ -554,7 +556,7 @@ void GERBER_DRAW_ITEM::Print( wxDC* aDC, const VECTOR2I& aOffset, GBR_DISPLAY_OP
     default:
         if( !show_err )
         {
-            wxMessageBox( wxT( "Trace_Segment() type error" ) );
+            KI_FAIL_MSG( "Trace_Segment() type error" );
             show_err = true;
         }
 

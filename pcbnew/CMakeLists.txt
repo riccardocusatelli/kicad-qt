@@ -156,6 +156,7 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_target_properties.cpp
     dialogs/dialog_target_properties_base.cpp
     dialogs/dialog_text_properties.cpp
+    dialogs/pcb_text_syntax_help.cpp
     dialogs/dialog_text_properties_base.cpp
     dialogs/dialog_textbox_properties.cpp
     dialogs/dialog_textbox_properties_base.cpp
@@ -259,7 +260,6 @@ set( PCBNEW_EXPORTERS
     exporters/export_ipc2581.cpp
     exporters/export_odbpp.cpp
     exporters/export_footprint_associations.cpp
-    exporters/export_gencad.cpp
     exporters/export_gencad_writer.cpp
     exporters/export_idf.cpp
     exporters/step/exporter_step.cpp
@@ -428,6 +428,7 @@ set( PCBNEW_CLASS_SRCS
     pcbnew_config.cpp
     pcbnew_jobs_handler.cpp
     pcbnew_jobs_handler_gui.cpp
+    pcb_edit_frame_export.cpp
     pcbnew_printout.cpp
     pcbnew_settings.cpp
     pcbplot.cpp
@@ -451,6 +452,7 @@ set( PCBNEW_CLASS_SRCS
 
     tools/array_tool.cpp
     tools/board_editor_control.cpp
+    tools/board_editor_control_export.cpp
     tools/board_inspection_tool.cpp
     tools/board_reannotate_tool.cpp
     tools/convert_tool.cpp
@@ -748,11 +750,8 @@ add_custom_command(
 
 add_custom_target(pcb_text_help_md_gen DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/pcb_text_help_md.h)
 
-# pcbcommon compiles pcb_text.cpp which includes pcb_text_help_md.h
-add_dependencies( pcbcommon pcb_text_help_md_gen )
-
 # Add pcb_text_help_md.h as a dependency for source files that will include it
-set_source_files_properties(pcb_text.cpp
+set_source_files_properties(dialogs/pcb_text_syntax_help.cpp
     PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/pcb_text_help_md.h)
 set_source_files_properties(dialogs/dialog_text_properties.cpp
     PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/pcb_text_help_md.h)

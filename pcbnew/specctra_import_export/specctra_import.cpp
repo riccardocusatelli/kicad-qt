@@ -33,7 +33,6 @@
 
 #include "specctra.h"
 
-#include <confirm.h>            // DisplayErrorMessage()
 #include <fast_float/fast_float.h>
 #include <project/net_settings.h>
 #include <locale_io.h>
@@ -53,49 +52,6 @@
 
 using namespace DSN;
 
-bool PCB_EDIT_FRAME::ImportSpecctraSession( const wxString& fullFileName )
-{
-    // To avoid issues with undo/redo lists (dangling pointers) clear the lists
-    // todo: use undo/redo feature
-    ClearUndoRedoList();
-
-    if( GetCanvas() )    // clear view:
-    {
-        for( PCB_TRACK* track : GetBoard()->Tracks() )
-            GetCanvas()->GetView()->Remove( track );
-    }
-
-    try
-    {
-        DSN::ImportSpecctraSession( GetBoard(), fullFileName );
-    }
-    catch( const IO_ERROR& ioe )
-    {
-        wxString msg = _( "Board may be corrupted, do not save it.\n Fix problem and try again" );
-
-        wxString extra = ioe.What();
-
-        DisplayErrorMessage( this, msg, extra );
-        return false;
-    }
-
-    OnModify();
-
-    if( GetCanvas() )    // Update view:
-    {
-        // Update footprint positions
-
-        // add imported tracks (previous tracks are removed, therefore all are new)
-        for( PCB_TRACK* track : GetBoard()->Tracks() )
-            GetCanvas()->GetView()->Add( track );
-    }
-
-    SetStatusText( wxString( _( "Session file imported and merged OK." ) ) );
-
-    Refresh();
-
-    return true;
-}
 
 
 namespace DSN {

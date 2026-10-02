@@ -97,7 +97,7 @@ public:
 
     bool HasHypertext() const override;
 
-    void DoHypertextAction( EDA_DRAW_FRAME* aFrame, const VECTOR2I& aMousePos ) const override;
+    wxString GetHypertextTarget() const override;
 
     /**
      * Return the field name (not translated).

@@ -31,6 +31,7 @@
 #include <iostream>
 #include <map>
 #include <algorithm>
+#include <wx/arrstr.h>
 #include <wx/string.h>
 #include <font/font_metrics.h>
 #include <font/glyph.h>

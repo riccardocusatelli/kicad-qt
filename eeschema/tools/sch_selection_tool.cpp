@@ -61,6 +61,7 @@
 #include <tools/sch_line_wire_bus_tool.h>
 #include <tools/sch_editor_control.h>
 #include <tools/sch_tool_utils.h>
+#include <tools/sch_navigate_tool.h>
 #include <trigo.h>
 #include <view/view.h>
 #include <view/view_controls.h>
@@ -616,7 +617,9 @@ int SCH_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
                 }
                 else if( collector[0]->HasHoveredHypertext() )
                 {
-                    collector[ 0 ]->DoHypertextAction( m_frame, evt->Position() );
+                    if( SCH_NAVIGATE_TOOL* navTool = m_toolMgr->GetTool<SCH_NAVIGATE_TOOL>() )
+                        navTool->HypertextAction( collector[0] );
+
                     selCancelled = true;
                 }
                 else if( collector[0]->IsBrightened() )

@@ -691,7 +691,9 @@ void GERBVIEW_FRAME::UpdateTitleAndInfo()
         title += wxT( " \u2014 " ) + _( "Gerber Viewer" );
         SetTitle( title );
 
-        gerber->DisplayImageInfo( this );
+        std::vector<MSG_PANEL_ITEM> imageInfo;
+        gerber->GetImageInfo( this, imageInfo );
+        SetMsgPanel( imageInfo );
 
         // Display Image Name and Layer Name (from the current gerber data):
         wxString status;

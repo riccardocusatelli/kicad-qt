@@ -23,6 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <dialogs/html_message_box.h>
 #include <core/json_serializers.h>
 #include <pgm_base.h>
 #include <kiface_base.h>
@@ -470,6 +471,28 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
     start_common( aCtlBits );
 
     m_jobHandler = std::make_unique<EESCHEMA_JOBS_HANDLER_GUI>( aKiway );
+
+    PROJECT_SCH::SetLegacyLibsErrorHandler(
+            []( const wxString& aMissingLibs, const wxString& aError )
+            {
+                // parent of this dialog cannot be NULL since that breaks the Kiway() chain.
+                wxWindow* parent = Pgm().App().GetTopWindow();
+
+                if( !aMissingLibs.IsEmpty() )
+                {
+                    HTML_MESSAGE_BOX dlg( parent, _( "Not Found" ) );
+
+                    dlg.MessageSet( _( "The following libraries were not found:" ) );
+                    dlg.ListSet( aMissingLibs );
+                    dlg.Layout();
+
+                    dlg.ShowModal();
+                }
+                else
+                {
+                    DisplayError( parent, aError );
+                }
+            } );
 
     if( m_start_flags & KFCTL_CLI )
     {

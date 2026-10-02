@@ -3083,7 +3083,7 @@ void PAD::doCheckPad( PCB_LAYER_ID aLayer, UNITS_PROVIDER* aUnitsProvider, bool 
     // (like a solder paste creating a solder paste area on a neighbor pad or on the solder mask)
     // So we could ask for user to confirm the choice
     // For now we just check for disappearing paste
-    wxSize paste_size;
+    VECTOR2I paste_size;
     int    paste_margin = GetLocalSolderPasteMargin().value_or( 0 );
     auto   mratio = GetLocalSolderPasteMarginRatio();
 

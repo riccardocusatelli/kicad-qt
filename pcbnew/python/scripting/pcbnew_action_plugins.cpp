@@ -45,6 +45,7 @@
 #include <kiplatform/app.h>
 #include "../../scripting/python_scripting.h"
 #include <core/ki_assert.h>
+#include <settings/common_settings.h>
 
 PYTHON_ACTION_PLUGIN::PYTHON_ACTION_PLUGIN( PyObject* aAction )
 {

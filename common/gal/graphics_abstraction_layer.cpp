@@ -31,6 +31,8 @@
 #include <font/font.h>
 
 #include <math/util.h>      // for KiROUND
+#include <pgm_base.h>
+#include <settings/common_settings.h>
 
 #include <cmath>
 
@@ -99,6 +101,17 @@ GAL::~GAL()
 {
 }
 
+
+
+void GAL::computeWorldScale()
+{
+    m_worldScale = m_screenDPI * m_worldUnitLength * m_zoomFactor;
+
+    PGM_BASE* pgm = PgmOrNull();
+
+    if( pgm && pgm->GetCommonSettings() )
+        m_worldScale *= pgm->GetCommonSettings()->m_Appearance.zoom_correction_factor;
+}
 
 void GAL::OnGalDisplayOptionsChanged( const GAL_DISPLAY_OPTIONS& aOptions )
 {

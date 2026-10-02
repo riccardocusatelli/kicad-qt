@@ -22,6 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <dialogs/sch_text_syntax_help.h>
 #include <widgets/bitmap_button.h>
 #include <widgets/color_swatch.h>
 #include <widgets/font_choice.h>
@@ -166,7 +167,7 @@ void DIALOG_SHEET_PIN_PROPERTIES::onOKButton( wxCommandEvent& event )
 
 void DIALOG_SHEET_PIN_PROPERTIES::OnSyntaxHelp( wxHyperlinkEvent& aEvent )
 {
-    m_helpWindow = SCH_LABEL_BASE::ShowSyntaxHelp( this );
+    m_helpWindow = ShowSchTextSyntaxHelp( this );
 }
 
 

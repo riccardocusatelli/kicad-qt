@@ -79,7 +79,7 @@ public:
 
     bool HasHypertext() const override;
     bool HasHoveredHypertext() const override;
-    void DoHypertextAction( EDA_DRAW_FRAME* aFrame, const VECTOR2I& aMousePos ) const override;
+    wxString GetHypertextTarget() const override;
 
     void SetExcludedFromSim( bool aExclude, const SCH_SHEET_PATH* aInstance = nullptr,
                              const wxString& aVariantName = wxEmptyString ) override
@@ -174,7 +174,6 @@ public:
     void Show( int nestLevel, std::ostream& os ) const override;
 #endif
 
-    static HTML_MESSAGE_BOX* ShowSyntaxHelp( wxWindow* aParentWindow );
 
 protected:
     void swapData( SCH_ITEM* aItem ) override;

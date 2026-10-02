@@ -35,6 +35,8 @@ class SCH_EDIT_FRAME;
 /**
  * Handle actions specific to the schematic editor.
  */
+class SCH_ITEM;
+
 class SCH_NAVIGATE_TOOL : public wxEvtHandler, public SCH_TOOL_BASE<SCH_EDIT_FRAME>
 {
 public:
@@ -66,6 +68,9 @@ public:
     int Next( const TOOL_EVENT& aEvent );
 
     void HypertextCommand( const wxString& aHref );
+
+    /// Follow the hypertext active on @a aItem (for intersheet references, ask which page).
+    void HypertextAction( const SCH_ITEM* aItem );
 
     bool CanGoBack();
     bool CanGoForward();

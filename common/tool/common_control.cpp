@@ -52,6 +52,7 @@
 #include <widgets/kistatusbar.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
+#include <settings/common_settings.h>
 
 #define URL_GET_INVOLVED wxS( "https://go.kicad.org/contribute/" )
 #define URL_DONATE wxS( "https://go.kicad.org/app-donate" )

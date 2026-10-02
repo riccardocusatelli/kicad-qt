@@ -23,6 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <dialogs/sch_text_syntax_help.h>
 #include <sch_edit_frame.h>
 #include <symbol_edit_frame.h>
 #include <widgets/bitmap_button.h>
@@ -600,7 +601,7 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataFromWindow()
 
 void DIALOG_TEXT_PROPERTIES::OnFormattingHelp( wxHyperlinkEvent& aEvent )
 {
-    m_helpWindow = SCH_TEXT::ShowSyntaxHelp( this );
+    m_helpWindow = ShowSchTextSyntaxHelp( this );
 }
 
 

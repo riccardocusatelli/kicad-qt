@@ -42,6 +42,7 @@
 
 #include <wx/settings.h>
 #include <core/ki_assert.h>
+#include <settings/common_settings.h>
 
 
 wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER>

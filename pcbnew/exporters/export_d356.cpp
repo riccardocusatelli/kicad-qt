@@ -31,14 +31,7 @@
 #include <vector>
 #include <cctype>
 
-#include <wx/checkbox.h>
-#include <wx/filedlg.h>
-#include <wx/filedlgcustomize.h>
-#include <kiplatform/ui.h>
 
-#include <confirm.h>
-#include <gestfich.h>
-#include <kiface_base.h>
 #include <trigo.h>
 #include <build_version.h>
 #include <macros.h>
@@ -53,7 +46,6 @@
 #include <string_utils.h>
 
 #include <math/util.h>      // for KiROUND
-#include <tools/board_editor_control.h>
 
 
 // Compute the access code for a pad. Returns -1 if there is no copper
@@ -391,83 +383,4 @@ bool IPC356D_WRITER::Write( const wxString& aFilename )
     fclose( file );
 
     return true;
-}
-
-
-
-
-// Subclass for wxFileDialogCustomizeHook to add the checkbox
-class D365_CUSTOMIZE_HOOK : public wxFileDialogCustomizeHook
-{
-public:
-
-public:
-    D365_CUSTOMIZE_HOOK( bool aDoNotExportUnconnectedPads = false ) :
-            m_doNotExportUnconnectedPads( aDoNotExportUnconnectedPads ),
-            m_cb(nullptr)
-    {};
-
-    virtual void AddCustomControls( wxFileDialogCustomize& customizer ) override
-    {
-#ifdef __WXMAC__
-        customizer.AddStaticText( wxT( "\n\n" ) );  // Increase height of static box
-#endif
-
-        m_cb = customizer.AddCheckBox( _( "Do not export unconnected pads" ) );
-        m_cb->SetValue( m_doNotExportUnconnectedPads );
-    }
-
-    virtual void TransferDataFromCustomControls() override
-    {
-        m_doNotExportUnconnectedPads = m_cb->GetValue();
-    }
-
-    bool GetDoNotExportUnconnectedPads() const { return m_doNotExportUnconnectedPads; }
-private:
-
-    bool m_doNotExportUnconnectedPads;
-    wxFileDialogCheckBox* m_cb;
-
-    wxDECLARE_NO_COPY_CLASS( D365_CUSTOMIZE_HOOK );
-};
-
-
-int BOARD_EDITOR_CONTROL::GenD356File( const TOOL_EVENT& aEvent )
-{
-    wxFileName  fn = m_frame->GetBoard()->GetFileName();
-    wxString    ext, wildcard;
-
-    ext = FILEEXT::IpcD356FileExtension;
-    wildcard = FILEEXT::IpcD356FileWildcard();
-    fn.SetExt( ext );
-
-    wxString pro_dir = wxPathOnly( m_frame->Prj().GetProjectFullName() );
-
-    wxFileDialog dlg( m_frame, _( "Generate IPC-D-356 netlist file" ), pro_dir, fn.GetFullName(),
-                      wildcard, wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
-    D365_CUSTOMIZE_HOOK customizeHook( m_frame->GetPcbNewSettings()->m_ExportD356.doNotExportUnconnectedPads );
-    dlg.SetCustomizeHook( customizeHook );
-
-    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
-
-    if( dlg.ShowModal() == wxID_CANCEL )
-        return 0;
-
-    IPC356D_WRITER writer( m_frame->GetBoard() );
-    bool doNotExportUnconnectedPads = customizeHook.GetDoNotExportUnconnectedPads();
-    writer.SetDoNotExportUnconnectedPads( doNotExportUnconnectedPads );
-    m_frame->GetPcbNewSettings()->m_ExportD356.doNotExportUnconnectedPads = doNotExportUnconnectedPads;
-
-    if( writer.Write( dlg.GetPath() ) )
-    {
-        DisplayInfoMessage( m_frame, wxString::Format( _( "IPC-D-356 netlist file created:\n'%s'." ),
-                                        dlg.GetPath() ) );
-    }
-    else
-    {
-        DisplayError( m_frame, wxString::Format( _( "Failed to create file '%s'." ),
-                                                 dlg.GetPath() ) );
-    }
-
-    return 0;
 }

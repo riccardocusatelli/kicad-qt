@@ -40,8 +40,6 @@
 #include <gal/gal_display_options.h>
 #include <font/stroke_font.h>
 #include <geometry/eda_angle.h>
-#include <pgm_base.h>
-#include <settings/common_settings.h>
 #include <core/ki_assert.h>
 
 class SHAPE_LINE_CHAIN;
@@ -1064,15 +1062,7 @@ protected:
 
 
     /// Compute the scaling factor for the world->screen matrix
-    inline void computeWorldScale()
-    {
-        m_worldScale = m_screenDPI * m_worldUnitLength * m_zoomFactor;
-
-        PGM_BASE* pgm = PgmOrNull();
-
-        if( pgm && pgm->GetCommonSettings() )
-            m_worldScale *= pgm->GetCommonSettings()->m_Appearance.zoom_correction_factor;
-    }
+    void computeWorldScale();
 
     /**
      * Compute minimum grid spacing from the grid settings.

@@ -42,7 +42,6 @@
 #include <default_values.h>
 #include <wx/debug.h>
 #include <wx/log.h>
-#include <dialogs/html_message_box.h>
 #include <project/project_file.h>
 #include <project/net_settings.h>
 #include <core/kicad_algo.h>
@@ -2394,26 +2393,6 @@ BITMAPS SCH_HIERLABEL::GetMenuImage() const
     return BITMAPS::add_hierarchical_label;
 }
 
-
-HTML_MESSAGE_BOX* SCH_TEXT::ShowSyntaxHelp( wxWindow* aParentWindow )
-{
-    wxString msg =
-#include "sch_text_help_md.h"
-            ;
-
-    HTML_MESSAGE_BOX* dlg = new HTML_MESSAGE_BOX( aParentWindow, _( "Syntax Help" ) );
-    wxSize            sz( 320, 320 );
-
-    dlg->SetMinSize( dlg->ConvertDialogToPixels( sz ) );
-    dlg->SetDialogSizeInDU( sz.x, sz.y );
-
-    wxString html_txt;
-    ConvertMarkdown2Html( wxGetTranslation( msg ), html_txt );
-    dlg->AddHTML_Text( html_txt );
-    dlg->ShowModeless();
-
-    return dlg;
-}
 
 
 static struct SCH_LABEL_DESC

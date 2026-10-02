@@ -56,6 +56,7 @@ set( GERBVIEW_SRCS
     files.cpp
     gerbview_settings.cpp
     gerbview_frame.cpp
+    gerbview_frame_load.cpp
     job_file_reader.cpp
     menubar.cpp
     readgerb.cpp

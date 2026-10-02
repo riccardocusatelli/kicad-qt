@@ -41,7 +41,6 @@
 #include <pcb_painter.h>
 #include <trigo.h>
 #include <string_utils.h>
-#include <dialogs/html_message_box.h>
 #include <geometry/shape_compound.h>
 #include <geometry/geometry_utils.h>
 #include <callback_gal.h>
@@ -723,26 +722,6 @@ double PCB_TEXT::Similarity( const BOARD_ITEM& aOther ) const
     return EDA_TEXT::Similarity( other );
 }
 
-
-HTML_MESSAGE_BOX* PCB_TEXT::ShowSyntaxHelp( wxWindow* aParentWindow )
-{
-    wxString msg =
-#include "pcb_text_help_md.h"
-            ;
-
-    HTML_MESSAGE_BOX* dlg = new HTML_MESSAGE_BOX( aParentWindow, _( "Syntax Help" ) );
-    wxSize            sz( 320, 320 );
-
-    dlg->SetMinSize( dlg->ConvertDialogToPixels( sz ) );
-    dlg->SetDialogSizeInDU( sz.x, sz.y );
-
-    wxString html_txt;
-    ConvertMarkdown2Html( wxGetTranslation( msg ), html_txt );
-    dlg->AddHTML_Text( html_txt );
-    dlg->ShowModeless();
-
-    return dlg;
-}
 
 
 static struct PCB_TEXT_DESC

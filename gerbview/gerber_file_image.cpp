@@ -23,7 +23,8 @@
  */
 
 #include <gerbview.h>
-#include <gerbview_frame.h>
+#include <units_provider.h>
+#include <widgets/msgpanel_item.h>
 #include <gerber_file_image.h>
 #include <macros.h>
 #include <X2_gerber_attributes.h>
@@ -385,53 +386,49 @@ void GERBER_FILE_IMAGE::FinishStepAndRepeatBlock()
 
 
 /**
- * Function DisplayImageInfo
- * has knowledge about the frame and how and where to put status information
- * about this object into the frame's message panel.
- * Display info about Image Parameters.
+ * Describe the image parameters for the message panel.
  * These parameters are valid for the entire file, and must set only once
  * (If more than once, only the last value is used)
  * Some are deprecated
  */
-void GERBER_FILE_IMAGE::DisplayImageInfo(  GERBVIEW_FRAME* aMainFrame  )
+void GERBER_FILE_IMAGE::GetImageInfo( UNITS_PROVIDER* aUnitsProvider,
+                                      std::vector<MSG_PANEL_ITEM>& aList ) const
 {
     wxString msg;
 
-    aMainFrame->ClearMsgPanel();
-
     // Display the Gerber variant (X1 / X2
-    aMainFrame->AppendMsgPanel( _( "Format" ), m_IsX2_file ? wxT( "X2" ) : wxT( "X1" ) );
+    aList.emplace_back( _( "Format" ), m_IsX2_file ? wxT( "X2" ) : wxT( "X1" ) );
 
     // Display Image name (Image specific). IM command (Image Name) is deprecated
     // So non empty image name is very rare, probably never found
     if( !m_ImageName.IsEmpty() )
-        aMainFrame->AppendMsgPanel( _( "Image name" ), m_ImageName );
+        aList.emplace_back( _( "Image name" ), m_ImageName );
 
     // Display graphic layer number used to draw this Image
     // (not a Gerber parameter but is also image specific)
     msg.Printf( wxT( "%d" ), m_GraphicLayer + 1 );
-    aMainFrame->AppendMsgPanel( _( "Graphic layer" ), msg );
+    aList.emplace_back( _( "Graphic layer" ), msg );
 
     // Display Image rotation (Image specific)
     msg.Printf( wxT( "%d" ), m_ImageRotation );
-    aMainFrame->AppendMsgPanel( _( "Img Rot." ), msg );
+    aList.emplace_back( _( "Img Rot." ), msg );
 
     // Display Image polarity (Image specific)
     msg = m_ImageNegative ? _("Negative") : _("Normal");
-    aMainFrame->AppendMsgPanel( _( "Polarity" ), msg );
+    aList.emplace_back( _( "Polarity" ), msg );
 
     // Display Image justification and offset for justification (Image specific)
     msg = m_ImageJustifyXCenter ? _("Center") : _("Normal");
-    aMainFrame->AppendMsgPanel( _( "X Justify" ), msg );
+    aList.emplace_back( _( "X Justify" ), msg );
 
     msg = m_ImageJustifyYCenter ? _("Center") : _("Normal");
-    aMainFrame->AppendMsgPanel( _( "Y Justify" ), msg );
+    aList.emplace_back( _( "Y Justify" ), msg );
 
     msg.Printf( wxT( "X=%s Y=%s" ),
-                aMainFrame->MessageTextFromValue( m_ImageJustifyOffset.x ),
-                aMainFrame->MessageTextFromValue( m_ImageJustifyOffset.y ) );
+                aUnitsProvider->MessageTextFromValue( m_ImageJustifyOffset.x ),
+                aUnitsProvider->MessageTextFromValue( m_ImageJustifyOffset.y ) );
 
-    aMainFrame->AppendMsgPanel( _( "Image Justify Offset" ), msg );
+    aList.emplace_back( _( "Image Justify Offset" ), msg );
 }
 
 

@@ -159,7 +159,6 @@ public:
      * @param aParentWindow Parent window for the help dialog
      * @return Pointer to the modeless help dialog
      */
-    static HTML_MESSAGE_BOX* ShowSyntaxHelp( wxWindow* aParentWindow );
 
     /**
      * @return the text rotation for drawings and plotting the footprint rotation is taken

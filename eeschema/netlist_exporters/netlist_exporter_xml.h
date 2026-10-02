@@ -30,7 +30,6 @@
 
 #include <project.h>
 
-#include <sch_edit_frame.h>
 
 class CONNECTION_GRAPH;
 class XNODE;

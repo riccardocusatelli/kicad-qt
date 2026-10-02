@@ -21,6 +21,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <dialogs/sch_text_syntax_help.h>
 #include <gr_text.h>
 #include <scintilla_tricks.h>
 #include <sch_edit_frame.h>
@@ -457,5 +458,5 @@ void DIALOG_TABLECELL_PROPERTIES::OnFormattingHelp( wxHyperlinkEvent& aEvent )
         return;
     }
 
-    m_helpWindow = SCH_TEXT::ShowSyntaxHelp( this );
+    m_helpWindow = ShowSchTextSyntaxHelp( this );
 }
