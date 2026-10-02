@@ -32,6 +32,7 @@
 #include <system_error>
 
 #include "netlist_exporter_cadstar.h"
+#include <sch_screen.h>
 
 /* Generate CADSTAR net list. */
 static wxString StartLine( wxT( "." ) );

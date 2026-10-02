@@ -22,6 +22,7 @@
 #include <project/component_class_settings.h>
 #include <settings/parameters.h>
 #include <core/ki_assert.h>
+#include <wx/arrstr.h>
 
 constexpr int componentClassSettingsSchemaVersion = 0;
 

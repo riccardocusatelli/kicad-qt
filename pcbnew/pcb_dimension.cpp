@@ -25,6 +25,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <string_utils.h>
 #include <bitmaps.h>
 #include <msg_panel_context.h>
 #include <widgets/msgpanel_item.h>
@@ -809,7 +810,7 @@ const BOX2I PCB_DIMENSION_BASE::GetBoundingBox() const
 wxString PCB_DIMENSION_BASE::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Dimension '%s' on %s" ),
-                             aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ),
+                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ),
                              GetLayerName() );
 }
 

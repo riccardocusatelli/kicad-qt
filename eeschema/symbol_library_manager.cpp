@@ -45,6 +45,7 @@
 
 #include "lib_logger.h"
 #include <core/ki_assert.h>
+#include <sch_base_frame.h>
 
 
 SYMBOL_LIBRARY_MANAGER::SYMBOL_LIBRARY_MANAGER( SCH_BASE_FRAME& aFrame ) :

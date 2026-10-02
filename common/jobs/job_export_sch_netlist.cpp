@@ -21,6 +21,7 @@
 #include <jobs/job_export_sch_netlist.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 
 std::map<JOB_EXPORT_SCH_NETLIST::FORMAT, wxString> jobNetlistNameLookup =

@@ -25,6 +25,8 @@
 class PANEL_GAL_OPTIONS;
 
 
+class APP_SETTINGS_BASE;
+
 class PANEL_BASE_DISPLAY_OPTIONS : public wxPanel
 {
 public:

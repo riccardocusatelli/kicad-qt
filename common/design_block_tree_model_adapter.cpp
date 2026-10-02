@@ -32,6 +32,7 @@
 #include <design_block_tree_model_adapter.h>
 #include <kiplatform/ui.h>
 #include <kiway.h>
+#include <eda_base_frame.h>
 
 wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER>
 DESIGN_BLOCK_TREE_MODEL_ADAPTER::Create( EDA_BASE_FRAME* aParent, DESIGN_BLOCK_LIBRARY_ADAPTER* aLibs,

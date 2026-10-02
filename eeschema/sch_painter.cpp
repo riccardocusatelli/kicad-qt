@@ -72,6 +72,9 @@
 #include "symb_transforms_utils.h"
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <eeschema_settings.h>
+#include <lib_symbol.h>
+#include <macros.h>
 
 namespace KIGFX
 {

@@ -21,6 +21,7 @@
 #include <jobs/job_pcb_drc.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 JOB_PCB_DRC::JOB_PCB_DRC() :
     JOB_RC( "drc" ),

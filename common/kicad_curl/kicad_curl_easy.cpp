@@ -42,6 +42,7 @@
 
 #include <kiplatform/policy.h>
 #include <policy_keys.h>
+#include <wx/utils.h>
 
 struct CURL_PROGRESS
 {

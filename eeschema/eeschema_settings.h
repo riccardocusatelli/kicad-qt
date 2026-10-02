@@ -31,6 +31,7 @@ class wxWindow;
 #include <remote_provider_settings.h>
 #include <settings/app_settings.h>
 #include <sim/sim_preferences.h>
+#include <wx/gdicmn.h>
 
 using KIGFX::COLOR4D;
 

@@ -39,6 +39,7 @@
 #include <settings/settings_manager.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <sch_edit_frame.h>
 
 // Note:
 // We need to switch between sheets to plot a hierarchy and update references and sheet number

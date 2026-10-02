@@ -35,6 +35,7 @@
 
 #include <netlist.h>
 #include "netlist_exporter_orcadpcb2.h"
+#include <sch_screen.h>
 
 
 bool NETLIST_EXPORTER_ORCADPCB2::WriteNetlist( const wxString& aOutFileName,

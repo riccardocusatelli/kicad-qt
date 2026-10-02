@@ -71,6 +71,7 @@
 #include "sch_shape.h"
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <sch_screen.h>
 
 /**
  * Flag to enable profiling of the TestDanglingEnds() function.

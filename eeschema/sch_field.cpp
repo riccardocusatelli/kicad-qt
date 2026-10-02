@@ -40,6 +40,13 @@
 #include <properties/property_mgr.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <schematic.h>
+#include <lib_symbol.h>
+#include <sch_sheet.h>
+#include <sch_symbol.h>
+#include <sch_label.h>
+#include <msg_panel_context.h>
+#include <i18n_utility.h>
 
 static const std::vector<KICAD_T> labelTypes = { SCH_LABEL_LOCATE_ANY_T };
 
@@ -798,7 +805,7 @@ void SCH_FIELD::CalcEdit( const VECTOR2I& aPosition )
 
 wxString SCH_FIELD::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    wxString content = aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() );
+    wxString content = aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() );
 
     if( content.IsEmpty() )
     {

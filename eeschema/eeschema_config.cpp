@@ -45,6 +45,8 @@
 #include <tool/tool_manager.h>
 #include <tools/sch_selection_tool.h>
 #include <core/ki_assert.h>
+#include <wx/msgdlg.h>
+#include <sch_edit_frame.h>
 
 
 /// Helper for all the old plotting/printing code while it still exists
@@ -195,7 +197,16 @@ void SCH_EDIT_FRAME::saveProjectSettings()
         if( success && layoutfn.IsOk() && !layoutfn.FileExists() && layoutfn.HasName() )
         {
             if( layoutfn.DirExists() && layoutfn.IsDirWritable() )
-                DS_DATA_MODEL::GetTheInstance().Save( layoutfn.GetFullPath() );
+            {
+                try
+                {
+                    DS_DATA_MODEL::GetTheInstance().Save( layoutfn.GetFullPath() );
+                }
+                catch( const IO_ERROR& ioe )
+                {
+                    wxMessageBox( ioe.What(), _( "Error writing drawing sheet file" ) );
+                }
+            }
         }
     }
 

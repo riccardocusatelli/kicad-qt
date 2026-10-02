@@ -58,6 +58,11 @@
 #include <algorithm>
 #include <core/arraydim.h>
 #include <core/ki_assert.h>
+#include <sch_field.h>
+#include <sch_pin.h>
+#include <sch_symbol.h>
+#include <eeschema_settings.h>
+#include <sch_screen.h>
 
 #define FIELD_PADDING schIUScale.MilsToIU( 15 )       // arbitrarily chosen for aesthetics
 #define WIRE_V_SPACING schIUScale.MilsToIU( 100 )

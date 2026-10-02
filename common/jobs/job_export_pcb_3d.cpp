@@ -22,6 +22,7 @@
 #include <jobs/job_registry.h>
 #include <base_units.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 
 /// A coordinate held in PCB internal units, as every consumer of EXPORTER_STEP_PARAMS expects,

@@ -44,6 +44,7 @@
 #include <core/profile.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <wx/intl.h>
 
 #ifdef KICAD_GAL_PROFILE
 #include <wx/log.h>

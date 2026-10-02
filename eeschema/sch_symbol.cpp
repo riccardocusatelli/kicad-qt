@@ -50,6 +50,7 @@
 #include <properties/property_mgr.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
 
 
 std::unordered_map<TRANSFORM, int> SCH_SYMBOL::s_transformToOrientationCache;
@@ -3081,8 +3082,8 @@ SCH_ITEM* SCH_SYMBOL::GetDrawItem( const VECTOR2I& aPosition, KICAD_T aType )
 wxString SCH_SYMBOL::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Symbol %s [%s]" ),
-                             KIUI::EllipsizeMenuText( GetField( FIELD_T::REFERENCE )->GetText() ),
-                             KIUI::EllipsizeMenuText( GetLibId().GetLibItemName() ) );
+                             EllipsizeMenuText( GetField( FIELD_T::REFERENCE )->GetText() ),
+                             EllipsizeMenuText( GetLibId().GetLibItemName() ) );
 }
 
 

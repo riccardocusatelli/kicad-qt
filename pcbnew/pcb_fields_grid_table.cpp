@@ -32,6 +32,7 @@
 #include <widgets/grid_text_button_helpers.h>
 #include <widgets/grid_text_helpers.h>
 #include <core/ki_assert.h>
+#include <pcb_base_frame.h>
 
 enum
 {

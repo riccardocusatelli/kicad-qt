@@ -99,6 +99,7 @@
 
 #include <plotters/plotters_pslike.h>
 #include <core/ki_assert.h>
+#include <wx/image.h>
 
 // Note:
 // During tests, we (JPC) found issues when the coordinates used 6 digits in mantissa

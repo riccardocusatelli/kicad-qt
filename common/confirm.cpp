@@ -32,6 +32,8 @@
 #include <wx/choicdlg.h>
 #include <wx/crt.h>
 #include <core/ki_log.h>
+#include <kiplatform/app.h>
+#include <wx/log.h>
 /**
  * Flag to enable confirmation dialog debugging output.
  *
@@ -312,3 +314,24 @@ int SelectSingleOption( wxWindow* aParent, const wxString& aTitle,
     return dlg.GetSelection();
 }
 
+
+bool WarnUserIfOperatingSystemUnsupported()
+{
+    if( !KIPLATFORM::APP::IsOperatingSystemUnsupported() )
+        return false;
+
+    // wxLogGui shows queued messages when a modal opens
+    // A second modal inside this dialog makes GTK fail
+    wxLog::FlushActive();
+
+    KICAD_MESSAGE_DIALOG dialog( nullptr,
+                                 _( "This operating system is not supported "
+                                    "by KiCad and its dependencies." ),
+                                 _( "Unsupported Operating System" ), wxOK | wxICON_EXCLAMATION );
+
+    dialog.SetExtendedMessage( _( "Any issues with KiCad on this system cannot "
+                                  "be reported to the official bugtracker." ) );
+    dialog.ShowModal();
+
+    return true;
+}

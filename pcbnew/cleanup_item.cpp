@@ -24,6 +24,8 @@
 
 #include <cleanup_item.h>
 #include <core/ki_assert.h>
+#include <wx/intl.h>
+#include <i18n_utility.h>
 
 
 CLEANUP_ITEM::CLEANUP_ITEM( int aErrorCode )

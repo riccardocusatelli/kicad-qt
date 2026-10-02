@@ -40,6 +40,7 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
 
 
 SCH_JUNCTION::SCH_JUNCTION( const VECTOR2I& aPosition, int aDiameter, SCH_LAYER_ID aLayer ) :

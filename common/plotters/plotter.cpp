@@ -45,6 +45,7 @@
 #include <math/util.h>      // for KiROUND
 #include <convert_basic_shapes_to_polygon.h>
 #include <core/ki_assert.h>
+#include <wx/image.h>
 
 PLOTTER::PLOTTER( const PROJECT* aProject ) :
     m_project( aProject )

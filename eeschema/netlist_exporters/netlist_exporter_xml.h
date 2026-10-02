@@ -29,6 +29,7 @@
 #include <netlist_exporter_base.h>
 
 #include <project.h>
+#include <unordered_set>
 
 
 class CONNECTION_GRAPH;

@@ -141,12 +141,6 @@ KICOMMON_API wxString DescribeRef( const wxString& aRef );
 KICOMMON_API const wxString ResolveUriByEnvVars( const wxString& aUri, const PROJECT* aProject );
 
 
-/**
- * Checks if the operating system is explicitly unsupported and displays a disclaimer message box
- *
- * @return true if the operating system is unsupported
- */
-KICOMMON_API bool WarnUserIfOperatingSystemUnsupported();
 
 
 #endif // INCLUDE__COMMON_H_

@@ -155,6 +155,8 @@
 
 #include <macros.h>
 #include <convert_basic_shapes_to_polygon.h>
+#include <wx/colour.h>
+#include <wx/image.h>
 
 static constexpr double USER_PREC = 1e-4;
 static constexpr double USER_ANGLE_PREC = 1e-6;

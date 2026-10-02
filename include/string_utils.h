@@ -540,4 +540,11 @@ struct LOAD_MESSAGE;
 KICOMMON_API std::vector<LOAD_MESSAGE> ExtractLibraryLoadErrors( const wxString& aErrorString,
                                                                   int aSeverity );
 
+/**
+ * Ellipsize text (at the end) to be no more than 36 characters.
+ *
+ * @return shortened text ending with an ellipsis.
+ */
+KICOMMON_API wxString EllipsizeMenuText( const wxString& aString );
+
 #endif  // STRING_UTILS_H

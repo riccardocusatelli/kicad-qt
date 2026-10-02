@@ -29,6 +29,8 @@
 #ifndef  I18N_UTILITY_H
 #define  I18N_UTILITY_H
 
+#include <wx/intl.h>
+
 // A define to allow translation of strings which must be stored in English (for instance
 // because they are used both as keywords and as messages in dialogs
 // We do not want to use the _( x ) usual macro from wxWidgets, which calls wxGetTranslation(),
@@ -37,5 +39,12 @@
 // Therefore translation tools have to use the "_" and the "_HKI" prefix to extract
 // strings to translate
 #define _HKI( x ) wxT( x )
+
+/**
+ * Used for holding indeterminate values, such as with multiple selections
+ * holding different values or controls which do not wish to set a value.
+ */
+#define INDETERMINATE_STATE _( "-- mixed values --" )
+#define INDETERMINATE_ACTION _( "-- leave unchanged --" )
 
 #endif // I18N_UTILITY_H

@@ -38,6 +38,9 @@
 #include <wx/config.h>
 #include <default_values.h>    // For some default values
 #include <core/ki_assert.h>
+#include <eda_draw_frame.h>
+#include <wx/aui/framemanager.h>
+#include <wx/window.h>
 
 using namespace T_BOMCFG_T;     // for the BOM_CFG_PARSER parser and its keywords
 

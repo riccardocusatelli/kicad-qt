@@ -46,6 +46,7 @@
 
 #include <gendrill_writer_base.h>
 #include <core/ki_assert.h>
+#include <wx/image.h>
 
 
 /* Helper function for sorting hole list.

@@ -21,6 +21,7 @@
 #include <jobs/job_export_pcb_gerber.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 
 JOB_EXPORT_PCB_GERBER::JOB_EXPORT_PCB_GERBER( const std::string& aType ) :

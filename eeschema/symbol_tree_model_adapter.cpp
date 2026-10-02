@@ -36,6 +36,7 @@
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <sch_base_frame.h>
 
 
 wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER>

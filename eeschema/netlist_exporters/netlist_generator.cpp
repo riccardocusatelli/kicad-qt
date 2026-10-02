@@ -45,6 +45,7 @@
 #include <netlist_exporter_allegro.h>
 #include <netlist_exporter_pads.h>
 #include <netlist_exporter_xml.h>
+#include <sch_edit_frame.h>
 
 
 bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileName,

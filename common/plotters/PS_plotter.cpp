@@ -37,6 +37,7 @@
 
 #include <plotters/plotters_pslike.h>
 #include <core/ki_assert.h>
+#include <wx/image.h>
 
 
 /* Forward declaration of the font width metrics

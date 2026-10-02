@@ -46,6 +46,8 @@
 #include <import_gfx/svg_import_plugin.h>
 #include <import_gfx/graphics_importer_lib_symbol.h>
 #include <import_gfx/graphics_importer_sch.h>
+#include <sch_symbol.h>
+#include <sch_screen.h>
 
 
 // clang-format off

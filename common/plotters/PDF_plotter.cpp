@@ -66,6 +66,8 @@ PDF_PLOTTER::~PDF_PLOTTER() = default;
 #define GLM_ENABLE_EXPERIMENTAL //for older glm to enable euler angles
 #include <glm/glm.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <wx/image.h>
+#include <wx/colour.h>
 
 
 std::string PDF_PLOTTER::encodeStringForPlotter( const wxString& aText )

@@ -21,6 +21,7 @@
 #include <jobs/job_export_pcb_hpgl.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 
 JOB_EXPORT_PCB_HPGL::JOB_EXPORT_PCB_HPGL() :

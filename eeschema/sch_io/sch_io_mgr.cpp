@@ -42,6 +42,7 @@
 #include <wildcards_and_files_ext.h>
 #include <string_utils.h>
 #include <libraries/library_table_parser.h>
+#include <kictl_flags.h>
 
 #define FMT_UNIMPLEMENTED   _( "Plugin '%s' does not implement the '%s' function." )
 #define FMT_NOTFOUND        _( "Plugin type '%s' is not found." )

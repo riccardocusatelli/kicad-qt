@@ -73,6 +73,7 @@ static void AddFootprintToHistory( const wxString& aName )
 
 
 #include <bitmaps.h>
+#include <pcb_edit_frame.h>
 bool FOOTPRINT_EDIT_FRAME::LoadFootprintFromBoard( FOOTPRINT* aFootprint )
 {
     bool is_last_fp_from_brd = IsCurrentFPFromBoard();

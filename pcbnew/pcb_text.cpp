@@ -511,7 +511,7 @@ wxString PCB_TEXT::GetTextTypeDescription() const
 
 wxString PCB_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    wxString content = aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() );
+    wxString content = aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() );
 
     if( FOOTPRINT* parentFP = GetParentFootprint() )
     {

@@ -77,6 +77,7 @@
 
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_assert.h>
+#include <eeschema_settings.h>
 
 
 EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY_SERVICES* aKiway ) :

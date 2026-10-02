@@ -213,7 +213,7 @@ bool PCB_FIELD::Matches( const EDA_SEARCH_DATA& aSearchData, void* aAuxData ) co
 
 wxString PCB_FIELD::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    wxString content = aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() );
+    wxString content = aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() );
     wxString ref = GetParentFootprint()->GetReference();
 
     switch( m_id )

@@ -30,6 +30,7 @@
 #include <system_error>
 
 #include "netlist_exporter_pads.h"
+#include <sch_screen.h>
 
 bool NETLIST_EXPORTER_PADS::WriteNetlist( const wxString& aOutFileName,
                                              unsigned /* aNetlistOptions */,

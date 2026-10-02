@@ -33,6 +33,7 @@
 #include <regex>
 #include <fmt.h>
 #include <fmt/ranges.h>
+#include <sch_screen.h>
 
 bool NETLIST_EXPORTER_ALLEGRO::WriteNetlist( const wxString& aOutFileName,
                                              unsigned /* aNetlistOptions */,

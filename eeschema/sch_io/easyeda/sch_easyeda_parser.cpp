@@ -43,6 +43,8 @@
 #include <import_gfx/graphics_importer_lib_symbol.h>
 #include <import_gfx/graphics_importer_sch.h>
 #include <core/ki_assert.h>
+#include <sch_symbol.h>
+#include <sch_screen.h>
 
 
 // clang-format off

@@ -50,6 +50,7 @@
 #include <pcbplot.h>
 #include <reporter.h>
 #include <wildcards_and_files_ext.h>
+#include <wx/colour.h>
 
 
 GERBER_JOBFILE_WRITER::GERBER_JOBFILE_WRITER( BOARD* aPcb, REPORTER* aReporter )

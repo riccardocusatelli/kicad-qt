@@ -1901,3 +1901,17 @@ std::vector<LOAD_MESSAGE> ExtractLibraryLoadErrors( const wxString& aErrorString
     return messages;
 }
 
+
+wxString EllipsizeMenuText( const wxString& aString )
+{
+    wxString msg = UnescapeString( aString );
+
+    msg.Replace( wxT( "\n" ), wxT( " " ) );
+    msg.Replace( wxT( "\r" ), wxT( " " ) );
+    msg.Replace( wxT( "\t" ), wxT( " " ) );
+
+    if( msg.Length() > 36 )
+        msg = msg.Left( 34 ) + wxT( "..." );
+
+    return msg;
+}

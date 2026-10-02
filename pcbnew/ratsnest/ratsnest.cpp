@@ -25,6 +25,7 @@
 #include <board.h>
 #include <footprint.h>
 #include <ratsnest/ratsnest_data.h>
+#include <pcb_base_frame.h>
 
 /**
  * Function Compile_Ratsnest

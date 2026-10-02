@@ -25,6 +25,7 @@
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_assert.h>
 #include <core/ki_log.h>
+#include <ki_exception.h>
 
 std::mutex                             PROJECT_SCH::s_libAdapterMutex;
 PROJECT_SCH::LEGACY_LIBS_ERROR_HANDLER PROJECT_SCH::s_legacyLibsErrorHandler;

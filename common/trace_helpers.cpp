@@ -30,6 +30,7 @@
 #include <trace_helpers.h>
 
 #include <wx/tokenzr.h>
+#include <wx/event.h>
 
 const wxChar* const traceFindReplace = wxT( "KICAD_FIND_REPLACE" );
 const wxChar* const kicadTraceCoords = wxT( "KICAD_COORDS" );

@@ -38,6 +38,7 @@
 
 #include <wx/log.h>
 #include <core/ki_assert.h>
+#include <eda_draw_frame.h>
 
 const wxString PG_UNIT_EDITOR::EDITOR_NAME = wxS( "KiCadUnitEditor" );
 const wxString PG_CHECKBOX_EDITOR::EDITOR_NAME = wxS( "KiCadCheckboxEditor" );

@@ -22,6 +22,8 @@
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
 #include <wildcards_and_files_ext.h>
+#include <wx/intl.h>
+#include <wx/filename.h>
 
 NLOHMANN_JSON_SERIALIZE_ENUM( JOB_EXPORT_PCB_IPC2581::IPC2581_UNITS,
                               {

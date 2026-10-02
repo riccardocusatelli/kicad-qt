@@ -96,6 +96,7 @@ public:
      * Save the description in a file.
      *
      * @param aFullFileName the filename of the file to created.
+     * @throw IO_ERROR if the file cannot be created.
      */
     void Save( const wxString& aFullFileName );
 

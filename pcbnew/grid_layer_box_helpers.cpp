@@ -35,6 +35,7 @@
 #include <pcb_layer_box_selector.h>
 #include <settings/color_settings.h>
 #include <widgets/layer_presentation.h>
+#include <wx/dc.h>
 
 
 //-------- Custom wxGridCellRenderers --------------------------------------------------

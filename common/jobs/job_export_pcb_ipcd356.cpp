@@ -22,6 +22,8 @@
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
 #include <wildcards_and_files_ext.h>
+#include <wx/intl.h>
+#include <wx/filename.h>
 
 JOB_EXPORT_PCB_IPCD356::JOB_EXPORT_PCB_IPCD356() :
         JOB( "ipcd356", false ),

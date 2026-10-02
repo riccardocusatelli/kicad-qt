@@ -53,6 +53,8 @@
 #include <wx/log.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <sch_screen.h>
+#include <msg_panel_context.h>
 
 SCH_SHEET::SCH_SHEET( EDA_ITEM* aParent, const VECTOR2I& aPos, VECTOR2I aSize ) :
         SCH_ITEM( aParent, SCH_SHEET_T ),
@@ -1337,7 +1339,7 @@ wxString SCH_SHEET::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFu
 
     return wxString::Format( _( "Hierarchical Sheet '%s'" ),
                              aFull ? sheetnameField->GetShownText( false )
-                                   : KIUI::EllipsizeMenuText( sheetnameField->GetText() ) );
+                                   : EllipsizeMenuText( sheetnameField->GetText() ) );
 }
 
 

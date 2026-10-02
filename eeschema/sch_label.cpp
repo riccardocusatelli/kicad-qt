@@ -56,6 +56,7 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
 
 
 /* Coding polygons for global symbol graphic shapes.
@@ -1673,7 +1674,7 @@ const BOX2I SCH_LABEL::GetBodyBoundingBox( const RENDER_SETTINGS* aSettings ) co
 
 wxString SCH_LABEL::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    return wxString::Format( _( "Label '%s'" ), aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ) );
+    return wxString::Format( _( "Label '%s'" ), aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
 }
 
 
@@ -1954,7 +1955,7 @@ wxString SCH_DIRECTIVE_LABEL::GetItemDescription( UNITS_PROVIDER* aUnitsProvider
     else
     {
         const SCH_FIELD& firstField = m_fields[0];
-        wxString content = aFull ? firstField.GetShownText( false ) : KIUI::EllipsizeMenuText( firstField.GetText() );
+        wxString content = aFull ? firstField.GetShownText( false ) : EllipsizeMenuText( firstField.GetText() );
 
         if( content.IsEmpty() )
         {
@@ -2238,7 +2239,7 @@ void SCH_GLOBALLABEL::CreateGraphicShape( const RENDER_SETTINGS* aRenderSettings
 wxString SCH_GLOBALLABEL::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Global Label '%s'" ),
-                             aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ) );
+                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
 }
 
 
@@ -2384,7 +2385,7 @@ VECTOR2I SCH_HIERLABEL::GetSchematicTextOffset( const RENDER_SETTINGS* aSettings
 wxString SCH_HIERLABEL::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Hierarchical Label '%s'" ),
-                             aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ) );
+                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
 }
 
 

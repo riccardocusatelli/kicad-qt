@@ -36,6 +36,7 @@
 #include <footprint_edit_frame.h>
 #include <widgets/appearance_controls.h>
 #include <drc/drc_item.h>
+#include <pcb_edit_frame.h>
 
 
 bool PCB_EDIT_FRAME::Clear_Pcb( bool doAskAboutUnsavedChanges, bool aFinal )

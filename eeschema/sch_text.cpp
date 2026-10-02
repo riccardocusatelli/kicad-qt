@@ -48,6 +48,10 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <lib_symbol.h>
+#include <sch_sheet.h>
+#include <widgets/ui_common.h>
+#include <msg_panel_context.h>
 
 
 SCH_TEXT::SCH_TEXT( const VECTOR2I& aPos, const wxString& aText, SCH_LAYER_ID aLayer, KICAD_T aType ) :
@@ -384,7 +388,7 @@ wxString SCH_TEXT::GetHypertextTarget() const
 wxString SCH_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Graphic Text '%s'" ),
-                             aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ) );
+                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
 }
 
 

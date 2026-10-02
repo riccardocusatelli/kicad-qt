@@ -39,6 +39,7 @@
 #include <wx/combo.h>
 #include <refdes_utils.h>
 #include <core/ki_assert.h>
+#include <wx/msgdlg.h>
 
 
 FOOTPRINT_NAME_VALIDATOR::FOOTPRINT_NAME_VALIDATOR( wxString* aValue ) :

@@ -22,6 +22,7 @@
 #include <jobs/job_registry.h>
 #include <jobs/job_pcb_render.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 
 namespace nlohmann

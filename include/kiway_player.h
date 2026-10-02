@@ -31,6 +31,7 @@
 #include <vector>
 #include <kiway_holder.h>
 #include <eda_base_frame.h>
+#include <kictl_flags.h>
 
 class KIWAY;
 class PROJECT;
@@ -71,11 +72,6 @@ public:
     ~KIWAY_PLAYER() throw();
 
     // For the aCtl argument of OpenProjectFiles()
-#define KICTL_NONKICAD_ONLY     (1<<0)   ///< chosen file is non-KiCad according to user
-#define KICTL_KICAD_ONLY        (1<<1)   ///< chosen file is from KiCad according to user
-#define KICTL_CREATE            (1<<2)   ///< caller thinks requested project files may not exist.
-#define KICTL_IMPORT_LIB        (1<<3)   ///< import all footprints into a project library.
-#define KICTL_REVERT            (1<<4)   ///< reverting to a previously-saved (KiCad) file.
 
     /**
      * Open a project or set of files given by @a aFileList.

@@ -43,6 +43,8 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
+#include <sch_label.h>
 
 
 SCH_BUS_ENTRY_BASE::SCH_BUS_ENTRY_BASE( KICAD_T aType, const VECTOR2I& pos, bool aFlipY ) :

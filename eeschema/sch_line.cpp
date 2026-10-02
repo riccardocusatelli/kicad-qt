@@ -46,6 +46,8 @@
 #include <origin_transforms.h>
 #include <math/util.h>
 #include <core/ki_assert.h>
+#include <sch_screen.h>
+#include <msg_panel_context.h>
 
 
 SCH_LINE::SCH_LINE( const VECTOR2I& pos, int layer ) :

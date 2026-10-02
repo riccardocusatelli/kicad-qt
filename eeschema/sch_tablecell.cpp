@@ -29,6 +29,8 @@
 #include <sch_tablecell.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <sch_sheet.h>
+#include <msg_panel_context.h>
 
 
 SCH_TABLECELL::SCH_TABLECELL( int aLineWidth, FILL_T aFillType ) :

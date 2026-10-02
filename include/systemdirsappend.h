@@ -30,6 +30,7 @@
 #define INCLUDE__SYSTEM_DIRS_APPEND_H_
 
 #include <kiface.h>
+#include <kicommon.h>
 
 class SEARCH_STACK;
 

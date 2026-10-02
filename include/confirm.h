@@ -35,6 +35,7 @@
 #include <kicommon.h>
 #include <wx/string.h>
 #include <wx/arrstr.h>
+#include <wx/msgdlg.h>
 
 class wxWindow;
 
@@ -170,5 +171,12 @@ KICOMMON_API int OKOrCancelDialog( wxWindow* aParent, const wxString& aWarning,
 KICOMMON_API int SelectSingleOption( wxWindow* aParent, const wxString& aTitle,
                                      const wxString& aMessage,
                                      const wxArrayString& aOptions );
+
+/**
+ * Checks if the operating system is explicitly unsupported and displays a disclaimer message box
+ *
+ * @return true if the operating system is unsupported
+ */
+KICOMMON_API bool WarnUserIfOperatingSystemUnsupported();
 
 #endif /* __INCLUDE__CONFIRM_H__ */

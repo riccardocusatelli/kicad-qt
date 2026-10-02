@@ -35,6 +35,7 @@
 #include <erc/erc_item.h>
 #include <sch_screen.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
 
 /// Factor to convert the maker unit shape to internal units:
 #define SCALING_FACTOR schIUScale.mmToIU( 0.15 )

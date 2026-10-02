@@ -23,6 +23,7 @@
 #include <wx/colour.h>
 #include <wx/grid.h>
 #include <wx/generic/gridctrl.h>
+#include <wx/dc.h>
 
 class wxGrid;
 

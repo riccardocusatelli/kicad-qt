@@ -48,6 +48,7 @@
  * describes the drawing sheet (can be the default drawing sheet or a custom file).
  */
 
+#include <string_utils.h>
 #include <drawing_sheet/ds_draw_item.h>
 #include <drawing_sheet/ds_data_item.h>
 #include <drawing_sheet/ds_data_model.h>
@@ -59,6 +60,9 @@
 #include <render_settings.h>
 #include <font/font.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
+#include <i18n_utility.h>
+#include <units_provider.h>
 
 
 // ============================ BASE CLASS ==============================
@@ -240,7 +244,7 @@ bool DS_DRAW_ITEM_TEXT::HitTest( const BOX2I& aRect, bool aContains, int aAccura
 wxString DS_DRAW_ITEM_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Text '%s'" ),
-                             aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ) );
+                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
 }
 
 

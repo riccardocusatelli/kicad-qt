@@ -40,6 +40,7 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
 
 
 SCH_RULE_AREA::~SCH_RULE_AREA()

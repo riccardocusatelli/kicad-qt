@@ -59,6 +59,7 @@
 #include <drawing_sheet/ds_painter.h>
 #include <trigo.h>
 #include <core/ki_assert.h>
+#include <wx/intl.h>
 
 using KIGFX::COLOR4D;
 

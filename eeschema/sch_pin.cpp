@@ -41,6 +41,11 @@
 #include <properties/property_mgr.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <default_values.h>
+#include <lib_symbol.h>
+#include <sch_symbol.h>
+#include <sch_connection.h>
+#include <msg_panel_context.h>
 
 wxString FormatStackedPinForDisplay( const wxString& aPinNumber, int aPinLength, int aTextSize, KIFONT::FONT* aFont,
                                      const KIFONT::METRICS& aFontMetrics )

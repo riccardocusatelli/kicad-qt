@@ -92,15 +92,9 @@ public:
             DS_DATA_MODEL_IO(),
             m_fileout( nullptr )
     {
-        try
-        {
-            m_fileout = new PRETTIFIED_FILE_OUTPUTFORMATTER( aFilename );
-            m_out = m_fileout;
-        }
-        catch( const IO_ERROR& ioe )
-        {
-            wxMessageBox( ioe.What(), _( "Error writing drawing sheet file" ) );
-        }
+        // Throws IO_ERROR if the file cannot be created: the caller reports it.
+        m_fileout = new PRETTIFIED_FILE_OUTPUTFORMATTER( aFilename );
+        m_out = m_fileout;
     }
 
     ~DS_DATA_MODEL_FILEIO()
@@ -123,15 +117,8 @@ public:
             DS_DATA_MODEL_IO(),
             m_output( aOutputString )
     {
-        try
-        {
-            m_writer = new STRING_FORMATTER();
-            m_out = m_writer;
-        }
-        catch( const IO_ERROR& ioe )
-        {
-            wxMessageBox( ioe.What(), _( "Error writing drawing sheet file" ) );
-        }
+        m_writer = new STRING_FORMATTER();
+        m_out = m_writer;
     }
 
     ~DS_DATA_MODEL_STRINGIO()

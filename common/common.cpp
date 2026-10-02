@@ -23,10 +23,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <kiplatform/app.h>
 #include <project.h>
 #include <common.h>
-#include <confirm.h>
 #include <env_vars.h>
 #include <advanced_config.h>
 #include <reporter.h>
@@ -809,24 +807,3 @@ bool matchWild( const char* pat, const char* text, bool dot_special )
     }
 }
 
-
-bool WarnUserIfOperatingSystemUnsupported()
-{
-    if( !KIPLATFORM::APP::IsOperatingSystemUnsupported() )
-        return false;
-
-    // wxLogGui shows queued messages when a modal opens
-    // A second modal inside this dialog makes GTK fail
-    wxLog::FlushActive();
-
-    KICAD_MESSAGE_DIALOG dialog( nullptr,
-                                 _( "This operating system is not supported "
-                                    "by KiCad and its dependencies." ),
-                                 _( "Unsupported Operating System" ), wxOK | wxICON_EXCLAMATION );
-
-    dialog.SetExtendedMessage( _( "Any issues with KiCad on this system cannot "
-                                  "be reported to the official bugtracker." ) );
-    dialog.ShowModal();
-
-    return true;
-}

@@ -49,6 +49,10 @@
 #include <api/api_utils.h>
 #include <api/common/types/base_types.pb.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
+#include <wx/intl.h>
+#include <i18n_utility.h>
+#include <widgets/msgpanel_item.h>
 
 
 EDA_SHAPE::EDA_SHAPE( SHAPE_T aType, int aLineWidth, FILL_T aFill ) :

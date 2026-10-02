@@ -43,6 +43,9 @@
 #include <fmt/format.h>
 #include <cmath>
 #include <set>
+#include <sch_screen.h>
+#include <lib_symbol.h>
+#include <sch_symbol.h>
 
 
 // Split PWL argument strings on whitespace while keeping quoted spans intact.

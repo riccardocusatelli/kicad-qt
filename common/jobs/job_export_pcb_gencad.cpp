@@ -21,6 +21,7 @@
 #include <jobs/job_export_pcb_gencad.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 
 JOB_EXPORT_PCB_GENCAD::JOB_EXPORT_PCB_GENCAD() :

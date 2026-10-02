@@ -21,6 +21,7 @@
 #include <jobs/job_export_pcb_svg.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 NLOHMANN_JSON_SERIALIZE_ENUM( JOB_EXPORT_PCB_SVG::GEN_MODE,
                               {

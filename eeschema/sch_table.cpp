@@ -36,6 +36,7 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <widgets/msgpanel_item.h>
 
 
 SCH_TABLE::SCH_TABLE( int aLineWidth ) :

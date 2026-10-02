@@ -35,16 +35,12 @@ class wxBitmapBundle;
 class wxSize;
 class wxTextCtrl;
 class wxTextEntry;
+#include <i18n_utility.h>   // INDETERMINATE_STATE, INDETERMINATE_ACTION
+
 class wxWindow;
 class wxMenuItem;
 class wxMenu;
 
-/**
- * Used for holding indeterminate values, such as with multiple selections
- * holding different values or controls which do not wish to set a value.
- */
-#define INDETERMINATE_STATE _( "-- mixed values --" )
-#define INDETERMINATE_ACTION _( "-- leave unchanged --" )
 
 namespace KIUI
 {
@@ -99,13 +95,6 @@ KICOMMON_API void SelectReferenceNumber( wxTextEntry* aTextEntry );
  * @return shortened text ending with an ellipsis.
  */
 KICOMMON_API wxString EllipsizeStatusText( wxWindow* aWindow, const wxString& aString );
-
-/**
- * Ellipsize text (at the end) to be no more than 36 characters.
- *
- * @return shortened text ending with an ellipsis.
- */
-KICOMMON_API wxString EllipsizeMenuText( const wxString& aString );
 
 /**
  * Check if a input control has focus.

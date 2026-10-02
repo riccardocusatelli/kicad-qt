@@ -59,6 +59,7 @@
 #include <pgm_base.h>
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_assert.h>
+#include <sch_edit_frame.h>
 
 
 /* ERC tests :

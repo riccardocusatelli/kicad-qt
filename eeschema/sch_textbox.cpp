@@ -40,6 +40,9 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <sch_sheet.h>
+#include <widgets/ui_common.h>
+#include <msg_panel_context.h>
 
 
 SCH_TEXTBOX::SCH_TEXTBOX( SCH_LAYER_ID aLayer, int aLineWidth, FILL_T aFillType, const wxString& aText,
@@ -357,7 +360,7 @@ wxString SCH_TEXTBOX::GetHypertextTarget() const
 wxString SCH_TEXTBOX::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Text box '%s'" ),
-                             aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ) );
+                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
 }
 
 

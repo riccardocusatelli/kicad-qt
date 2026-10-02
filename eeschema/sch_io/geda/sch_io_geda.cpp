@@ -75,6 +75,7 @@
 #include <climits>
 #include <vector>
 #include <core/ki_assert.h>
+#include <wx/utils.h>
 
 // Default text size for imported text (50 mils)
 static constexpr int GEDA_DEFAULT_TEXT_SIZE_MILS = 50;

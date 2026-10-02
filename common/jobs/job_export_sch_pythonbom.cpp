@@ -21,6 +21,7 @@
 #include <jobs/job_export_sch_pythonbom.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 
 JOB_EXPORT_SCH_PYTHONBOM::JOB_EXPORT_SCH_PYTHONBOM() :

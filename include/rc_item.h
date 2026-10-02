@@ -32,6 +32,7 @@
 #include <kiid.h>
 #include <reporter.h>
 #include <math/vector2d.h>
+#include <wx/intl.h>
 
 class MARKER_BASE;
 class EDA_BASE_FRAME;

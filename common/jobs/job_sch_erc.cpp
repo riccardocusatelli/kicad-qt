@@ -21,6 +21,7 @@
 #include <jobs/job_sch_erc.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <wx/intl.h>
 
 JOB_SCH_ERC::JOB_SCH_ERC() :
     JOB_RC( "erc" )

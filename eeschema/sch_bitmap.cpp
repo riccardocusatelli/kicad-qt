@@ -41,6 +41,10 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+#include <msg_panel_context.h>
+#include <wx/intl.h>
+#include <i18n_utility.h>
+#include <widgets/msgpanel_item.h>
 
 
 SCH_BITMAP::SCH_BITMAP( const VECTOR2I& pos ) :

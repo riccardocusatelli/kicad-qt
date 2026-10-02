@@ -43,6 +43,7 @@
 
 #include <dialog_symbol_chooser.h>
 #include <core/ki_assert.h>
+#include <sch_edit_frame.h>
 
 PICKED_SYMBOL SCH_BASE_FRAME::PickSymbolFromLibrary( const SYMBOL_LIBRARY_FILTER* aFilter,
                                                      std::vector<PICKED_SYMBOL>&  aHistoryList,

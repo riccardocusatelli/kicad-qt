@@ -32,6 +32,7 @@
 #include <i18n_utility.h>
 #include <units_provider.h>
 #include <core/ki_assert.h>
+#include <sch_edit_frame.h>
 
 
 /**

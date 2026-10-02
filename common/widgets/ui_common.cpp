@@ -217,20 +217,6 @@ wxString KIUI::EllipsizeStatusText( wxWindow* aWindow, const wxString& aString )
 }
 
 
-wxString KIUI::EllipsizeMenuText( const wxString& aString )
-{
-    wxString msg = UnescapeString( aString );
-
-    msg.Replace( wxT( "\n" ), wxT( " " ) );
-    msg.Replace( wxT( "\r" ), wxT( " " ) );
-    msg.Replace( wxT( "\t" ), wxT( " " ) );
-
-    if( msg.Length() > 36 )
-        msg = msg.Left( 34 ) + wxT( "..." );
-
-    return msg;
-}
-
 
 void KIUI::SelectReferenceNumber( wxTextEntry* aTextEntry )
 {
