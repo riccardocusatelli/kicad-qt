@@ -33,7 +33,7 @@ public:
     PCB_EXPORT_ODB_COMMAND();
 
 protected:
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
 };
 } // namespace CLI
 

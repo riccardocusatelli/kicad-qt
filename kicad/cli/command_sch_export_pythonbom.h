@@ -31,7 +31,7 @@ public:
     SCH_EXPORT_PYTHONBOM_COMMAND();
 
 protected:
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
 };
 } // namespace CLI
 

@@ -24,7 +24,7 @@
 #include <kiface_base.h>
 #include <string_utils.h>
 #include <wx/crt.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 
 CLI::PCB_EXPORT_GENCAD_COMMAND::PCB_EXPORT_GENCAD_COMMAND() :
@@ -56,7 +56,7 @@ CLI::PCB_EXPORT_GENCAD_COMMAND::PCB_EXPORT_GENCAD_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_GENCAD_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_GENCAD_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_GENCAD> gencadJob( new JOB_EXPORT_PCB_GENCAD() );
 

@@ -32,7 +32,7 @@
 #include <wx/tokenzr.h>
 #include "../../3d-viewer/3d_viewer/eda_3d_viewer_settings.h"
 #include <math/vector3.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_BACKGROUND "--background"
 #define ARG_QUALITY "--quality"
@@ -327,7 +327,7 @@ CLI::PCB_RENDER_COMMAND::PCB_RENDER_COMMAND() : COMMAND( "render" )
 }
 
 
-int CLI::PCB_RENDER_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_RENDER_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_PCB_RENDER> renderJob( new JOB_PCB_RENDER() );
 

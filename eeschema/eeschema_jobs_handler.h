@@ -25,7 +25,7 @@
 #include <wx/string.h>
 
 class SCH_RENDER_SETTINGS;
-class KIWAY;
+class KIWAY_SERVICES;
 class SCHEMATIC;
 class JOB_SYM_EXPORT_SVG;
 class LIB_SYMBOL;
@@ -33,11 +33,14 @@ class DS_PROXY_VIEW_ITEM;
 
 /**
  * Handle Eeschema job dispatches.
+ *
+ * This class has no GUI code: in the editor, EESCHEMA_JOBS_HANDLER_GUI adds the job settings
+ * dialogs and lets the jobs work on the schematic open in the editor.
  */
 class EESCHEMA_JOBS_HANDLER : public JOB_DISPATCHER
 {
 public:
-    EESCHEMA_JOBS_HANDLER( KIWAY* aKiway );
+    EESCHEMA_JOBS_HANDLER( KIWAY_SERVICES* aKiway );
     int JobExportBom( JOB* aJob );
     int JobExportPythonBom( JOB* aJob );
     int JobExportNetlist( JOB* aJob );
@@ -61,6 +64,10 @@ public:
     void InitRenderSettings( SCH_RENDER_SETTINGS* aRenderSettings, const wxString& aTheme,
                              SCHEMATIC* aSch,
                              const wxString& aDrawingSheetOverride = wxEmptyString );
+
+protected:
+    /// The schematic open in the schematic editor, if any (GUI only).
+    virtual SCHEMATIC* getEditorSchematic() { return nullptr; }
 
 private:
     SCHEMATIC* getSchematic( const wxString& aPath );

@@ -25,7 +25,7 @@
 #include <macros.h>
 #include <wx/crt.h>
 #include <wx/filename.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 
 #define ARG_FORMAT "--format"
@@ -58,7 +58,7 @@ CLI::PCB_IMPORT_COMMAND::PCB_IMPORT_COMMAND() : COMMAND( "import" )
 }
 
 
-int CLI::PCB_IMPORT_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_IMPORT_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_PCB_IMPORT> importJob = std::make_unique<JOB_PCB_IMPORT>();
 

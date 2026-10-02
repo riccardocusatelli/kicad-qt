@@ -26,7 +26,7 @@
 #include <wx/crt.h>
 
 #include <locale_io.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 CLI::PCB_EXPORT_IPCD356_COMMAND::PCB_EXPORT_IPCD356_COMMAND() :
         PCB_EXPORT_BASE_COMMAND( "ipcd356" )
@@ -35,7 +35,7 @@ CLI::PCB_EXPORT_IPCD356_COMMAND::PCB_EXPORT_IPCD356_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_IPCD356_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_IPCD356_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_IPCD356> ipcd356Job( new JOB_EXPORT_PCB_IPCD356() );
 

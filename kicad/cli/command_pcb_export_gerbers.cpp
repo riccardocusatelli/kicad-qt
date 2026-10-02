@@ -23,7 +23,7 @@
 #include "jobs/job_export_pcb_gerbers.h"
 #include <kiface_base.h>
 #include <string_utils.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_USE_BOARD_PLOT_PARAMS "--board-plot-params"
 
@@ -41,7 +41,7 @@ CLI::PCB_EXPORT_GERBERS_COMMAND::PCB_EXPORT_GERBERS_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_GERBERS_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_GERBERS_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_GERBERS> gerberJob( new JOB_EXPORT_PCB_GERBERS() );
 

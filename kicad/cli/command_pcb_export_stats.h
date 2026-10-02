@@ -29,7 +29,7 @@ class PCB_EXPORT_STATS_COMMAND : public PCB_EXPORT_BASE_COMMAND
 public:
     PCB_EXPORT_STATS_COMMAND();
 
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
 };
 } // namespace CLI
 

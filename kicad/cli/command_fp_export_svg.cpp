@@ -27,7 +27,7 @@
 #include <wx/dir.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_FOOTPRINT "--footprint"
 
@@ -72,7 +72,7 @@ CLI::FP_EXPORT_SVG_COMMAND::FP_EXPORT_SVG_COMMAND() :
 }
 
 
-int CLI::FP_EXPORT_SVG_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::FP_EXPORT_SVG_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_FP_EXPORT_SVG> svgJob = std::make_unique<JOB_FP_EXPORT_SVG>();
 

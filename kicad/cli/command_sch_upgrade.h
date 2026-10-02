@@ -29,7 +29,7 @@ struct SCH_UPGRADE_COMMAND : public COMMAND
     SCH_UPGRADE_COMMAND();
 
 protected:
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
 };
 } // namespace CLI
 

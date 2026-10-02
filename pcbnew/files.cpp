@@ -73,6 +73,7 @@
 #include <dialogs/dialog_export_2581.h>
 #include <dialogs/dialog_map_layers.h>
 #include <dialogs/dialog_export_odbpp.h>
+#include <exporters/export_odbpp.h>
 #include <jobs/job_export_pcb_odb.h>
 #include <dialogs/dialog_import_choose_project.h>
 #include <tools/pcb_actions.h>
@@ -1280,7 +1281,14 @@ int BOARD_EDITOR_CONTROL::GenerateODBPPFiles( const TOOL_EVENT& aEvent )
     WX_PROGRESS_REPORTER progressReporter( m_frame, _( "Generate ODB++ Files" ), 3, PR_CAN_ABORT );
     WX_STRING_REPORTER reporter;
 
-    DIALOG_EXPORT_ODBPP::GenerateODBPPFiles( job, m_frame->GetBoard(), m_frame, &progressReporter, &reporter );
+    ExportODBPP( job, m_frame->GetBoard(), &progressReporter, &reporter,
+                 [&]( const wxString& aQuestion ) -> bool
+                 {
+                     KIDIALOG confirmDlg( m_frame, aQuestion, _( "Confirmation" ),
+                                          wxOK | wxCANCEL | wxICON_WARNING );
+                     confirmDlg.SetOKLabel( _( "Overwrite" ) );
+                     return confirmDlg.ShowModal() == wxID_OK;
+                 } );
 
     if( reporter.HasMessage() )
         DisplayError( m_frame, reporter.GetMessages() );

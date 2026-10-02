@@ -256,6 +256,8 @@ set( PCBNEW_IMPORT_GFX
 set( PCBNEW_EXPORTERS
     exporters/export_hyperlynx.cpp
     exporters/export_d356.cpp
+    exporters/export_ipc2581.cpp
+    exporters/export_odbpp.cpp
     exporters/export_footprint_associations.cpp
     exporters/export_gencad.cpp
     exporters/export_gencad_writer.cpp
@@ -425,6 +427,7 @@ set( PCBNEW_CLASS_SRCS
     pcb_plotter.cpp
     pcbnew_config.cpp
     pcbnew_jobs_handler.cpp
+    pcbnew_jobs_handler_gui.cpp
     pcbnew_printout.cpp
     pcbnew_settings.cpp
     pcbplot.cpp

@@ -23,7 +23,7 @@
 #include <jobs/job_export_pcb_stats.h>
 #include <string_utils.h>
 #include <wx/crt.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_EXCLUDE_NO_PADS "--exclude-footprints-without-pads"
 #define ARG_SUBTRACT_HOLES "--subtract-holes-from-board"
@@ -60,7 +60,7 @@ CLI::PCB_EXPORT_STATS_COMMAND::PCB_EXPORT_STATS_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_STATS_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_STATS_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_STATS> statsJob( new JOB_EXPORT_PCB_STATS() );
 

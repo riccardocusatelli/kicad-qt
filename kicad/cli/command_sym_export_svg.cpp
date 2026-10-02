@@ -29,7 +29,7 @@
 #include <macros.h>
 #include <wx/dir.h>
 #include <wx/tokenzr.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 
 #define ARG_NO_BACKGROUND_COLOR "--no-background-color"
@@ -70,7 +70,7 @@ CLI::SYM_EXPORT_SVG_COMMAND::SYM_EXPORT_SVG_COMMAND() : COMMAND( "svg" )
 }
 
 
-int CLI::SYM_EXPORT_SVG_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SYM_EXPORT_SVG_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_SYM_EXPORT_SVG> svgJob = std::make_unique<JOB_SYM_EXPORT_SVG>();
 

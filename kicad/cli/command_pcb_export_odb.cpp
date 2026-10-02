@@ -26,7 +26,7 @@
 
 #include <macros.h>
 #include <locale_io.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_COMPRESS "--compression"
 #define ARG_UNITS "--units"
@@ -61,7 +61,7 @@ CLI::PCB_EXPORT_ODB_COMMAND::PCB_EXPORT_ODB_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_ODB_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_ODB_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_ODB> job( new JOB_EXPORT_PCB_ODB() );
 

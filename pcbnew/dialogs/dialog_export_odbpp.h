@@ -47,12 +47,6 @@ public:
 
     int GetCompressFormat() const { return m_choiceCompress->GetSelection(); }
 
-    // Runs the actual generation process; shared between GUI and CLI system
-    static void GenerateODBPPFiles( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBoard,
-                                    PCB_EDIT_FRAME* aParentFrame = nullptr,
-                                    PROGRESS_REPORTER* aProgressReporter = nullptr,
-                                    REPORTER* aErrorReporter = nullptr );
-
 private:
     void onBrowseClicked( wxCommandEvent& event ) override;
     void onFormatChoice( wxCommandEvent& event ) override;

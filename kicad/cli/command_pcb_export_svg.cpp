@@ -27,7 +27,7 @@
 #include <string_utils.h>
 #include <regex>
 #include <wx/crt.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 
 #define ARG_EXCLUDE_DRAWING_SHEET "--exclude-drawing-sheet"
@@ -131,7 +131,7 @@ CLI::PCB_EXPORT_SVG_COMMAND::PCB_EXPORT_SVG_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_SVG_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_SVG_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_SVG> svgJob( new JOB_EXPORT_PCB_SVG() );
 

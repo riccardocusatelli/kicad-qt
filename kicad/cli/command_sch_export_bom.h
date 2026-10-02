@@ -86,7 +86,7 @@ public:
     SCH_EXPORT_BOM_COMMAND();
 
 protected:
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
 
 private:
     std::vector<wxString> convertStringList( const wxString& aList );

@@ -26,7 +26,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 
 CLI::SCH_EXPORT_PYTHONBOM_COMMAND::SCH_EXPORT_PYTHONBOM_COMMAND() :
@@ -39,7 +39,7 @@ CLI::SCH_EXPORT_PYTHONBOM_COMMAND::SCH_EXPORT_PYTHONBOM_COMMAND() :
 }
 
 
-int CLI::SCH_EXPORT_PYTHONBOM_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SCH_EXPORT_PYTHONBOM_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_SCH_PYTHONBOM> bomJob =
             std::make_unique<JOB_EXPORT_SCH_PYTHONBOM>();

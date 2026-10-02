@@ -21,12 +21,11 @@
 #include <cli/exit_codes.h>
 #include <jobs/job_dispatcher.h>
 #include <reporter.h>
-#include <wx/debug.h>
 #include <core/ki_assert.h>
 
 class wxWindow;
 
-JOB_DISPATCHER::JOB_DISPATCHER( KIWAY* aKiway ) :
+JOB_DISPATCHER::JOB_DISPATCHER( KIWAY_SERVICES* aKiway ) :
         m_kiway( aKiway )
 {
     m_reporter = &NULL_REPORTER::GetInstance();
@@ -35,10 +34,15 @@ JOB_DISPATCHER::JOB_DISPATCHER( KIWAY* aKiway ) :
 
 
 void JOB_DISPATCHER::Register( const std::string&             aJobTypeName,
-                               std::function<int( JOB* job )> aHandler,
-                               std::function<bool( JOB* aJob, wxWindow* aParent )> aConfigHandler )
+                               std::function<int( JOB* job )> aHandler )
 {
     m_jobHandlers.emplace( aJobTypeName, aHandler );
+}
+
+
+void JOB_DISPATCHER::RegisterConfig( const std::string& aJobTypeName,
+                                     std::function<bool( JOB* aJob, wxWindow* aParent )> aConfigHandler )
+{
     m_jobConfigHandlers.emplace( aJobTypeName, aConfigHandler );
 }
 

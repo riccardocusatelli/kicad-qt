@@ -24,7 +24,7 @@
 #include <jobs/job_dispatcher.h>
 #include <pcb_plot_params.h>
 
-class KIWAY;
+class KIWAY_SERVICES;
 class BOARD;
 class DS_PROXY_VIEW_ITEM;
 class FOOTPRINT;
@@ -33,10 +33,16 @@ class JOB_EXPORT_PCB_GERBERS;
 class JOB_FP_EXPORT_SVG;
 class TOOL_MANAGER;
 
+/**
+ * Run the Pcbnew jobs (exports, DRC, upgrades...).
+ *
+ * This class has no GUI code: in the editor, PCBNEW_JOBS_HANDLER_GUI adds the job settings
+ * dialogs and lets the jobs work on the board open in the editor.
+ */
 class PCBNEW_JOBS_HANDLER : public JOB_DISPATCHER
 {
 public:
-    PCBNEW_JOBS_HANDLER( KIWAY* aKiway );
+    PCBNEW_JOBS_HANDLER( KIWAY_SERVICES* aKiway );
     virtual ~PCBNEW_JOBS_HANDLER();
 
     int JobExportStep( JOB* aJob );
@@ -59,6 +65,20 @@ public:
     int JobExportStats( JOB* aJob );
     int JobUpgrade( JOB* aJob );
     int JobImport( JOB* aJob );
+
+protected:
+    /// The board open in the board editor, if any (GUI only).
+    virtual BOARD* getEditorBoard() { return nullptr; }
+
+    /// The tool manager of the board editor, if open (GUI only).
+    virtual TOOL_MANAGER* getEditorToolManager() { return nullptr; }
+
+    /**
+     * Get the netlist of the schematic open in the schematic editor (GUI only).
+     * @return false if no schematic editor is open; the caller then generates the netlist
+     *         from the schematic file.
+     */
+    virtual bool getEditorNetlist( std::string& aNetlist ) { return false; }
 
 private:
     BOARD* getBoard( const wxString& aPath = wxEmptyString );

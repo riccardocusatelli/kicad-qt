@@ -28,7 +28,7 @@
 
 #include <macros.h>
 #include <wx/tokenzr.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_FORMAT "--format"
 #define ARG_EXCELLON_MIRRORY "--excellon-mirror-y"
@@ -118,7 +118,7 @@ CLI::PCB_EXPORT_DRILL_COMMAND::PCB_EXPORT_DRILL_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_DRILL_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_DRILL_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_DRILL> drillJob( new JOB_EXPORT_PCB_DRILL() );
 

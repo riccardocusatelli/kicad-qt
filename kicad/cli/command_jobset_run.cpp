@@ -62,7 +62,7 @@ CLI::JOBSET_RUN_COMMAND::JOBSET_RUN_COMMAND() : COMMAND( "run" )
 }
 
 
-int CLI::JOBSET_RUN_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::JOBSET_RUN_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     bool bail = m_argParser.get<bool>( ARG_STOP_ON_ERROR );
     wxString jobsFilePath = From_UTF8( m_argParser.get<std::string>( ARG_JOB_FILE ).c_str() );

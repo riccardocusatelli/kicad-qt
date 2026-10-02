@@ -31,7 +31,7 @@
 #include <design_block_library_adapter.h>
 #include <string_utils.h>
 #include <kiface_ids.h>
-#include <kiway.h>
+#include <kiway_services.h>
 #include <libraries/library_manager.h>
 #include <libraries/library_table.h>
 #include <lockfile.h>
@@ -428,7 +428,7 @@ const wxString PROJECT::AbsolutePath( const wxString& aFileName ) const
 }
 
 
-FOOTPRINT_LIBRARY_ADAPTER* PROJECT::FootprintLibAdapter( KIWAY& aKiway )
+FOOTPRINT_LIBRARY_ADAPTER* PROJECT::FootprintLibAdapter( KIWAY_SERVICES& aKiway )
 {
     KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_PCB );
     return static_cast<FOOTPRINT_LIBRARY_ADAPTER*>( kiface->IfaceOrAddress( KIFACE_FOOTPRINT_LIBRARY_ADAPTER ) );

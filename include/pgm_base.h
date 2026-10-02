@@ -50,6 +50,7 @@ class wxSplashScreen;
 class wxSingleInstanceChecker;
 
 class KISTATUSBAR;
+class KIWAY;
 struct LOAD_MESSAGE;
 struct BACKGROUND_JOB;
 class BACKGROUND_JOBS_MONITOR;

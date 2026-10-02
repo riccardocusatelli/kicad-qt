@@ -21,7 +21,9 @@
 #include "jobs/job_sch_upgrade.h"
 #include "cli/exit_codes.h"
 #include <wx/crt.h>
-#include <kiway.h>
+#include <kiway_services.h>
+#include <wx/intl.h>
+#include <wx/file.h>
 
 #define ARG_FORCE "--force"
 
@@ -36,7 +38,7 @@ CLI::SCH_UPGRADE_COMMAND::SCH_UPGRADE_COMMAND() :
             .flag();
 }
 
-int CLI::SCH_UPGRADE_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SCH_UPGRADE_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_SCH_UPGRADE> upgradeJob = std::make_unique<JOB_SCH_UPGRADE>();
 

@@ -31,7 +31,7 @@
 
 class COLOR_SETTINGS;
 class COMMON_SETTINGS;
-class KIWAY;
+class KIWAY_SERVICES;
 class PROJECT;
 class PROJECT_FILE;
 class REPORTER;
@@ -70,7 +70,7 @@ public:
      *
      * @param aKiway is the kiway this settings manager should use
      */
-    void SetKiway( KIWAY* aKiway ) { m_kiway = aKiway; }
+    void SetKiway( KIWAY_SERVICES* aKiway ) { m_kiway = aKiway; }
 
     /**
      * Take ownership of the pointer passed in.
@@ -544,7 +544,7 @@ private:
 private:
 
     /// The kiway this settings manager interacts with.
-    KIWAY* m_kiway;
+    KIWAY_SERVICES* m_kiway;
 
     std::vector<std::unique_ptr<JSON_SETTINGS>> m_settings;
 

@@ -27,7 +27,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_FORMAT "--format"
 
@@ -45,7 +45,7 @@ CLI::SCH_EXPORT_NETLIST_COMMAND::SCH_EXPORT_NETLIST_COMMAND() : COMMAND( "netlis
 }
 
 
-int CLI::SCH_EXPORT_NETLIST_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SCH_EXPORT_NETLIST_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_SCH_NETLIST> netJob =
             std::make_unique<JOB_EXPORT_SCH_NETLIST>();

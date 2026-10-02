@@ -26,7 +26,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_USE_CONTOURS "--use-contours"
 #define ARG_OUTPUT_UNITS "--output-units"
@@ -121,7 +121,7 @@ CLI::PCB_EXPORT_DXF_COMMAND::PCB_EXPORT_DXF_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_DXF_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_DXF_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_DXF> dxfJob( new JOB_EXPORT_PCB_DXF() );
 

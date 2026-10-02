@@ -52,7 +52,7 @@ void CLI::COMMAND::PrintHelp()
 }
 
 
-int CLI::COMMAND::Perform( KIWAY& aKiway )
+int CLI::COMMAND::Perform( KIWAY_SERVICES& aKiway )
 {
     if( m_argParser[ ARG_HELP ] == true )
     {
@@ -120,7 +120,7 @@ int CLI::COMMAND::Perform( KIWAY& aKiway )
 }
 
 
-int CLI::COMMAND::doPerform( KIWAY& aKiway )
+int CLI::COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     // default case if we aren't overloaded, just print the help
     PrintHelp();

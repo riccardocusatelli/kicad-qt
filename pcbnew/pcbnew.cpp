@@ -75,7 +75,7 @@
 
 #include "invoke_pcb_dialog.h"
 #include <wildcards_and_files_ext.h>
-#include "pcbnew_jobs_handler.h"
+#include "pcbnew_jobs_handler_gui.h"
 
 #include <dialogs/panel_toolbar_customization.h>
 #include <3d_viewer/toolbars_3d.h>
@@ -620,7 +620,7 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
 
     start_common( aCtlBits );
 
-    m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER>( aKiway );
+    m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER_GUI>( aKiway );
 
     if( m_start_flags & KFCTL_CLI )
     {

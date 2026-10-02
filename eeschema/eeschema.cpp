@@ -31,7 +31,7 @@
 #include <confirm.h>
 #include <gestfich.h>
 #include <eda_dde.h>
-#include "eeschema_jobs_handler.h"
+#include "eeschema_jobs_handler_gui.h"
 #include "eeschema_helpers.h"
 #include <eeschema_settings.h>
 #include <sch_edit_frame.h>
@@ -469,7 +469,7 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
 
     start_common( aCtlBits );
 
-    m_jobHandler = std::make_unique<EESCHEMA_JOBS_HANDLER>( aKiway );
+    m_jobHandler = std::make_unique<EESCHEMA_JOBS_HANDLER_GUI>( aKiway );
 
     if( m_start_flags & KFCTL_CLI )
     {

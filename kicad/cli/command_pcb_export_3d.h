@@ -33,7 +33,7 @@ struct PCB_EXPORT_3D_COMMAND : public COMMAND
                            JOB_EXPORT_PCB_3D::FORMAT aFormat = JOB_EXPORT_PCB_3D::FORMAT::UNKNOWN );
 
 protected:
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
     JOB_EXPORT_PCB_3D::FORMAT m_format;
 };
 }

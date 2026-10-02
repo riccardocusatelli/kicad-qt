@@ -33,7 +33,7 @@
 #include <gestfich.h>
 #include <kiplatform/environment.h>
 #include <kiplatform/io.h>
-#include <kiway.h>
+#include <kiway_services.h>
 #include <lockfile.h>
 #include <macros.h>
 #include <pgm_base.h>

@@ -28,7 +28,7 @@
 
 #include <macros.h>
 #include <wx/tokenzr.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_FORMAT "--format"
 #define ARG_ALL_TRACK_ERRORS "--all-track-errors"
@@ -102,7 +102,7 @@ CLI::PCB_DRC_COMMAND::PCB_DRC_COMMAND() : COMMAND( "drc" )
 }
 
 
-int CLI::PCB_DRC_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_DRC_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_PCB_DRC> drcJob( new JOB_PCB_DRC() );
 

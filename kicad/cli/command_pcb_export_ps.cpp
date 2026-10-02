@@ -25,7 +25,7 @@
 #include <kiface_base.h>
 #include <string_utils.h>
 #include <wx/crt.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_MODE_SINGLE "--mode-single"
 #define ARG_MODE_MULTI "--mode-multi"
@@ -148,7 +148,7 @@ CLI::PCB_EXPORT_PS_COMMAND::PCB_EXPORT_PS_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_PS_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_PS_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_PS> psJob( new JOB_EXPORT_PCB_PS() );
 

@@ -30,7 +30,7 @@ struct PCB_EXPORT_SVG_COMMAND : public PCB_EXPORT_BASE_COMMAND
     PCB_EXPORT_SVG_COMMAND();
 
 protected:
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
 };
 } // namespace CLI
 

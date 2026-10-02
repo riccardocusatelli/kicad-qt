@@ -22,7 +22,7 @@
 #define CLI_COMMAND_H
 
 #include <argparse/argparse.hpp>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define UTF8STDSTR( s ) ( std::string( s.utf8_str() ) )
 
@@ -53,7 +53,7 @@ public:
     /**
     * Entry point to processing commands from args and doing work
     */
-    int Perform( KIWAY& aKiway );
+    int Perform( KIWAY_SERVICES& aKiway );
 
     virtual ~COMMAND() = default;
 
@@ -103,7 +103,7 @@ protected:
      *
      * If not overloaded, the command will simply emit the help options by default
      */
-    virtual int              doPerform( KIWAY& aKiway );
+    virtual int              doPerform( KIWAY_SERVICES& aKiway );
 
     /**
      * Name of this command that is exported and used in the cli

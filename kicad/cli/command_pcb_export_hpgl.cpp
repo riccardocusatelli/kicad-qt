@@ -31,7 +31,7 @@ CLI::PCB_EXPORT_HPGL_COMMAND::PCB_EXPORT_HPGL_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_HPGL_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_HPGL_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     wxFprintf( stderr, _( "Plotting to HPGL is no longer supported as of KiCad 10.0.\n" ) );
     return EXIT_CODES::ERR_ARGS;

@@ -50,7 +50,7 @@ class DESIGN_BLOCK_LIBRARY_ADAPTER;
 class LEGACY_SYMBOL_LIBS;
 class SEARCH_STACK;
 class S3D_CACHE;
-class KIWAY;
+class KIWAY_SERVICES;
 class FILENAME_RESOLVER;
 class FOOTPRINT_LIBRARY_ADAPTER;
 class PROJECT_FILE;
@@ -293,7 +293,7 @@ public:
     /**
      * Fetches the footprint library adapter from the PCB editor instance
      */
-    virtual FOOTPRINT_LIBRARY_ADAPTER* FootprintLibAdapter( KIWAY& aKiway );
+    virtual FOOTPRINT_LIBRARY_ADAPTER* FootprintLibAdapter( KIWAY_SERVICES& aKiway );
 
     /**
      * Return the table of design block libraries.

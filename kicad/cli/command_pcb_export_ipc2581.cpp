@@ -29,7 +29,7 @@
 #include <wx/tokenzr.h>
 
 #include <locale_io.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_COMPRESS "--compress"
 
@@ -109,7 +109,7 @@ CLI::PCB_EXPORT_IPC2581_COMMAND::PCB_EXPORT_IPC2581_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_IPC2581_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_IPC2581_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_IPC2581> ipc2581Job( new JOB_EXPORT_PCB_IPC2581() );
 

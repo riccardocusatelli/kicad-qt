@@ -27,7 +27,7 @@
 #include <wx/dir.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 
 #define ARG_FORCE "--force"
@@ -47,7 +47,7 @@ CLI::SYM_UPGRADE_COMMAND::SYM_UPGRADE_COMMAND() : COMMAND( "upgrade" )
 }
 
 
-int CLI::SYM_UPGRADE_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SYM_UPGRADE_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_SYM_UPGRADE> symJob = std::make_unique<JOB_SYM_UPGRADE>();
 

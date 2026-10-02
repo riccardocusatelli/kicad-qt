@@ -37,7 +37,7 @@ public:
     SCH_PLOT_FORMAT m_plotFormat;
 
 protected:
-    int doPerform( KIWAY& aKiway ) override;
+    int doPerform( KIWAY_SERVICES& aKiway ) override;
 };
 } // namespace CLI
 

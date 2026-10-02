@@ -26,7 +26,7 @@ class JOBSET;
 struct JOBSET_DESTINATION;
 class JOB_SPECIAL_COPYFILES;
 struct JOBSET_JOB;
-class KIWAY;
+class KIWAY_SERVICES;
 class REPORTER;
 class PROGRESS_REPORTER;
 class PROJECT;
@@ -61,7 +61,7 @@ private:
 class JOBS_RUNNER
 {
 public:
-    JOBS_RUNNER( KIWAY* aKiway, JOBSET* aJobsFile, PROJECT* aProject,
+    JOBS_RUNNER( KIWAY_SERVICES* aKiway, JOBSET* aJobsFile, PROJECT* aProject,
                  REPORTER& aReporter, JOBS_PROGRESS_REPORTER* aProgressReporter );
 
     bool RunJobsAllDestinations( bool aBail = false );
@@ -73,7 +73,7 @@ private:
                              std::vector<wxString>& aPathsWritten );
 
 private:
-    KIWAY*                  m_kiway;
+    KIWAY_SERVICES*         m_kiway;
     JOBSET*                 m_jobsFile;
     REPORTER&               m_reporter;
     JOBS_PROGRESS_REPORTER* m_progressReporter;

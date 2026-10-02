@@ -21,7 +21,9 @@
 #include "jobs/job_pcb_upgrade.h"
 #include "cli/exit_codes.h"
 #include <wx/crt.h>
-#include <kiway.h>
+#include <kiway_services.h>
+#include <wx/intl.h>
+#include <wx/file.h>
 
 #define ARG_FORCE "--force"
 
@@ -36,7 +38,7 @@ CLI::PCB_UPGRADE_COMMAND::PCB_UPGRADE_COMMAND() :
             .flag();
 }
 
-int CLI::PCB_UPGRADE_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_UPGRADE_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_PCB_UPGRADE> upgradeJob = std::make_unique<JOB_PCB_UPGRADE>();
 

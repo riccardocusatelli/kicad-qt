@@ -27,7 +27,7 @@
 #include <wx/dir.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_FORCE "--force"
 
@@ -44,7 +44,7 @@ CLI::FP_UPGRADE_COMMAND::FP_UPGRADE_COMMAND() :
 }
 
 
-int CLI::FP_UPGRADE_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::FP_UPGRADE_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_FP_UPGRADE> fpJob = std::make_unique<JOB_FP_UPGRADE>();
 

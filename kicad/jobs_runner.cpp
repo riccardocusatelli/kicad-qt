@@ -25,8 +25,9 @@
 #include <jobs/jobset.h>
 #include <jobs/job_special_copyfiles.h>
 #include <jobs/job_special_execute.h>
-#include <kiway.h>
-#include <kiway_mail.h>
+#include <kiway_services.h>
+#include <kiid.h>
+#include <project.h>
 #include <reporter.h>
 #include <optional>
 #include <wx/process.h>
@@ -37,7 +38,7 @@
 #include <wx/tokenzr.h>
 #include <gestfich.h>
 
-JOBS_RUNNER::JOBS_RUNNER( KIWAY* aKiway, JOBSET* aJobsFile, PROJECT* aProject,
+JOBS_RUNNER::JOBS_RUNNER( KIWAY_SERVICES* aKiway, JOBSET* aJobsFile, PROJECT* aProject,
                           REPORTER& aReporter, JOBS_PROGRESS_REPORTER* aProgressReporter ) :
         m_kiway( aKiway ),
         m_jobsFile( aJobsFile ),

@@ -29,7 +29,7 @@
 #include <schematic_settings.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 
 CLI::SCH_EXPORT_BOM_COMMAND::SCH_EXPORT_BOM_COMMAND() : COMMAND( "bom" )
@@ -133,7 +133,7 @@ std::vector<wxString> CLI::SCH_EXPORT_BOM_COMMAND::convertStringList( const wxSt
     return v;
 }
 
-int CLI::SCH_EXPORT_BOM_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SCH_EXPORT_BOM_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_SCH_BOM> bomJob = std::make_unique<JOB_EXPORT_SCH_BOM>();
 

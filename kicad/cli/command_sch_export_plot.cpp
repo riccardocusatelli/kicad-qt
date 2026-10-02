@@ -30,7 +30,7 @@
 
 #include <macros.h>
 #include <wx/tokenzr.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_EXCLUDE_DRAWING_SHEET "--exclude-drawing-sheet"
 #define ARG_NO_BACKGROUND_COLOR "--no-background-color"
@@ -125,7 +125,7 @@ CLI::SCH_EXPORT_PLOT_COMMAND::SCH_EXPORT_PLOT_COMMAND( const std::string& aName,
 }
 
 
-int CLI::SCH_EXPORT_PLOT_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SCH_EXPORT_PLOT_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     if( m_plotFormat == SCH_PLOT_FORMAT::HPGL )
     {

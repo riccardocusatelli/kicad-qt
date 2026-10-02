@@ -42,7 +42,7 @@
 #include <connection_graph.h>
 #include "eeschema_helpers.h"
 #include <filename_resolver.h>
-#include <kiway.h>
+#include <kiway_services.h>
 #include <sch_painter.h>
 #include <locale_io.h>
 #include <erc/erc.h>
@@ -73,103 +73,30 @@
 
 #include <fields_data_model.h>
 
-#include <dialogs/dialog_export_netlist.h>
-#include <dialogs/dialog_plot_schematic.h>
-#include <dialogs/dialog_erc_job_config.h>
-#include <dialogs/dialog_symbol_fields_table.h>
-#include <confirm.h>
 #include <project_sch.h>
 
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_assert.h>
 
 
-EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY* aKiway ) :
+EESCHEMA_JOBS_HANDLER::EESCHEMA_JOBS_HANDLER( KIWAY_SERVICES* aKiway ) :
         JOB_DISPATCHER( aKiway ),
         m_cliSchematic( nullptr )
 {
     Register( "bom",
-              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportBom, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-	              JOB_EXPORT_SCH_BOM* bomJob = dynamic_cast<JOB_EXPORT_SCH_BOM*>( job );
-
-                  SCH_EDIT_FRAME* editFrame =
-                          static_cast<SCH_EDIT_FRAME*>( aKiway->Player( FRAME_SCH, false ) );
-
-                  KI_CHECK( bomJob && editFrame, false );
-
-                  DIALOG_SYMBOL_FIELDS_TABLE dlg( editFrame, bomJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
+              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportBom, this, std::placeholders::_1 ) );
     Register( "pythonbom",
-              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportPythonBom, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
+              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportPythonBom, this, std::placeholders::_1 ) );
     Register( "netlist",
-              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportNetlist, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_SCH_NETLIST* netJob = dynamic_cast<JOB_EXPORT_SCH_NETLIST*>( job );
-
-                  SCH_EDIT_FRAME* editFrame =
-                          static_cast<SCH_EDIT_FRAME*>( aKiway->Player( FRAME_SCH, false ) );
-
-                  KI_CHECK( netJob && editFrame, false );
-
-                  DIALOG_EXPORT_NETLIST dlg( editFrame, aParent, netJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
+              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportNetlist, this, std::placeholders::_1 ) );
     Register( "plot",
-              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportPlot, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_SCH_PLOT* plotJob = dynamic_cast<JOB_EXPORT_SCH_PLOT*>( job );
-
-                  SCH_EDIT_FRAME* editFrame =
-                          static_cast<SCH_EDIT_FRAME*>( aKiway->Player( FRAME_SCH, false ) );
-
-                  KI_CHECK( plotJob && editFrame, false );
-
-                  if( plotJob->m_plotFormat == SCH_PLOT_FORMAT::HPGL )
-                  {
-                      DisplayErrorMessage( editFrame,
-                                           _( "Plotting to HPGL is no longer supported as of KiCad 10.0." ) );
-                      return false;
-                  }
-
-                  DIALOG_PLOT_SCHEMATIC dlg( editFrame, aParent, plotJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
+              std::bind( &EESCHEMA_JOBS_HANDLER::JobExportPlot, this, std::placeholders::_1 ) );
     Register( "symupgrade",
-              std::bind( &EESCHEMA_JOBS_HANDLER::JobSymUpgrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
+              std::bind( &EESCHEMA_JOBS_HANDLER::JobSymUpgrade, this, std::placeholders::_1 ) );
     Register( "symsvg",
-              std::bind( &EESCHEMA_JOBS_HANDLER::JobSymExportSvg, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "erc", std::bind( &EESCHEMA_JOBS_HANDLER::JobSchErc, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_SCH_ERC* ercJob = dynamic_cast<JOB_SCH_ERC*>( job );
-
-                  KI_CHECK( ercJob, false );
-
-                  DIALOG_ERC_JOB_CONFIG dlg( aParent, ercJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "upgrade", std::bind( &EESCHEMA_JOBS_HANDLER::JobUpgrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
+              std::bind( &EESCHEMA_JOBS_HANDLER::JobSymExportSvg, this, std::placeholders::_1 ) );
+    Register( "erc", std::bind( &EESCHEMA_JOBS_HANDLER::JobSchErc, this, std::placeholders::_1 ) );
+    Register( "upgrade", std::bind( &EESCHEMA_JOBS_HANDLER::JobUpgrade, this, std::placeholders::_1 ) );
 }
 
 
@@ -197,10 +124,7 @@ SCHEMATIC* EESCHEMA_JOBS_HANDLER::getSchematic( const wxString& aPath )
     }
     else if( Pgm().IsGUI() && Pgm().GetSettingsManager().IsProjectOpen() )
     {
-        SCH_EDIT_FRAME* editFrame = static_cast<SCH_EDIT_FRAME*>( m_kiway->Player( FRAME_SCH, false ) );
-
-        if( editFrame )
-            sch = &editFrame->Schematic();
+        sch = getEditorSchematic();
     }
     else if( !aPath.IsEmpty() )
     {

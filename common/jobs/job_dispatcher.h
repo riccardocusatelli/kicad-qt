@@ -28,7 +28,7 @@
 #include <jobs/job.h>
 
 
-class KIWAY;
+class KIWAY_SERVICES;
 class REPORTER;
 class PROGRESS_REPORTER;
 class wxWindow;
@@ -36,16 +36,26 @@ class wxWindow;
 class KICOMMON_API JOB_DISPATCHER
 {
 public:
-    JOB_DISPATCHER( KIWAY* aKiway );
-    void Register( const std::string& aJobTypeName, std::function<int( JOB* job )> aHandler,
+    JOB_DISPATCHER( KIWAY_SERVICES* aKiway );
+    /// Register the function running jobs of type @a aJobTypeName.
+    void Register( const std::string& aJobTypeName, std::function<int( JOB* job )> aHandler );
+
+    /**
+     * Register the function showing the settings dialog of jobs of type @a aJobTypeName.
+     *
+     * Only the GUI registers these (see e.g. PCBNEW_JOBS_HANDLER_GUI); without one,
+     * HandleJobConfig() returns false.
+     */
+    void RegisterConfig( const std::string&                                aJobTypeName,
                          std::function<bool( JOB* job, wxWindow* aParent )> aConfigHandler );
+
     int  RunJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgressReporter );
     bool HandleJobConfig( JOB* aJob, wxWindow* aParent );
     void SetReporter( REPORTER* aReporter );
     void SetProgressReporter( PROGRESS_REPORTER* aReporter );
 
 protected:
-    KIWAY*             m_kiway;             // non-owning
+    KIWAY_SERVICES*    m_kiway;             // non-owning
     REPORTER*          m_reporter;          // non-owning
     PROGRESS_REPORTER* m_progressReporter;  // non-owning
 

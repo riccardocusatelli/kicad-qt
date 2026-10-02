@@ -28,7 +28,7 @@
 #include <wx/crt.h>
 
 #include <macros.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_DRILL_ORIGIN "--drill-origin"
 #define ARG_GRID_ORIGIN "--grid-origin"
@@ -216,7 +216,7 @@ CLI::PCB_EXPORT_3D_COMMAND::PCB_EXPORT_3D_COMMAND( const std::string&        aNa
     }
 }
 
-int CLI::PCB_EXPORT_3D_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_3D_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_3D> step( new JOB_EXPORT_PCB_3D() );
     EXPORTER_STEP_PARAMS& params = step->m_3dparams;

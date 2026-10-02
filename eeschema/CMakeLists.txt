@@ -378,6 +378,7 @@ set( EESCHEMA_SRCS
     eeschema_config.cpp
     eeschema_helpers.cpp
     eeschema_jobs_handler.cpp
+    eeschema_jobs_handler_gui.cpp
     eeschema_settings.cpp
     fields_data_model.cpp
     fields_grid_table.cpp

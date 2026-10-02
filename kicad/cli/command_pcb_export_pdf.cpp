@@ -24,7 +24,7 @@
 #include <kiface_base.h>
 #include <string_utils.h>
 #include <wx/crt.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_MODE_SEPARATE "--mode-separate"
 #define ARG_MODE_MULTIPAGE "--mode-multipage"
@@ -133,7 +133,7 @@ CLI::PCB_EXPORT_PDF_COMMAND::PCB_EXPORT_PDF_COMMAND() :
 }
 
 
-int CLI::PCB_EXPORT_PDF_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::PCB_EXPORT_PDF_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_EXPORT_PCB_PDF> pdfJob( new JOB_EXPORT_PCB_PDF() );
 

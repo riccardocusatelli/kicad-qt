@@ -108,6 +108,7 @@
 
 
 #include <kiface.h>
+#include <kiway_services.h>
 
 
 
@@ -138,7 +139,7 @@
  * and a #NETLIST, (anything relating to production of a single #BOARD and added to class
  * #PROJECT.)
  */
-class KICOMMON_API KIWAY : public wxEvtHandler, public KIWAY_FACES
+class KICOMMON_API KIWAY : public wxEvtHandler, public KIWAY_SERVICES
 {
     friend struct PGM_SINGLE_TOP;        // can use set_kiface()
 
@@ -161,7 +162,7 @@ public:
      * If it is not already loaded, the KIFACE is loaded and initialized with a call to
      * KIFACE::OnKifaceStart().
      */
-    virtual KIFACE* KiFACE( FACE_T aFaceId, bool doLoad = true );
+    KIFACE* KiFACE( FACE_T aFaceId, bool doLoad = true ) override;
 
     /**
      * Return the #KIWAY_PLAYER* given a FRAME_T.
@@ -231,7 +232,7 @@ public:
      * This is here as an accessor, so that there is freedom to put the actual PROJECT storage
      * in a place decided by the implementation, and not known to the caller.
      */
-    virtual PROJECT& Prj() const;
+    PROJECT& Prj() const override;
 
     /**
      * Return the LOCAL_HISTORY associated with this KIWAY.
@@ -248,7 +249,7 @@ public:
      *
      * Use after changing suite-wide options such as panning, autosave interval, etc.
      */
-    virtual void CommonSettingsChanged( int aFlags = 0 );
+    void CommonSettingsChanged( int aFlags = 0 ) override;
 
     /**
      * Clear the wxWidgets file history on each open frame.  Preference records are handled
@@ -260,7 +261,7 @@ public:
      * Calls ProjectChanged() on all KIWAY_PLAYERs.
      * Used after changing the project to ensure all players are updated correctly.
      */
-    virtual void ProjectChanged();
+    void ProjectChanged() override;
 
     KIWAY( int aCtlBits, wxFrame* aTop = nullptr );
 
@@ -288,7 +289,7 @@ public:
     void QueueEvent( wxEvent* aEvent ) override;
 
     int  ProcessJob( KIWAY_FACES::FACE_T aFace, JOB* aJob, REPORTER* aReporter = nullptr,
-                     PROGRESS_REPORTER* aProgressReporter = nullptr );
+                     PROGRESS_REPORTER* aProgressReporter = nullptr ) override;
     bool ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, wxWindow* aWindow );
 
     /**

@@ -28,7 +28,7 @@
 
 #include <macros.h>
 #include <wx/tokenzr.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #define ARG_FORMAT "--format"
 #define ARG_UNITS "--units"
@@ -81,7 +81,7 @@ CLI::SCH_ERC_COMMAND::SCH_ERC_COMMAND() : COMMAND( "erc" )
 }
 
 
-int CLI::SCH_ERC_COMMAND::doPerform( KIWAY& aKiway )
+int CLI::SCH_ERC_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 {
     std::unique_ptr<JOB_SCH_ERC> ercJob( new JOB_SCH_ERC() );
 
