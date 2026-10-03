@@ -41,8 +41,8 @@
 #include <set>
 #include <stdexcept>
 
-#include "pgm_kicad.h"
-#include "kicad_manager_frame.h"
+#include <bin_mod.h>
+#include <pgm_base.h>
 
 #include <build_version.h>
 #include <kiplatform/app.h>
@@ -401,10 +401,39 @@ static std::vector<std::string> preprocessArgs( int argc, char** argv )
 }
 
 
-bool PGM_KICAD::OnPgmInit()
+/**
+ * The kicad-cli program: settings, libraries and the command line.  It uses no GUI, so it
+ * derives from PGM_BASE (not PGM_GUI).
+ */
+class PGM_KICAD_CLI : public PGM_BASE
+{
+public:
+    PGM_KICAD_CLI() :
+            m_bm( "kicad" ) // indicates a "$HOME/.kicad wxConfig like" config file.
+    {}
+
+    ~PGM_KICAD_CLI() override { Destroy(); }
+
+    bool OnPgmInit();
+    void OnPgmExit();
+    int  OnPgmRun();
+
+    APP_SETTINGS_BASE* PgmSettings() { return m_bm.m_config; }
+
+    // The PGM_* classes can have difficulties at termination if they
+    // are not destroyed soon enough.  Relying on a static destructor can be
+    // too late for contained objects.
+    void Destroy() override;
+
+private:
+    BIN_MOD m_bm;
+};
+
+
+bool PGM_KICAD_CLI::OnPgmInit()
 {
     PGM_BASE::BuildArgvUtf8();
-    App().SetAppDisplayName( wxT( "kicad-cli" ) );
+    wxAppConsole::GetInstance()->SetAppDisplayName( wxT( "kicad-cli" ) );
 
 #if defined( DEBUG )
     wxString absoluteArgv0 = wxStandardPaths::Get().GetExecutablePath();
@@ -430,7 +459,7 @@ bool PGM_KICAD::OnPgmInit()
 }
 
 
-int PGM_KICAD::OnPgmRun()
+int PGM_KICAD_CLI::OnPgmRun()
 {
     argparse::ArgumentParser argParser( std::string( "kicad-cli" ), GetMajorMinorVersion().ToStdString(),
                                         argparse::default_arguments::none );
@@ -556,7 +585,7 @@ int PGM_KICAD::OnPgmRun()
 }
 
 
-void PGM_KICAD::OnPgmExit()
+void PGM_KICAD_CLI::OnPgmExit()
 {
     // Abort and wait on any background jobs
     GetKiCadThreadPool().purge();
@@ -577,15 +606,7 @@ void PGM_KICAD::OnPgmExit()
 }
 
 
-void PGM_KICAD::MacOpenFile( const wxString& aFileName )
-{
-#if defined( __WXMAC__ )
-    KI_FAIL_MSG( "kicad-cli should not call MacOpenFile" );
-#endif
-}
-
-
-void PGM_KICAD::Destroy()
+void PGM_KICAD_CLI::Destroy()
 {
     // unlike a normal destructor, this is designed to be called more
     // than once safely:
@@ -598,7 +619,7 @@ void PGM_KICAD::Destroy()
 
 KIWAY Kiway( KFCTL_CPP_PROJECT_SUITE | KFCTL_CLI );
 
-static PGM_KICAD program;
+static PGM_KICAD_CLI program;
 
 /**
  * Not publicly visible because most of the action is in #PGM_KICAD these days.

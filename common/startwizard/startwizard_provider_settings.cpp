@@ -20,6 +20,7 @@
 
 
 
+#include <confirm.h>
 #include <dialogs/panel_startwizard_settings_base.h>
 #include "startwizard_provider_settings.h"
 
@@ -213,7 +214,12 @@ void STARTWIZARD_PROVIDER_SETTINGS::Finish()
     }
 
     // Else, perform migration.  First copy the old files in, then reload the in-memory copies.
-    mgr.MigrateFromPreviousVersion( m_model->import_path );
+    wxString migrationErrors;
+    mgr.MigrateFromPreviousVersion( m_model->import_path, &migrationErrors );
+
+    if( !migrationErrors.empty() )
+        DisplayErrorMessage( nullptr, migrationErrors );
+
     mgr.Load();
 
     // The wizard defaulted to the system locale, so re-apply the just-imported language from

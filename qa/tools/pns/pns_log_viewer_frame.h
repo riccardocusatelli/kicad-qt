@@ -35,6 +35,7 @@
 #include <pcb_test_frame.h>
 #include <pcbnew_utils/board_test_utils.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <router/pns_solid.h>
 
 #include "pns_log_file.h"

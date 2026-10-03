@@ -32,6 +32,7 @@
 #include <kiface_base.h>
 #include <kiplatform/ui.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <id.h>
 #include <settings/common_settings.h>
 #include <settings/settings_manager.h>
@@ -159,7 +160,7 @@ bool PANEL_COMMON_SETTINGS::TransferDataToWindow()
     m_textCtrlFileManager->SetValue( commonSettings->m_System.file_explorer );
 
     // TODO(JE) Move these into COMMON_SETTINGS probably
-    m_textEditorPath->SetValue( Pgm().GetTextEditor( false ) );
+    m_textEditorPath->SetValue( PgmGui().GetTextEditor( false ) );
     m_defaultPDFViewer->SetValue( Pgm().UseSystemPdfBrowser() );
     m_otherPDFViewer->SetValue( !Pgm().UseSystemPdfBrowser() );
     m_PDFViewerPath->SetValue( Pgm().GetPdfBrowserName() );
@@ -374,7 +375,7 @@ void PANEL_COMMON_SETTINGS::OnCanvasScaleAuto( wxCommandEvent& aEvent )
 void PANEL_COMMON_SETTINGS::OnTextEditorClick( wxCommandEvent& event )
 {
     // Ask the user to select a new editor, but suggest the current one as the default.
-    wxString editorname = Pgm().AskUserForPreferredEditor( m_textEditorPath->GetValue() );
+    wxString editorname = PgmGui().AskUserForPreferredEditor( m_textEditorPath->GetValue() );
 
     // If we have a new editor name request it to be copied to m_text_editor and saved
     // to the preferences file. If the user cancelled the dialog then the previous

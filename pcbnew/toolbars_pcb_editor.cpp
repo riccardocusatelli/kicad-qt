@@ -46,6 +46,7 @@
 #include <eda_text.h>
 #include <pcb_field.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <settings/common_settings.h>
 #include <router/pns_routing_settings.h>
 #include <router/router_tool.h>
@@ -464,7 +465,7 @@ void PCB_EDIT_FRAME::configureToolbars()
 
 #ifdef KICAD_IPC_API
                 bool haveApiPlugins = Pgm().GetCommonSettings()->m_Api.enable_server
-                                        && !Pgm().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
+                                        && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
 #else
                 bool haveApiPlugins = false;
 #endif

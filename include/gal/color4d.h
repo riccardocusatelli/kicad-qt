@@ -96,7 +96,7 @@ struct KICOMMON_API StructColors
 KICOMMON_API const StructColors* colorRefs();
 
 
-class wxColour;   // conversions are implemented in color4d.cpp
+class wxColour;   // conversions are implemented in color4d_wx.cpp (kicommon, GUI)
 
 namespace KIGFX
 {

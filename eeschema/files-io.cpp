@@ -43,6 +43,7 @@
 #include <set>
 #include <lockfile.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <core/profile.h>
 #include <project/project_file.h>
 #include <project_rescue.h>
@@ -101,7 +102,7 @@
 bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, int aCtl )
 {
     // ensure the splash screen does not obscure any dialog at startup
-    Pgm().HideSplash();
+    PgmGui().HideSplash();
 
     // implement the pseudo code from KIWAY_PLAYER.h:
     wxString msg;
@@ -865,7 +866,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
                 KIFACE *schface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
                 schface->PreloadLibraries( &Kiway() );
 
-                Pgm().PreloadDesignBlockLibraries( &Kiway() );
+                PgmGui().PreloadDesignBlockLibraries( &Kiway() );
             } );
 
     m_remoteSymbolPane->BindWebViewLoaded();

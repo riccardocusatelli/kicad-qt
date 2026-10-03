@@ -62,6 +62,7 @@
 #include <settings/settings_manager.h>
 #include <paths.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <project/project_file.h>
 #include <project_pcb.h>
 #include <project/project_local_settings.h>
@@ -504,7 +505,7 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         // see if there is another KiCad instance running.  If not, then we can override the
         // lock.  This could happen if KiCad crashed or was interrupted.
 
-        if( !Pgm().SingleInstance()->IsAnotherRunning() )
+        if( !PgmGui().SingleInstance()->IsAnotherRunning() )
             lock->OverrideLock();
     }
 
@@ -614,7 +615,7 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
             // Standalone opens can switch to a different project.  Preload libraries after the
             // project switch so the board load sees project-local library tables.
             Kiface().PreloadLibraries( &Kiway() );
-            Pgm().PreloadDesignBlockLibraries( &Kiway() );
+            PgmGui().PreloadDesignBlockLibraries( &Kiway() );
         }
 
         // Do not allow saving a project if one doesn't exist.  This normally happens if we are

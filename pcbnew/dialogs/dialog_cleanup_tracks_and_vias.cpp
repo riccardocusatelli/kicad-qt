@@ -30,6 +30,7 @@
 #include <drc/drc_item.h>
 #include <tools/zone_filler_tool.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <pcb_layer_box_selector.h>
 #include <board_design_settings.h>
 #include <board_connected_item.h>

@@ -115,6 +115,11 @@ KICOMMON_API void SetOpenGLInfo( const char* aRenderer, const char* aVendor, con
 KICOMMON_API void SetOpenGLBackendInfo( wxString aBackend );
 
 /**
+ * A setter for the display server in use ("X11", "Wayland"...), set by the GUI programs.
+ */
+KICOMMON_API void SetDisplayServerInfo( const wxString& aDisplayServer );
+
+/**
  * Create a version info string for bug reports and the about dialog
  * @param aTitle is the application title to include at the top of the report
  * @param aBrief = true to condense information for the bug report URL

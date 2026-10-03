@@ -269,9 +269,10 @@ public:
     /**
      * Handle migration of the settings from previous KiCad versions.
      *
+     * @param aErrors (optional) receives the errors of the file copies.
      * @return true if migration was successful, false otherwise.
      */
-    bool MigrateFromPreviousVersion( const wxString& aSourcePath );
+    bool MigrateFromPreviousVersion( const wxString& aSourcePath, wxString* aErrors = nullptr );
 
     /**
      * Retrieve the name of the most recent previous KiCad version that can be found in the

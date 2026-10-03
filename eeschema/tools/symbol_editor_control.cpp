@@ -35,6 +35,7 @@
 #include <lib_symbol_library_manager.h>
 #include <libraries/library_manager.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <sch_painter.h>
 #include <string_utils.h>
 #include <symbol_editor/symbol_editor_settings.h>
@@ -442,7 +443,7 @@ int SYMBOL_EDITOR_CONTROL::OpenWithTextEditor( const TOOL_EVENT& aEvent )
         return 0;
 
     SYMBOL_EDIT_FRAME* editFrame = getEditFrame<SYMBOL_EDIT_FRAME>();
-    wxString           textEditorName = Pgm().GetTextEditor();
+    wxString           textEditorName = PgmGui().GetTextEditor();
 
     if( textEditorName.IsEmpty() )
     {

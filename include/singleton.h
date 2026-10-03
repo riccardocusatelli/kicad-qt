@@ -22,7 +22,6 @@
 
 #include <cstdint>
 
-class GL_CONTEXT_MANAGER;
 namespace BS
 {
 template <std::uint8_t>
@@ -35,14 +34,13 @@ class KICAD_SINGLETON
 {
 public:
     KICAD_SINGLETON() :
-            m_ThreadPool( nullptr ),
-            m_GLContextManager( nullptr )
+            m_ThreadPool( nullptr )
     {};
 
     ~KICAD_SINGLETON();
 
     /**
-     * Explicitly shut down and destroy the thread pool and GL context manager.
+     * Explicitly shut down and destroy the thread pool.
      *
      * This must be called before static destruction begins to avoid crashes on macOS
      * where the thread pool destructor tries to wait on condition variables during
@@ -56,7 +54,6 @@ public:
 
 public:
     BS::priority_thread_pool* m_ThreadPool;
-    GL_CONTEXT_MANAGER* m_GLContextManager;
 };
 
 

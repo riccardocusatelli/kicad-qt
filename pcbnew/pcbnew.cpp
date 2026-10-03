@@ -25,6 +25,7 @@
 
 #include <pcbnew_scripting_helpers.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <eda_pattern_match.h>
 #include <background_jobs_monitor.h>
 #include <cli_progress_reporter.h>
@@ -785,10 +786,10 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
     if( !m_libraryPreloadInProgress.compare_exchange_strong( expected, true ) )
         return;
 
-    Pgm().ClearLibraryLoadMessages();
+    PgmGui().ClearLibraryLoadMessages();
 
     m_libraryPreloadBackgroundJob =
-            Pgm().GetBackgroundJobMonitor().Create( _( "Loading Footprint Libraries" ) );
+            PgmGui().GetBackgroundJobMonitor().Create( _( "Loading Footprint Libraries" ) );
 
     auto preload =
         [this, aKiway]() -> void
@@ -865,7 +866,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
                                 messages.size() );
 
                     if( !messages.empty() )
-                        Pgm().AddLibraryLoadMessages( messages );
+                        PgmGui().AddLibraryLoadMessages( messages );
                 }
                 else
                 {
@@ -878,7 +879,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
             }
 
             m_libraryPreloadAbort.store( false );
-            Pgm().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
+            PgmGui().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
             m_libraryPreloadBackgroundJob.reset();
             m_libraryPreloadInProgress.store( false );
 

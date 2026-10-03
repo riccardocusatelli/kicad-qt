@@ -39,6 +39,7 @@
 #include <wx/snglinst.h>
 #include <wx/html/htmlwin.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <kiface_base.h>
 
 #include <kiway.h>
@@ -222,7 +223,7 @@ bool PGM_TEST_FRAME::OnPgmInit()
 
 void SetTopFrame ( wxFrame* aFrame )
 {
-    Pgm().App().SetTopWindow( aFrame );      // wxApp gets a face.
+    PgmGui().App().SetTopWindow( aFrame );      // wxApp gets a face.
     aFrame->Show();
 }
 

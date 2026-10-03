@@ -29,7 +29,6 @@
 #include <wx/utils.h>
 
 #include <build_version.h>
-#include <confirm.h>
 #include <gestfich.h>
 #include <kiplatform/environment.h>
 #include <kiplatform/io.h>
@@ -657,7 +656,7 @@ bool SETTINGS_MANAGER::SettingsDirectoryValid() const
 }
 
 
-bool SETTINGS_MANAGER::MigrateFromPreviousVersion( const wxString& aSourcePath )
+bool SETTINGS_MANAGER::MigrateFromPreviousVersion( const wxString& aSourcePath, wxString* aErrors )
 {
     wxFileName path( PATHS::GetUserSettingsPath(), wxS( "" ) );
 
@@ -672,8 +671,8 @@ bool SETTINGS_MANAGER::MigrateFromPreviousVersion( const wxString& aSourcePath )
 
     source_dir.Traverse( traverser );
 
-    if( !traverser.GetErrors().empty() )
-        DisplayErrorMessage( nullptr, traverser.GetErrors() );
+    if( aErrors )
+        *aErrors = traverser.GetErrors();
 
     // Remove any library configuration if we didn't choose to import
     if( !m_migrateLibraryTables )
@@ -1055,7 +1054,7 @@ bool SETTINGS_MANAGER::LoadProject( const wxString& aFullPath, bool aSetActive )
         wxSetEnv( PROJECT_VAR_NAME, projectPath.GetPath() );
 
         // set the cwd but don't impact kicad-cli
-        if( !projectPath.GetPath().IsEmpty() && wxTheApp && wxTheApp->IsGUI() )
+        if( !projectPath.GetPath().IsEmpty() && PgmOrNull() && PgmOrNull()->IsGUI() )
             wxSetWorkingDirectory( projectPath.GetPath() );
 
         // Anchor text_eval VCS lookups to the project directory. The GUI relies on cwd,
@@ -1169,7 +1168,7 @@ bool SETTINGS_MANAGER::UnloadProject( PROJECT* aProject, bool aSave )
         // On Windows, processes hold a handle to their current working directory, preventing
         // it from being deleted. Reset to the user settings path to release the project
         // directory. This mirrors the wxSetWorkingDirectory call in LoadProject.
-        if( wxTheApp && wxTheApp->IsGUI() )
+        if( PgmOrNull() && PgmOrNull()->IsGUI() )
             wxSetWorkingDirectory( PATHS::GetUserSettingsPath() );
 #endif
 

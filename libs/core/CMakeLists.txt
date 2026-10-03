@@ -85,9 +85,10 @@ if( wxWidgets_FOUND )
         wx_stl_compat.cpp
     )
 
+    # wxString glue only: wxBase is enough.
     target_link_libraries( core PUBLIC
         core_base
-        ${wxWidgets_LIBRARIES}
+        ${wxWidgets_BASE_LIBRARIES}
     )
 
     target_include_directories( core PUBLIC

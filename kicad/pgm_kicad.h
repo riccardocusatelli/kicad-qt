@@ -25,7 +25,7 @@
 #ifndef PGM_KICAD_H_
 #define PGM_KICAD_H_
 
-#include <pgm_base.h>
+#include <pgm_gui.h>
 #include <bin_mod.h>
 
 #ifdef KICAD_IPC_API
@@ -38,7 +38,7 @@
  * into KIFACE_BASE.  KIFACE_BASE is not applicable in the project manager since it is not a
  * KIFACE.  This header is in the kicad directory since nobody else needs to know about it.
  */
-class PGM_KICAD : public PGM_BASE
+class PGM_KICAD : public PGM_GUI
 {
 public:
     PGM_KICAD() :

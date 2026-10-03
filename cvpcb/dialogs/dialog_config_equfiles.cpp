@@ -23,6 +23,7 @@
  */
 
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <confirm.h>
 #include <gestfich.h>
 #include <widgets/std_bitmap_button.h>
@@ -88,7 +89,7 @@ DIALOG_CONFIG_EQUFILES::DIALOG_CONFIG_EQUFILES( wxWindow* aParent ) :
 
 void DIALOG_CONFIG_EQUFILES::OnEditEquFile( wxCommandEvent& event )
 {
-    wxString editorname = Pgm().GetTextEditor();
+    wxString editorname = PgmGui().GetTextEditor();
 
     if( editorname.IsEmpty() )
     {

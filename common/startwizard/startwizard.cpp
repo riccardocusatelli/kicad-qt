@@ -23,6 +23,7 @@
 #include <eda_base_frame.h>
 #include <kiface_base.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <wx/display.h>
 #include <wx/log.h>
 #include <wx/statline.h>
@@ -178,7 +179,7 @@ void STARTWIZARD::CheckAndRun( wxWindow* aParent )
     if( !wizardRequired )
         return;
 
-    Pgm().HideSplash();
+    PgmGui().HideSplash();
 
     // wxLogGui shows queued messages when a modal opens
     // A second modal inside RunWizard makes GTK fail

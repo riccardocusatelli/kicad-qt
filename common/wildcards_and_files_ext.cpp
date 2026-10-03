@@ -87,9 +87,14 @@ wxString AddFileExtListToFilter( const std::vector<std::string>& aExts )
     if( aExts.size() == 0 )
     {
         // The "all files" wildcard is different on different systems
+        // (the value of wxFileSelectorDefaultWildcardStr, which is in the GUI library)
+#ifdef __WINDOWS__
+        const wxString allFiles = wxS( "*.*" );
+#else
+        const wxString allFiles = wxS( "*" );
+#endif
         wxString filter;
-        filter << wxS( " (" ) << wxFileSelectorDefaultWildcardStr << wxS( ")|" )
-               << wxFileSelectorDefaultWildcardStr;
+        filter << wxS( " (" ) << allFiles << wxS( ")|" ) << allFiles;
         return filter;
     }
 

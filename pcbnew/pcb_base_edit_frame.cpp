@@ -33,6 +33,7 @@
 #include <tools/pcb_selection_tool.h>
 #include <widgets/panel_selection_filter.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <board.h>
 #include <board_design_settings.h>
 #include <drc/drc_engine.h>
@@ -89,7 +90,7 @@ PCB_BASE_EDIT_FRAME::PCB_BASE_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
 
     Bind( wxEVT_SYS_COLOUR_CHANGED, wxSysColourChangedEventHandler( PCB_BASE_EDIT_FRAME::onDarkModeToggle ), this );
 
-    Pgm().GetBackgroundJobMonitor().RegisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
+    PgmGui().GetBackgroundJobMonitor().RegisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
 }
 
 
@@ -97,7 +98,7 @@ PCB_BASE_EDIT_FRAME::~PCB_BASE_EDIT_FRAME()
 {
     Unbind( wxEVT_SYS_COLOUR_CHANGED, wxSysColourChangedEventHandler( PCB_BASE_EDIT_FRAME::onDarkModeToggle ), this );
 
-    Pgm().GetBackgroundJobMonitor().UnregisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
+    PgmGui().GetBackgroundJobMonitor().UnregisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
     CloseVertexEditor();
     GetCanvas()->GetView()->Clear();
 }

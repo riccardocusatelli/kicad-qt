@@ -23,6 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <algorithm>
 #include <map>
 #include <json_common.h>
 #include <gal/color4d.h>
@@ -111,6 +112,107 @@ COLOR4D::COLOR4D( EDA_COLOR_T aColor )
 }
 
 
+/// The standard colour names of wxColourDatabase (wx 3.2), for SetFromWxString().
+static bool standardColorFromName( const wxString& aName, int& aRed, int& aGreen, int& aBlue )
+{
+    struct NAMED_COLOR
+    {
+        const char* name;
+        int         red, green, blue;
+    };
+
+    static const NAMED_COLOR colors[] = {
+    { "AQUAMARINE", 112, 219, 147 },
+    { "BLACK", 0, 0, 0 },
+    { "BLUE", 0, 0, 255 },
+    { "BLUE VIOLET", 159, 95, 159 },
+    { "BROWN", 165, 42, 42 },
+    { "CADET BLUE", 95, 159, 159 },
+    { "CORAL", 255, 127, 0 },
+    { "CORNFLOWER BLUE", 66, 66, 111 },
+    { "CYAN", 0, 255, 255 },
+    { "DARK GREY", 47, 47, 47 },
+    { "DARK GREEN", 47, 79, 47 },
+    { "DARK OLIVE GREEN", 79, 79, 47 },
+    { "DARK ORCHID", 153, 50, 204 },
+    { "DARK SLATE BLUE", 107, 35, 142 },
+    { "DARK SLATE GREY", 47, 79, 79 },
+    { "DARK TURQUOISE", 112, 147, 219 },
+    { "DIM GREY", 84, 84, 84 },
+    { "FIREBRICK", 142, 35, 35 },
+    { "FOREST GREEN", 35, 142, 35 },
+    { "GOLD", 204, 127, 50 },
+    { "GOLDENROD", 219, 219, 112 },
+    { "GREY", 128, 128, 128 },
+    { "GREEN", 0, 255, 0 },
+    { "GREEN YELLOW", 147, 219, 112 },
+    { "INDIAN RED", 79, 47, 47 },
+    { "KHAKI", 159, 159, 95 },
+    { "LIGHT BLUE", 191, 216, 216 },
+    { "LIGHT GREY", 192, 192, 192 },
+    { "LIGHT STEEL BLUE", 143, 143, 188 },
+    { "LIME GREEN", 50, 204, 50 },
+    { "LIGHT MAGENTA", 255, 119, 255 },
+    { "MAGENTA", 255, 0, 255 },
+    { "MAROON", 142, 35, 107 },
+    { "MEDIUM AQUAMARINE", 50, 204, 153 },
+    { "MEDIUM GREY", 100, 100, 100 },
+    { "MEDIUM BLUE", 50, 50, 204 },
+    { "MEDIUM FOREST GREEN", 107, 142, 35 },
+    { "MEDIUM GOLDENROD", 234, 234, 173 },
+    { "MEDIUM ORCHID", 147, 112, 219 },
+    { "MEDIUM SEA GREEN", 66, 111, 66 },
+    { "MEDIUM SLATE BLUE", 127, 0, 255 },
+    { "MEDIUM SPRING GREEN", 127, 255, 0 },
+    { "MEDIUM TURQUOISE", 112, 219, 219 },
+    { "MEDIUM VIOLET RED", 219, 112, 147 },
+    { "MIDNIGHT BLUE", 47, 47, 79 },
+    { "NAVY", 35, 35, 142 },
+    { "ORANGE", 204, 50, 50 },
+    { "ORANGE RED", 255, 0, 127 },
+    { "ORCHID", 219, 112, 219 },
+    { "PALE GREEN", 143, 188, 143 },
+    { "PINK", 255, 192, 203 },
+    { "PLUM", 234, 173, 234 },
+    { "PURPLE", 176, 0, 255 },
+    { "RED", 255, 0, 0 },
+    { "SALMON", 111, 66, 66 },
+    { "SEA GREEN", 35, 142, 107 },
+    { "SIENNA", 142, 107, 35 },
+    { "SKY BLUE", 50, 153, 204 },
+    { "SLATE BLUE", 0, 127, 255 },
+    { "SPRING GREEN", 0, 255, 127 },
+    { "STEEL BLUE", 35, 107, 142 },
+    { "TAN", 219, 147, 112 },
+    { "THISTLE", 216, 191, 216 },
+    { "TURQUOISE", 173, 234, 234 },
+    { "VIOLET", 79, 47, 79 },
+    { "VIOLET RED", 204, 50, 153 },
+    { "WHEAT", 216, 216, 191 },
+    { "WHITE", 255, 255, 255 },
+    { "YELLOW", 255, 255, 0 },
+    { "YELLOW GREEN", 153, 204, 50 },
+    };
+
+    // Case insensitive; "GRAY" is accepted for "GREY"
+    wxString name = aName.Upper();
+    name.Replace( wxS( "GRAY" ), wxS( "GREY" ) );
+
+    for( const NAMED_COLOR& color : colors )
+    {
+        if( name == color.name )
+        {
+            aRed = color.red;
+            aGreen = color.green;
+            aBlue = color.blue;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 COLOR4D::COLOR4D( const wxString& aColorStr )
 {
     if( !SetFromHexString( aColorStr ) && !SetFromWxString( aColorStr ) )
@@ -118,46 +220,80 @@ COLOR4D::COLOR4D( const wxString& aColorStr )
 }
 
 
-COLOR4D::COLOR4D( const wxColour& aColor )
-{
-    r = aColor.Red() / 255.0;
-    g = aColor.Green() / 255.0;
-    b = aColor.Blue() / 255.0;
-    a = aColor.Alpha() / 255.0;
-    m_text = nullptr;
-}
-
 
 bool COLOR4D::SetFromWxString( const wxString& aColorString )
 {
-    wxColour c;
+    // The grammar of wxColour::Set(): CSS rgb() and rgba(), "#RRGGBB" and the standard colour
+    // names of wxColourDatabase.  Implemented here so the data model does not need the GUI.
+    int red = 0, green = 0, blue = 0;
+    int alpha = 255;
 
-    if( c.Set( aColorString ) )
+    if( aColorString.empty() )
+        return false;
+
+    if( aColorString.StartsWith( wxS( "rgb" ) ) )
     {
-        r = c.Red() / 255.0;
-        g = c.Green() / 255.0;
-        b = c.Blue() / 255.0;
-        a = c.Alpha() / 255.0;
-        m_text = nullptr;
+        if( aColorString.length() > 3 && ( aColorString[3] == 'a' || aColorString[3] == 'A' ) )
+        {
+            // The alpha value uses '.' whatever the locale
+            const wxString alphaStr = aColorString.AfterLast( ',' ).BeforeLast( ')' );
+            double         alphaValue;
 
-        return true;
+            if( !alphaStr.ToCDouble( &alphaValue ) )
+                return false;
+
+            alpha = KiROUND( alphaValue * 255 );
+
+            if( wxSscanf( aColorString.wx_str() + 4, wxT( "( %d , %d , %d" ), &red, &green, &blue ) != 3 )
+                return false;
+        }
+        else if( wxSscanf( aColorString.wx_str() + 3, wxT( "( %d , %d , %d )" ), &red, &green, &blue ) != 3 )
+        {
+            return false;
+        }
+    }
+    else if( aColorString[0] == '#' && aColorString.length() == 7 )
+    {
+        unsigned long tmp;
+
+        if( wxSscanf( aColorString.wx_str() + 1, wxT( "%lx" ), &tmp ) != 1 )
+            return false;
+
+        red = ( tmp >> 16 ) & 0xFF;
+        green = ( tmp >> 8 ) & 0xFF;
+        blue = tmp & 0xFF;
+    }
+    else if( !standardColorFromName( aColorString, red, green, blue ) )
+    {
+        return false;
     }
 
-    return false;
+    r = std::clamp( red, 0, 255 ) / 255.0;
+    g = std::clamp( green, 0, 255 ) / 255.0;
+    b = std::clamp( blue, 0, 255 ) / 255.0;
+    a = std::clamp( alpha, 0, 255 ) / 255.0;
+    m_text = nullptr;
+
+    return true;
 }
 
 
 wxString COLOR4D::ToCSSString() const
 {
-    wxColour c = ToColour();
-    wxString str;
+    // Same rounding as ToColour()
+    auto channel =
+            []( double aValue ) -> int
+            {
+                return static_cast<unsigned char>( aValue * 255 + 0.5 );
+            };
 
-    const int  red = c.Red();
-    const int  green = c.Green();
-    const int  blue = c.Blue();
-    const int  alpha = c.Alpha();
+    const int red = channel( r );
+    const int green = channel( g );
+    const int blue = channel( b );
+    const int alpha = channel( a );
+    wxString  str;
 
-    if ( alpha == wxALPHA_OPAQUE )
+    if ( alpha == 255 )
     {
         str.Printf( wxT( "rgb(%d, %d, %d)" ), red, green, blue );
     }
@@ -221,16 +357,6 @@ wxString COLOR4D::ToHexString() const
                              KiROUND( a * 255.0 ) );
 }
 
-
-wxColour COLOR4D::ToColour() const
-{
-    using CHAN_T = wxColourBase::ChannelType;
-
-    const wxColour colour(
-            static_cast<CHAN_T>( r * 255 + 0.5 ), static_cast<CHAN_T>( g * 255 + 0.5 ),
-            static_cast<CHAN_T>( b * 255 + 0.5 ), static_cast<CHAN_T>( a * 255 + 0.5 ) );
-    return colour;
-}
 
 
 COLOR4D COLOR4D::LegacyMix( const COLOR4D& aColor ) const

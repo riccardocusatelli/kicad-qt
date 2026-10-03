@@ -41,6 +41,7 @@
 #include <bezier_curves.h>
 #include <math/util.h> // for KiROUND
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <trace_helpers.h>
 
 #include <wx/app.h>
@@ -363,7 +364,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
 {
     if( m_glMainContext == nullptr )
     {
-        m_glMainContext = Pgm().GetGLContextManager()->CreateCtx( this );
+        m_glMainContext = PgmGui().GetGLContextManager()->CreateCtx( this );
 
         if( !m_glMainContext )
             throw std::runtime_error( "Could not create the main OpenGL context" );
@@ -372,7 +373,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
     }
     else
     {
-        m_glPrivContext = Pgm().GetGLContextManager()->CreateCtx( this, m_glMainContext );
+        m_glPrivContext = PgmGui().GetGLContextManager()->CreateCtx( this, m_glMainContext );
 
         if( !m_glPrivContext )
             throw std::runtime_error( "Could not create a private OpenGL context" );
@@ -456,7 +457,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
 
 OPENGL_GAL::~OPENGL_GAL()
 {
-    GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* gl_mgr = PgmGui().GetGLContextManager();
     KI_ASSERT( gl_mgr );
 
     if( gl_mgr )
@@ -893,7 +894,7 @@ void OPENGL_GAL::LockContext( int aClientCookie )
     m_isContextLocked = true;
     m_lockClientCookie = aClientCookie;
 
-    GL_CONTEXT_MANAGER* mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* mgr = PgmGui().GetGLContextManager();
 
     if( !mgr )
         return;
@@ -913,7 +914,7 @@ void OPENGL_GAL::UnlockContext( int aClientCookie )
 
     m_isContextLocked = false;
 
-    GL_CONTEXT_MANAGER* mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* mgr = PgmGui().GetGLContextManager();
 
     if( !mgr )
         return;

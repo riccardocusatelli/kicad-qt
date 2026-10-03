@@ -22,6 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <local_history_ui.h>
 #include <wx/dir.h>
 #include <wx/filedlg.h>
 #include <wx/dirdlg.h>
@@ -30,6 +31,7 @@
 #include <kiway.h>
 #include <project/project_archiver.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <settings/settings_manager.h>
 #include <wildcards_and_files_ext.h>
 #include <local_history.h>
@@ -100,5 +102,5 @@ void KICAD_MANAGER_FRAME::UnarchiveFiles()
 
 void KICAD_MANAGER_FRAME::RestoreLocalHistory()
 {
-    Kiway().LocalHistory().ShowRestoreDialog( Prj().GetProjectPath(), this );
+    ShowLocalHistoryRestoreDialog( Kiway().LocalHistory(), Prj().GetProjectPath(), this );
 }

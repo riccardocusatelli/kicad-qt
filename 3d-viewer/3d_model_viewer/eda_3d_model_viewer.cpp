@@ -40,6 +40,7 @@
 #include <dpi_scaling_common.h>
 #include <macros.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <settings/common_settings.h>
 
 #include "3d_rendering/opengl/3d_model.h"
@@ -115,7 +116,7 @@ EDA_3D_MODEL_VIEWER::EDA_3D_MODEL_VIEWER( wxWindow* aParent, const wxGLAttribute
 EDA_3D_MODEL_VIEWER::~EDA_3D_MODEL_VIEWER()
 {
     KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::~EDA_3D_MODEL_VIEWER" ) );
-    GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* gl_mgr = PgmGui().GetGLContextManager();
     KI_ASSERT( gl_mgr );
 
     if( m_glRC && gl_mgr )
@@ -263,7 +264,7 @@ void EDA_3D_MODEL_VIEWER::OnPaint( wxPaintEvent& event )
     // "Makes the OpenGL state that is represented by the OpenGL rendering
     //  context context current, i.e. it will be used by all subsequent OpenGL calls.
     //  This function may only be called when the window is shown on screen"
-    GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* gl_mgr = PgmGui().GetGLContextManager();
 
     if( !gl_mgr )
         return;

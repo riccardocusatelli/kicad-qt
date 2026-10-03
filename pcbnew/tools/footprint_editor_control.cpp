@@ -26,6 +26,7 @@
 #include <advanced_config.h>
 #include <string_utils.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <settings/settings_manager.h>
 #include <tool/tool_manager.h>
 #include <tool/library_editor_control.h>
@@ -667,7 +668,7 @@ int FOOTPRINT_EDITOR_CONTROL::OpenDirectory( const TOOL_EVENT& aEvent )
 
 int FOOTPRINT_EDITOR_CONTROL::OpenWithTextEditor( const TOOL_EVENT& aEvent )
 {
-    wxString fullEditorName = Pgm().GetTextEditor();
+    wxString fullEditorName = PgmGui().GetTextEditor();
 
     if( fullEditorName.IsEmpty() )
     {

@@ -22,6 +22,7 @@
 #include <eda_draw_frame.h>
 #include <printout.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <confirm.h>
 #include <printing.h>
 
@@ -272,7 +273,7 @@ void DIALOG_PRINT_GENERIC::onPrintPreview( wxCommandEvent& event )
 
 void DIALOG_PRINT_GENERIC::onPrintButtonClick( wxCommandEvent& event )
 {
-    if( Pgm().m_Printing )
+    if( PgmGui().m_Printing )
     {
         DisplayError( this, _( "Previous print job not yet complete." ) );
         return;
@@ -300,7 +301,7 @@ void DIALOG_PRINT_GENERIC::onPrintButtonClick( wxCommandEvent& event )
     wxPrinter printer( &printDialogData );
     auto printout = std::unique_ptr<wxPrintout>( createPrintout( _( "Print" ) ) );
 
-    Pgm().m_Printing = true;
+    PgmGui().m_Printing = true;
 
     {
         if( !printer.Print( this, printout.get(), true ) )
@@ -315,7 +316,7 @@ void DIALOG_PRINT_GENERIC::onPrintButtonClick( wxCommandEvent& event )
         }
     }
 
-    Pgm().m_Printing = false;
+    PgmGui().m_Printing = false;
 }
 
 

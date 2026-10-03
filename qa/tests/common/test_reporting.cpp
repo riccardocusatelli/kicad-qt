@@ -19,6 +19,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <cli_progress_reporter.h>
 #include <wx/string.h>
 #include <wx/textctrl.h>

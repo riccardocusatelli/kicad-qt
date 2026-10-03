@@ -46,6 +46,7 @@
 #include <string_utils.h>
 #include <wildcards_and_files_ext.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <jobs/job_export_pcb_drill.h>
 
 // List of allowed precision for EXCELLON files, for integer format.  Due to difference between inches and mm,

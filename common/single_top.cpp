@@ -45,6 +45,7 @@
 #include <kiway.h>
 #include <build_version.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <app_monitor.h>
 #include <kiway_player.h>
 #include <macros.h>
@@ -83,7 +84,7 @@ KIWAY    Kiway( KFCTL_STANDALONE );
 /**
  * Implement PGM_BASE with its own OnPgmInit() and OnPgmExit().
  */
-static struct PGM_SINGLE_TOP : public PGM_BASE
+static struct PGM_SINGLE_TOP : public PGM_GUI
 {
     bool OnPgmInit();
 
@@ -232,7 +233,7 @@ struct APP_SINGLE_TOP : public wxApp
         // Drain wxPendingDelete (frames deferred via Destroy()) before tearing down
         // PGM_BASE singletons. On macOS the dock-quit path leaves frames in this
         // queue at OnExit() time, and their canvas destructors call into
-        // Pgm().GetGLContextManager(). Running OnPgmExit() first would null that
+        // PgmGui().GetGLContextManager(). Running OnPgmExit() first would null that
         // pointer out from under them. See https://gitlab.com/kicad/code/kicad/-/issues/23373
         int ret = wxApp::OnExit();
         program.OnPgmExit();
@@ -262,7 +263,7 @@ struct APP_SINGLE_TOP : public wxApp
             wxShowEvent& event = static_cast<wxShowEvent&>( aEvent );
             wxDialog*    dialog = dynamic_cast<wxDialog*>( event.GetEventObject() );
 
-            std::vector<void*>& dlgs = Pgm().m_ModalDialogs;
+            std::vector<void*>& dlgs = PgmGui().m_ModalDialogs;
 
             if( dialog )
             {
@@ -325,7 +326,7 @@ struct APP_SINGLE_TOP : public wxApp
      */
     void MacOpenFile( const wxString& aFileName ) override
     {
-        Pgm().MacOpenFile( aFileName );
+        PgmGui().MacOpenFile( aFileName );
     }
 
 #endif

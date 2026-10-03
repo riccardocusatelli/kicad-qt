@@ -45,6 +45,7 @@
 #include <pcb_field.h>
 #include <pcb_track.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <widgets/wx_infobar.h>
 #include <core/profile.h>        // To use GetRunningMicroSecs or another profiling utility
 #include <bitmaps.h>
@@ -52,6 +53,7 @@
 #include <kiway.h>
 #include <macros.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <settings/settings_manager.h>
 #include <tool/tool_dispatcher.h>
 #include <string_utils.h>
@@ -191,7 +193,7 @@ void EDA_3D_CANVAS::releaseOpenGL()
 {
     if( m_glRC )
     {
-        GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
+        GL_CONTEXT_MANAGER* gl_mgr = PgmGui().GetGLContextManager();
         KI_ASSERT( gl_mgr );
 
         if( gl_mgr )
@@ -400,7 +402,7 @@ void EDA_3D_CANVAS::DoRePaint()
     INFOBAR_REPORTER    warningReporter( m_parentInfoBar );
     STATUSBAR_REPORTER  activityReporter( m_parentStatusBar, EDA_3D_VIEWER_STATUSBAR::ACTIVITY );
     int64_t             start_time = GetRunningMicroSecs();
-    GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* gl_mgr = PgmGui().GetGLContextManager();
 
     if( !gl_mgr )
     {
@@ -643,7 +645,7 @@ void EDA_3D_CANVAS::RenderToFrameBuffer( unsigned char* buffer, int width, int h
 
     wxString            err_messages;
     int64_t             start_time = GetRunningMicroSecs();
-    GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* gl_mgr = PgmGui().GetGLContextManager();
 
     if( !gl_mgr )
     {

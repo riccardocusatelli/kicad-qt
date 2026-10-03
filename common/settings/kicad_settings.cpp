@@ -52,8 +52,9 @@ KICAD_SETTINGS::KICAD_SETTINGS() :
     m_params.emplace_back( new PARAM<wxString>( "system.last_received_update", &m_lastReceivedUpdate, "" ) );
     m_params.emplace_back( new PARAM<bool>( "system.check_for_kicad_updates", &m_KiCadUpdateCheck, true ) );
 
-    m_params.emplace_back( new PARAM<wxPoint>( "template.window.pos", &m_TemplateWindowPos, wxDefaultPosition ) );
-    m_params.emplace_back( new PARAM<wxSize>( "template.window.size", &m_TemplateWindowSize, wxDefaultSize ) );
+    // ( -1, -1 ): wxDefaultPosition and wxDefaultSize (which are GUI library objects)
+    m_params.emplace_back( new PARAM<wxPoint>( "template.window.pos", &m_TemplateWindowPos, wxPoint( -1, -1 ) ) );
+    m_params.emplace_back( new PARAM<wxSize>( "template.window.size", &m_TemplateWindowSize, wxSize( -1, -1 ) ) );
     m_params.emplace_back( new PARAM<wxString>( "template.last_used", &m_LastUsedTemplate, "" ) );
     m_params.emplace_back( new PARAM_LIST<wxString>( "template.recent_templates", &m_RecentTemplates, {} ) );
 

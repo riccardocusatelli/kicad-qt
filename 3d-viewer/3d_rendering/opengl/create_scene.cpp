@@ -23,6 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <gui_reporters.h>
 #include "render_3d_opengl.h"
 #include <board.h>
 #include <footprint.h>

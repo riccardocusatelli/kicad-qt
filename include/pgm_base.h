@@ -25,7 +25,8 @@
 
 /**
  * @file pgm_base.h
- * @brief see class PGM_BASE
+ * @brief see class PGM_BASE (the program services of the data model; the GUI part is
+ *        PGM_GUI in pgm_gui.h)
  */
 
 #ifndef  PGM_BASE_H_
@@ -35,35 +36,18 @@
 #include <singleton.h>
 #include <exception>
 #include <map>
-#include <future>
-#include <mutex>
-#include <vector>
 #include <memory>
+#include <vector>
 #include <search_stack.h>
 #include <settings/environment.h>
 #include <wx/filename.h>
 
-class wxApp;
-class wxMenu;
-class wxWindow;
-class wxSplashScreen;
-class wxSingleInstanceChecker;
+class wxLocale;
 
-class KISTATUSBAR;
-class KIWAY;
-struct LOAD_MESSAGE;
-struct BACKGROUND_JOB;
-class BACKGROUND_JOBS_MONITOR;
-class NOTIFICATIONS_MANAGER;
 class COMMON_SETTINGS;
 class SETTINGS_MANAGER;
 class LIBRARY_MANAGER;
-class SCRIPTING;
 
-#ifdef KICAD_IPC_API
-class API_PLUGIN_MANAGER;
-class KICAD_API_SERVER;
-#endif
 
 /**
  * A small class to handle the list of existing translations.
@@ -94,17 +78,15 @@ struct KICOMMON_API LANGUAGE_DESCR
 KICOMMON_API extern LANGUAGE_DESCR LanguagesList[];
 
 /**
- * Container for data for KiCad programs.
+ * The program (process) services available to all KiCad code, including the data model:
+ * settings, libraries, environment variables, language, thread pool.
+ *
+ * PGM_BASE uses no GUI.  The editors' programs derive from PGM_GUI (pgm_gui.h), which adds the
+ * wxApp, the splash screen, background job and notification UI, plugins and the GL context
+ * manager.  kicad-cli derives from PGM_BASE directly.
  *
  * The functions are virtual so we can do cross module calls without linking to them.  This
- * used to be a wxApp derivative, but that is difficult under wxPython which shapes the wxApp.
- * So now this is a "side-car" (like a motorcycle side-car) object with a back pointer into
- * the wxApp which initializes it.
- *
- * - OnPgmStart() is virtual, may be overridden, and parallels wxApp::OnInit(), from where it
- *   should called.
- * - OnPgmEnd() is virtual, may be overridden, and parallels wxApp::OnExit(), from where it
- *   should be called.
+ * is a "side-car" object with a back pointer into the wxAppConsole which initializes it.
  */
 class KICOMMON_API PGM_BASE
 {
@@ -119,60 +101,13 @@ public:
 
     BS::priority_thread_pool& GetThreadPool();
 
-    GL_CONTEXT_MANAGER* GetGLContextManager() { return m_singleton.m_GLContextManager; }
-
-    /**
-     * Specific to MacOSX (not used under Linux or Windows).
-     *
-     * MacOSX requires it for file association.
-     * @see http://wiki.wxwidgets.org/WxMac-specific_topics
-     */
-    virtual void MacOpenFile( const wxString& aFileName ) = 0;
-
     virtual SETTINGS_MANAGER& GetSettingsManager() const { return *m_settings_manager; }
 
     virtual LIBRARY_MANAGER& GetLibraryManager() const { return *m_library_manager; }
 
     virtual COMMON_SETTINGS*  GetCommonSettings() const;
 
-    virtual BACKGROUND_JOBS_MONITOR& GetBackgroundJobMonitor() const
-    {
-        return *m_background_jobs_monitor;
-    }
-
-    virtual NOTIFICATIONS_MANAGER& GetNotificationsManager() const
-    {
-        return *m_notifications_manager;
-    }
-
-#ifdef KICAD_IPC_API
-    virtual API_PLUGIN_MANAGER& GetPluginManager() const { return *m_plugin_manager; }
-
-    KICAD_API_SERVER& GetApiServer() { return *m_api_server; }
-#endif
-
     virtual void SetTextEditor( const wxString& aFileName );
-
-    /**
-     * Return the path to the preferred text editor application.
-     *
-     * @param   aCanShowFileChooser If no editor is currently set and this argument is
-     *          'true' then this method will show a file chooser dialog asking for the
-     *          editor's executable.
-     * @return  Returns the full path of the editor, or an empty string if no editor has
-     *          been set.
-     */
-    virtual const wxString& GetTextEditor( bool aCanShowFileChooser = true );
-
-    /**
-     * Show a dialog that instructs the user to select a new preferred editor.
-     *
-     * @param   aDefaultEditor Default full path for the default editor this dialog should
-     *          show by default.
-     * @return  the full path of the editor, or an empty string if no editor was chosen.
-     */
-    virtual const wxString AskUserForPreferredEditor(
-            const wxString& aDefaultEditor = wxEmptyString );
 
     virtual bool IsKicadEnvVariableDefined() const               { return !m_kicad_env.IsEmpty(); }
 
@@ -279,15 +214,6 @@ public:
     virtual ENV_VAR_MAP& GetLocalEnvVariables() const;
 
     /**
-     * Return a bare naked wxApp which may come from wxPython, SINGLE_TOP, or kicad.exe.
-     *
-     * This should return what wxGetApp() returns.
-     */
-    virtual wxApp&   App();
-
-    static const wxChar workingDirKey[];
-
-    /**
      * Initialize this program.
      *
      * Initialize the process in a KiCad standard way using some generalized techniques:
@@ -302,12 +228,13 @@ public:
      * Useful in application that do not use python, to disable python dependency at run time
      * @return true if success, false if failure and program is to terminate.
      */
-    bool InitPgm( bool aHeadless = false, bool aSkipPyInit = false, bool aIsUnitTest = false );
+    virtual bool InitPgm( bool aHeadless = false, bool aSkipPyInit = false,
+                          bool aIsUnitTest = false );
 
     // The PGM_* classes can have difficulties at termination if they
     // are not destroyed soon enough.  Relying on a static destructor can be
     // too late for contained objects like wxSingleInstanceChecker.
-    void Destroy();
+    virtual void Destroy();
 
     /**
      * Save the program (process) settings subset which are stored .kicad_common.
@@ -344,57 +271,15 @@ public:
      */
     bool IsGUI();
 
-
-    void ShowSplash();
-    void HideSplash();
-
     /**
-     * Allow access to the wxSingleInstanceChecker to test for other running KiCads.
+     * Ask the user to confirm an action (yes / no).
+     *
+     * Non-interactive programs (kicad-cli) do not ask: the base implementation answers no.
+     * PGM_GUI shows a question dialog.
      */
-    std::unique_ptr<wxSingleInstanceChecker>& SingleInstance()
-    {
-        return m_pgm_checker;
-    }
-
-    /**
-     * Starts a background job to preload the global and project design block libraries.
-     * Design block handling code is not associated with a particular KIFACE so this is
-     * handled here unlike symbol/footprint loading which are taken care of by the KIFACEs.
-     */
-    void PreloadDesignBlockLibraries( KIWAY* aKiway );
-
-    /**
-     * Register a status bar to receive library load warning messages.
-     * Multiple status bars can be registered (one per open frame).
-     */
-    void RegisterLibraryLoadStatusBar( KISTATUSBAR* aStatusBar );
-
-    /**
-     * Unregister a status bar from receiving library load warning messages.
-     */
-    void UnregisterLibraryLoadStatusBar( KISTATUSBAR* aStatusBar );
-
-    /**
-     * Add library load messages to all registered status bars.
-     * Thread-safe - can be called from background threads.
-     */
-    void AddLibraryLoadMessages( const std::vector<LOAD_MESSAGE>& aMessages );
-
-    /**
-     * Clear library load messages from all registered status bars.
-     */
-    void ClearLibraryLoadMessages();
-
-    /**
-     * wxWidgets on MSW tends to crash if you spool up more than one print job at a time.
-     */
-    bool m_Printing;
-
-    std::vector<void*> m_ModalDialogs;
+    virtual bool ConfirmAction( const wxString& aTitle, const wxString& aMessage );
 
     bool m_Quitting;
-
-    bool m_PropertyGridInitialized;
 
 protected:
     /// Load internal settings from #COMMON_SETTINGS.
@@ -402,6 +287,12 @@ protected:
 
     /// Trap all changes in here, simplifies debugging.
     void setLanguageId( int aId )       { m_language_id = aId; }
+
+    /// Report an error that stops the program initialization.  PGM_GUI shows a message box.
+    virtual void reportInitError( const wxString& aMessage );
+
+    /// The program name: the executable name, lower case ("kicad" if unknown).
+    wxString programName() const;
 
 #ifdef KICAD_USE_SENTRY
     void     sentryInit();
@@ -411,18 +302,6 @@ protected:
 protected:
     std::unique_ptr<SETTINGS_MANAGER> m_settings_manager;
     std::unique_ptr<LIBRARY_MANAGER> m_library_manager;
-    std::unique_ptr<BACKGROUND_JOBS_MONITOR> m_background_jobs_monitor;
-    std::unique_ptr<NOTIFICATIONS_MANAGER> m_notifications_manager;
-
-    std::unique_ptr<SCRIPTING> m_python_scripting;
-
-    /// Check if there is another copy of Kicad running at the same time.
-    std::unique_ptr<wxSingleInstanceChecker> m_pgm_checker;
-
-#ifdef KICAD_IPC_API
-    std::unique_ptr<API_PLUGIN_MANAGER> m_plugin_manager;
-    std::unique_ptr<KICAD_API_SERVER> m_api_server;
-#endif
 
     wxString        m_kicad_env;              ///< The KICAD system environment variable.
 
@@ -450,26 +329,14 @@ protected:
     char** m_argvUtf8;
 
     int m_argcUtf8;
-
-    wxSplashScreen* m_splash;
-
-    std::shared_ptr<BACKGROUND_JOB> m_libraryPreloadBackgroundJob;
-    std::future<void>               m_libraryPreloadReturn;
-    std::atomic_bool                m_libraryPreloadInProgress;
-    std::atomic_bool                m_libraryPreloadAbort;
-
-    std::vector<KISTATUSBAR*>       m_libraryLoadStatusBars;
-    mutable std::mutex              m_libraryLoadStatusBarsMutex;
 };
 
 
 /**
  * The global program "get" accessor.
  *
- * Implemented in:
- *    1. common/single_top.cpp
- *    2. kicad/kicad.cpp
- *    3. scripting/kiway.i
+ * Set by the program with SetPgm(): common/single_top.cpp, kicad/kicad.cpp,
+ * kicad/kicad_cli.cpp, scripting/kiway.i.
  */
 KICOMMON_API extern PGM_BASE& Pgm();
 

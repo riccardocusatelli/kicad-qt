@@ -34,6 +34,7 @@
 #include <gestfich.h>
 #include <paths.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <python_manager.h>
 #include <reporter.h>
 #include <settings/settings_manager.h>
@@ -370,8 +371,8 @@ void API_PLUGIN_MANAGER::InvokeAction( const wxString& aIdentifier, std::shared_
         PYTHON_MANAGER manager( *py );
         wxExecuteEnv   env;
         wxGetEnvMap( &env.env );
-        env.env[wxS( "KICAD_API_SOCKET" )] = Pgm().GetApiServer().SocketPath();
-        env.env[wxS( "KICAD_API_TOKEN" )] = Pgm().GetApiServer().Token();
+        env.env[wxS( "KICAD_API_SOCKET" )] = PgmGui().GetApiServer().SocketPath();
+        env.env[wxS( "KICAD_API_TOKEN" )] = PgmGui().GetApiServer().Token();
         env.cwd = pluginFile.GetPath();
 
 #ifdef _WIN32
@@ -465,8 +466,8 @@ void API_PLUGIN_MANAGER::InvokeAction( const wxString& aIdentifier, std::shared_
 
         wxExecuteEnv env;
         wxGetEnvMap( &env.env );
-        env.env[wxS( "KICAD_API_SOCKET" )] = Pgm().GetApiServer().SocketPath();
-        env.env[wxS( "KICAD_API_TOKEN" )] = Pgm().GetApiServer().Token();
+        env.env[wxS( "KICAD_API_SOCKET" )] = PgmGui().GetApiServer().SocketPath();
+        env.env[wxS( "KICAD_API_TOKEN" )] = PgmGui().GetApiServer().Token();
         env.cwd = pluginFile.GetPath();
 
         ACTION_PROCESS* process = new ACTION_PROCESS(

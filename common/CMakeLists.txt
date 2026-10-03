@@ -87,7 +87,10 @@ install( FILES
 # surely needed and certainly used from more than one place without recompilation.
 # Functions and data all need to use the #include <import_export.h> and be declared
 # as APIEXPORT
-set( KICOMMON_SRCS
+# kicommon_model: the part of kicommon used by the data model, file IO, jobs and kicad-cli.
+# It links wxBase only and must not reference GUI code: the link uses --no-undefined, so a GUI
+# dependency is a link error (see target_link_options below).
+set( KICOMMON_MODEL_SRCS
     # Routes core_base / kimath / sexpr assertions and logging to wxWidgets
     core_wx_bridge.cpp
 
@@ -98,10 +101,6 @@ set( KICOMMON_SRCS
 
     # Gal
     gal/color4d.cpp
-
-    # KiCad GL
-    kicad_gl/gl_utils.cpp
-    kicad_gl/gl_context_mgr.cpp
 
     # Git
     git/git_add_to_index_handler.cpp
@@ -207,34 +206,8 @@ set( KICOMMON_SRCS
     tool/ui/toolbar_configuration.cpp
     tool/ui/toolbar_context_menu_registry.cpp
 
-    dialogs/dialog_rc_job.cpp
-    dialogs/dialog_rc_job_base.cpp
-    dialogs/dialog_restore_local_history.cpp
-    dialogs/dialog_HTML_reporter_base.cpp
-    dialogs/panel_startwizard_libraries_base.cpp
-    dialogs/panel_startwizard_privacy_base.cpp
-    dialogs/panel_startwizard_settings_base.cpp
-
-    grid_tricks.cpp
-    widgets/aui_json_serializer.cpp
-    widgets/bitmap_button.cpp
-    widgets/grid_combobox.cpp
-    widgets/grid_icon_text_helpers.cpp
-    widgets/grid_text_button_helpers.cpp
-    widgets/grid_text_helpers.cpp
-    widgets/html_window.cpp
-    widgets/indicator_icon.cpp
-    widgets/kistatusbar.cpp
-    widgets/number_badge.cpp
     widgets/progress_reporter_base.cpp
     widgets/report_severity.cpp
-    widgets/std_bitmap_button.cpp
-    widgets/ui_common.cpp
-    widgets/up_down_tree.cpp
-    widgets/wx_grid.cpp
-    widgets/wx_html_report_panel.cpp
-    widgets/wx_html_report_panel_base.cpp
-    widgets/wx_html_report_box.cpp
 
     database/database_lib_settings.cpp
 
@@ -247,20 +220,12 @@ set( KICOMMON_SRCS
     asset_archive.cpp
     array_axis.cpp
     array_options.cpp
-    background_jobs_monitor.cpp
-    bitmap.cpp
     bitmap_info.cpp
-    bitmap_store.cpp
     build_version.cpp
     cli_progress_reporter.cpp
     common.cpp
     config_params.cpp
-    confirm.cpp
-    dialog_shim.cpp
-    dpi_scaling.cpp
-    dpi_scaling_common.cpp
     dsnlexer.cpp
-    eda_doc.cpp
     eda_pattern_match.cpp
     eda_units.cpp
     embedded_files.cpp
@@ -271,12 +236,7 @@ set( KICOMMON_SRCS
     increment.cpp
     json_conversions.cpp
     json_schema_validator.cpp
-    kidialog.cpp
     kiid.cpp
-    kiway.cpp
-    kiway_mail.cpp
-    kiway_holder.cpp
-    launch_ext.cpp
     layer_id.cpp
     lib_id.cpp
     locale_io.cpp
@@ -284,9 +244,7 @@ set( KICOMMON_SRCS
     lset.cpp
     markup_parser.cpp
     netclass.cpp
-    notifications_manager.cpp
     page_info.cpp
-    oauth/oauth_loopback_server.cpp
     oauth/oauth_pkce.cpp
     oauth/oauth_session.cpp
     oauth/secure_token_store.cpp
@@ -299,13 +257,11 @@ set( KICOMMON_SRCS
     remote_provider_utils.cpp
     reporter.cpp
     richio.cpp
-    scintilla_tricks.cpp
     search_stack.cpp
     searchhelpfilefullpath.cpp
     string_utils.cpp
     systemdirsappend.cpp
     thread_pool.cpp
-    ui_events.cpp
     title_block.cpp
     trace_helpers.cpp
     wildcards_and_files_ext.cpp
@@ -315,8 +271,6 @@ set( KICOMMON_SRCS
     singleton.cpp
     pgm_base.cpp
 
-    ../scripting/python_scripting.cpp
-
     io/kicad/kicad_io_utils.cpp    # needed by richio
     io/io_base.cpp
     io/io_utils.cpp
@@ -324,10 +278,66 @@ set( KICOMMON_SRCS
     api/serializable.cpp
     api/api_utils.cpp
 
+    )
+
+# kicommon: the GUI part (dialogs, widgets, KIWAY, PGM_GUI), on top of kicommon_model.
+set( KICOMMON_SRCS
+    kicad_gl/gl_utils.cpp
+    kicad_gl/gl_context_mgr.cpp
+    dialogs/dialog_rc_job.cpp
+    dialogs/dialog_rc_job_base.cpp
+    dialogs/dialog_restore_local_history.cpp
+    dialogs/dialog_HTML_reporter_base.cpp
+    dialogs/panel_startwizard_libraries_base.cpp
+    dialogs/panel_startwizard_privacy_base.cpp
+    dialogs/panel_startwizard_settings_base.cpp
+    grid_tricks.cpp
+    widgets/aui_json_serializer.cpp
+    widgets/bitmap_button.cpp
+    widgets/grid_combobox.cpp
+    widgets/grid_icon_text_helpers.cpp
+    widgets/grid_text_button_helpers.cpp
+    widgets/grid_text_helpers.cpp
+    widgets/html_window.cpp
+    widgets/indicator_icon.cpp
+    widgets/kistatusbar.cpp
+    widgets/number_badge.cpp
+    widgets/std_bitmap_button.cpp
+    widgets/ui_common.cpp
+    widgets/up_down_tree.cpp
+    widgets/wx_grid.cpp
+    widgets/wx_html_report_panel.cpp
+    widgets/wx_html_report_panel_base.cpp
+    widgets/wx_html_report_box.cpp
+    background_jobs_monitor.cpp
+    bitmap.cpp
+    bitmap_store.cpp
+    confirm.cpp
+    dialog_shim.cpp
+    dpi_scaling.cpp
+    dpi_scaling_common.cpp
+    eda_doc.cpp
+    kidialog.cpp
+    kiway.cpp
+    kiway_mail.cpp
+    kiway_holder.cpp
+    launch_ext.cpp
+    notifications_manager.cpp
+    scintilla_tricks.cpp
+    ui_events.cpp
+    trace_helpers_gui.cpp
+    ../scripting/python_scripting.cpp
     startwizard/startwizard.cpp
     startwizard/startwizard_provider_libraries.cpp
     startwizard/startwizard_provider_privacy.cpp
     startwizard/startwizard_provider_settings.cpp
+    gal/color4d_wx.cpp
+    settings/aui_pane_settings.cpp
+    gestfich_gui.cpp
+    oauth/oauth_loopback_server.cpp
+    gui_reporters.cpp
+    local_history_ui.cpp
+    pgm_gui.cpp
     )
 
 if( UNIX AND NOT APPLE )
@@ -352,11 +362,30 @@ if( KICAD_IPC_API )
     )
 endif()
 
+add_library( kicommon_model SHARED
+    ${KICOMMON_MODEL_SRCS}
+    )
+
 add_library( kicommon SHARED
     ${KICOMMON_SRCS}
     )
 
 if( KICAD_USE_PCH )
+    # No GUI header here: kicommon_model must compile without the GUI.
+    target_precompile_headers( kicommon_model
+        PRIVATE
+            <kicommon.h>
+            <algorithm>
+            <map>
+            <memory>
+            <optional>
+            <set>
+            <string>
+            <vector>
+            <kiid.h>
+            <wx/string.h>
+             )
+
     target_precompile_headers( kicommon
         PRIVATE
             <kicommon.h>
@@ -368,18 +397,24 @@ if( KICAD_USE_PCH )
             <string>
             <vector>
             <kiid.h>
-            <pgm_base.h>
+            <pgm_gui.h>
             <wx/wx.h>
              )
 endif()
 
-set_target_properties(kicommon PROPERTIES CXX_VISIBILITY_PRESET hidden)
+set_target_properties( kicommon_model PROPERTIES CXX_VISIBILITY_PRESET hidden )
+set_target_properties( kicommon PROPERTIES CXX_VISIBILITY_PRESET hidden )
 
-target_link_libraries( kicommon
+if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+    # A reference from the model to GUI code is a link error, not a missing symbol at run time.
+    target_link_options( kicommon_model PRIVATE "LINKER:--no-undefined" )
+endif()
+
+target_link_libraries( kicommon_model
     core
     kiapi
     kimath
-    kiplatform
+    kiplatform_core
     nlohmann_json
     nlohmann_json_schema_validator
     FastFloat::fast_float
@@ -388,20 +423,26 @@ target_link_libraries( kicommon
     picosha2
     rapidcsv
     sexpr
-    glad
     thread-pool
     ${ZSTD_LIBRARY}
-    ${wxWidgets_LIBRARIES}
+    ${wxWidgets_BASE_LIBRARIES}
     ${LIBGIT2_LIBRARIES}
-    ${SPNAV_LIBRARIES}
 
     # needed by kiid to allow linking for Boost for the UUID against bcrypt (msys2 only)
     ${EXTRA_LIBS}
 
     # outline font support
-   	${FREETYPE_LIBRARIES}
-   	${HarfBuzz_LIBRARIES}
-	${Fontconfig_LIBRARIES}
+    ${FREETYPE_LIBRARIES}
+    ${HarfBuzz_LIBRARIES}
+    ${Fontconfig_LIBRARIES}
+    )
+
+target_link_libraries( kicommon
+    kicommon_model
+    kiplatform
+    glad
+    ${wxWidgets_LIBRARIES}
+    ${SPNAV_LIBRARIES}
 
     # needed because of python_scripting.cpp
     ${PYTHON_LIBRARIES}
@@ -409,7 +450,7 @@ target_link_libraries( kicommon
 
 
 if( KICAD_USE_SENTRY )
-    target_link_libraries( kicommon
+    target_link_libraries( kicommon_model
         sentry )
 
     set_property(SOURCE app_monitor.cpp APPEND PROPERTY COMPILE_DEFINITIONS KICAD_SENTRY_DSN="${KICAD_SENTRY_DSN}")
@@ -432,40 +473,42 @@ string( REGEX MATCH
         "${KICAD_VERSION}"
     )
 
-set_target_properties( kicommon PROPERTIES
-    OUTPUT_NAME     kicommon
-    SOVERSION      ${KICAD_MAJOR_MINOR_PATCH_VERSION}
-    )
+foreach( _kicommon_target kicommon_model kicommon )
+    set_target_properties( ${_kicommon_target} PROPERTIES
+        OUTPUT_NAME     ${_kicommon_target}
+        SOVERSION      ${KICAD_MAJOR_MINOR_PATCH_VERSION}
+        )
 
-install( TARGETS kicommon
-    RUNTIME DESTINATION ${KICAD_LIB}
-    LIBRARY DESTINATION ${KICAD_LIB}
-    COMPONENT binary
-    )
+    install( TARGETS ${_kicommon_target}
+        RUNTIME DESTINATION ${KICAD_LIB}
+        LIBRARY DESTINATION ${KICAD_LIB}
+        COMPONENT binary
+        )
 
-if( APPLE )
-    # puts library into the main kicad.app bundle in build tree
-    set_target_properties( kicommon PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY "${OSX_BUNDLE_BUILD_LIB_DIR}"
-        INSTALL_NAME_DIR "${OSX_BUNDLE_BUILD_LIB_DIR}"
-    )
-    set_target_properties( kicommon PROPERTIES INSTALL_RPATH
-            "@executable_path/../Frameworks" )
-    set_target_properties( kicommon PROPERTIES BUILD_WITH_INSTALL_RPATH 1 )
-endif()
+    if( APPLE )
+        # puts library into the main kicad.app bundle in build tree
+        set_target_properties( ${_kicommon_target} PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY "${OSX_BUNDLE_BUILD_LIB_DIR}"
+            INSTALL_NAME_DIR "${OSX_BUNDLE_BUILD_LIB_DIR}"
+        )
+        set_target_properties( ${_kicommon_target} PROPERTIES INSTALL_RPATH
+                "@executable_path/../Frameworks" )
+        set_target_properties( ${_kicommon_target} PROPERTIES BUILD_WITH_INSTALL_RPATH 1 )
+    endif()
 
-target_compile_definitions( kicommon PRIVATE KICOMMON_DLL=1 )
+    target_compile_definitions( ${_kicommon_target} PRIVATE KICOMMON_DLL=1 )
+endforeach()
 
-# Feed the desktop application identifiers to the Wayland app_id logic in pgm_base.cpp
+# Feed the desktop application identifiers to the Wayland app_id logic in pgm_gui.cpp
 # so the compositor matches windows to the installed desktop files (regular, Flatpak,
 # and Nightly builds each install a different reverse-DNS prefix).
 if( UNIX AND NOT APPLE )
-    set_property( SOURCE pgm_base.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    set_property( SOURCE pgm_gui.cpp APPEND PROPERTY COMPILE_DEFINITIONS
         KICAD_DESKTOP_APP_NAME="${KICAD_APP_NAME}"
         KICAD_DESKTOP_APP_PREFIX="${KICAD_APP_PREFIX}" )
 endif()
 
-target_include_directories( kicommon
+target_include_directories( kicommon_model
     PUBLIC
         .
         ${CMAKE_BINARY_DIR}
@@ -478,10 +521,10 @@ target_include_directories( kicommon
         $<TARGET_PROPERTY:nlohmann_json_schema_validator,INTERFACE_INCLUDE_DIRECTORIES>
     )
 
-add_dependencies( kicommon pegtl version_header )
+add_dependencies( kicommon_model pegtl version_header )
 
 if( TARGET remote_provider_schema_build_copy )
-    add_dependencies( kicommon remote_provider_schema_build_copy )
+    add_dependencies( kicommon_model remote_provider_schema_build_copy )
 endif()
 
 if( MSVC )
@@ -1121,7 +1164,7 @@ add_dependencies( pcbcommon delaunator )
 
 # The lemon grammar for the numeric evaluator
 generate_lemon_grammar(
-    kicommon
+    kicommon_model
     libeval
     libeval/numeric_evaluator.cpp
     libeval/grammar.lemon
@@ -1129,14 +1172,14 @@ generate_lemon_grammar(
 
 # The lemon grammar for the expression compiler
 generate_lemon_grammar(
-    kicommon
+    kicommon_model
     libeval_compiler
     libeval_compiler/libeval_compiler.cpp
     libeval_compiler/grammar.lemon
     )
 
 generate_lemon_grammar(
-    kicommon
+    kicommon_model
     text_eval
     text_eval/text_eval_wrapper.cpp
     text_eval/text_eval.lemon
@@ -1147,7 +1190,7 @@ generate_lemon_grammar(
 # on all devel tools ( Linux and msys2 )
 # works on Linux:
 make_lexer_export(
-    kicommon
+    kicommon_model
     stroke_params.keywords
     stroke_params_lexer.h
     stroke_params_keywords.cpp
@@ -1158,7 +1201,7 @@ make_lexer_export(
 
 # auto-generate netlist_lexer.h and netlist_keywords.cpp
 make_lexer_export(
-    kicommon
+    kicommon_model
     netlist.keywords
     netlist_lexer.h
     netlist_keywords.cpp
@@ -1178,7 +1221,7 @@ make_lexer(
 
 # auto-generate drc_rules_lexer.h and drc_rules_keywords.cpp
 make_lexer_export(
-    kicommon
+    kicommon_model
     drc_rules.keywords
     drc_rules_lexer.h
     drc_rules_keywords.cpp
@@ -1199,7 +1242,7 @@ make_lexer(
 
 # auto-generate s-expression library table code.
 make_lexer_export(
-    kicommon
+    kicommon_model
     lib_table.keywords
     lib_table_lexer.h
     lib_table_keywords.cpp
@@ -1210,7 +1253,7 @@ make_lexer_export(
 
 # auto-generate s-expression template fieldnames lexer and keywords.
 make_lexer_export(
-    kicommon
+    kicommon_model
     template_fieldnames.keywords
     template_fieldnames_lexer.h
     template_fieldnames_keywords.cpp
@@ -1222,7 +1265,7 @@ make_lexer_export(
 # auto-generate page layout reader s-expression page_layout_reader_lexer.h
 # and title_block_reader_keywords.cpp.
 make_lexer_export(
-    kicommon
+    kicommon_model
     drawing_sheet/drawing_sheet.keywords
     drawing_sheet/drawing_sheet_lexer.h
     drawing_sheet/drawing_sheet_keywords.cpp
@@ -1233,7 +1276,7 @@ make_lexer_export(
 
 # auto-generate embedded files lexer and keywords
 make_lexer_export(
-    kicommon
+    kicommon_model
     embedded_files.keywords
     embedded_files_lexer.h
     embedded_files_keywords.cpp

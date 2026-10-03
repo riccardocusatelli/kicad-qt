@@ -27,7 +27,7 @@
 #include <vector>
 
 #include <tl/expected.hpp>
-#include <wx/wx.h>
+#include <wx/string.h>
 #include <libraries/library_table.h>
 
 struct LIBRARY_TABLE_ROW_IR

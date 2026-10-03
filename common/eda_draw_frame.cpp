@@ -44,7 +44,9 @@
 #include <page_info.h>
 #include <paths.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <render_settings.h>
 #include <settings/app_settings.h>
 #include <settings/color_settings.h>
@@ -290,7 +292,7 @@ bool EDA_DRAW_FRAME::LockFile( const wxString& aFileName )
         // If we cannot acquire the lock but we appear to be the one who locked it, check to see if
         // there is another KiCad instance running.  If there is not, then we can override the lock.
         // This could happen if KiCad crashed or was interrupted.
-        if( !Pgm().SingleInstance()->IsAnotherRunning() )
+        if( !PgmGui().SingleInstance()->IsAnotherRunning() )
             m_file_checker->OverrideLock();
     }
 
@@ -1558,7 +1560,7 @@ std::vector<const PLUGIN_ACTION*> EDA_DRAW_FRAME::GetOrderedPluginActions( PLUGI
 
 #ifdef KICAD_IPC_API
 
-    API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
     std::vector<const PLUGIN_ACTION*> unsorted = mgr.GetActionsForScope( aScope );
     std::map<wxString, const PLUGIN_ACTION*> actionMap;
     std::set<const PLUGIN_ACTION*> handled;
@@ -1591,7 +1593,7 @@ std::vector<const PLUGIN_ACTION*> EDA_DRAW_FRAME::GetOrderedPluginActions( PLUGI
 void EDA_DRAW_FRAME::AddApiPluginTools( ACTION_TOOLBAR* aToolbar )
 {
 #ifdef KICAD_IPC_API
-    API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
 
     mgr.ButtonBindings().clear();
 
@@ -1619,7 +1621,7 @@ void EDA_DRAW_FRAME::AddApiPluginTools( ACTION_TOOLBAR* aToolbar )
 void EDA_DRAW_FRAME::OnApiPluginInvoke( wxCommandEvent& aEvent )
 {
 #ifdef KICAD_IPC_API
-    API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
 
     if( mgr.ButtonBindings().count( aEvent.GetId() ) )
     {

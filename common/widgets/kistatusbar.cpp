@@ -35,10 +35,12 @@
 #include <widgets/bitmap_button.h>
 #include <widgets/ui_common.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <background_jobs_monitor.h>
 #include <notifications_manager.h>
 #include <bitmaps.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <dialog_HTML_reporter_base.h>
 #include <trace_helpers.h>
 #include <wx/dcclient.h>
@@ -193,7 +195,7 @@ void KISTATUSBAR::onNotificationsIconClick( wxCommandEvent& aEvent )
         pos.x += r.GetWidth();
     }
 
-    Pgm().GetNotificationsManager().ShowList( this, pos );
+    PgmGui().GetNotificationsManager().ShowList( this, pos );
 }
 
 
@@ -208,7 +210,7 @@ void KISTATUSBAR::onBackgroundProgressClick( wxMouseEvent& aEvent )
         pos.x += r.GetWidth();
     }
 
-    Pgm().GetBackgroundJobMonitor().ShowList( this, pos );
+    PgmGui().GetBackgroundJobMonitor().ShowList( this, pos );
 }
 
 

@@ -22,6 +22,7 @@
 #include <api/api_server.h>
 #include <widgets/ui_common.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <python_manager.h>
 #include <settings/common_settings.h>
 #include <settings/settings_manager.h>
@@ -99,10 +100,10 @@ void PANEL_PLUGIN_SETTINGS::OnEnableApiChecked( wxCommandEvent& aEvent )
 void PANEL_PLUGIN_SETTINGS::updateApiStatusText()
 {
 #ifdef KICAD_IPC_API
-    if( m_cbEnableApi->GetValue() && Pgm().GetApiServer().Running() )
+    if( m_cbEnableApi->GetValue() && PgmGui().GetApiServer().Running() )
     {
         m_stApiStatus->SetLabel( wxString::Format( _( "Listening at %s" ),
-                                                      Pgm().GetApiServer().SocketPath() ) );
+                                                      PgmGui().GetApiServer().SocketPath() ) );
     }
     else
     {

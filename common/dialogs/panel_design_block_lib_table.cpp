@@ -42,6 +42,7 @@
 #include <lib_table_grid_data_model.h>
 #include <wildcards_and_files_ext.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <env_paths.h>
 #include <dialogs/panel_design_block_lib_table.h>
 #include <design_block_library_adapter.h>
@@ -981,7 +982,7 @@ void InvokeEditDesignBlockLibTable( KIWAY* aKiway, wxWindow *aParent )
     }
 
     // Trigger a load of any new block libraries
-    Pgm().PreloadDesignBlockLibraries( aKiway );
+    PgmGui().PreloadDesignBlockLibraries( aKiway );
 
     std::string payload = "";
     aKiway->ExpressMail( FRAME_SCH, MAIL_RELOAD_LIB, payload );

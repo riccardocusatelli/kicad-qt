@@ -32,6 +32,7 @@
 #include <pgm_base.h>
 #include <core/profile.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <trace_helpers.h>
 #include <view/view_overlay.h>
 #include <view/view_controls.h>

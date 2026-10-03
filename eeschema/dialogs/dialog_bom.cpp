@@ -43,6 +43,7 @@
 #include <netlist_exporter_xml.h>
 #include <paths.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <reporter.h>
 #include <sch_edit_frame.h>
 #include <string_utils.h>
@@ -396,7 +397,7 @@ void DIALOG_BOM::OnEditGenerator( wxCommandEvent& event )
         return;
     }
 
-    wxString editorname = Pgm().GetTextEditor();
+    wxString editorname = PgmGui().GetTextEditor();
 
     if( !editorname.IsEmpty() )
         ExecuteFile( editorname, pluginFile );

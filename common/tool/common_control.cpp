@@ -30,6 +30,7 @@
 #include <build_version.h>
 #include <common.h>     // for SearchHelpFileFullPath
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <tool/actions.h>
 #include <tool/tool_manager.h>
 #include <eda_draw_frame.h>
@@ -49,6 +50,7 @@
 #include <tools/kicad_manager_actions.h>
 #include <confirm.h>
 #include <reporter.h>
+#include <gui_reporters.h>
 #include <widgets/kistatusbar.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
@@ -442,7 +444,7 @@ int COMMON_CONTROL::ReloadPlugins( const TOOL_EVENT& aEvent )
         if( KISTATUSBAR* statusBar = dynamic_cast<KISTATUSBAR*>( m_frame->GetStatusBar() ) )
             reporter = std::make_shared<STATUSBAR_WARNING_REPORTER>( statusBar, wxS( "plugin" ) );
 
-        Pgm().GetPluginManager().ReloadPlugins( std::nullopt, reporter );
+        PgmGui().GetPluginManager().ReloadPlugins( std::nullopt, reporter );
     }
 #endif
     return 0;

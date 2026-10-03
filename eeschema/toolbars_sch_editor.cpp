@@ -32,6 +32,7 @@
 #include <bitmaps.h>
 #include <eeschema_id.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <python_scripting.h>
 #include <tool/action_menu.h>
 #include <tool/tool_manager.h>
@@ -259,7 +260,7 @@ void SCH_EDIT_FRAME::configureToolbars()
 
 #ifdef KICAD_IPC_API
                 bool haveApiPlugins = Pgm().GetCommonSettings()->m_Api.enable_server
-                                        && !Pgm().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
+                                        && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
 #else
                 bool haveApiPlugins = false;
 #endif

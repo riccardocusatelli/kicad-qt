@@ -40,6 +40,7 @@
 #include <board_design_settings.h>
 #include <settings/color_settings.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <pcb_edit_frame.h>
 #include <3d_viewer/eda_3d_viewer_frame.h>
 #include <api/api_plugin_manager.h>
@@ -538,12 +539,12 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
 #ifdef KICAD_IPC_API
     m_apiHandler = std::make_unique<API_HANDLER_PCB>( this );
-    Pgm().GetApiServer().RegisterHandler( m_apiHandler.get() );
+    PgmGui().GetApiServer().RegisterHandler( m_apiHandler.get() );
 
     if( Kiface().IsSingle() )
     {
         m_apiHandlerCommon = std::make_unique<API_HANDLER_COMMON>();
-        Pgm().GetApiServer().RegisterHandler( m_apiHandlerCommon.get() );
+        PgmGui().GetApiServer().RegisterHandler( m_apiHandlerCommon.get() );
     }
 #endif
 
@@ -1502,7 +1503,7 @@ void PCB_EDIT_FRAME::doCloseWindow()
     GetCanvas()->StopDrawing();
 
 #ifdef KICAD_IPC_API
-    Pgm().GetApiServer().DeregisterHandler( m_apiHandler.get() );
+    PgmGui().GetApiServer().DeregisterHandler( m_apiHandler.get() );
     wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
                       &PCB_EDIT_FRAME::onPluginAvailabilityChanged, this );
 #endif

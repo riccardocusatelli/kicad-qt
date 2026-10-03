@@ -28,12 +28,12 @@
 #include <gal/color4d.h>
 #include <settings/json_settings.h>
 #include <settings/json_settings_internals.h>
+#include <settings/json_settings_templates.h>
 #include <settings/nested_settings.h>
 #include <settings/parameters.h>
 #include <settings/bom_settings.h>
 #include <settings/grid_settings.h>
 #include <settings/aui_settings.h>
-#include <wx/aui/framemanager.h>
 #include <wx/config.h>
 #include <wx/debug.h>
 #include <wx/fileconf.h>
@@ -639,22 +639,7 @@ std::optional<nlohmann::json> JSON_SETTINGS::GetJson( const std::string& aPath )
 }
 
 
-template<typename ValueType>
-std::optional<ValueType> JSON_SETTINGS::Get( const std::string& aPath ) const
-{
-    if( std::optional<nlohmann::json> ret = GetJson( aPath ) )
-    {
-        try
-        {
-            return ret->get<ValueType>();
-        }
-        catch( ... )
-        {
-        }
-    }
 
-    return std::nullopt;
-}
 
 
 // Instantiate all required templates here to allow reducing scope of json.hpp
@@ -689,16 +674,10 @@ template KICOMMON_API std::optional<wxSize>
                       JSON_SETTINGS::Get<wxSize>( const std::string& aPath ) const;
 template KICOMMON_API std::optional<wxRect>
                       JSON_SETTINGS::Get<wxRect>( const std::string& aPath ) const;
-template KICOMMON_API std::optional<wxAuiPaneInfo>
-                      JSON_SETTINGS::Get<wxAuiPaneInfo>( const std::string& aPath ) const;
 template KICOMMON_API std::optional<KIGFX::CROSS_HAIR_MODE>
                       JSON_SETTINGS::Get<KIGFX::CROSS_HAIR_MODE>( const std::string& aPath ) const;
 
-template<typename ValueType>
-void JSON_SETTINGS::Set( const std::string& aPath, ValueType aVal )
-{
-    m_internals->SetFromString( aPath, std::move( aVal ) );
-}
+
 
 
 // Instantiate all required templates here to allow reducing scope of json.hpp
@@ -728,8 +707,6 @@ template KICOMMON_API void JSON_SETTINGS::Set<GRID>( const std::string& aPath, G
 template KICOMMON_API void JSON_SETTINGS::Set<wxPoint>( const std::string& aPath, wxPoint aValue );
 template KICOMMON_API void JSON_SETTINGS::Set<wxSize>( const std::string& aPath, wxSize aValue );
 template KICOMMON_API void JSON_SETTINGS::Set<wxRect>( const std::string& aPath, wxRect aValue );
-template KICOMMON_API void JSON_SETTINGS::Set<wxAuiPaneInfo>( const std::string& aPath,
-                                                              wxAuiPaneInfo      aValue );
 template KICOMMON_API void JSON_SETTINGS::Set<KIGFX::CROSS_HAIR_MODE>( const std::string& aPath,
                                                                         KIGFX::CROSS_HAIR_MODE aValue );
 

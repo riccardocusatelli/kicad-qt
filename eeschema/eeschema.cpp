@@ -26,6 +26,7 @@
 #include <dialogs/html_message_box.h>
 #include <core/json_serializers.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <kiface_base.h>
 #include <background_jobs_monitor.h>
 #include <cli_progress_reporter.h>
@@ -476,7 +477,7 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
             []( const wxString& aMissingLibs, const wxString& aError )
             {
                 // parent of this dialog cannot be NULL since that breaks the Kiway() chain.
-                wxWindow* parent = Pgm().App().GetTopWindow();
+                wxWindow* parent = PgmGui().App().GetTopWindow();
 
                 if( !aMissingLibs.IsEmpty() )
                 {
@@ -524,10 +525,10 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
     if( !m_libraryPreloadInProgress.compare_exchange_strong( expected, true ) )
         return;
 
-    Pgm().ClearLibraryLoadMessages();
+    PgmGui().ClearLibraryLoadMessages();
 
     m_libraryPreloadBackgroundJob =
-            Pgm().GetBackgroundJobMonitor().Create( _( "Loading Symbol Libraries" ) );
+            PgmGui().GetBackgroundJobMonitor().Create( _( "Loading Symbol Libraries" ) );
 
     auto preload =
         [this, aKiway]() -> void
@@ -600,7 +601,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
                 {
                     KI_LOG_TRACE( traceLibraries, "  -> collected %zu messages, calling AddLibraryLoadMessages",
                                 messages.size() );
-                    Pgm().AddLibraryLoadMessages( messages );
+                    PgmGui().AddLibraryLoadMessages( messages );
                 }
                 else
                 {
@@ -612,7 +613,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
                 KI_LOG_TRACE( traceLibraries, "eeschema PreloadLibraries: aborted, skipping symbol processing" );
             }
 
-            Pgm().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
+            PgmGui().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
             m_libraryPreloadBackgroundJob.reset();
             m_libraryPreloadInProgress.store( false );
 

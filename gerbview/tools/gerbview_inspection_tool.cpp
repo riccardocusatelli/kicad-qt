@@ -30,6 +30,7 @@
 #include "gerbview_actions.h"
 #include <gal/painter.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <preview_items/ruler_item.h>
 #include <preview_items/selection_area.h>
 #include <tool/tool_event.h>
@@ -159,7 +160,7 @@ int GERBVIEW_INSPECTION_TOOL::ShowSource( const TOOL_EVENT& aEvent )
 
     if( gerber_layer )
     {
-        wxString editorname = Pgm().GetTextEditor();
+        wxString editorname = PgmGui().GetTextEditor();
 
         if( !editorname.IsEmpty() )
         {

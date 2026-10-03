@@ -81,6 +81,11 @@ public:
         WX_PROGRESS_REPORTER_BASE::SetTitle( aTitle );
     }
 
+    void ReportIndeterminate( const wxString& aMessage ) override
+    {
+        WX_PROGRESS_REPORTER_BASE::Pulse( aMessage );
+    }
+
     ///< Gate expensive dialog work while always allowing the final tick.
     static bool shouldRefresh( int aProgress, int aMaxProgress, int aPhase, int aNumPhases,
                                THROTTLE& aThrottle )

@@ -31,6 +31,7 @@
 #include <pcb_scripting_tool.h>
 #include <pcbnew_settings.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <reporter.h>
 #include <settings/common_settings.h>
 #include <api/api_plugin_manager.h>
@@ -79,7 +80,7 @@ void PLUGINS_GRID_TRICKS::showPopupMenu( wxMenu& menu, wxGridEvent& aEvent )
         m_grid->SelectRow( clickedRow );
 
 #ifdef KICAD_IPC_API
-        API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
+        API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
         wxString id = m_grid->GetCellValue( clickedRow,
                                             PANEL_PCBNEW_ACTION_PLUGINS::COLUMN_SETTINGS_IDENTIFIER );
 
@@ -101,7 +102,7 @@ void PLUGINS_GRID_TRICKS::doPopupSelection( wxCommandEvent& event )
     if( event.GetId() == MYID_RECREATE_ENV )
     {
 #ifdef KICAD_IPC_API
-        API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
+        API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
         wxString id = m_grid->GetCellValue( m_grid->GetGridCursorRow(),
                                             PANEL_PCBNEW_ACTION_PLUGINS::COLUMN_SETTINGS_IDENTIFIER );
 
@@ -226,7 +227,7 @@ void PANEL_PCBNEW_ACTION_PLUGINS::OnReloadButtonClick( wxCommandEvent& event )
 {
     SCRIPTING_TOOL::ReloadPlugins();
 #ifdef KICAD_IPC_API
-    API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
     m_errorDialog->m_Reporter->Clear();
     auto reporter = std::make_shared<REDIRECT_REPORTER>( m_errorDialog->m_Reporter );
     m_allowErrorDialog = true;
@@ -244,7 +245,7 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataFromWindow()
     KI_ASSERT( settings );
 
 #ifdef KICAD_IPC_API
-    API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
 
     if( settings )
     {

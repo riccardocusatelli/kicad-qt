@@ -23,6 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <pgm_gui.h>
 #include <stack>
 #include <git/git_backend.h>
 
@@ -1130,7 +1131,7 @@ void PROJECT_TREE_PANE::onRight( wxTreeEvent& Event )
 
 void PROJECT_TREE_PANE::onOpenSelectedFileWithTextEditor( wxCommandEvent& event )
 {
-    wxString editorname = Pgm().GetTextEditor();
+    wxString editorname = PgmGui().GetTextEditor();
 
     if( editorname.IsEmpty() )
     {

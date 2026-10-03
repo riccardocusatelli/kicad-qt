@@ -31,6 +31,7 @@
 #include <kiway.h>
 #include <lib_tree_model_adapter.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <eda_list_dialog.h>
 #include <widgets/filedlg_hook_new_library.h>
 #include <symbol_library_manager.h>
@@ -148,7 +149,7 @@ SCH_BASE_FRAME::SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aWindo
               }
           } );
 
-    Pgm().GetBackgroundJobMonitor().RegisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
+    PgmGui().GetBackgroundJobMonitor().RegisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
 
     m_watcherDebounceTimer.Bind( wxEVT_TIMER, &SCH_BASE_FRAME::OnSymChangeDebounceTimer, this );
 }
@@ -157,7 +158,7 @@ SCH_BASE_FRAME::SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aWindo
 /// Needs to be in the cpp file to encode the sizeof() for std::unique_ptr
 SCH_BASE_FRAME::~SCH_BASE_FRAME()
 {
-    Pgm().GetBackgroundJobMonitor().UnregisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
+    PgmGui().GetBackgroundJobMonitor().UnregisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
 }
 
 

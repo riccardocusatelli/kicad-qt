@@ -56,6 +56,7 @@
 #include <symbol_edit_frame.h>
 #include <symbol_viewer_frame.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <core/profile.h>
 #include <project/project_file.h>
 #include <project/net_settings.h>
@@ -462,7 +463,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
 #ifdef KICAD_IPC_API
     m_apiHandler = std::make_unique<API_HANDLER_SCH>( this );
-    Pgm().GetApiServer().RegisterHandler( m_apiHandler.get() );
+    PgmGui().GetApiServer().RegisterHandler( m_apiHandler.get() );
 #endif
 
     // Default shutdown reason until a file is loaded
@@ -1252,7 +1253,7 @@ void SCH_EDIT_FRAME::doCloseWindow()
     }
 
 #ifdef KICAD_IPC_API
-    Pgm().GetApiServer().DeregisterHandler( m_apiHandler.get() );
+    PgmGui().GetApiServer().DeregisterHandler( m_apiHandler.get() );
     wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED, &SCH_EDIT_FRAME::onPluginAvailabilityChanged, this );
 #endif
 
@@ -1499,7 +1500,7 @@ void SCH_EDIT_FRAME::LoadProject()
                 KIFACE *schface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
                 schface->PreloadLibraries( &Kiway() );
 
-                Pgm().PreloadDesignBlockLibraries( &Kiway() );
+                PgmGui().PreloadDesignBlockLibraries( &Kiway() );
             } );
 }
 

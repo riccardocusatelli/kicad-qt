@@ -38,6 +38,7 @@
 #include <common.h>
 #include <kiplatform/app.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <eda_base_frame.h>
 
 #include "aboutinfo.h"
@@ -61,7 +62,7 @@ static void buildKicadAboutBanner( EDA_BASE_FRAME* aParent, ABOUT_APP_INFO& aInf
     aInfo.SetAppIcon( aParent->GetIcon() );
 
     /* Set title */
-    aInfo.SetAppName( Pgm().App().GetAppName() );
+    aInfo.SetAppName( PgmGui().App().GetAppName() );
 
     /* KiCad build version */
     wxString version;

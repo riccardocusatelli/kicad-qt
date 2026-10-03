@@ -36,7 +36,7 @@
 #include <wx/arrstr.h>
 #include <wx/datetime.h>
 #include <wildcards_and_files_ext.h>
-#include <kiway_player.h>
+#include <kictl_flags.h>
 #include <design_block_io.h>
 #include <design_block.h>
 #include <ki_exception.h>

@@ -18,11 +18,13 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <gui_reporters.h>
 #include <wildcards_and_files_ext.h>
 #include <common.h>
 #include <env_vars.h>
 #include <executable_names.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <pgm_kicad.h>
 #include <policy_keys.h>
 #include <kiway.h>
@@ -856,7 +858,7 @@ int KICAD_MANAGER_CONTROL::Execute( const TOOL_EVENT& aEvent )
     else if( aEvent.IsAction( &KICAD_MANAGER_ACTIONS::editDrawingSheet ) )
         execFile = PL_EDITOR_EXE;
     else if( aEvent.IsAction( &KICAD_MANAGER_ACTIONS::openTextEditor ) )
-        execFile = Pgm().GetTextEditor();
+        execFile = PgmGui().GetTextEditor();
     else if( aEvent.IsAction( &KICAD_MANAGER_ACTIONS::editOtherSch ) )
         execFile = EESCHEMA_EXE;
     else if( aEvent.IsAction( &KICAD_MANAGER_ACTIONS::editOtherPCB ) )

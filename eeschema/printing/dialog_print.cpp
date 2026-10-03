@@ -23,6 +23,7 @@
  */
 
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <confirm.h>
 #include <sch_screen.h>
 #include <sch_edit_frame.h>
@@ -302,7 +303,7 @@ void DIALOG_PRINT::OnPrintPreview( wxCommandEvent& event )
 
 bool DIALOG_PRINT::TransferDataFromWindow()
 {
-    if( Pgm().m_Printing )
+    if( PgmGui().m_Printing )
     {
         DisplayError( this, _( "Previous print job not yet complete." ) );
         return false;
@@ -338,9 +339,9 @@ bool DIALOG_PRINT::TransferDataFromWindow()
 
         SCH_PLOTTER plotter( m_parent );
 
-        Pgm().m_Printing = true;
+        PgmGui().m_Printing = true;
         plotter.Plot( PLOT_FORMAT::PDF, plotOpts, &renderSettings, nullptr );
-        Pgm().m_Printing = false;
+        PgmGui().m_Printing = false;
 
         KIPLATFORM::PRINTING::PRINT_RESULT result =
                 KIPLATFORM::PRINTING::PrintPDF( TO_UTF8( plotter.GetLastOutputFilePath() ) );
@@ -444,7 +445,7 @@ bool DIALOG_PRINT::TransferDataFromWindow()
     wxPrinter printer( &printDialogData );
     SCH_PRINTOUT printout( m_parent, _( "Print Schematic" ) );
 
-    Pgm().m_Printing = true;
+    PgmGui().m_Printing = true;
     {
         if( !printer.Print( this, &printout, true ) )
         {
@@ -458,7 +459,7 @@ bool DIALOG_PRINT::TransferDataFromWindow()
         }
     }
 
-    Pgm().m_Printing = false;
+    PgmGui().m_Printing = false;
 
     return true;
 }

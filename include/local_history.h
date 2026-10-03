@@ -38,7 +38,6 @@
 #include <wx/arrstr.h>
 #include <wx/datetime.h>
 #include <wx/string.h>
-class wxWindow;
 
 class PROGRESS_REPORTER;
 
@@ -207,22 +206,31 @@ public:
     /** Return the current head commit hash. */
     wxString GetHeadHash( const wxString& aProjectPath );
 
-    /** Restore the project files to the state recorded by the given commit hash.  When aConfirm
-     *  is true a yes/no prompt is shown before any file is overwritten, callers that have already
-     *  asked the user (the startup recovery prompt) pass false to avoid a double prompt. */
-    bool RestoreCommit( const wxString& aProjectPath, const wxString& aHash, wxWindow* aParent = nullptr,
-                        bool aConfirm = true );
+    /** How RestoreCommit() talks to the user (see local_history_ui.h for the GUI version). */
+    struct RESTORE_HOOKS
+    {
+        /// Report that the restore cannot run because of the open (locked) files listed.
+        std::function<void( const wxString& aMessage )> reportLockedFiles;
 
-    /** Show a dialog allowing the user to choose a snapshot to restore. */
-    void ShowRestoreDialog( const wxString& aProjectPath, wxWindow* aParent );
+        /// Ask whether to overwrite the working files with the version of @a aCommitTime.
+        /// Not set: no confirmation.
+        std::function<bool( const wxDateTime& aCommitTime )> confirmRestore;
+    };
+
+    /** Restore the project files to the state recorded by the given commit hash.  @a aHooks
+     *  (optional) report problems and ask for confirmation before any file is overwritten. */
+    bool RestoreCommit( const wxString& aProjectPath, const wxString& aHash,
+                        const RESTORE_HOOKS* aHooks = nullptr );
 
     /** Block until any pending background save completes.  Call before reading repo
      *  state (HeadNewerThanLastSave / GetHeadHash) at close time so an in-flight
      *  autosave can't leave the close path with a stale view of HEAD. */
     void WaitForPendingSave();
 
-private:
+    /** Return the snapshots recorded for the project, newest first. */
     std::vector<LOCAL_HISTORY_SNAPSHOT_INFO> LoadSnapshots( const wxString& aProjectPath );
+
+private:
 
     /** Execute file writes and git commit on a background thread. */
     bool commitInBackground( const wxString& aProjectPath, const wxString& aTitle,

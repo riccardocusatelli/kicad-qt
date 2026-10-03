@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <gui_reporters.h>
 #include <dialog_cleanup_tracks_and_vias_base.h>
 #include <cleanup_item.h>
 #include <widgets/rc_tree_model.h>

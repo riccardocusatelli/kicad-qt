@@ -32,6 +32,7 @@
 #include <kiway_player.h>
 #include <kiway.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <project/project_local_settings.h>
 #include <property_holder.h>
 #include <settings/settings_manager.h>
@@ -198,7 +199,7 @@ DIALOG_SHIM::DIALOG_SHIM( wxWindow* aParent, wxWindowID id, const wxString& titl
     // in certain circumstances such as when calling an external tool in Eeschema BOM generation.
     // So set the parent frame (if exists) to top window to avoid this annoying behavior.
     if( kiwayHolder && kiwayHolder->GetType() == KIWAY_HOLDER::FRAME )
-        Pgm().App().SetTopWindow( (EDA_BASE_FRAME*) kiwayHolder );
+        PgmGui().App().SetTopWindow( (EDA_BASE_FRAME*) kiwayHolder );
 #endif
 
     Bind( wxEVT_PAINT, &DIALOG_SHIM::OnPaint, this );

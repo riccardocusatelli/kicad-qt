@@ -23,7 +23,12 @@
  */
 
 // Date for KiCad build version
-#include <wx/wx.h>
+#include <wx/platinfo.h>
+#include <wx/string.h>
+#include <wx/utils.h>
+#include <wx/build.h>
+#include <wx/intl.h>
+#include <wx/version.h>
 #include <config.h>
 #include <boost/version.hpp>
 #include <kiplatform/app.h>
@@ -67,6 +72,15 @@ void SetOpenGLInfo( const char* aVendor, const char* aRenderer, const char* aVer
     s_glVendor = wxString::FromUTF8( aVendor );
     s_glRenderer = wxString::FromUTF8( aRenderer );
     s_glVersion = wxString::FromUTF8( aVersion );
+}
+
+
+static wxString s_displayServer;
+
+
+void SetDisplayServerInfo( const wxString& aDisplayServer )
+{
+    s_displayServer = aDisplayServer;
 }
 
 
@@ -180,7 +194,7 @@ wxString GetVersionInfoData( const wxString& aTitle, bool aHtml, bool aBrief )
     aMsg << "Version: " << version << eol << eol;
     aMsg << "Libraries:" << eol;
 
-    aMsg << indent4 << wxGetLibraryVersionInfo().GetVersionString() << " ";
+    aMsg << indent4 << wxString( wxVERSION_STRING ) << " ";
 
 #ifdef __WXGTK__
     #if wxCHECK_VERSION( 3, 3, 2 )
@@ -235,18 +249,8 @@ wxString GetVersionInfoData( const wxString& aTitle, bool aHtml, bool aBrief )
     }
 
 #ifdef __WXGTK__
-    if( wxTheApp && wxTheApp->IsGUI() )
-    {
-        aMsg << ", ";
-
-        switch( wxGetDisplayInfo().type )
-        {
-        case wxDisplayX11:     aMsg << "X11"; break;
-        case wxDisplayWayland: aMsg << "Wayland"; break;
-        case wxDisplayNone:    aMsg << "None"; break;
-        default:               aMsg << "Unknown";
-        }
-    }
+    if( !s_displayServer.empty() )
+        aMsg << ", " << s_displayServer;
 
     aMsg << ", " << wxGetenv( "XDG_SESSION_TYPE" )
          << ", " << wxGetenv( "XDG_CURRENT_DESKTOP" )

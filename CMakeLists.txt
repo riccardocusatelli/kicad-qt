@@ -1098,6 +1098,16 @@ find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS gl aui adv html core
 # Include wxWidgets macros.
 include( ${wxWidgets_USE_FILE} )
 
+# wxBase (with its net and xml companions) without the GUI libraries: for the parts of KiCad
+# that must not use the GUI (kicommon_model, kiplatform_core, core, kicad-cli).
+set( wxWidgets_BASE_LIBRARIES "" )
+
+foreach( _wxlib ${wxWidgets_LIBRARIES} )
+    if( NOT _wxlib MATCHES "wx_?(gtk|msw|osx|qt|x11|univ)[0-9]*u?_" )
+        list( APPEND wxWidgets_BASE_LIBRARIES ${_wxlib} )
+    endif()
+endforeach()
+
 # Detect wxWidgets port being used
 if( wxWidgets_FIND_STYLE STREQUAL "win32" )
     string(REGEX MATCH "(msw|qt|gtk)" KICAD_WX_PORT "${WX_CONFIGURATION}")

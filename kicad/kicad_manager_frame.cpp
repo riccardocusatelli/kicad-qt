@@ -23,6 +23,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <local_history_ui.h>
+#include <pgm_gui.h>
 #include "kicad_id.h"
 #include "pcm.h"
 #include "pgm_kicad.h"
@@ -178,9 +180,9 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
     // to display a info (specific to Windows) using the FIELD_OFFSET_BGJOB_TEXT id offset (=1)
     // So the extra field count is 1
     CreateStatusBar( 2 );
-    Pgm().GetBackgroundJobMonitor().RegisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
-    Pgm().GetNotificationsManager().RegisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
-    Pgm().RegisterLibraryLoadStatusBar( (KISTATUSBAR*) GetStatusBar() );
+    PgmGui().GetBackgroundJobMonitor().RegisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
+    PgmGui().GetNotificationsManager().RegisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
+    PgmGui().RegisterLibraryLoadStatusBar( (KISTATUSBAR*) GetStatusBar() );
     GetStatusBar()->SetFont( KIUI::GetStatusFont( this ) );
 
     // Give an icon
@@ -328,9 +330,9 @@ KICAD_MANAGER_FRAME::~KICAD_MANAGER_FRAME()
     m_notebook->Unbind( wxEVT_AUINOTEBOOK_PAGE_CLOSE, &KICAD_MANAGER_FRAME::onNotebookPageCloseRequest, this );
     m_notebook->Unbind( wxEVT_AUINOTEBOOK_PAGE_CLOSED, &KICAD_MANAGER_FRAME::onNotebookPageCountChanged, this );
 
-    Pgm().GetBackgroundJobMonitor().UnregisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
-    Pgm().GetNotificationsManager().UnregisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
-    Pgm().UnregisterLibraryLoadStatusBar( (KISTATUSBAR*) GetStatusBar() );
+    PgmGui().GetBackgroundJobMonitor().UnregisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
+    PgmGui().GetNotificationsManager().UnregisterStatusBar( (KISTATUSBAR*) GetStatusBar() );
+    PgmGui().UnregisterLibraryLoadStatusBar( (KISTATUSBAR*) GetStatusBar() );
 
     // Shutdown all running tools
     if( m_toolManager )
@@ -460,7 +462,7 @@ void KICAD_MANAGER_FRAME::CreatePCM()
 
                 if( aUpdateCount > 0 )
                 {
-                    Pgm().GetNotificationsManager().CreateOrUpdate(
+                    PgmGui().GetNotificationsManager().CreateOrUpdate(
                             wxS( "pcm" ),
                             _( "PCM Updates Available" ),
                             wxString::Format( _( "%d package update(s) available" ), aUpdateCount ),
@@ -468,7 +470,7 @@ void KICAD_MANAGER_FRAME::CreatePCM()
                 }
                 else
                 {
-                    Pgm().GetNotificationsManager().Remove( wxS( "pcm" ) );
+                    PgmGui().GetNotificationsManager().Remove( wxS( "pcm" ) );
                 }
 
                 CallAfter(
@@ -578,7 +580,7 @@ void KICAD_MANAGER_FRAME::PreloadAllLibraries()
                 KIFACE *pcbface = Kiway().KiFACE( KIWAY_FACES::FACE_PCB );
                 pcbface->PreloadLibraries( &Kiway() );
 
-                Pgm().PreloadDesignBlockLibraries( &Kiway() );
+                PgmGui().PreloadDesignBlockLibraries( &Kiway() );
             } );
 }
 
@@ -973,7 +975,7 @@ bool KICAD_MANAGER_FRAME::LoadProject( const wxFileName& aProjectFileName )
             // If we cannot acquire the lock but we appear to be the one who locked it, check to
             // see if there is another KiCad instance running. If not, then we can override the
             // lock. This could happen if KiCad crashed or was interrupted.
-            if( !Pgm().SingleInstance()->IsAnotherRunning() )
+            if( !PgmGui().SingleInstance()->IsAnotherRunning() )
                 lockFile.OverrideLock();
         }
 
@@ -1037,7 +1039,7 @@ bool KICAD_MANAGER_FRAME::LoadProject( const wxFileName& aProjectFileName )
         if( dlg.ShowModal() == wxID_YES )
         {
             // The dialog above is the confirmation, skip RestoreCommit's own prompt.
-            Kiway().LocalHistory().RestoreCommit( Prj().GetProjectPath(), head, this, false );
+            RestoreLocalHistoryCommit( Kiway().LocalHistory(), Prj().GetProjectPath(), head, this, false );
         }
         else
         {
@@ -1215,7 +1217,7 @@ void KICAD_MANAGER_FRAME::OnOpenFileInTextEditor( wxCommandEvent& event )
 
     wxString filename = dlg.GetPath();
 
-    if( !dlg.GetPath().IsEmpty() && !Pgm().GetTextEditor().IsEmpty() )
+    if( !dlg.GetPath().IsEmpty() && !PgmGui().GetTextEditor().IsEmpty() )
         m_toolManager->RunAction<wxString*>( KICAD_MANAGER_ACTIONS::openTextEditor, &filename );
 }
 
@@ -1293,7 +1295,7 @@ void KICAD_MANAGER_FRAME::ProjectChanged()
             // locked it, check to see if there is another KiCad instance running.
             // If there is not, then we can override the lock.  This could happen if
             // KiCad crashed or was interrupted
-            if( !Pgm().SingleInstance()->IsAnotherRunning() )
+            if( !PgmGui().SingleInstance()->IsAnotherRunning() )
             {
                 lockFile.OverrideLock();
             }
@@ -1549,7 +1551,7 @@ void KICAD_MANAGER_FRAME::RestoreCommitFromHistory( const wxString& aHash )
     if( !Kiway().PlayersClose( true ) )
         return;
 
-    if( Kiway().LocalHistory().RestoreCommit( Prj().GetProjectPath(), aHash, this ) )
+    if( RestoreLocalHistoryCommit( Kiway().LocalHistory(), Prj().GetProjectPath(), aHash, this ) )
     {
         m_restoredFromHistory = true;  // Mark editors dirty when they reopen
     }

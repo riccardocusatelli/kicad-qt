@@ -29,7 +29,7 @@
 #ifndef INCLUDE__LOCK_FILE_H_
 #define INCLUDE__LOCK_FILE_H_
 
-#include <wx/wx.h>
+#include <wx/utils.h>
 #include <wx/file.h>
 #include <wx/filefn.h>
 #include <wx/log.h>

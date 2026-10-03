@@ -28,7 +28,7 @@
 #define PROGRESS_REPORTER_H
 
 #include <kicommon.h>
-#include <wx/wx.h>
+#include <wx/string.h>
 
 /**
  * A progress reporter interface for use in multi-threaded environments.  The various advancement
@@ -109,6 +109,12 @@ public:
     virtual void SetTitle( const wxString& aTitle ) = 0;
 
     virtual bool IsCancelled() const = 0;
+
+    /**
+     * Report @a aMessage for a step whose progress is unknown.  Dialog reporters show an
+     * indeterminate ("pulsing") bar; the default just reports the message.
+     */
+    virtual void ReportIndeterminate( const wxString& aMessage ) { Report( aMessage ); }
 };
 
 

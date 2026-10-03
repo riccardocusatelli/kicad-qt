@@ -24,6 +24,7 @@
 
 #include <update_manager.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 
 #include <string>
 #include <sstream>
@@ -173,7 +174,7 @@ void UPDATE_MANAGER::CheckForUpdate( wxWindow* aNoticeParent )
     if( m_working.exchange( true ) )
         return;
 
-    m_updateBackgroundJob = Pgm().GetBackgroundJobMonitor().Create( _( "Update Check" ) );
+    m_updateBackgroundJob = PgmGui().GetBackgroundJobMonitor().Create( _( "Update Check" ) );
 
     auto update_check = [aNoticeParent, this]() -> void
     {
@@ -270,7 +271,7 @@ void UPDATE_MANAGER::CheckForUpdate( wxWindow* aNoticeParent )
 
         settings->m_lastUpdateCheckTime = wxDateTime::Now().FormatISOCombined();
 
-        Pgm().GetBackgroundJobMonitor().Remove( m_updateBackgroundJob );
+        PgmGui().GetBackgroundJobMonitor().Remove( m_updateBackgroundJob );
         m_updateBackgroundJob = nullptr;
         m_working = false;
     };

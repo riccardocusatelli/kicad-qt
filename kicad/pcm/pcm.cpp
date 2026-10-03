@@ -20,6 +20,7 @@
 
 // kicad_curl.h *must be* included before any wxWidgets header to avoid conflicts
 // at least on Windows/msys2
+#include <pgm_gui.h>
 #include "kicad_curl/kicad_curl_easy.h"
 #include <kicad_curl/kicad_curl.h>
 
@@ -1152,7 +1153,7 @@ struct UPDATE_CANCELLER
     {
         if( m_jobToCancel )
         {
-            Pgm().GetBackgroundJobMonitor().Remove( m_jobToCancel );
+            PgmGui().GetBackgroundJobMonitor().Remove( m_jobToCancel );
             m_jobToCancel.reset();
         }
     }
@@ -1167,7 +1168,7 @@ void PLUGIN_CONTENT_MANAGER::RunBackgroundUpdate()
     if( m_updateThread.joinable() )
         return;
 
-    m_updateBackgroundJob = Pgm().GetBackgroundJobMonitor().Create( _( "PCM Update" ) );
+    m_updateBackgroundJob = PgmGui().GetBackgroundJobMonitor().Create( _( "PCM Update" ) );
 
     m_updateThread = std::thread(
             [this]()

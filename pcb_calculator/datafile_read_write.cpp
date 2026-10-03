@@ -36,6 +36,7 @@
 #include <pcb_calculator_datafile_lexer.h>
 #include <pcb_calculator_frame.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 
 
 using namespace PCBCALC_DATA_T;
@@ -134,7 +135,7 @@ int PCB_CALCULATOR_DATAFILE::WriteHeader( OUTPUTFORMATTER* aFormatter ) const
     aFormatter->Print( nestlevel++, "(date %s)\n",
                        aFormatter->Quotew( GetISO8601CurrentDateTime() ).c_str() );
     aFormatter->Print( nestlevel++, "(tool %s)\n",
-                       aFormatter->Quotew( Pgm().App().GetAppName() +
+                       aFormatter->Quotew( PgmGui().App().GetAppName() +
                                             wxChar(' ') + GetBuildVersion() ).c_str() );
 
     return nestlevel;

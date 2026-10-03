@@ -22,7 +22,6 @@
  */
 
 #include <local_history.h>
-#include <dialogs/dialog_restore_local_history.h>
 #include <history_lock.h>
 #include <paths.h>
 #include <io/kicad/kicad_io_utils.h>
@@ -33,7 +32,6 @@
 #include <thread_pool.h>
 #include <trace_helpers.h>
 #include <wildcards_and_files_ext.h>
-#include <confirm.h>
 #include <progress_reporter.h>
 
 
@@ -2242,8 +2240,8 @@ bool overlaySnapshotFiles( const wxString& aTempRestorePath, const wxString& aPr
 }  // namespace
 
 
-bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString& aHash, wxWindow* aParent,
-                                   bool aConfirm )
+bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString& aHash,
+                                   const RESTORE_HOOKS* aHooks )
 {
     // STEP 1: Verify no files are open by checking for LOCKFILEs
     KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: Checking for open files in %s" ),
@@ -2260,12 +2258,11 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
                    wxS( "[history] RestoreCommit: Cannot restore - files are open:%s" ),
                    lockList );
 
-        // Show user-visible warning dialog
-        if( aParent )
+        if( aHooks && aHooks->reportLockedFiles )
         {
             wxString msg = _( "Cannot restore - the following files are open by another user:" );
             msg += lockList;
-            wxMessageBox( msg, _( "Restore Failed" ), wxOK | wxICON_WARNING, aParent );
+            aHooks->reportLockedFiles( msg );
         }
         return false;
     }
@@ -2303,23 +2300,12 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
     git_tree* tree = nullptr;
     git_commit_tree( &tree, commit );
 
-    // Confirm before overwriting working files. The recovery prompt already asked, so it passes
-    // aConfirm = false. Nothing is changed yet, so cancel just returns.
-    if( aConfirm && aParent )
+    // Confirm before overwriting working files. Nothing is changed yet, so cancel just returns.
+    if( aHooks && aHooks->confirmRestore )
     {
         wxDateTime when( (time_t) git_commit_time( commit ) );
 
-        KICAD_MESSAGE_DIALOG dlg( aParent,
-                                  wxString::Format( _( "Restore the project to the version from %s?" ),
-                                                    when.Format( wxS( "%Y-%m-%d %H:%M:%S" ) ) ),
-                                  _( "Restore Version" ), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION );
-
-        dlg.SetYesNoLabels( _( "Restore" ), _( "Cancel" ) );
-        dlg.SetExtendedMessage( _( "Your current files are backed up first so you can undo the "
-                                   "restore. Files that are not part of this version are left "
-                                   "untouched." ) );
-
-        if( dlg.ShowModal() != wxID_YES )
+        if( !aHooks->confirmRestore( when ) )
         {
             KI_LOG_TRACE( traceAutoSave, wxS( "[history] RestoreCommit: User cancelled at confirm" ) );
             git_tree_free( tree );
@@ -2434,26 +2420,6 @@ bool LOCAL_HISTORY::RestoreCommit( const wxString& aProjectPath, const wxString&
     return true;
 }
 
-void LOCAL_HISTORY::ShowRestoreDialog( const wxString& aProjectPath, wxWindow* aParent )
-{
-    if( !HistoryExists( aProjectPath ) )
-        return;
-
-    std::vector<LOCAL_HISTORY_SNAPSHOT_INFO> snapshots = LoadSnapshots( aProjectPath );
-
-    if( snapshots.empty() )
-        return;
-
-    DIALOG_RESTORE_LOCAL_HISTORY dlg( aParent, snapshots );
-
-    if( dlg.ShowModal() == wxID_OK )
-    {
-        wxString selectedHash = dlg.GetSelectedHash();
-
-        if( !selectedHash.IsEmpty() )
-            RestoreCommit( aProjectPath, selectedHash, aParent );
-    }
-}
 
 std::vector<LOCAL_HISTORY_SNAPSHOT_INFO> LOCAL_HISTORY::LoadSnapshots( const wxString& aProjectPath )
 {

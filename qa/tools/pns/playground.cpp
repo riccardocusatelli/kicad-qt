@@ -26,6 +26,7 @@
 // (unless you want to improve it).
 
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <qa_utils/utility_registry.h>
 
 #include "pns_log_viewer_frame.h"
@@ -206,7 +207,7 @@ bool collideArc2Arc( const SHAPE_ARC& a1, const SHAPE_ARC& a2, int clearance, SE
 int playground_main_func( int argc, char* argv[] )
 {
     auto frame = new PNS_LOG_VIEWER_FRAME( nullptr );
-    Pgm().App().SetTopWindow( frame );      // wxApp gets a face.
+    PgmGui().App().SetTopWindow( frame );      // wxApp gets a face.
     frame->Show();
 
     struct ARC_DATA
@@ -411,7 +412,7 @@ int drawShapes( int argc, char* argv[] )
                          false );
 
     auto frame = new PNS_LOG_VIEWER_FRAME( nullptr );
-    Pgm().App().SetTopWindow( frame ); // wxApp gets a face.
+    PgmGui().App().SetTopWindow( frame ); // wxApp gets a face.
     frame->Show();
 
     overlay = frame->GetOverlay();

@@ -36,6 +36,7 @@
 #include <kiway.h>
 #include <macros.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <settings/common_settings.h>
 #include <python_scripting.h>
 #include <string_utils.h>
@@ -173,7 +174,7 @@ int SCRIPTING_TOOL::reloadPlugins( const TOOL_EVENT& aEvent )
 #ifdef KICAD_IPC_API
     // TODO move this elsewhere when SWIG plugins are removed
     if( Pgm().GetCommonSettings()->m_Api.enable_server )
-        Pgm().GetPluginManager().ReloadPlugins();
+        PgmGui().GetPluginManager().ReloadPlugins();
 #endif
 
     if( !m_isFootprintEditor )

@@ -3399,7 +3399,7 @@ void PCB_IO_KICAD_SEXPR::FootprintSave( const wxString& aLibraryPath, const FOOT
                                                       "Would you like to create it?"),
                                                       libPath );
 
-            if( !Pgm().IsGUI() || wxMessageBox( msg, _( "Library Not Found" ), wxYES_NO | wxICON_QUESTION ) != wxYES )
+            if( !Pgm().ConfirmAction( _( "Library Not Found" ), msg ) )
                 return;
 
             // Save throws its own IO_ERROR on failure, so no need to recreate here

@@ -52,6 +52,7 @@
 #include <confirm.h>
 #include <panel_packages_and_updates.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <scoped_set_reset.h>
 #include <settings/app_settings.h>
 #include <settings/common_settings.h>
@@ -975,12 +976,12 @@ void EDA_BASE_FRAME::CommonSettingsChanged( int aFlags )
     COMMON_SETTINGS* settings = Pgm().GetCommonSettings();
 
 #ifdef KICAD_IPC_API
-    bool running = Pgm().GetApiServer().Running();
+    bool running = PgmGui().GetApiServer().Running();
 
     if( running && !settings->m_Api.enable_server )
-        Pgm().GetApiServer().Stop();
+        PgmGui().GetApiServer().Stop();
     else if( !running && settings->m_Api.enable_server )
-        Pgm().GetApiServer().Start();
+        PgmGui().GetApiServer().Start();
 #endif
 
     if( m_fileHistory )

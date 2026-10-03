@@ -42,6 +42,7 @@
 #include <pcb_marker.h>
 #include <pcb_track.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <wx/app.h>
 #include <wx/filedlg.h>
 #include <wx/msgdlg.h>
@@ -279,7 +280,7 @@ bool DIALOG_DRC::updateUI()
     // loop triggers heavyweight sandbox process spawning that can add hundreds of milliseconds
     // per call, so we keep this interval long.
     if( m_yieldThrottle.Ready() )
-        Pgm().App().SafeYieldFor( this, wxEVT_CATEGORY_NATIVE_EVENTS );
+        PgmGui().App().SafeYieldFor( this, wxEVT_CATEGORY_NATIVE_EVENTS );
 
     return !m_cancelled;
 }

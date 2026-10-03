@@ -30,14 +30,9 @@
 #include <reporter.h>
 #include <font/fontconfig.h>
 #include <string_utils.h>
-#include <widgets/kistatusbar.h>
-#include <widgets/wx_infobar.h>
 #include <wx/crt.h>
 #include <wx/log.h>
-#include <wx/textctrl.h>
-#include <wx/statusbr.h>
 #include <wx/tokenzr.h>
-#include <wx/weakref.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
@@ -52,47 +47,12 @@ static const wxChar traceReporter[] = wxT( "KICAD_REPORTER" );
 static std::mutex g_logReporterMutex;
 
 
-class STATUSBAR_WARNING_REPORTER_IMPL
-{
-public:
-    STATUSBAR_WARNING_REPORTER_IMPL( KISTATUSBAR* aStatusBar, const wxString& aSource ) :
-            m_statusBar( aStatusBar ),
-            m_source( aSource )
-    {
-    }
-
-    KISTATUSBAR* GetStatusBar() const
-    {
-        KISTATUSBAR* statusBar = m_statusBar.get();
-
-        if( statusBar && !statusBar->IsBeingDeleted() )
-            return statusBar;
-
-        return nullptr;
-    }
-
-    wxWeakRef<KISTATUSBAR> m_statusBar;
-    wxString               m_source;
-};
-
-
 REPORTER& REPORTER::Report( const char* aText, SEVERITY aSeverity )
 {
     Report( From_UTF8( aText ) );
     return *this;
 }
 
-
-REPORTER& WX_TEXT_CTRL_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
-{
-    REPORTER::Report( aText, aSeverity );
-
-    KI_CHECK_MSG( m_textCtrl != nullptr, *this,
-                 wxT( "No wxTextCtrl object defined in WX_TEXT_CTRL_REPORTER." ) );
-
-    m_textCtrl->AppendText( aText + wxS( "\n" ) );
-    return *this;
-}
 
 
 REPORTER& WX_STRING_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
@@ -367,60 +327,3 @@ REPORTER& REDIRECT_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
     return *this;
 }
 
-
-REPORTER& STATUSBAR_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
-{
-    REPORTER::Report( aText, aSeverity );
-
-    if( m_statusBar )
-    {
-        // The message will be ellipsized automatically
-        m_statusBar->SetStatusText( aText, m_position );
-    }
-
-    return *this;
-}
-
-
-STATUSBAR_WARNING_REPORTER::STATUSBAR_WARNING_REPORTER( KISTATUSBAR* aStatusBar,
-                                                        const wxString& aSource ) :
-        m_impl( std::make_shared<STATUSBAR_WARNING_REPORTER_IMPL>( aStatusBar, aSource ) )
-{
-}
-
-
-STATUSBAR_WARNING_REPORTER::~STATUSBAR_WARNING_REPORTER() = default;
-
-
-REPORTER& STATUSBAR_WARNING_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
-{
-    REPORTER::Report( aText, aSeverity );
-
-    KISTATUSBAR* statusBar = m_impl ? m_impl->GetStatusBar() : nullptr;
-
-    if( !statusBar || aText.IsEmpty() )
-        return *this;
-
-    std::vector<LOAD_MESSAGE> messages;
-    wxStringTokenizer tokenizer( aText, wxS( "\n" ), wxTOKEN_STRTOK );
-    SEVERITY severity = aSeverity == RPT_SEVERITY_UNDEFINED ? RPT_SEVERITY_WARNING : aSeverity;
-
-    while( tokenizer.HasMoreTokens() )
-    {
-        LOAD_MESSAGE message;
-        message.message = tokenizer.GetNextToken();
-        message.severity = severity;
-        messages.emplace_back( std::move( message ) );
-    }
-
-    if( messages.empty() )
-    {
-        LOAD_MESSAGE message;
-        message.message = aText;
-        message.severity = severity;
-        messages.emplace_back( std::move( message ) );
-    }
-
-    statusBar->AddWarningMessages( m_impl->m_source, messages );
-    return *this;
-}

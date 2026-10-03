@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <dialog_shim.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <wx/settings.h>
 #include <settings/common_settings.h>
 #include <bitmaps/bitmap_types.h>
@@ -310,7 +311,7 @@ bool KIUI::IsInputControlEditable( wxWindow* aFocus )
 
 bool KIUI::IsModalDialogFocused()
 {
-    return !Pgm().m_ModalDialogs.empty();
+    return !PgmGui().m_ModalDialogs.empty();
 }
 
 
