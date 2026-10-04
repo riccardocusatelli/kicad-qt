@@ -99,7 +99,7 @@
 
 #include <plotters/plotters_pslike.h>
 #include <core/ki_assert.h>
-#include <wx/image.h>
+#include <raster_image.h>
 
 // Note:
 // During tests, we (JPC) found issues when the coordinates used 6 digits in mantissa
@@ -672,7 +672,7 @@ void SVG_PLOTTER::PlotPoly( const std::vector<VECTOR2I>& aCornerList, FILL_T aFi
 }
 
 
-void SVG_PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double aScaleFactor )
+void SVG_PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor )
 {
     VECTOR2I pix_size( aImage.GetWidth(), aImage.GetHeight() );
 
@@ -690,23 +690,14 @@ void SVG_PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double
     }
     else
     {
-        wxMemoryOutputStream img_stream;
-
-        if( m_colorMode )
-        {
-            aImage.SaveFile( img_stream, wxBITMAP_TYPE_PNG );
-        }
-        else    // Plot in B&W
-        {
-            wxImage image = aImage.ConvertToGreyscale();
-            image.SaveFile( img_stream, wxBITMAP_TYPE_PNG );
-        }
-
-        size_t input_len = img_stream.GetOutputStreamBuffer()->GetBufferSize();
-        std::vector<uint8_t> buffer( input_len );
+        std::vector<uint8_t> buffer;
         std::vector<uint8_t> encoded;
 
-        img_stream.CopyTo( buffer.data(), buffer.size() );
+        if( m_colorMode )
+            aImage.Save( buffer, RASTER_IMAGE::TYPE::PNG );
+        else    // Plot in B&W
+            aImage.ConvertToGreyscale().Save( buffer, RASTER_IMAGE::TYPE::PNG );
+
         base64::encode( buffer, encoded );
 
         VECTOR2D pos = userToDeviceCoordinates( start );

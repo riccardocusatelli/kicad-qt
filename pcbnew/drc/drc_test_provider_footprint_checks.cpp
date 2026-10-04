@@ -132,3 +132,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_FOOTPRINT_CHECKS> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( footprint_checks )

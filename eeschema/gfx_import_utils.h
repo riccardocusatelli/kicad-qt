@@ -27,13 +27,13 @@
 
 #include <unordered_map>
 #include <geometry/shape_poly_set.h>
-#include <wx/image.h>
+#include <raster_image.h>
 #include <lib_symbol.h>
 
-std::unordered_map<uint32_t, SHAPE_POLY_SET> ConvertImageToPolygons( wxImage  img,
+std::unordered_map<uint32_t, SHAPE_POLY_SET> ConvertImageToPolygons( RASTER_IMAGE img,
                                                                      VECTOR2D pixelScale );
 
-void ConvertImageToLibShapes( LIB_SYMBOL* aSymbol, int unit, wxImage img, VECTOR2D pixelScale,
+void ConvertImageToLibShapes( LIB_SYMBOL* aSymbol, int unit, RASTER_IMAGE img, VECTOR2D pixelScale,
                               VECTOR2D offset );
 
 #endif // GFX_IMPORT_UTILS_H_

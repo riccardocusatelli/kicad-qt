@@ -53,9 +53,21 @@ public:
     void RegisterTestProvider( DRC_TEST_PROVIDER* provider ) { m_providers.push_back( provider ); }
     std::vector<DRC_TEST_PROVIDER*> GetTestProviders() const { return m_providers; }
 
+
 private:
     std::vector<DRC_TEST_PROVIDER*> m_providers;
 };
+
+/**
+ * The test providers register themselves with static objects, which a link with static
+ * archives (the headless kifaces) drops unless something refers to their object files.
+ * LinkDrcTestProviders() refers to all of them; a new test provider defines its anchor with
+ * DRC_TEST_PROVIDER_LINK_ANCHOR() and is added to the list in drc_test_provider_links.cpp.
+ */
+void LinkDrcTestProviders();
+
+#define DRC_TEST_PROVIDER_LINK_ANCHOR( name ) void drcTestProviderLinkAnchor_##name() {}
+
 
 template<class T> class DRC_REGISTER_TEST_PROVIDER
 {

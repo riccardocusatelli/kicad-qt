@@ -29,7 +29,7 @@
 #include <eda_pattern_match.h>
 #include <background_jobs_monitor.h>
 #include <cli_progress_reporter.h>
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <kiface_ids.h>
 #include <kiway_holder.h>
 #include <eda_dde.h>
@@ -233,16 +233,16 @@ static wxString filterFootprints( const wxString& aFilterJson )
 
 namespace PCB {
 
-static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
+static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
     IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
-            KIFACE_BASE( aName, aType ),
+            KIFACE_GUI( aName, aType ),
             UNITS_PROVIDER( pcbIUScale, EDA_UNITS::MM )
     {}
 
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     void Reset() override;
 
@@ -598,7 +598,7 @@ KIFACE_API KIFACE* KIFACE_GETTER( int* aKIFACEversion, int aKiwayVersion, PGM_BA
 }
 
 
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     // This is process-level-initialization, not project-level-initialization of the DSO.
     // Do nothing in here pertinent to a project!
@@ -621,7 +621,11 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
 
     start_common( aCtlBits );
 
-    m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER_GUI>( aKiway );
+    // In kicad-cli (no KIWAY of the editors) the jobs run on the files only.
+    if( KIWAY* kiway = dynamic_cast<KIWAY*>( aKiway ) )
+        m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER_GUI>( kiway );
+    else
+        m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER>( aKiway );
 
     if( m_start_flags & KFCTL_CLI )
     {

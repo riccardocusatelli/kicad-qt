@@ -33,7 +33,7 @@
 class BITMAP_BASE;
 
 class wxMemoryBuffer;
-class wxImage;
+class RASTER_IMAGE;
 
 /**
  * A REFERENCE_IMAGE is a wrapper around a BITMAP_IMAGE that is
@@ -108,9 +108,9 @@ public:
     bool ReadImageFile( wxMemoryBuffer& aBuf );
 
     /**
-     * Set the image from an existing wxImage.
+     * Set the image from an existing image.
      */
-    bool SetImage( const wxImage& aImage );
+    bool SetImage( const RASTER_IMAGE& aImage );
 
     void SwapData( REFERENCE_IMAGE& aItem );
 

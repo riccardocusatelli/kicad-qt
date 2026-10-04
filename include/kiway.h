@@ -108,7 +108,7 @@
 
 
 #include <kiface.h>
-#include <kiway_services.h>
+#include <kiway_base.h>
 
 
 
@@ -139,7 +139,7 @@
  * and a #NETLIST, (anything relating to production of a single #BOARD and added to class
  * #PROJECT.)
  */
-class KICOMMON_API KIWAY : public wxEvtHandler, public KIWAY_SERVICES
+class KICOMMON_API KIWAY : public wxEvtHandler, public KIWAY_BASE
 {
     friend struct PGM_SINGLE_TOP;        // can use set_kiface()
 
@@ -155,14 +155,6 @@ public:
     static FACE_T KifaceType( FRAME_T aFrameType );
 
     // If you change the vtable, recompile all of KiCad.
-
-    /**
-     * Return the KIFACE* given a FACE_T.
-     *
-     * If it is not already loaded, the KIFACE is loaded and initialized with a call to
-     * KIFACE::OnKifaceStart().
-     */
-    KIFACE* KiFACE( FACE_T aFaceId, bool doLoad = true ) override;
 
     /**
      * Return the #KIWAY_PLAYER* given a FRAME_T.
@@ -227,14 +219,6 @@ public:
     virtual void GetActions( std::vector<TOOL_ACTION*>& aActions ) const;
 
     /**
-     * Return the #PROJECT associated with this KIWAY.
-     *
-     * This is here as an accessor, so that there is freedom to put the actual PROJECT storage
-     * in a place decided by the implementation, and not known to the caller.
-     */
-    PROJECT& Prj() const override;
-
-    /**
      * Return the LOCAL_HISTORY associated with this KIWAY.
      */
     LOCAL_HISTORY& LocalHistory() { return *m_local_history; }
@@ -266,12 +250,6 @@ public:
     KIWAY( int aCtlBits, wxFrame* aTop = nullptr );
 
     /**
-     * Overwrites previously set ctl bits, only for use in kicad.cpp to flip between
-     * standalone and manager mode before we actually load anything
-     */
-    void SetCtlBits( int aCtlBits ) { m_ctl = aCtlBits; }
-
-    /**
      * Tell this KIWAY about the top most frame in the program and optionally allows it to
      * play the role of one of the KIWAY_PLAYERs if launched from single_top.cpp.
      *
@@ -282,14 +260,10 @@ public:
 
     void OnKiCadExit();
 
-    void OnKiwayEnd();
-
     bool ProcessEvent( wxEvent& aEvent ) override;
 
     void QueueEvent( wxEvent* aEvent ) override;
 
-    int  ProcessJob( KIWAY_FACES::FACE_T aFace, JOB* aJob, REPORTER* aReporter = nullptr,
-                     PROGRESS_REPORTER* aProgressReporter = nullptr ) override;
     bool ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, wxWindow* aWindow );
 
     /**
@@ -300,30 +274,11 @@ public:
     void SetBlockingDialog( wxWindow* aWin );
 
 private:
-    /// Get the [path &] name of the DSO holding the requested FACE_T.
-    const wxString dso_search_path( FACE_T aFaceId );
-
-    bool set_kiface( FACE_T aFaceType, KIFACE* aKiface )
-    {
-        if( (unsigned) aFaceType < (unsigned) KIWAY_FACE_COUNT )
-        {
-            m_kiface[aFaceType] = aKiface;
-            return true;
-        }
-
-        return false;
-    }
-
     /**
      * @return the reference of the KIWAY_PLAYER having the type @a aFrameType if exists,
      *         or NULL if this KIWAY_PLAYER was not yet created, or was closed
      */
     KIWAY_PLAYER* GetPlayerFrame( FRAME_T aFrameType );
-
-    static std::array<KIFACE*,KIWAY_FACE_COUNT>  m_kiface;
-    static std::array<int,KIWAY_FACE_COUNT>      m_kiface_version;
-
-    int             m_ctl;
 
     wxFrame*        m_top;      // Usually m_top is the Project manager
 

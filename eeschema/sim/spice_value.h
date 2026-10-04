@@ -28,7 +28,6 @@
 #define SPICE_VALUE_H
 
 #include <wx/string.h>
-#include <wx/valtext.h>
 
 
 /**
@@ -175,26 +174,5 @@ private:
     bool        m_spiceStr;
 };
 
-
-///< Helper class to recognize Spice formatted values
-class SPICE_VALIDATOR : public wxTextValidator
-{
-public:
-    SPICE_VALIDATOR( bool aEmptyAllowed = false )
-        : m_emptyAllowed( aEmptyAllowed )
-    {
-    }
-
-    wxObject* Clone() const override
-    {
-        return new SPICE_VALIDATOR( *this );
-    }
-
-    bool Validate( wxWindow* aParent ) override;
-
-private:
-    ///< Is it valid to get an empty value?
-    bool m_emptyAllowed;
-};
 
 #endif /* SPICE_VALUE_H */

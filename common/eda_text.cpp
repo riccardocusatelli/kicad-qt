@@ -888,28 +888,6 @@ bool EDA_TEXT::TextHitTest( const BOX2I& aRect, bool aContains, int aAccuracy ) 
 }
 
 
-void EDA_TEXT::Print( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset, const COLOR4D& aColor )
-{
-    if( IsMultilineAllowed() )
-    {
-        std::vector<VECTOR2I> positions;
-        wxArrayString         strings;
-        wxStringSplit( GetShownText( true ), strings, '\n' );
-
-        positions.reserve( strings.Count() );
-
-        GetLinePositions( aSettings, positions, (int) strings.Count() );
-
-        for( unsigned ii = 0; ii < strings.Count(); ii++ )
-            printOneLineOfText( aSettings, aOffset, aColor, strings[ii], positions[ii] );
-    }
-    else
-    {
-        printOneLineOfText( aSettings, aOffset, aColor, GetShownText( true ), GetDrawPos() );
-    }
-}
-
-
 void EDA_TEXT::GetLinePositions( const RENDER_SETTINGS* aSettings, std::vector<VECTOR2I>& aPositions,
                                  int aLineCount ) const
 {
@@ -952,24 +930,6 @@ void EDA_TEXT::GetLinePositions( const RENDER_SETTINGS* aSettings, std::vector<V
         aPositions.push_back( (VECTOR2I) pos );
         pos += offset;
     }
-}
-
-
-void EDA_TEXT::printOneLineOfText( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset, const COLOR4D& aColor,
-                                   const wxString& aText, const VECTOR2I& aPos )
-{
-    wxDC* DC = aSettings->GetPrintDC();
-    int   penWidth = GetEffectiveTextPenWidth( aSettings->GetDefaultPenWidth() );
-
-    VECTOR2I size = GetTextSize();
-
-    if( IsMirrored() )
-        size.x = -size.x;
-
-    KIFONT::FONT* font = GetDrawFont( aSettings );
-
-    GRPrintText( DC, aOffset + aPos, aColor, aText, GetDrawRotation(), size, GetHorizJustify(), GetVertJustify(),
-                 penWidth, IsItalic(), IsBold(), font, getFontMetrics() );
 }
 
 

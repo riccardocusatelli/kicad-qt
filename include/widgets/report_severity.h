@@ -44,4 +44,10 @@ enum SEVERITY {
  */
 KICOMMON_API wxString formatSeverities( int aSeverities );
 
+/// The severity named @a aSeverity in the settings files ("error", "warning", "ignore").
+KICOMMON_API SEVERITY SeverityFromString( const wxString& aSeverity );
+
+/// The name of @a aSeverity in the settings files.
+KICOMMON_API wxString SeverityToString( const SEVERITY& aSeverity );
+
 #endif // REPORT_SEVERITY_H

@@ -31,7 +31,7 @@
 #include <import_gfx/svg_import_plugin.h>
 
 
-std::unordered_map<uint32_t, SHAPE_POLY_SET> ConvertImageToPolygons( wxImage  img,
+std::unordered_map<uint32_t, SHAPE_POLY_SET> ConvertImageToPolygons( RASTER_IMAGE img,
                                                                      VECTOR2D pixelScale )
 {
     bool hasAlpha = img.HasAlpha();
@@ -106,7 +106,7 @@ std::unordered_map<uint32_t, SHAPE_POLY_SET> ConvertImageToPolygons( wxImage  im
 }
 
 
-void ConvertImageToLibShapes( LIB_SYMBOL* aSymbol, int unit, wxImage img, VECTOR2D pixelScale,
+void ConvertImageToLibShapes( LIB_SYMBOL* aSymbol, int unit, RASTER_IMAGE img, VECTOR2D pixelScale,
                               VECTOR2D offset )
 {
     std::unordered_map<uint32_t, SHAPE_POLY_SET> colorPolys =

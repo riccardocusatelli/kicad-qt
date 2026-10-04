@@ -22,14 +22,23 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <bitmaps/bitmaps_list.h>
+#include <i18n_utility.h>
 #include <eda_item.h>
+#include <pcb_generator.h>
+#include <pcb_track.h>
+#include <board.h>
 #include <geometry/geometry_utils.h>
-#include <pcb_base_edit_frame.h>
+#include <math/vector2d.h>
 #include <router/pns_meander.h>
 #include <router/pns_meander_placer_base.h>
 #include <router/pns_router.h>
 #include <router/pns_routing_settings.h>
 #include <core/ki_assert.h>
+
+class EDA_DRAW_FRAME;
+class GENERATOR_TOOL;
+class PCB_BASE_EDIT_FRAME;
 
 
 namespace KIGFX

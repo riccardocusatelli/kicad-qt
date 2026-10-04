@@ -23,9 +23,6 @@
 
 #pragma once
 
-class wxAuiPaneInfo;
-class wxWindow;
-
 #include <map>
 
 #include <remote_provider_settings.h>
@@ -36,11 +33,6 @@ class wxWindow;
 using KIGFX::COLOR4D;
 
 
-extern const wxAuiPaneInfo& defaultNetNavigatorPaneInfo();
-extern const wxAuiPaneInfo& defaultPropertiesPaneInfo( wxWindow* aWindow );
-extern const wxAuiPaneInfo& defaultSchSelectionFilterPaneInfo( wxWindow* aWindow );
-extern const wxAuiPaneInfo& defaultDesignBlocksPaneInfo( wxWindow* aWindow );
-extern const wxAuiPaneInfo& defaultRemoteSymbolPaneInfo( wxWindow* aWindow );
 
 
 

@@ -337,7 +337,7 @@ bool DIALOG_PRINT::TransferDataFromWindow()
         tmp.SetExt( wxS( "pdf" ) );
         plotOpts.m_outputFile = tmp.GetFullPath();
 
-        SCH_PLOTTER plotter( m_parent );
+        SCH_PLOTTER plotter( &m_parent->Schematic() );
 
         PgmGui().m_Printing = true;
         plotter.Plot( PLOT_FORMAT::PDF, plotOpts, &renderSettings, nullptr );

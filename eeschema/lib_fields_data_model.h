@@ -23,7 +23,7 @@
 #include <wx/grid.h>
 #include <wx/arrstr.h>
 #include <widgets/grid_striped_renderer.h>
-#include <fields_data_model.h>
+#include <fields_editor_grid_data_model.h>
 #include <core/ki_assert.h>
 
 

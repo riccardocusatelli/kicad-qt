@@ -24,11 +24,12 @@
 #ifndef EESCHEMA_HELPERS_H_
 #define EESCHEMA_HELPERS_H_
 
+#include <functional>
+
 #include <wx/string.h>
 #include <sch_io/sch_io_mgr.h>
 
 class SCHEMATIC;
-class SCH_EDIT_FRAME;
 class SETTINGS_MANAGER;
 class PROJECT;
 
@@ -41,7 +42,9 @@ class PROJECT;
 class EESCHEMA_HELPERS
 {
 public:
-    static void              SetSchEditFrame( SCH_EDIT_FRAME* aSchEditFrame );
+    /// The schematic open in the schematic editor (set by the editor; none without GUI).
+    static void              SetEditorSchematic( std::function<SCHEMATIC*()> aGetter );
+
     static SCHEMATIC*        LoadSchematic( const wxString& aFileName, bool aSetActive,
                                             bool aForceDefaultProject,
                                             PROJECT* aProject = nullptr,
@@ -53,7 +56,7 @@ public:
                                             bool aCalculateConnectivity = true );
 
 private:
-    static SCH_EDIT_FRAME*   s_SchEditFrame;
+    static std::function<SCHEMATIC*()> s_editorSchematic;
 };
 
 #endif

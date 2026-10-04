@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <functional>
 #include <map>
 #include <vector>
 #include <string>
@@ -30,7 +31,7 @@
 
 class REPORTER;
 class PROGRESS_REPORTER;
-class DIALOG_SHIM;
+class wxWindow;
 class wxWindow;
 
 class KICOMMON_API IO_BASE
@@ -207,10 +208,15 @@ public:
     virtual bool SupportsConfigurationDialog() const { return false; }
 
     /**
-     * @return a new instance of dialog that configures this plugin, or nullptr if this plugin
-     *         does not support a configuration dialog.  Caller takes ownership.
+     * Shows the configuration dialog of a plugin, @return true if it handled @a aPlugin.
+     * The dialogs are GUI code: the editors register their handlers.
      */
-    virtual DIALOG_SHIM* CreateConfigurationDialog( wxWindow* aParent ) { return nullptr; }
+    using CONFIGURATION_DIALOG_HANDLER = std::function<bool( IO_BASE* aPlugin, wxWindow* aParent )>;
+
+    static void AddConfigurationDialogHandler( CONFIGURATION_DIALOG_HANDLER aHandler );
+
+    /// Show the configuration dialog of this plugin (SupportsConfigurationDialog()).
+    void ShowConfigurationDialog( wxWindow* aParent );
 
     virtual void Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED );
 

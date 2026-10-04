@@ -333,3 +333,5 @@ namespace detail
 {
     static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_SILK_CLEARANCE> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( silk_clearance )

@@ -140,3 +140,26 @@ void IO_BASE::AdvanceProgressPhase()
 
     m_progressReporter->AdvancePhase();
 }
+
+
+static std::vector<IO_BASE::CONFIGURATION_DIALOG_HANDLER>& configurationDialogHandlers()
+{
+    static std::vector<IO_BASE::CONFIGURATION_DIALOG_HANDLER> handlers;
+    return handlers;
+}
+
+
+void IO_BASE::AddConfigurationDialogHandler( CONFIGURATION_DIALOG_HANDLER aHandler )
+{
+    configurationDialogHandlers().push_back( std::move( aHandler ) );
+}
+
+
+void IO_BASE::ShowConfigurationDialog( wxWindow* aParent )
+{
+    for( const CONFIGURATION_DIALOG_HANDLER& handler : configurationDialogHandlers() )
+    {
+        if( handler( this, aParent ) )
+            return;
+    }
+}

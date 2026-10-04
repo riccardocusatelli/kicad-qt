@@ -45,6 +45,7 @@
 #include <template_fieldnames.h>
 
 
+class SCH_SELECTION_TOOL;
 class SCH_RENDER_SETTINGS;
 class PAGE_INFO;
 class TITLE_BLOCK;
@@ -288,7 +289,10 @@ public:
         m_watcherTimestamp = aTimestamp;
     }
 
-    SCH_SELECTION_TOOL* GetSelectionTool() override;
+    SCH_SELECTION_TOOL* GetSelectionTool();
+
+    void RemoveFromSelection( EDA_ITEM* aItem ) override;
+    void AddToSelection( EDA_ITEM* aItem ) override;
 
     void GetLibraryItemsForListDialog( wxArrayString& aHeaders, std::vector<wxArrayString>& aItemsToDisplay );
 

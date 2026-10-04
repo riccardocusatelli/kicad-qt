@@ -21,7 +21,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <confirm.h>
+#include <wx/log.h>
 #include <refdes_utils.h>
 #include <sch_reference_list.h>
 #include <string_utils.h>
@@ -554,7 +554,7 @@ void NETLIST_EXPORTER_ALLEGRO::toAllegroPackages()
     }
 
     if( !deviceFileCreatingError.IsEmpty() )
-        DisplayError( nullptr, deviceFileCreatingError );
+        wxLogError( deviceFileCreatingError );
 }
 
 

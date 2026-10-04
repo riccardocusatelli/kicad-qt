@@ -46,6 +46,53 @@
 #include "zone_filler.h"
 #include "teardrop/teardrop.h"
 #include <core/profile.h>
+#include <kidialog.h>
+
+
+namespace
+{
+
+/// ZONE_FILLER asks its questions with dialogs.
+class DIALOG_ZONE_FILLER_QUERIES : public ZONE_FILLER_QUERIES
+{
+public:
+    explicit DIALOG_ZONE_FILLER_QUERIES( wxWindow* aParent ) :
+            m_parent( aParent )
+    {
+    }
+
+    void ShowWarning( const wxString& aMessage ) override
+    {
+        KIDIALOG dlg( m_parent, aMessage, _( "Warning" ), wxOK | wxICON_WARNING );
+        dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
+        dlg.ShowModal();
+    }
+
+    bool ConfirmDisablePrototypeFill() override
+    {
+        KIDIALOG dlg( m_parent, _( "Prototype zone fill enabled. Disable setting and refill?" ),
+                      _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+        dlg.SetOKCancelLabels( _( "Disable and refill" ), _( "Continue without Refill" ) );
+        dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
+
+        return dlg.ShowModal() == wxID_OK;
+    }
+
+    bool ConfirmRefill() override
+    {
+        KIDIALOG dlg( m_parent, _( "Zone fills are out-of-date. Refill?" ), _( "Confirmation" ),
+                      wxOK | wxCANCEL | wxICON_WARNING );
+        dlg.SetOKCancelLabels( _( "Refill" ), _( "Continue without Refill" ) );
+        dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
+
+        return dlg.ShowModal() != wxID_CANCEL;
+    }
+
+private:
+    wxWindow* m_parent;
+};
+
+} // namespace
 
 ZONE_FILLER_TOOL::ZONE_FILLER_TOOL() :
     PCB_TOOL_BASE( ZONE_FILLER_TOOL_NAME ),
@@ -91,7 +138,9 @@ void ZONE_FILLER_TOOL::CheckAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aRep
         m_filler->SetProgressReporter( reporter.get() );
     }
 
-    if( m_filler->Fill( toFill, true, aCaller ) )
+    DIALOG_ZONE_FILLER_QUERIES queries( aCaller );
+
+    if( m_filler->Fill( toFill, true, &queries ) )
     {
         commit.Push( _( "Fill Zone(s)" ), SKIP_CONNECTIVITY | ZONE_FILL_OP );
         getEditFrame<PCB_EDIT_FRAME>()->m_ZoneFillsDirty = false;
@@ -129,7 +178,7 @@ void ZONE_FILLER_TOOL::FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aRepo
 
     BOARD_COMMIT                          commit( this );
     std::unique_ptr<WX_PROGRESS_REPORTER> reporter;
-    TEARDROP_MANAGER                      teardropMgr( board(), m_toolMgr );
+    TEARDROP_MANAGER                      teardropMgr( board() );
     std::vector<ZONE*>                    toFill;
 
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true /* forceFullUpdate */ );

@@ -79,6 +79,7 @@ class THROWING_ERROR_HANDLER : public nlohmann::json_schema::error_handler
 };
 
 #include <locale_io.h>
+#include <widgets/wx_progress_reporters.h>
 PLUGIN_CONTENT_MANAGER::PLUGIN_CONTENT_MANAGER( std::function<void( int )> aAvailableUpdateCallback ) :
         m_dialog( nullptr ),
         m_availableUpdateCallback( aAvailableUpdateCallback ),

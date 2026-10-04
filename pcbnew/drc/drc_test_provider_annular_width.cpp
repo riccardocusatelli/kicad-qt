@@ -425,3 +425,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_ANNULAR_WIDTH> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( annular_width )

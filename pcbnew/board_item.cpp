@@ -23,10 +23,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <pybind11/pybind11.h>
 
 #include <wx/debug.h>
-#include <wx/msgdlg.h>
 #include <i18n_utility.h>
 #include <macros.h>
 #include <board.h>
@@ -428,19 +426,19 @@ void BOARD_ITEM::SetFPRelativePosition( const VECTOR2I& aPos )
 
 void BOARD_ITEM::Rotate( const VECTOR2I& aRotCentre, const EDA_ANGLE& aAngle )
 {
-    wxMessageBox( wxT( "virtual BOARD_ITEM::Rotate used, should not occur" ), GetClass() );
+    KI_FAIL_MSG( wxT( "virtual BOARD_ITEM::Rotate used, should not occur: " ) + GetClass() );
 }
 
 
 void BOARD_ITEM::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
-    wxMessageBox( wxT( "virtual BOARD_ITEM::Flip used, should not occur" ), GetClass() );
+    KI_FAIL_MSG( wxT( "virtual BOARD_ITEM::Flip used, should not occur: " ) + GetClass() );
 }
 
 
 void BOARD_ITEM::Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
-    wxMessageBox( wxT( "virtual BOARD_ITEM::Mirror used, should not occur" ), GetClass() );
+    KI_FAIL_MSG( wxT( "virtual BOARD_ITEM::Mirror used, should not occur: " ) + GetClass() );
 }
 
 

@@ -32,6 +32,7 @@
 #include <wx/textctrl.h>
 #include <wx/choice.h>
 #include <wx/stattext.h>
+#include <eda_base_frame.h>
 
 DRC_RE_VIA_STYLE_OVERLAY_PANEL::DRC_RE_VIA_STYLE_OVERLAY_PANEL(
         wxWindow* aParent, DRC_RE_VIA_STYLE_CONSTRAINT_DATA* aData, EDA_UNITS aUnits ) :

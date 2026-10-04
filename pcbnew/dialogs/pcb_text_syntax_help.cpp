@@ -27,6 +27,7 @@
 HTML_MESSAGE_BOX* ShowPcbTextSyntaxHelp( wxWindow* aParentWindow )
 {
     wxString msg =
+#include <i18n_utility.h>
 #include "pcb_text_help_md.h"
             ;
 

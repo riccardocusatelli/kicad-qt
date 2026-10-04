@@ -58,7 +58,8 @@
 #include <geometry/geometry_utils.h>
 #include <geometry/vertex_set.h>
 #include <geometry/poly_containment_index.h>
-#include <kidialog.h>
+#include <teardrop/teardrop.h>
+#include <core/ki_assert.h>
 #include <thread_pool.h>
 #include <math/util.h>      // for KiROUND
 #include "zone_filler.h"
@@ -443,7 +444,7 @@ bool ZONE_FILLER::zoneKnockoutMayInteract( const ZONE* aZone, const ZONE* aKnock
  *
  * Caller is also responsible for re-building connectivity afterwards.
  */
-bool ZONE_FILLER::Fill( const std::vector<ZONE*>& aZones, bool aCheck, wxWindow* aParent )
+bool ZONE_FILLER::Fill( const std::vector<ZONE*>& aZones, bool aCheck, ZONE_FILLER_QUERIES* aQueries )
 {
     std::lock_guard<KISPINLOCK> lock( m_board->GetConnectivity()->GetLock() );
 
@@ -1359,16 +1360,10 @@ bool ZONE_FILLER::Fill( const std::vector<ZONE*>& aZones, bool aCheck, wxWindow*
                                                 "Consider simplifying your zones." ),
                                              maxIterations );
 
-            if( aParent )
-            {
-                KIDIALOG dlg( aParent, msg, _( "Warning" ), wxOK | wxICON_WARNING );
-                dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
-                dlg.ShowModal();
-            }
+            if( aQueries )
+                aQueries->ShowWarning( msg );
             else
-            {
                 wxLogWarning( msg );
-            }
         }
     }
 
@@ -1603,7 +1598,9 @@ bool ZONE_FILLER::Fill( const std::vector<ZONE*>& aZones, bool aCheck, wxWindow*
         }
     }
 
-    if( aCheck )
+    KI_ASSERT_MSG( !aCheck || aQueries, "ZONE_FILLER::Fill: aCheck requires aQueries" );
+
+    if( aCheck && aQueries )
     {
         bool outOfDate = false;
 
@@ -1625,12 +1622,7 @@ bool ZONE_FILLER::Fill( const std::vector<ZONE*>& aZones, bool aCheck, wxWindow*
         if( ( m_board->GetProject()
               && m_board->GetProject()->GetLocalSettings().m_PrototypeZoneFill ) )
         {
-            KIDIALOG dlg( aParent, _( "Prototype zone fill enabled. Disable setting and refill?" ), _( "Confirmation" ),
-                          wxOK | wxCANCEL | wxICON_WARNING );
-            dlg.SetOKCancelLabels( _( "Disable and refill" ), _( "Continue without Refill" ) );
-            dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
-
-            if( dlg.ShowModal() == wxID_OK )
+            if( aQueries->ConfirmDisablePrototypeFill() )
             {
                 m_board->GetProject()->GetLocalSettings().m_PrototypeZoneFill = false;
             }
@@ -1642,12 +1634,7 @@ bool ZONE_FILLER::Fill( const std::vector<ZONE*>& aZones, bool aCheck, wxWindow*
 
         if( outOfDate )
         {
-            KIDIALOG dlg( aParent, _( "Zone fills are out-of-date. Refill?" ), _( "Confirmation" ),
-                          wxOK | wxCANCEL | wxICON_WARNING );
-            dlg.SetOKCancelLabels( _( "Refill" ), _( "Continue without Refill" ) );
-            dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
-
-            if( dlg.ShowModal() == wxID_CANCEL )
+            if( !aQueries->ConfirmRefill() )
                 return false;
         }
         else
@@ -4311,4 +4298,41 @@ bool ZONE_FILLER::refillZoneFromCache( ZONE* aZone, PCB_LAYER_ID aLayer, SHAPE_P
     }
 
     return true;
+}
+
+
+bool FillAllBoardZones( BOARD* aBoard, PROGRESS_REPORTER* aReporter )
+{
+    BOARD_COMMIT       commit( aBoard );
+    TEARDROP_MANAGER   teardropMgr( aBoard );
+    std::vector<ZONE*> toFill;
+
+    teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true /* forceFullUpdate */ );
+
+    aBoard->IncrementTimeStamp();    // Clear caches
+
+    for( ZONE* zone : aBoard->Zones() )
+        toFill.push_back( zone );
+
+    ZONE_FILLER filler( aBoard, &commit );
+
+    if( aReporter )
+        filler.SetProgressReporter( aReporter );
+
+    bool filled = filler.Fill( toFill );
+
+    if( filled )
+    {
+        if( aReporter )
+            aReporter->AdvancePhase();
+
+        commit.Push( _( "Fill Zone(s)" ), SKIP_CONNECTIVITY | ZONE_FILL_OP );
+    }
+    else
+    {
+        commit.Revert();
+    }
+
+    aBoard->BuildConnectivity();
+    return filled;
 }

@@ -108,7 +108,7 @@ if( KICAD_USE_PCH )
             <clipper2/clipper.h>
             <kiid.h>
             <pgm_base.h>
-            <wx/wx.h>
+            <wx/string.h>
             )
 
     target_precompile_headers( pnsrouter_qa
@@ -117,7 +117,7 @@ if( KICAD_USE_PCH )
             <clipper2/clipper.h>
             <kiid.h>
             <pgm_base.h>
-            <wx/wx.h>
+            <wx/string.h>
             )
 endif()
 

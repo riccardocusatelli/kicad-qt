@@ -505,3 +505,5 @@ namespace detail
 {
     static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_MATCHED_LENGTH> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( matched_length )

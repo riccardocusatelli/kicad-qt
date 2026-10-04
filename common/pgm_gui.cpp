@@ -37,6 +37,7 @@
 #include <notifications_manager.h>
 #include <paths.h>
 #include <pgm_gui.h>
+#include <raster_image_wx.h>
 #include <project.h>
 #include <python_scripting.h>
 #include <settings/common_settings.h>
@@ -97,9 +98,16 @@ bool PGM_GUI::ConfirmAction( const wxString& aTitle, const wxString& aMessage )
 }
 
 
+void PGM_GUI::SafeYield()
+{
+    wxSafeYield();
+}
+
+
 bool PGM_GUI::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
 {
     wxInitAllImageHandlers();
+    RegisterWxImageDecoder();
 
     // Register the bundled UI fonts before any window (and any wxFont) is created.
     UI_THEME::LoadUiFonts();

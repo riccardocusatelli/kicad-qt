@@ -9,26 +9,32 @@ set( FONT_SRCS
     ../font/text_attributes.cpp
 	)
 
-set( GAL_SRCS
-    # Common part
+# The part of the GAL that the data model uses (fonts, the GAL interface, the view, the 3D
+# camera): kigal_model, linked with wxBase only.
+set( GAL_MODEL_SRCS
     ../callback_gal.cpp
     painter.cpp
-    cursors.cpp
     gal_display_options.cpp
     graphics_abstraction_layer.cpp
-    hidpi_gl_canvas.cpp
-    hidpi_gl_3D_canvas.cpp
 
     ../view/view.cpp
-    ../view/view_controls.cpp
     ../view/view_group.cpp
     ../view/view_overlay.cpp
-    ../view/zoom_controller.cpp
     ../view/view_item.cpp
 
     ${FONT_SRCS}
 
     3d/camera.cpp
+    )
+
+set( GAL_SRCS
+    # Common part
+    cursors.cpp
+    hidpi_gl_canvas.cpp
+    hidpi_gl_3D_canvas.cpp
+
+    ../view/view_controls.cpp
+    ../view/zoom_controller.cpp
 
     # OpenGL GAL
     opengl/opengl_gal.cpp
@@ -53,6 +59,7 @@ set( GAL_SRCS
     cairo/cairo_print.cpp
     )
 
+add_library( gal_model SHARED ${GAL_MODEL_SRCS} )
 add_library( gal SHARED ${GAL_SRCS} )
 
 if( KICAD_USE_PCH )
@@ -62,7 +69,7 @@ if( KICAD_USE_PCH )
             <gal/graphics_abstraction_layer.h>
             <kiid.h>
             <pgm_base.h>
-            <wx/wx.h>
+            <wx/string.h>
              )
 endif()
 
@@ -71,7 +78,24 @@ if( WIN32 )
     set( GDI_PLUS_LIBRARIES gdiplus )
 endif()
 
+target_link_libraries( gal_model
+    kicommon_model
+    kimath
+    nlohmann_json
+    ${wxWidgets_BASE_LIBRARIES}
+    ${FREETYPE_LIBRARIES}
+    ${HarfBuzz_LIBRARIES}
+    ${Fontconfig_LIBRARIES}
+)
+
+if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+    target_link_options( gal_model PRIVATE "LINKER:--no-undefined" )
+endif()
+
+target_compile_definitions( gal_model PRIVATE GAL_DLL=1 )
+
 target_link_libraries( gal
+    gal_model
     kicommon
     kimath
     kiplatform
@@ -88,7 +112,7 @@ target_link_libraries( gal
 
 target_compile_definitions( gal PRIVATE GAL_DLL=1 )
 
-install( TARGETS gal
+install( TARGETS gal gal_model
     RUNTIME DESTINATION ${KICAD_LIB}
     LIBRARY DESTINATION ${KICAD_LIB}
     COMPONENT binary
@@ -107,6 +131,11 @@ string( REGEX MATCH
 
 set_target_properties( gal PROPERTIES
     OUTPUT_NAME     kigal
+    SOVERSION      ${KICAD_MAJOR_MINOR_PATCH_VERSION}
+    )
+
+set_target_properties( gal_model PROPERTIES
+    OUTPUT_NAME     kigal_model
     SOVERSION      ${KICAD_MAJOR_MINOR_PATCH_VERSION}
     )
 

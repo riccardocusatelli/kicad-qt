@@ -287,3 +287,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_TEXT_DIMS> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( text_dims )

@@ -33,7 +33,7 @@
 #include <project/project_file.h>
 #include <project_rescue.h>
 #include <project_sch.h>
-#include <widgets/app_progress_dialog.h>
+#include <progress_reporter.h>
 
 #include <libraries/legacy_symbol_library.h>
 #include <sch_io/kicad_legacy/sch_io_kicad_legacy.h>
@@ -503,7 +503,7 @@ const wxString LEGACY_SYMBOL_LIBS::CacheName( const wxString& aFullProjectFilena
 }
 
 
-void LEGACY_SYMBOL_LIBS::LoadAllLibraries( PROJECT* aProject, bool aShowProgress )
+void LEGACY_SYMBOL_LIBS::LoadAllLibraries( PROJECT* aProject, PROGRESS_REPORTER* aProgress )
 {
     wxString        filename;
     wxString        libs_not_found;
@@ -520,23 +520,13 @@ void LEGACY_SYMBOL_LIBS::LoadAllLibraries( PROJECT* aProject, bool aShowProgress
     // Post symbol library table, this should be empty.  Only the cache library should get loaded.
     if( !lib_names.empty() )
     {
-        APP_PROGRESS_DIALOG lib_dialog( _( "Loading Symbol Libraries" ),
-                                        wxEmptyString,
-                                        lib_names.GetCount(),
-                                        nullptr,
-                                        false,
-                                        wxPD_APP_MODAL );
-
-        if( aShowProgress )
-        {
-            lib_dialog.Show();
-        }
-
         for( unsigned i = 0; i < lib_names.GetCount();  ++i )
         {
-            if( aShowProgress )
+            if( aProgress )
             {
-                lib_dialog.Update( i, wxString::Format( _( "Loading %s..." ), lib_names[i] ) );
+                aProgress->SetCurrentProgress( (double) i / lib_names.GetCount() );
+                aProgress->Report( wxString::Format( _( "Loading %s..." ), lib_names[i] ) );
+                aProgress->KeepRefreshing();
             }
 
             // lib_names[] does not store the file extension. Set it.

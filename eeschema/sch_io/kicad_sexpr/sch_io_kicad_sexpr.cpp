@@ -1049,9 +1049,9 @@ void SCH_IO_KICAD_SEXPR::saveBitmap( const SCH_BITMAP& aBitmap )
     const REFERENCE_IMAGE& refImage = aBitmap.GetReferenceImage();
     const BITMAP_BASE&     bitmapBase = refImage.GetImage();
 
-    const wxImage* image = bitmapBase.GetImageData();
+    const RASTER_IMAGE* image = bitmapBase.GetImageData();
 
-    KI_CHECK_RET( image != nullptr, "wxImage* is NULL" );
+    KI_CHECK_RET( image != nullptr, "no image data" );
 
     m_out->Print( "(image (at %s %s)",
                   EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,

@@ -279,6 +279,12 @@ public:
      */
     virtual bool ConfirmAction( const wxString& aTitle, const wxString& aMessage );
 
+    /**
+     * Let the GUI process its pending events (repaint a report while a long task runs).
+     * Nothing to do without GUI; PGM_GUI calls wxSafeYield().
+     */
+    virtual void SafeYield() {}
+
     bool m_Quitting;
 
 protected:

@@ -2931,13 +2931,14 @@ void PCB_IO_EAGLE::mapEagleLayersToKicad( bool aIsLibraryCache )
         inputDescs.push_back( layerDesc );
     }
 
-    if( m_progressReporter && dynamic_cast<wxWindow*>( m_progressReporter ) )
-        dynamic_cast<wxWindow*>( m_progressReporter )->Hide();
+    // The mapping handler may show a dialog
+    if( m_progressReporter )
+        m_progressReporter->SetVisible( false );
 
     m_layer_map = m_layer_mapping_handler( inputDescs );
 
-    if( m_progressReporter && dynamic_cast<wxWindow*>( m_progressReporter ))
-        dynamic_cast<wxWindow*>( m_progressReporter )->Show();
+    if( m_progressReporter )
+        m_progressReporter->SetVisible( true );
 }
 
 

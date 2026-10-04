@@ -23,6 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <pgm_base.h>
 #include "tracks_cleaner.h"
 
 #include <atomic>
@@ -78,7 +79,7 @@ void TRACKS_CLEANER::CleanupBoard( bool aDryRun,
         else
             m_reporter->Report( _( "Removing null tracks and vias..." ) );
 
-        wxSafeYield();      // Timeslice to update UI
+        Pgm().SafeYield();      // Timeslice to update UI
     }
 
     bool removeNullSegments = aMergeSegments || aRemoveMisConnected;
@@ -91,7 +92,7 @@ void TRACKS_CLEANER::CleanupBoard( bool aDryRun,
         else
             m_reporter->Report( _( "Removing redundant tracks..." ) );
 
-        wxSafeYield();      // Timeslice to update UI
+        Pgm().SafeYield();      // Timeslice to update UI
     }
 
     // If we didn't remove duplicates above, do it now
@@ -107,7 +108,7 @@ void TRACKS_CLEANER::CleanupBoard( bool aDryRun,
             else
                 m_reporter->Report( _( "Removing shorting tracks..." ) );
 
-            wxSafeYield();      // Timeslice to update UI
+            Pgm().SafeYield();      // Timeslice to update UI
         }
 
         removeShortingTrackSegments();
@@ -122,7 +123,7 @@ void TRACKS_CLEANER::CleanupBoard( bool aDryRun,
             else
                 m_reporter->Report( _( "Removing tracks in pads..." ) );
 
-            wxSafeYield();      // Timeslice to update UI
+            Pgm().SafeYield();      // Timeslice to update UI
         }
 
         deleteTracksInPads();
@@ -145,7 +146,7 @@ void TRACKS_CLEANER::CleanupBoard( bool aDryRun,
                     m_reporter->Report( _( "Removing dangling vias..." ) );
             }
 
-            wxSafeYield();      // Timeslice to update UI
+            Pgm().SafeYield();      // Timeslice to update UI
         }
 
         has_deleted = deleteDanglingTracks( aDeleteUnconnected, aDeleteDanglingVias );
@@ -160,7 +161,7 @@ void TRACKS_CLEANER::CleanupBoard( bool aDryRun,
             else
                 m_reporter->Report( _( "Merging collinear tracks..." ) );
 
-            wxSafeYield();      // Timeslice to update UI
+            Pgm().SafeYield();      // Timeslice to update UI
         }
 
         cleanup( false, false, false, true );
@@ -615,7 +616,7 @@ void TRACKS_CLEANER::cleanup( bool aDeleteDuplicateVias, bool aDeleteNullSegment
         do
         {
             while( !m_brd->BuildConnectivity() )
-                wxSafeYield();
+                Pgm().SafeYield();
 
             // BuildConnectivity adds items but doesn't establish connections between them.
             // RecalculateRatsnest triggers searchConnections which actually finds and links

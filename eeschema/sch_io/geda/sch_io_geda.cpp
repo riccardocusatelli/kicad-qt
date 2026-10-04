@@ -69,7 +69,6 @@
 #include <math/util.h>
 #include <reference_image.h>
 #include <wx/base64.h>
-#include <wx/image.h>
 
 #include <algorithm>
 #include <climits>
@@ -2580,9 +2579,6 @@ void SCH_IO_GEDA::parsePicture( const wxString& aLine, wxTextFile& aFile, size_t
     REFERENCE_IMAGE& refImage = bitmap->GetReferenceImage();
     bool loaded = false;
 
-    int savedLoadFlags = wxImage::GetDefaultLoadFlags();
-    wxImage::SetDefaultLoadFlags( savedLoadFlags & ~wxImage::Load_Verbose );
-
     if( embedded && !base64Data.IsEmpty() )
     {
         wxMemoryBuffer buf = wxBase64Decode( base64Data );
@@ -2600,8 +2596,6 @@ void SCH_IO_GEDA::parsePicture( const wxString& aLine, wxTextFile& aFile, size_t
         if( imgFile.FileExists() )
             loaded = refImage.ReadImageFile( imgFile.GetFullPath() );
     }
-
-    wxImage::SetDefaultLoadFlags( savedLoadFlags );
 
     if( !loaded )
         return;

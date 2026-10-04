@@ -22,6 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <raster_image_wx.h>
 #include "tools/sch_editor_control.h"
 
 #include <clipboard.h>
@@ -2096,7 +2097,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
         {
             auto bitmap = std::make_unique<SCH_BITMAP>();
 
-            if( bitmap->GetReferenceImage().SetImage( clipImg->ConvertToImage() ) )
+            if( bitmap->GetReferenceImage().SetImage( FromWxImage( clipImg->ConvertToImage() ) ) )
                 return m_toolMgr->RunAction( SCH_ACTIONS::placeImage, bitmap.release() );
         }
 

@@ -115,6 +115,12 @@ public:
      * indeterminate ("pulsing") bar; the default just reports the message.
      */
     virtual void ReportIndeterminate( const wxString& aMessage ) { Report( aMessage ); }
+
+    /**
+     * Show or hide the progress, while another dialog asks something to the user.  Only dialog
+     * reporters do something.
+     */
+    virtual void SetVisible( bool aVisible ) {}
 };
 
 

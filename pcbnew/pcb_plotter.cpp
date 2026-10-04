@@ -305,7 +305,7 @@ bool PCB_PLOTTER::Plot( const wxString& aOutputPath, const LSEQ& aLayersToPlot,
 
         pageNum++;
 
-        wxSafeYield(); // displays report message.
+        Pgm().SafeYield(); // displays report message.
     }
 
     if( jobfile_writer && m_plotOpts.GetCreateGerberJobFile() )

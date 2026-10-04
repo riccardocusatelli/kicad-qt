@@ -31,6 +31,7 @@
 #include <core/throttle.h>
 #include <eeschema_id.h>
 #include <eeschema_settings.h>
+#include <sch_pane_info.h>
 #include <env_paths.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <kidialog.h>

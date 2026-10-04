@@ -217,6 +217,8 @@ set( KICOMMON_MODEL_SRCS
 
     advanced_config.cpp
     app_monitor.cpp
+    kiway_base.cpp
+    raster_image.cpp
     asset_archive.cpp
     array_axis.cpp
     array_options.cpp
@@ -338,6 +340,7 @@ set( KICOMMON_SRCS
     gui_reporters.cpp
     local_history_ui.cpp
     pgm_gui.cpp
+    raster_image_wx.cpp
     )
 
 if( UNIX AND NOT APPLE )
@@ -410,7 +413,13 @@ if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     target_link_options( kicommon_model PRIVATE "LINKER:--no-undefined" )
 endif()
 
+# PNG and JPEG codecs of RASTER_IMAGE
+find_package( PNG REQUIRED )
+find_package( JPEG REQUIRED )
+
 target_link_libraries( kicommon_model
+    PNG::PNG
+    JPEG::JPEG
     core
     kiapi
     kimath
@@ -702,6 +711,7 @@ set( COMMON_DRAWING_SHEET_SRCS
     drawing_sheet/ds_data_model_io.cpp
     drawing_sheet/drawing_sheet_default_description.cpp
     drawing_sheet/ds_draw_item.cpp
+    drawing_sheet/ds_draw_item_print.cpp
     drawing_sheet/ds_proxy_undo_item.cpp
     drawing_sheet/ds_proxy_view_item.cpp
     drawing_sheet/drawing_sheet_parser.cpp
@@ -799,6 +809,7 @@ set( COMMON_SRCS
     base_screen.cpp
     bin_mod.cpp
     bitmap_base.cpp
+    bitmap_base_dc.cpp
     board_printout.cpp
     clipboard.cpp
     commit.cpp
@@ -820,10 +831,13 @@ set( COMMON_SRCS
     footprint_info.cpp
     gbr_metadata.cpp
     gr_basic.cpp
+    gr_text_print.cpp
+    eda_text_print.cpp
     hotkey_store.cpp
     hotkeys_basic.cpp
     inspectable.cpp
     kiface_base.cpp
+    kiface_gui.cpp
     kiway_player.cpp
     lib_table_grid_tricks.cpp
     lib_table_notebook_panel.cpp
@@ -846,6 +860,7 @@ set( COMMON_SRCS
     textentry_tricks.cpp
     undo_redo_container.cpp
     validators.cpp
+    field_validation.cpp
     drawing_sheet/ds_painter.cpp
     view/wx_view_controls.cpp
     )
@@ -939,10 +954,9 @@ if( KICAD_USE_PCH )
             <string>
             <vector>
             <clipper2/clipper.h>
-            <eda_draw_frame.h>
             <kiid.h>
             <pgm_base.h>
-            <wx/wx.h>
+            <wx/string.h>
              )
 endif()
 
@@ -1017,6 +1031,7 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/pcbexpr_evaluator.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcbexpr_functions.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_commit.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_commit_gui.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_connected_item.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_design_settings.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/teardrop/teardrop_parameters.cpp     #needed by board_design_settings.cpp
@@ -1090,6 +1105,7 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/teardrop/teardrop_parameters.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/teardrop/teardrop_utils.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/zone_settings.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/zone_layer_properties_grid.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_board_outline.cpp
 
     # IO files

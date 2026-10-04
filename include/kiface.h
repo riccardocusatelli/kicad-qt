@@ -84,6 +84,7 @@ class wxConfigBase;
 class wxWindow;
 class PGM_BASE;
 class KIWAY;
+class KIWAY_SERVICES;
 class KIWAY_PLAYER;
 class wxTopLevelWindow;
 class TOOL_ACTION;
@@ -128,12 +129,14 @@ struct KIFACE
      *
      * @param aProgram is the process block: #PGM_BASE*.
      * @param aCtlBits consists of bit flags from the set of KFCTL_* \#defines above.
+     * @param aKiway is the KIWAY loading the DSO: a KIWAY in the GUI programs, a KIWAY_BASE
+     *               in kicad-cli.
      * @return true if DSO initialized OK, false if not.  When returning false, the loader
      *         may optionally decide to terminate the process or not, but will not put out
      *         any UI because that is the duty of this function to say why it is returning
      *         false.  Never return false without having reported to the UI why.
      */
-    virtual bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) = 0;
+    virtual bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) = 0;
 
     /**
      * Called just once just before the DSO is to be unloaded.

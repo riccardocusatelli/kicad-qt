@@ -198,8 +198,4 @@ KICOMMON_API wxMenuItem* AddMenuItem( wxMenu* aMenu, wxMenu* aSubMenu, int aId,
                                       const wxBitmapBundle& aImage );
 }
 
-KICOMMON_API SEVERITY SeverityFromString( const wxString& aSeverity );
-
-KICOMMON_API wxString SeverityToString( const SEVERITY& aSeverity );
-
 #endif // UI_COMMON_H

@@ -42,7 +42,6 @@
 #include <board.h>
 #include <footprint.h>
 #include <footprint_library_adapter.h>
-#include <eda_3d_viewer_frame.h>
 #include <project_pcb.h>
 #include <pad.h>
 #include <pcb_track.h>

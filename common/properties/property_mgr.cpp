@@ -27,7 +27,7 @@
 #include <algorithm>
 #include <ranges>
 #include <utility>
-#include <wx/wx.h>
+#include <wx/string.h>
 #include <core/ki_assert.h>
 
 

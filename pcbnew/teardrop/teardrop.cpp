@@ -44,9 +44,8 @@
 #define MAGIC_TEARDROP_ZONE_ID 30000
 
 
-TEARDROP_MANAGER::TEARDROP_MANAGER( BOARD* aBoard, TOOL_MANAGER* aToolManager ) :
-        m_board( aBoard ),
-        m_toolManager( aToolManager )
+TEARDROP_MANAGER::TEARDROP_MANAGER( BOARD* aBoard ) :
+        m_board( aBoard )
 {
     m_prmsList = m_board->GetDesignSettings().GetTeadropParamsList();
     m_tolerance = 0;

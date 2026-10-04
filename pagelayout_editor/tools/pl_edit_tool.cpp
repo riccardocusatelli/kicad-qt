@@ -22,6 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <raster_image_wx.h>
 #include <wx/log.h>
 #include <wx/msgdlg.h>
 #include <fmt/format.h>
@@ -550,7 +551,7 @@ int PL_EDIT_TOOL::Paste( const TOOL_EVENT& aEvent )
     if( std::unique_ptr<wxBitmap> clipImg = GetImageFromClipboard() )
     {
         auto image = std::make_unique<BITMAP_BASE>();
-        image->SetImage( clipImg->ConvertToImage() );
+        image->SetImage( FromWxImage( clipImg->ConvertToImage() ) );
         auto dataItem = std::make_unique<DS_DATA_ITEM_BITMAP>( image.release() );
         model.Append( dataItem.release() );
     }

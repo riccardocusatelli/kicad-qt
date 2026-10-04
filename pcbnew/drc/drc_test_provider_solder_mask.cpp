@@ -974,3 +974,5 @@ namespace detail
 {
     static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_SOLDER_MASK> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( solder_mask )

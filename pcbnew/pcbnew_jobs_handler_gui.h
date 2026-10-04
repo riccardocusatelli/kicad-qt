@@ -36,9 +36,11 @@ public:
     PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway );
 
 protected:
-    BOARD*        getEditorBoard() override;
-    TOOL_MANAGER* getEditorToolManager() override;
-    bool          getEditorNetlist( std::string& aNetlist ) override;
+    BOARD* getEditorBoard() override;
+    bool   getEditorNetlist( std::string& aNetlist ) override;
+    void   fillAllZones( BOARD* aBoard ) override;
+
+    std::unique_ptr<BOARD_COMMIT> makeCommit( BOARD* aBoard ) override;
 
 private:
     PCB_EDIT_FRAME* boardEditor() const;

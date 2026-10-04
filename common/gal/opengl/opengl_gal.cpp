@@ -38,6 +38,7 @@
 #include <geometry/shape_poly_set.h>
 #include <math/vector2wx.h>
 #include <bitmap_base.h>
+#include <raster_image_wx.h>
 #include <bezier_curves.h>
 #include <math/util.h> // for KiROUND
 #include <pgm_base.h>
@@ -177,12 +178,12 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
 {
     CACHED_BITMAP bmp;
 
-    const wxImage* imgPtr = aBitmap->GetOriginalImageData();
+    const RASTER_IMAGE* imgPtr = aBitmap->GetOriginalImageData();
 
     if( !imgPtr )
         return std::numeric_limits< GLuint >::max();
 
-    wxImage imgData = *imgPtr;
+    wxImage imgData = ToWxImage( *imgPtr );
 
     // Check if the image exceeds the maximum texture size supported by the GPU
     GLint maxTextureSize;

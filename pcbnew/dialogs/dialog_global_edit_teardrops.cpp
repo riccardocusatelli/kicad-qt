@@ -416,7 +416,7 @@ bool DIALOG_GLOBAL_EDIT_TEARDROPS::TransferDataFromWindow()
     {
         TEARDROP_PARAMETERS_LIST* paramsList = m_brd->GetDesignSettings().GetTeadropParamsList();
         TEARDROP_PARAMETERS*      targetParams = paramsList->GetParameters( TARGET_TRACK );
-        TEARDROP_MANAGER          teardropManager( m_brd, m_parent->GetToolManager() );
+        TEARDROP_MANAGER          teardropManager( m_brd );
 
         teardropManager.DeleteTrackToTrackTeardrops( commit );
         teardropManager.BuildTrackCaches();
@@ -442,7 +442,7 @@ bool DIALOG_GLOBAL_EDIT_TEARDROPS::TransferDataFromWindow()
     {
         commit.Push( _( "Edit Teardrops" ), SKIP_TEARDROPS );
 
-        TEARDROP_MANAGER teardropMgr( m_brd, m_parent->GetToolManager() );
+        TEARDROP_MANAGER teardropMgr( m_brd );
         teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true /* forceFullUpdate */ );
         commit.Push( _( "Edit Teardrops" ), SKIP_TEARDROPS | APPEND_UNDO );
     }

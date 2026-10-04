@@ -38,9 +38,6 @@
 #include <wx/config.h>
 #include <default_values.h>    // For some default values
 #include <core/ki_assert.h>
-#include <eda_draw_frame.h>
-#include <wx/aui/framemanager.h>
-#include <wx/window.h>
 
 using namespace T_BOMCFG_T;     // for the BOM_CFG_PARSER parser and its keywords
 
@@ -64,115 +61,6 @@ const nlohmann::json defaultBomPlugins =
                 { "path", "bom_csv_grouped_by_value_with_fp.py" }
             },
         };
-
-
-const wxAuiPaneInfo& defaultNetNavigatorPaneInfo()
-{
-    static wxAuiPaneInfo paneInfo;
-
-    paneInfo.Name( wxS( "NetNavigator" ) )
-            .Caption( _( "Net Navigator" ) )
-            .CaptionVisible( true )
-            .PaneBorder( true )
-            .Left().Layer( 3 ).Position( 0 )
-            .TopDockable( false )
-            .BottomDockable( false )
-            .CloseButton( true )
-            .MinSize( 120, 60 )
-            .BestSize( 200, 200 )
-            .FloatingSize( 200, 200 )
-            .FloatingPosition( 50, 200 )
-            .Show( false );
-
-    return paneInfo;
-}
-
-
-const wxAuiPaneInfo& defaultPropertiesPaneInfo( wxWindow* aWindow )
-{
-    static wxAuiPaneInfo paneInfo;
-
-    paneInfo.Name( EDA_DRAW_FRAME::PropertiesPaneName() )
-            .Caption( _( "Properties" ) )
-            .CaptionVisible( true )
-            .PaneBorder( true )
-            .Left().Layer( 3 ).Position( 2 )
-            .TopDockable( false )
-            .BottomDockable( false )
-            .CloseButton( true )
-            .MinSize( aWindow->FromDIP( wxSize( 240, 60 ) ) )
-            .BestSize( aWindow->FromDIP( wxSize( 300, 200 ) ) )
-            .FloatingSize( aWindow->FromDIP( wxSize( 300, 400 ) ) )
-            .FloatingPosition( aWindow->FromDIP( wxPoint( 50, 200 ) ) )
-            .Show( true );
-
-    return paneInfo;
-}
-
-
-const wxAuiPaneInfo& defaultSchSelectionFilterPaneInfo( wxWindow* aWindow )
-{
-    static wxAuiPaneInfo paneInfo;
-
-    paneInfo.Name( wxS( "SelectionFilter" ) )
-            .Caption( _( "Selection Filter" ) )
-            .CaptionVisible( true )
-            .PaneBorder( false )
-            .Left().Layer( 3 ).Position( 4 )
-            .TopDockable( false )
-            .BottomDockable( false )
-            .CloseButton( true )
-            // Fixed-size pane; -1 for MinSize height is required
-            .MinSize( aWindow->FromDIP( wxSize( 180, -1 ) ) )
-            .BestSize( aWindow->FromDIP( wxSize( 180, -1 ) ) )
-            .Show( true );
-
-    return paneInfo;
-}
-
-
-const wxAuiPaneInfo& defaultDesignBlocksPaneInfo( wxWindow* aWindow )
-{
-    static wxAuiPaneInfo paneInfo;
-
-    paneInfo.Name( EDA_DRAW_FRAME::DesignBlocksPaneName() )
-            .Caption( _( "Design Blocks" ) )
-            .CaptionVisible( true )
-            .PaneBorder( true )
-            .Right().Layer( 3 ).Position( 2 )
-            .TopDockable( false )
-            .BottomDockable( false )
-            .CloseButton( true )
-            .MinSize( aWindow->FromDIP( wxSize( 240, 60 ) ) )
-            .BestSize( aWindow->FromDIP( wxSize( 300, 200 ) ) )
-            .FloatingSize( aWindow->FromDIP( wxSize( 800, 600 ) ) )
-            .FloatingPosition( aWindow->FromDIP( wxPoint( 50, 200 ) ) )
-            .Show( true );
-
-    return paneInfo;
-}
-
-
-const wxAuiPaneInfo& defaultRemoteSymbolPaneInfo( wxWindow* aWindow )
-{
-    static wxAuiPaneInfo paneInfo;
-
-    paneInfo.Name( EDA_DRAW_FRAME::RemoteSymbolPaneName() )
-            .Caption( _( "Remote Symbols" ) )
-            .CaptionVisible( true )
-            .PaneBorder( true )
-            .Right().Layer( 3 ).Position( 3 )
-            .TopDockable( false )
-            .BottomDockable( false )
-            .CloseButton( true )
-            .MinSize( aWindow->FromDIP( wxSize( 240, 60 ) ) )
-            .BestSize( aWindow->FromDIP( wxSize( 300, 200 ) ) )
-            .FloatingSize( aWindow->FromDIP( wxSize( 800, 600 ) ) )
-            .FloatingPosition( aWindow->FromDIP( wxPoint( 80, 220 ) ) )
-            .Show( false );
-
-    return paneInfo;
-}
 
 
 EESCHEMA_SETTINGS::EESCHEMA_SETTINGS() :

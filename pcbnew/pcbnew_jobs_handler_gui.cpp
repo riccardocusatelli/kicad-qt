@@ -50,7 +50,9 @@
 #include <kiway_mail.h>
 #include <mail_type.h>
 #include <pcb_edit_frame.h>
+#include <board_commit.h>
 #include <tool/tool_manager.h>
+#include <tools/zone_filler_tool.h>
 
 
 PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
@@ -295,10 +297,33 @@ BOARD* PCBNEW_JOBS_HANDLER_GUI::getEditorBoard()
 }
 
 
-TOOL_MANAGER* PCBNEW_JOBS_HANDLER_GUI::getEditorToolManager()
+void PCBNEW_JOBS_HANDLER_GUI::fillAllZones( BOARD* aBoard )
 {
+    // The jobs work on the board open in the editor: fill it through the editor, which then
+    // shows the new fills.
     PCB_EDIT_FRAME* editFrame = boardEditor();
-    return editFrame ? editFrame->GetToolManager() : nullptr;
+
+    if( !editFrame )
+    {
+        PCBNEW_JOBS_HANDLER::fillAllZones( aBoard );
+        return;
+    }
+
+    TOOL_MANAGER* toolManager = editFrame->GetToolManager();
+
+    if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
+        toolManager->RegisterTool( new ZONE_FILLER_TOOL );
+
+    toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+}
+
+
+std::unique_ptr<BOARD_COMMIT> PCBNEW_JOBS_HANDLER_GUI::makeCommit( BOARD* aBoard )
+{
+    if( PCB_EDIT_FRAME* editFrame = boardEditor() )
+        return std::make_unique<BOARD_COMMIT>( editFrame->GetToolManager() );
+
+    return PCBNEW_JOBS_HANDLER::makeCommit( aBoard );
 }
 
 

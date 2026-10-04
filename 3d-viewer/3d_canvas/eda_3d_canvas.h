@@ -35,6 +35,7 @@
 #include <wx/timer.h>
 
 
+class TOOL_DISPATCHER;
 class WX_INFOBAR;
 class wxStatusBar;
 class BOARD;

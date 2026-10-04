@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include <wx/bitmap.h>
-#include <wx/image.h>
+#include <raster_image.h>
+#include <wx/buffer.h>
 
 #include <core/mirror.h>
 #include <kiid.h>
@@ -34,6 +34,9 @@
 
 class LINE_READER;
 class PLOTTER;
+class wxDC;
+class wxInputStream;
+class wxOutputStream;
 
 
 /**
@@ -52,12 +55,7 @@ public:
 
     BITMAP_BASE( const BITMAP_BASE& aSchBitmap );
 
-    ~BITMAP_BASE()
-    {
-        delete m_bitmap;
-        delete m_image;
-        delete m_originalImage;
-    }
+    ~BITMAP_BASE() = default;
 
     /*
      * Accessors:
@@ -65,10 +63,13 @@ public:
     double GetPixelSizeIu() const { return m_pixelSizeIu; }
     void SetPixelSizeIu( double aPixSize ) { m_pixelSizeIu = aPixSize; }
 
-    wxImage* GetImageData() { return m_image; }
-    const wxImage* GetImageData() const { return m_image; }
+    RASTER_IMAGE*       GetImageData() { return m_image.IsOk() ? &m_image : nullptr; }
+    const RASTER_IMAGE* GetImageData() const { return m_image.IsOk() ? &m_image : nullptr; }
 
-    const wxImage* GetOriginalImageData() const { return m_originalImage; }
+    const RASTER_IMAGE* GetOriginalImageData() const
+    {
+        return m_originalImage.IsOk() ? &m_originalImage : nullptr;
+    }
 
     double GetScale() const { return m_scale; }
     void SetScale( double aScale ) { m_scale = aScale; }
@@ -76,7 +77,7 @@ public:
     KIID GetImageID() const { return m_imageId; }
 
     /**
-     * Copy aItem image to this object and update #m_bitmap.
+     * Copy aItem image to this object.
      */
     void ImportData( BITMAP_BASE& aItem );
 
@@ -106,8 +107,8 @@ public:
      */
     VECTOR2I GetSizePixels() const
     {
-        if( m_image )
-            return VECTOR2I( m_image->GetWidth(), m_image->GetHeight() );
+        if( m_image.IsOk() )
+            return VECTOR2I( m_image.GetWidth(), m_image.GetHeight() );
         else
             return VECTOR2I( 0, 0 );
     }
@@ -129,15 +130,15 @@ public:
      */
     const BOX2I GetBoundingBox() const;
 
+    /// Draw the bitmap on a wxDC (printing).  GUI only: defined in bitmap_base_dc.cpp.
     void DrawBitmap( wxDC* aDC, const VECTOR2I& aPos,
                      const KIGFX::COLOR4D& aBackgroundColor = KIGFX::COLOR4D::UNSPECIFIED ) const;
 
     /**
      * Reads and stores in memory an image file.
      *
-     * Initialize the bitmap format used to draw this item.  Supported images formats are
-     * format supported by wxImage if all handlers are loaded.  By default, .png, .jpeg
-     * are always loaded.
+     * Initialize the bitmap format used to draw this item.  PNG and JPEG are always supported;
+     * the GUI adds the other formats wxImage reads (RASTER_IMAGE::SetFallbackDecoder()).
      *
      * @param aFullFilename The full filename of the image file to read.
      * @return  true if success reading else false.
@@ -149,8 +150,7 @@ public:
      *
      * Initialize the bitmap format used to draw this item.
      *
-     * Supported images formats are format supported by wxImage if all handlers are loaded.
-     * By default, .png, .jpeg are always loaded.
+     * PNG and JPEG are always supported; the GUI adds the other formats wxImage reads.
      *
      * @param aInStream an input stream containing the file data.
      * @return true if success reading else false.
@@ -162,8 +162,7 @@ public:
      *
      * Initialize the bitmap format used to draw this item.
      *
-     * Supported images formats are format supported by wxImage if all handlers are loaded.
-     * By default, .png, .jpeg are always loaded.
+     * PNG and JPEG are always supported; the GUI adds the other formats wxImage reads.
      *
      * @param aBuf a memory buffer containing the file data.
      * @return true if success reading else false.
@@ -171,9 +170,9 @@ public:
     bool ReadImageFile( wxMemoryBuffer& aBuf );
 
     /**
-     * Set the image from an existing wxImage.
+     * Set the image from an existing image (the clipboard, the image editor).
      */
-    bool SetImage( const wxImage& aImage );
+    bool SetImage( const RASTER_IMAGE& aImage );
 
     /**
     * Write the bitmap data to \a aOutStream.
@@ -233,12 +232,12 @@ public:
     /**
      * Return the bitmap type (png, jpeg, etc.)
      */
-    wxBitmapType GetImageType() const { return m_imageType; }
+    RASTER_IMAGE::TYPE GetImageType() const { return m_imageType; }
 
     /**
      * Set the bitmap type (png, jpeg, etc.)
      */
-    void SetImageType( wxBitmapType aType ) { m_imageType = aType; }
+    void SetImageType( RASTER_IMAGE::TYPE aType ) { m_imageType = aType; }
 
 private:
     /**
@@ -246,37 +245,18 @@ private:
      */
     void updateImageDataBuffer();
 
-    /**
-     * Rebuild the internal bitmap used to draw/plot image.
-     *
-     * This must be called after a #m_image change.
-     *
-     * @param aResetID is used to reset the cache ID used for OpenGL rendering.
-     */
-    void rebuildBitmap( bool aResetID = true );
-
-    /**
-     * Ensure the cached wxBitmap is up-to-date with the current wxImage.
-     * Rebuilds the bitmap if it has been invalidated by a transform operation.
-     */
-    void ensureBitmapUpToDate() const;
+    /// Use @a aImage (decoded from m_imageData, or new) and give the image a new ID.
+    bool setImage( const RASTER_IMAGE& aImage );
 
     void updatePPI();
-
-    /**
-     * Mirror the wxImage pixel data in-place without allocating a new image.
-     */
-    static void mirrorImageInPlace( wxImage& aImage, FLIP_DIRECTION aFlipDirection );
 
     double    m_scale;              ///< The scaling factor of the bitmap
                                     ///< with #m_pixelSizeIu, controls the actual draw size.
     mutable wxMemoryBuffer m_imageData; ///< Cached encoded image data (PNG/JPEG).
-    wxBitmapType   m_imageType;     ///< The image type (png, jpeg, etc.).
+    RASTER_IMAGE::TYPE m_imageType; ///< The image type (png, jpeg, etc.).
 
-    wxImage*  m_image;              ///< The raw, uncompressed image data.
-    wxImage*  m_originalImage;      ///< Raw image data, not transformed by rotate/mirror.
-    mutable wxBitmap* m_bitmap;     ///< The bitmap used to draw/plot image.
-    mutable bool      m_bitmapDirty;///< True when m_bitmap needs rebuilding from m_image.
+    RASTER_IMAGE m_image;           ///< The raw, uncompressed image data.
+    RASTER_IMAGE m_originalImage;   ///< Raw image data, not transformed by rotate/mirror.
     double    m_pixelSizeIu;        ///< The scaling factor of the bitmap to convert the bitmap
                                     ///< size (in pixels) to internal KiCad units.  This usually
                                     ///< does not change.

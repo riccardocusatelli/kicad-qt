@@ -23,10 +23,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <confirm.h>
 
 // Include simulator headers after wxWidgets headers to avoid conflicts with Windows headers
 // (especially on msys2 + wxWidgets 3.0.x)
+#include <wx/log.h>
 #include "ngspice.h"
 #include "macros.h"
 
@@ -43,7 +43,7 @@ std::shared_ptr<SPICE_SIMULATOR> SIMULATOR::CreateInstance( const std::string& )
     }
     catch( std::exception& e )
     {
-        DisplayError( nullptr, e.what() );
+        wxLogError( wxString::FromUTF8( e.what() ) );
     }
 
     return nullptr;

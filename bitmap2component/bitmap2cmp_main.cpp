@@ -24,16 +24,16 @@
 
 #include <bitmap2cmp_frame.h>
 #include <bitmap2cmp_settings.h>
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 
 
 namespace BMP2CMP {
 
-static struct IFACE : public KIFACE_BASE
+static struct IFACE : public KIFACE_GUI
 {
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     wxWindow* CreateKiWindow( wxWindow* aParent, int aClassId, KIWAY* aKiway,
                               int aCtlBits = 0 ) override
@@ -59,7 +59,7 @@ static struct IFACE : public KIFACE_BASE
     }
 
     IFACE( const char* aDSOname, KIWAY_FACES::FACE_T aType ) :
-            KIFACE_BASE( aDSOname, aType )
+            KIFACE_GUI( aDSOname, aType )
     {}
 
 } kiface( "BMP2CMP", KIWAY_FACES::FACE_BMP2CMP );
@@ -83,7 +83,7 @@ KIFACE* KIFACE_GETTER( int* aKIFACEversion, int aKIWAYversion, PGM_BASE* aProgra
 }
 
 
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     return start_common( aCtlBits );
 }

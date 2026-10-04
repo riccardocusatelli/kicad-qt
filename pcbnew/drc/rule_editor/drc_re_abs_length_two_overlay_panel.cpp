@@ -32,6 +32,7 @@
 #include <wx/textctrl.h>
 #include <wx/stattext.h>
 #include <dialogs/rule_editor_dialog_base.h> 
+#include <eda_base_frame.h>
 
 DRC_RE_ABS_LENGTH_TWO_OVERLAY_PANEL::DRC_RE_ABS_LENGTH_TWO_OVERLAY_PANEL(
         wxWindow* aParent, DRC_RE_ABSOLUTE_LENGTH_TWO_CONSTRAINT_DATA* aData, EDA_UNITS aUnits ) :

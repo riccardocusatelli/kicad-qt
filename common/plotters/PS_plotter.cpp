@@ -37,7 +37,7 @@
 
 #include <plotters/plotters_pslike.h>
 #include <core/ki_assert.h>
-#include <wx/image.h>
+#include <raster_image.h>
 
 
 /* Forward declaration of the font width metrics
@@ -586,7 +586,7 @@ void PS_PLOTTER::PlotPoly( const SHAPE_LINE_CHAIN& aCornerList, FILL_T aFill, in
 }
 
 
-void PS_PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double aScaleFactor )
+void PS_PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor )
 {
     VECTOR2I pix_size; // size of the bitmap in pixels
     pix_size.x = aImage.GetWidth();

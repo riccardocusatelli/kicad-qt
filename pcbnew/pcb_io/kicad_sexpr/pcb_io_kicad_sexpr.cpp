@@ -1127,9 +1127,9 @@ void PCB_IO_KICAD_SEXPR::format( const PCB_REFERENCE_IMAGE* aBitmap ) const
 
     const REFERENCE_IMAGE& refImage = aBitmap->GetReferenceImage();
 
-    const wxImage* image = refImage.GetImage().GetImageData();
+    const RASTER_IMAGE* image = refImage.GetImage().GetImageData();
 
-    KI_CHECK_RET( image != nullptr, "wxImage* is NULL" );
+    KI_CHECK_RET( image != nullptr, "no image data" );
 
     m_out->Print( "(image (at %s %s)",
                   formatInternalUnits( aBitmap->GetPosition().x ).c_str(),

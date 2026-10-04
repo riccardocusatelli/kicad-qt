@@ -28,7 +28,6 @@
 #include <wx/log.h>
 
 #include <config_map.h>
-#include <dpi_scaling.h>
 #include <core/ki_log.h>
 
 using namespace KIGFX;
@@ -53,7 +52,7 @@ GAL_DISPLAY_OPTIONS::GAL_DISPLAY_OPTIONS()
       m_axesEnabled( false ),
       m_crossHairMode( CROSS_HAIR_MODE::SMALL_CROSS ),
       m_forceDisplayCursor( false ),
-      m_scaleFactor( DPI_SCALING::GetDefaultScaleFactor() )
+      m_scaleFactor( 1.0 )      // DPI_SCALING::GetDefaultScaleFactor()
 {
 }
 

@@ -55,7 +55,6 @@
 #include <base_units.h>
 #include <page_info.h>
 #include <layer_ids.h>
-#include <gr_basic.h>
 #include <trigo.h>
 #include <render_settings.h>
 #include <font/font.h>
@@ -175,16 +174,6 @@ void DS_DRAW_ITEM_BASE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
 
 // ============================ TEXT ==============================
 
-void DS_DRAW_ITEM_TEXT::PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset )
-{
-    COLOR4D color = GetTextColor();
-
-    if( color == COLOR4D::UNSPECIFIED )
-        color = aSettings->GetLayerColor( LAYER_DRAWINGSHEET );
-
-    Print( aSettings, aOffset, color );
-}
-
 
 const BOX2I DS_DRAW_ITEM_TEXT::GetApproxBBox()
 {
@@ -249,30 +238,6 @@ wxString DS_DRAW_ITEM_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, 
 
 
 // ============================ POLYGON =================================
-
-void DS_DRAW_ITEM_POLYPOLYGONS::PrintWsItem( const RENDER_SETTINGS* aSettings,
-                                             const VECTOR2I&        aOffset )
-{
-    wxDC*   DC = aSettings->GetPrintDC();
-    COLOR4D color = aSettings->GetLayerColor( LAYER_DRAWINGSHEET );
-    int     penWidth = std::max( GetPenWidth(), aSettings->GetDefaultPenWidth() );
-
-    std::vector<VECTOR2I> points_moved;
-
-    for( int idx = 0; idx < m_Polygons.OutlineCount(); ++idx )
-    {
-        points_moved.clear();
-        SHAPE_LINE_CHAIN& outline = m_Polygons.Outline( idx );
-
-        for( int ii = 0; ii < outline.PointCount(); ii++ )
-        {
-            points_moved.emplace_back( outline.CPoint( ii ).x + aOffset.x,
-                                       outline.CPoint( ii ).y + aOffset.y );
-        }
-
-        GRPoly( DC, (int) points_moved.size(), &points_moved[0], true, penWidth, color, color );
-    }
-}
 
 
 void DS_DRAW_ITEM_POLYPOLYGONS::SetPosition( const VECTOR2I& aPos )
@@ -344,15 +309,6 @@ wxString DS_DRAW_ITEM_POLYPOLYGONS::GetItemDescription( UNITS_PROVIDER* aUnitsPr
 
 
 // ============================ RECT ==============================
-
-void DS_DRAW_ITEM_RECT::PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset )
-{
-    wxDC*   DC = aSettings->GetPrintDC();
-    COLOR4D color = aSettings->GetLayerColor( LAYER_DRAWINGSHEET );
-    int     penWidth = std::max( GetPenWidth(), aSettings->GetDefaultPenWidth() );
-
-    GRRect( DC, GetStart() + aOffset, GetEnd() + aOffset, penWidth, color );
-}
 
 
 const BOX2I DS_DRAW_ITEM_RECT::GetBoundingBox() const
@@ -446,15 +402,6 @@ wxString DS_DRAW_ITEM_RECT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, 
 
 // ============================ LINE ==============================
 
-void DS_DRAW_ITEM_LINE::PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset )
-{
-    wxDC*   DC = aSettings->GetPrintDC();
-    COLOR4D color = aSettings->GetLayerColor( LAYER_DRAWINGSHEET );
-    int     penWidth = std::max( GetPenWidth(), aSettings->GetDefaultPenWidth() );
-
-    GRLine( DC, GetStart() + aOffset, GetEnd() + aOffset, penWidth, color );
-}
-
 
 const BOX2I DS_DRAW_ITEM_LINE::GetBoundingBox() const
 {
@@ -477,17 +424,6 @@ wxString DS_DRAW_ITEM_LINE::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, 
 
 
 // ============== BITMAP ================
-
-void DS_DRAW_ITEM_BITMAP::PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset )
-{
-    DS_DATA_ITEM_BITMAP* bitmap = (DS_DATA_ITEM_BITMAP*) GetPeer();
-
-    if( !bitmap->m_ImageBitmap )
-        return;
-
-    bitmap->m_ImageBitmap->DrawBitmap( aSettings->GetPrintDC(), m_pos + aOffset,
-                                       aSettings->GetBackgroundColor() );
-}
 
 
 const BOX2I DS_DRAW_ITEM_BITMAP::GetBoundingBox() const
@@ -571,23 +507,6 @@ void DS_DRAW_ITEM_LIST::BuildDrawItemsList( const PAGE_INFO& aPageInfo,
 
         wsItem->SyncDrawItems( this, nullptr );
     }
-}
-
-
-void DS_DRAW_ITEM_LIST::Print( const RENDER_SETTINGS* aSettings )
-{
-    std::vector<DS_DRAW_ITEM_BASE*> second_items;
-
-    for( DS_DRAW_ITEM_BASE* item = GetFirst(); item; item = GetNext() )
-    {
-        if( item->Type() == WSG_BITMAP_T )
-            item->PrintWsItem( aSettings );
-        else
-            second_items.push_back( item );
-    }
-
-    for( DS_DRAW_ITEM_BASE* item : second_items )
-        item->PrintWsItem( aSettings );
 }
 
 

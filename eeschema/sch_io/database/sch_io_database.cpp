@@ -38,7 +38,6 @@
 
 #include "sch_io_database.h"
 
-#include <dialog_database_lib_settings.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
@@ -839,7 +838,3 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
 }
 
 
-DIALOG_SHIM* SCH_IO_DATABASE::CreateConfigurationDialog( wxWindow* aParent )
-{
-    return new DIALOG_DATABASE_LIB_SETTINGS( aParent, this );
-}

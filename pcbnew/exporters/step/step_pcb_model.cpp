@@ -2435,15 +2435,15 @@ bool STEP_PCB_MODEL::MakeShapes( std::vector<TopoDS_Shape>& aShapes, const SHAPE
 
 // These colors are based on 3D viewer's colors and are different to "gbrjobColors"
 static std::vector<FAB_LAYER_COLOR> s_soldermaskColors = {
-    { NotSpecifiedPrm(), wxColor( 20, 51, 36 ) },        // Not specified, not in .gbrjob file
-    { _HKI( "Green" ), wxColor( 20, 51, 36 ) },          // used in .gbrjob file
-    { _HKI( "Red" ), wxColor( 181, 19, 21 ) },           // used in .gbrjob file
-    { _HKI( "Blue" ), wxColor( 2, 59, 162 ) },           // used in .gbrjob file
-    { _HKI( "Purple" ), wxColor( 32, 2, 53 ) },          // used in .gbrjob file
-    { _HKI( "Black" ), wxColor( 11, 11, 11 ) },          // used in .gbrjob file
-    { _HKI( "White" ), wxColor( 245, 245, 245 ) },       // used in .gbrjob file
-    { _HKI( "Yellow" ), wxColor( 194, 195, 0 ) },        // used in .gbrjob file
-    { _HKI( "User defined" ), wxColor( 128, 128, 128 ) } // Free; the name is a dummy name here
+    { NotSpecifiedPrm(), KIGFX::COLOR4D( 20 / 255.0, 51 / 255.0, 36 / 255.0, 1.0 ) },        // Not specified, not in .gbrjob file
+    { _HKI( "Green" ), KIGFX::COLOR4D( 20 / 255.0, 51 / 255.0, 36 / 255.0, 1.0 ) },          // used in .gbrjob file
+    { _HKI( "Red" ), KIGFX::COLOR4D( 181 / 255.0, 19 / 255.0, 21 / 255.0, 1.0 ) },           // used in .gbrjob file
+    { _HKI( "Blue" ), KIGFX::COLOR4D( 2 / 255.0, 59 / 255.0, 162 / 255.0, 1.0 ) },           // used in .gbrjob file
+    { _HKI( "Purple" ), KIGFX::COLOR4D( 32 / 255.0, 2 / 255.0, 53 / 255.0, 1.0 ) },          // used in .gbrjob file
+    { _HKI( "Black" ), KIGFX::COLOR4D( 11 / 255.0, 11 / 255.0, 11 / 255.0, 1.0 ) },          // used in .gbrjob file
+    { _HKI( "White" ), KIGFX::COLOR4D( 245 / 255.0, 245 / 255.0, 245 / 255.0, 1.0 ) },       // used in .gbrjob file
+    { _HKI( "Yellow" ), KIGFX::COLOR4D( 194 / 255.0, 195 / 255.0, 0 / 255.0, 1.0 ) },        // used in .gbrjob file
+    { _HKI( "User defined" ), KIGFX::COLOR4D( 128 / 255.0, 128 / 255.0, 128 / 255.0, 1.0 ) } // Free; the name is a dummy name here
 };
 
 

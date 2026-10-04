@@ -998,6 +998,20 @@ SCH_SELECTION_TOOL* SCH_BASE_FRAME::GetSelectionTool()
 }
 
 
+void SCH_BASE_FRAME::AddToSelection( EDA_ITEM* aItem )
+{
+    if( SCH_SELECTION_TOOL* selectionTool = GetSelectionTool() )
+        selectionTool->AddItemToSel( aItem, true /*quiet mode*/ );
+}
+
+
+void SCH_BASE_FRAME::RemoveFromSelection( EDA_ITEM* aItem )
+{
+    if( SCH_SELECTION_TOOL* selectionTool = GetSelectionTool() )
+        selectionTool->RemoveItemFromSel( aItem, true /*quiet mode*/ );
+}
+
+
 void SCH_BASE_FRAME::HighlightSelectionFilter( const SCH_SELECTION_FILTER_OPTIONS& aOptions )
 {
     SCH_SELECTION_FILTER_EVENT evt( aOptions );

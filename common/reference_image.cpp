@@ -35,8 +35,8 @@
 
 static bool compareImages( const BITMAP_BASE& aLeft, const BITMAP_BASE& aRight )
 {
-    const wxImage* leftImage = aLeft.GetImageData();
-    const wxImage* rightImage = aRight.GetImageData();
+    const RASTER_IMAGE* leftImage = aLeft.GetImageData();
+    const RASTER_IMAGE* rightImage = aRight.GetImageData();
 
     if( !leftImage || !rightImage )
         return leftImage == rightImage;
@@ -319,7 +319,7 @@ bool REFERENCE_IMAGE::ReadImageFile( wxMemoryBuffer& aBuffer )
 }
 
 
-bool REFERENCE_IMAGE::SetImage( const wxImage& aImage )
+bool REFERENCE_IMAGE::SetImage( const RASTER_IMAGE& aImage )
 {
     if( m_bitmapBase->SetImage( aImage ) )
     {

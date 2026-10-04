@@ -45,7 +45,7 @@
 #include <math/util.h>      // for KiROUND
 #include <convert_basic_shapes_to_polygon.h>
 #include <core/ki_assert.h>
-#include <wx/image.h>
+#include <raster_image.h>
 
 PLOTTER::PLOTTER( const PROJECT* aProject ) :
     m_project( aProject )
@@ -259,7 +259,7 @@ void PLOTTER::BezierCurve( const VECTOR2I& aStart, const VECTOR2I& aControl1,
 }
 
 
-void PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double aScaleFactor )
+void PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor )
 {
     VECTOR2I size( aImage.GetWidth() * aScaleFactor, aImage.GetHeight() * aScaleFactor );
 

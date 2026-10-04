@@ -19,80 +19,18 @@
 
 #pragma once
 
+#include <map>
+#include <vector>
+
 #include <sch_reference_list.h>
-#include <wx/grid.h>
-#include <widgets/wx_grid.h>
+#include <table_group_type.h>
 #include <core/ki_assert.h>
 
-
+class SCH_COMMIT;
+class TEMPLATES;
 struct BOM_FIELD;
 struct BOM_PRESET;
 struct BOM_FMT_PRESET;
-
-
-// Columns for the View Fields grid
-#define DISPLAY_NAME_COLUMN   0     // The field name in the data model (translated)
-#define LABEL_COLUMN          1     // The field name's label for exporting (CSV, etc.)
-#define SHOW_FIELD_COLUMN     2
-#define GROUP_BY_COLUMN       3
-#define VIEW_FIELDS_COL_COUNT 4
-
-
-// Data model for the list of fields to view (and to group-by) for the Symbol Fields Table
-class VIEW_CONTROLS_GRID_DATA_MODEL : public WX_GRID_TABLE_BASE
-{
-public:
-    VIEW_CONTROLS_GRID_DATA_MODEL( bool aForBOM ) :
-            m_forBOM( aForBOM )
-    {}
-
-    ~VIEW_CONTROLS_GRID_DATA_MODEL() override = default;
-
-    int GetNumberRows() override { return (int) m_fields.size(); }
-    int GetNumberCols() override { return VIEW_FIELDS_COL_COUNT; }
-
-    wxString GetColLabelValue( int aCol ) override;
-
-    bool IsEmptyCell( int aRow, int aCol ) override
-    {
-        return false; // don't allow adjacent cell overflow, even if we are actually empty
-    }
-
-    bool CanGetValueAs( int aRow, int aCol, const wxString& aTypeName ) override
-    {
-        switch( aCol )
-        {
-        case DISPLAY_NAME_COLUMN:
-        case LABEL_COLUMN:        return aTypeName == wxGRID_VALUE_STRING;
-
-        case SHOW_FIELD_COLUMN:
-        case GROUP_BY_COLUMN:     return aTypeName == wxGRID_VALUE_BOOL;
-
-        default:                  KI_FAIL(); return false;
-        }
-    }
-
-    bool CanSetValueAs( int aRow, int aCol, const wxString& aTypeName ) override
-    {
-        return CanGetValueAs( aRow, aCol, aTypeName );
-    }
-
-    wxString GetValue( int aRow, int aCol ) override;
-    bool GetValueAsBool( int aRow, int aCol ) override;
-
-    void SetValue( int aRow, int aCol, const wxString& aValue ) override;
-    void SetValueAsBool( int aRow, int aCol, bool aValue ) override;
-
-    void AppendRow( const wxString& aFieldName, const wxString& aBOMName, bool aShow, bool aGroupBy );
-    void DeleteRow( int aRow );
-
-    wxString GetCanonicalFieldName( int aRow );
-    void SetCanonicalFieldName( int aRow, const wxString& aName );
-
-protected:
-    bool                   m_forBOM;
-    std::vector<BOM_FIELD> m_fields;
-};
 
 
 struct DATA_MODEL_ROW
@@ -120,7 +58,15 @@ struct DATA_MODEL_COL
 };
 
 
-class FIELDS_EDITOR_GRID_DATA_MODEL : public WX_GRID_TABLE_BASE
+/**
+ * The data of the symbol fields table and of the BOM: the symbols of a schematic as rows
+ * (grouped and sorted), their fields as columns.
+ *
+ * It has no GUI: the BOM export of kicad-cli uses it directly, and the symbol fields table
+ * dialog shows it in a grid through FIELDS_EDITOR_GRID_DATA_MODEL
+ * (fields_editor_grid_data_model.h).
+ */
+class FIELDS_DATA_MODEL
 {
 public:
     enum SCOPE : int
@@ -130,7 +76,7 @@ public:
         SCOPE_SHEET_RECURSIVE
     };
 
-    FIELDS_EDITOR_GRID_DATA_MODEL( const SCH_REFERENCE_LIST& aSymbolsList, wxGridCellAttr* aURLEditor ) :
+    FIELDS_DATA_MODEL( const SCH_REFERENCE_LIST& aSymbolsList ) :
             m_symbolsList( aSymbolsList ),
             m_edited( false ),
             m_sortColumn( 0 ),
@@ -139,18 +85,12 @@ public:
             m_groupingEnabled( false ),
             m_excludeDNP( false ),
             m_includeExcluded( false ),
-            m_rebuildsEnabled( true ),
-            m_urlEditor( aURLEditor ),
-            m_textVarRenderer( nullptr )
+            m_rebuildsEnabled( true )
     {
         m_symbolsList.SplitReferences();
     }
 
-    ~FIELDS_EDITOR_GRID_DATA_MODEL() override
-    {
-        wxSafeDecRef( m_urlEditor );
-        wxSafeDecRef( m_textVarRenderer );
-    }
+    virtual ~FIELDS_DATA_MODEL() = default;
 
     static const wxString QUANTITY_VARIABLE;
     static const wxString ITEM_NUMBER_VARIABLE;
@@ -179,16 +119,16 @@ public:
         }
     }
 
-    int GetNumberRows() override { return (int) m_rows.size(); }
-    int GetNumberCols() override { return (int) m_cols.size(); }
+    int GetNumberRows() { return (int) m_rows.size(); }
+    int GetNumberCols() { return (int) m_cols.size(); }
 
-    void SetColLabelValue( int aCol, const wxString& aLabel ) override
+    void SetColLabelValue( int aCol, const wxString& aLabel )
     {
         KI_CHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), "Invalid Column Number" );
         m_cols[aCol].m_label = aLabel;
     }
 
-    wxString GetColLabelValue( int aCol ) override
+    wxString GetColLabelValue( int aCol )
     {
         KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxString() );
         return m_cols[aCol].m_label;
@@ -205,14 +145,25 @@ public:
     std::vector<BOM_FIELD> GetFieldsOrdered();
     void                   SetFieldsOrder( const std::vector<wxString>& aNewOrder );
 
-    bool IsEmptyCell( int aRow, int aCol ) override
+    bool IsEmptyCell( int aRow, int aCol )
     {
         return false; // don't allow adjacent cell overflow, even if we are actually empty
     }
 
-    wxString GetValue( int aRow, int aCol ) override;
+    wxString GetValue( int aRow, int aCol );
     wxString        GetResolvedValue( int aRow, int aCol );
-    wxGridCellAttr* GetAttr( int aRow, int aCol, wxGridCellAttr::wxAttrKind aKind ) override;
+
+    /// The cell cannot be edited (the expander column, or an attribute set by a parent sheet).
+    bool IsCellReadOnly( int aRow, int aCol );
+
+    /// The cell has a variant value that differs from the default value of the field.
+    bool CellDiffersFromDefault( int aRow, int aCol );
+
+    /// The raw value of the cell contains a text variable (shown resolved).
+    bool CellHasTextVariable( int aRow, int aCol );
+
+    /// The texts of column @a aCol, for the column width.
+    std::vector<wxString> GetColumnTexts( int aCol );
 
     wxString GetValue( const DATA_MODEL_ROW& group, int aCol,
                        const wxString& refDelimiter = wxT( ", " ),
@@ -226,7 +177,7 @@ public:
         return GetValue( m_rows[aRow], aCol, refDelimiter, refRangeDelimiter, true, true );
     }
 
-    void     SetValue( int aRow, int aCol, const wxString& aValue ) override;
+    void     SetValue( int aRow, int aCol, const wxString& aValue );
 
     GROUP_TYPE GetRowFlags( int aRow ) { return m_rows[aRow].m_Flag; }
 
@@ -242,8 +193,8 @@ public:
     bool ColIsItemNumber( int aCol );
     bool ColIsAttribute( int aCol );
 
-    bool IsExpanderColumn( int aCol ) const override;
-    GROUP_TYPE GetGroupType( int aRow ) const override
+    bool IsExpanderColumn( int aCol ) const;
+    GROUP_TYPE GetGroupType( int aRow ) const
     {
         return m_rows[aRow].m_Flag;
     }
@@ -273,8 +224,6 @@ public:
     void ApplyData( SCH_COMMIT& aCommit, TEMPLATES& aTemplateFieldnames, const wxString& aVariantName );
 
     bool IsEdited() { return m_edited; }
-
-    int GetDataWidth( int aCol );
 
     void SetFilter( const wxString& aFilter ) { m_filter = aFilter; }
     const wxString& GetFilter() { return m_filter; }
@@ -333,11 +282,10 @@ public:
 
     // Identity-based undo serialization (keyed by symbol, not row position) for the dialog's
     // Ctrl+Z, so it stays correct as rows are grouped/sorted/reordered.
-    bool     HasUndoStateSerialization() const override { return true; }
-    wxString SerializeUndoState() const override;
-    void     RestoreUndoState( const wxString& aState ) override;
+    wxString SerializeUndoState() const;
+    void     RestoreUndoState( const wxString& aState );
 
-    bool DeleteRows( size_t aPosition = 0, size_t aNumRows = 1 ) override;
+    bool DeleteRows( size_t aPosition = 0, size_t aNumRows = 1 );
 
     const SCH_REFERENCE_LIST& GetReferenceList() const { return m_symbolsList; }
 
@@ -357,7 +305,7 @@ public:
 
 private:
     static bool cmp( const DATA_MODEL_ROW& lhGroup, const DATA_MODEL_ROW& rhGroup,
-                     FIELDS_EDITOR_GRID_DATA_MODEL* dataModel, int sortCol, bool ascending );
+                     FIELDS_DATA_MODEL* dataModel, int sortCol, bool ascending );
 
     bool unitMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef );
     bool groupMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef );
@@ -421,6 +369,18 @@ private:
     void updateDataStoreSymbolField( const SCH_REFERENCE& aSymbolRef, const wxString& aFieldName );
 
 protected:
+    /// Notifications for the grid showing the model (none without GUI).
+    virtual void rowsAppended( size_t aCount ) {}
+    virtual void rowsInserted( size_t aPos, size_t aCount ) {}
+    virtual void rowsDeleted( size_t aPos, size_t aCount ) {}
+    virtual void colsDeleted( size_t aPos, size_t aCount ) {}
+
+    /// The rows are going to be rebuilt: finish the edits in progress.
+    virtual void commitPendingEdits() {}
+
+    /// The data has changed outside of the grid.
+    virtual void dataChanged() {}
+
     /**
      * The flattened by hierarchy list of symbols.
      *
@@ -438,8 +398,6 @@ protected:
     bool               m_excludeDNP;
     bool               m_includeExcluded;
     bool               m_rebuildsEnabled;
-    wxGridCellAttr*    m_urlEditor;
-    wxGridCellRenderer*     m_textVarRenderer; ///< Renderer for cells with text variable references
     wxString                m_currentVariant;  ///< Current variant name for highlighting
     std::vector<wxString>   m_variantNames;    ///< Variant names for multi-variant DNP filtering
 

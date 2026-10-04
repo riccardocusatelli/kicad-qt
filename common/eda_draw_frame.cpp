@@ -86,6 +86,11 @@
 #include <tool/editor_conditions.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
+#include <wx/choice.h>
+#include <wx/dcmemory.h>
+#include <wx/dcclient.h>
+#include <wx/dc.h>
+#include <wx/checkbox.h>
 
 #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
 

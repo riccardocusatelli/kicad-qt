@@ -18,7 +18,7 @@
  */
 
 #include <eda_dde.h>
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <kiface_ids.h>
 #include <kipython_frame.h>
 #include <kipython_settings.h>
@@ -32,9 +32,9 @@
 
 namespace KIPYTHON {
 
-static struct IFACE : public KIFACE_BASE
+static struct IFACE : public KIFACE_GUI
 {
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     void OnKifaceEnd() override;
 
@@ -69,7 +69,7 @@ static struct IFACE : public KIFACE_BASE
     }
 
     IFACE( const char* aDSOname, KIWAY_FACES::FACE_T aType ) :
-            KIFACE_BASE( aDSOname, aType )
+            KIFACE_GUI( aDSOname, aType )
     {}
 
 } kiface( "KIPYTHON", KIWAY_FACES::FACE_PYTHON );
@@ -92,7 +92,7 @@ KIFACE* KIFACE_GETTER( int* aKIFACEversion, int aKIWAYversion, PGM_BASE* aProgra
 }
 
 
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     InitSettings( new KIPYTHON_SETTINGS );
     Pgm().GetSettingsManager().RegisterSettings( KifaceSettings() );

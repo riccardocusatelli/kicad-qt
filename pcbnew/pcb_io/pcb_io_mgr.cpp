@@ -27,7 +27,7 @@
 
 #include <config.h>
 #include <footprint.h>
-#include <kiway_player.h>
+#include <kictl_flags.h>
 #include <wildcards_and_files_ext.h>
 #include <libraries/library_table.h>
 #include <pcb_io/pcb_io_mgr.h>

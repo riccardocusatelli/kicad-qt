@@ -53,6 +53,7 @@
 #include <board_design_settings.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <pcb_base_frame.h>
 
 #if defined(__linux__) || defined(__FreeBSD__)
 #include <3d_spacenav/spnav_viewer_plugin.h>

@@ -39,6 +39,26 @@ class COMMIT;
 class SHAPE_LINE_CHAIN;
 
 
+/**
+ * The questions ZONE_FILLER::Fill() asks the user.  The editor answers with dialogs; without
+ * an implementation (kicad-cli, scripts) warnings are logged and the fill goes ahead.
+ */
+class ZONE_FILLER_QUERIES
+{
+public:
+    virtual ~ZONE_FILLER_QUERIES() = default;
+
+    /// Tell the user that the fill may be wrong (it is applied anyway).
+    virtual void ShowWarning( const wxString& aMessage ) = 0;
+
+    /// Prototype zone fill is enabled in the project: disable it and refill?
+    virtual bool ConfirmDisablePrototypeFill() = 0;
+
+    /// The zone fills are out of date: refill them?
+    virtual bool ConfirmRefill() = 0;
+};
+
+
 class ZONE_FILLER
 {
 public:
@@ -57,8 +77,13 @@ public:
      * installed.
      *
      * Caller is also responsible for re-building connectivity afterwards.
+     *
+     * @param aCheck only refill if the fills are out of date, after asking @a aQueries (which
+     *               is then required).
+     * @param aQueries asks the user; nullptr: no questions, warnings are logged.
      */
-    bool Fill( const std::vector<ZONE*>& aZones, bool aCheck = false, wxWindow* aParent = nullptr );
+    bool Fill( const std::vector<ZONE*>& aZones, bool aCheck = false,
+               ZONE_FILLER_QUERIES* aQueries = nullptr );
 
     bool IsDebug() const { return m_debugZoneFiller; }
 
@@ -230,5 +255,16 @@ private:
                                                                    m_refillResultCache;
     mutable std::mutex                                             m_cacheMutex;
 };
+
+
+/**
+ * Fill all the zones of @a aBoard, after updating its teardrops, and rebuild its connectivity.
+ * The fill is committed without undo information: this is the "Fill All Zones" command of
+ * kicad-cli and of the scripting API.
+ *
+ * @return false if the fill was cancelled (through @a aReporter).
+ */
+bool FillAllBoardZones( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr );
+
 
 #endif

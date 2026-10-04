@@ -87,7 +87,6 @@ public:
 
     bool SupportsConfigurationDialog() const override { return true; }
 
-    DIALOG_SHIM* CreateConfigurationDialog( wxWindow* aParent ) override;
 
     DATABASE_LIB_SETTINGS* Settings() const { return m_settings.get(); }
 

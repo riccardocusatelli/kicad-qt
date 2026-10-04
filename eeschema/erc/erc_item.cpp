@@ -370,3 +370,33 @@ std::shared_ptr<ERC_ITEM> ERC_ITEM::Create( int aErrorCode )
 
     return nullptr;
 }
+
+
+wxString ERC_ITEM::getItemDescription( EDA_ITEM* aItem, int aIndex,
+                                       UNITS_PROVIDER* aUnitsProvider ) const
+{
+    SCH_ITEM*  schItem = dynamic_cast<SCH_ITEM*>( aItem );
+    SCHEMATIC* sch     = schItem ? schItem->Schematic() : nullptr;
+
+    const std::optional<SCH_SHEET_PATH>& itemSheet = ( aIndex == 0 ) ? m_mainItemSheet
+                                                                     : m_auxItemSheet;
+
+    if( !sch || !itemSheet.has_value() || sch->CurrentSheet() == *itemSheet )
+        return RC_ITEM::getItemDescription( aItem, aIndex, aUnitsProvider );
+
+    // Temporarily point the schematic at the affected item's sheet so per-instance
+    // fields (notably the symbol reference) resolve to the same text the GUI ERC
+    // dialog shows.  Mirrors the lambda in ERC_TREE_MODEL::GetValue.
+    SCH_SHEET_PATH savedSheet  = sch->CurrentSheet();
+    SCH_SHEET_PATH targetSheet = *itemSheet;
+
+    sch->SetCurrentSheet( targetSheet );
+    targetSheet.UpdateAllScreenReferences();
+
+    wxString desc = RC_ITEM::getItemDescription( aItem, aIndex, aUnitsProvider );
+
+    sch->SetCurrentSheet( savedSheet );
+    savedSheet.UpdateAllScreenReferences();
+
+    return desc;
+}

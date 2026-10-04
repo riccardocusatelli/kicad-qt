@@ -24,7 +24,7 @@
 #include <memory>
 
 #include <eeschema_helpers.h>
-#include <fields_data_model.h>
+#include <fields_editor_grid_data_model.h>
 #include <locale_io.h>
 #include <sch_commit.h>
 #include <sch_field.h>

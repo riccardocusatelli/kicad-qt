@@ -30,7 +30,7 @@
 #include <gerbview_frame.h>
 #include <gerbview_settings.h>
 #include <gestfich.h>
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <macros.h>
 #include <json_common.h>
 #include <pgm_base.h>
@@ -54,16 +54,16 @@ using json = nlohmann::json;
 
 namespace GERBV {
 
-static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
+static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
     IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
-            KIFACE_BASE( aName, aType ),
+            KIFACE_GUI( aName, aType ),
             UNITS_PROVIDER( gerbIUScale, EDA_UNITS::MM )
     {}
 
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     void OnKifaceEnd() override;
 
@@ -162,7 +162,7 @@ KIFACE_API KIFACE* KIFACE_GETTER(  int* aKIFACEversion, int aKiwayVersion, PGM_B
 }
 
 
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     InitSettings( new GERBVIEW_SETTINGS );
     aProgram->GetSettingsManager().RegisterSettings( KifaceSettings() );

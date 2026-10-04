@@ -24,14 +24,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <gr_basic.h>
 #include <plotters/plotter.h>
 #include <trigo.h>
 #include <math/util.h>          // for KiROUND
 #include <font/font.h>
 #include <text_eval/text_eval_wrapper.h>
 
-#include <callback_gal.h>
 
 
 int GetPenSizeForBold( int aTextSize )
@@ -112,66 +110,3 @@ int GRTextWidth( const wxString& aText, KIFONT::FONT* aFont, const VECTOR2I& aSi
     return KiROUND( aFont->StringBoundaryLimits( evaluated, aSize, aThickness, aBold, aItalic,
                                                  aFontMetrics ).x );
 }
-
-
-void GRPrintText( wxDC* aDC, const VECTOR2I& aPos, const COLOR4D& aColor, const wxString& aText,
-                  const EDA_ANGLE& aOrient, const VECTOR2I& aSize,
-                  enum GR_TEXT_H_ALIGN_T aH_justify, enum GR_TEXT_V_ALIGN_T aV_justify,
-                  int aWidth, bool aItalic, bool aBold, KIFONT::FONT* aFont,
-                  const KIFONT::METRICS& aFontMetrics )
-{
-    KIGFX::GAL_DISPLAY_OPTIONS empty_opts;
-    bool                       fill_mode = true;
-    wxString                   evaluatedText( aText );
-
-    if( evaluatedText.Contains( wxS( "@{" ) ) )
-    {
-        EXPRESSION_EVALUATOR evaluator;
-        evaluatedText = evaluator.Evaluate( evaluatedText );
-    }
-
-    if( !aFont )
-        aFont = KIFONT::FONT::GetFont();
-
-    if( aWidth == 0 ) // Use default values if aWidth == 0
-    {
-        if( aBold )
-            aWidth = GetPenSizeForBold( std::min( aSize.x, aSize.y ) );
-        else
-            aWidth = GetPenSizeForNormal( std::min( aSize.x, aSize.y ) );
-    }
-
-    if( aWidth < 0 )
-    {
-        aWidth = -aWidth;
-        fill_mode = false;
-    }
-
-    CALLBACK_GAL callback_gal( empty_opts,
-            // Stroke callback
-            [&]( const VECTOR2I& aPt1, const VECTOR2I& aPt2 )
-            {
-                if( fill_mode )
-                    GRLine( aDC, aPt1, aPt2, aWidth, aColor );
-                else
-                    GRCSegm( aDC, aPt1, aPt2, aWidth, aColor );
-            },
-            // Polygon callback
-            [&]( const SHAPE_LINE_CHAIN& aPoly )
-            {
-                GRClosedPoly( aDC, aPoly.PointCount(), aPoly.CPoints().data(), true, aColor );
-            } );
-
-    TEXT_ATTRIBUTES attributes;
-    attributes.m_Angle = aOrient;
-    attributes.m_StrokeWidth = aWidth;
-    attributes.m_Italic = aItalic;
-    attributes.m_Bold = aBold;
-    attributes.m_Halign = aH_justify;
-    attributes.m_Valign = aV_justify;
-    attributes.m_Size = aSize;
-
-    aFont->Draw( &callback_gal, evaluatedText, aPos, attributes, aFontMetrics );
-}
-
-

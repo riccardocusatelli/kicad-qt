@@ -575,3 +575,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_CONNECTION_WIDTH> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( connection_width )

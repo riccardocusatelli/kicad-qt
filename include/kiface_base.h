@@ -40,7 +40,7 @@ public:
     /**
      * Typically #start_common() is called from here.
      */
-    virtual bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override = 0;
+    virtual bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override = 0;
 
     virtual void OnKifaceEnd() override
     {
@@ -114,7 +114,6 @@ public:
     /// (The library search path is in the PROJECT class.)
     SEARCH_STACK&       KifaceSearch()                { return m_bm.m_search; }
 
-    void GetActions( std::vector<TOOL_ACTION*>& aActions ) const override;
 
 protected:
     int m_start_flags;      ///< flags provided in OnKifaceStart()

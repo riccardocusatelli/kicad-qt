@@ -135,3 +135,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_TEXT_MIRRORING> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( text_mirroring )

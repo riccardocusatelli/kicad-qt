@@ -48,7 +48,6 @@
 #include <geometry/shape_line_chain.h>
 #include <core/profile.h>
 #include <string_utils.h>
-#include <tools/pad_tool.h>
 #include <zone.h>
 
 #include <board_stackup_manager/stackup_predefined_prms.h>

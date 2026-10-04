@@ -30,6 +30,7 @@
 #include "dialog_sim_command_base.h"
 #include <netlist_exporter_spice.h>
 #include <sim/spice_value.h>
+#include <sim/spice_validator.h>
 
 #include <wx/valnum.h>
 #include <core/ki_assert.h>

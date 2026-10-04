@@ -27,6 +27,7 @@
 HTML_MESSAGE_BOX* ShowSchTextSyntaxHelp( wxWindow* aParentWindow )
 {
     wxString msg =
+#include <i18n_utility.h>
 #include "sch_text_help_md.h"
             ;
 

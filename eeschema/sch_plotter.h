@@ -34,7 +34,6 @@
 #include <sch_sheet_path.h>
 #include <plotters/plotter.h>
 
-class SCH_EDIT_FRAME;
 class PLOTTER;
 class SCHEMATIC;
 class SCH_SCREEN;
@@ -98,14 +97,7 @@ struct SCH_PLOT_OPTS
 class SCH_PLOTTER
 {
 public:
-    /**
-     * Constructor for usage with a frame having the schematic we want to print loaded.
-     */
-    SCH_PLOTTER( SCH_EDIT_FRAME* aFrame );
-
-    /**
-     * Constructor for usage with a schematic that can be headless.
-     */
+    /// The plotter of @a aSch (the schematic of the editor, or one loaded without GUI).
     SCH_PLOTTER( SCHEMATIC* aSch );
 
     /**

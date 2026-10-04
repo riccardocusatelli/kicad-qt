@@ -1199,3 +1199,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_LIBRARY_PARITY> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( library_parity )

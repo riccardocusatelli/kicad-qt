@@ -25,6 +25,7 @@
 #include <kicad_gl/kiglu.h> // Must be included first
 #include <kicad_gl/gl_utils.h>
 #include <kicad_gl/gl_context_mgr.h>
+#include <class_draw_panel_gal.h>
 
 #include <wx/tokenzr.h>
 

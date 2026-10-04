@@ -45,7 +45,7 @@
 #include <sch_rule_area.h>
 
 #include <utility>
-#include <validators.h>
+#include <field_validation.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_log.h>
@@ -695,10 +695,12 @@ const wxString SCH_SYMBOL::GetRef( const SCH_SHEET_PATH* sheet, bool aIncludeUni
 
 void SCH_SYMBOL::SetRefProp( const wxString& aRef )
 {
-    FIELD_VALIDATOR validator( FIELD_T::REFERENCE );
+    wxString error = GetFieldValidationErrorMessage( FIELD_T::REFERENCE, aRef );
 
-    if( validator.DoValidate( aRef, nullptr ) )
+    if( error.IsEmpty() )
         SetRef( &Schematic()->CurrentSheet(), aRef );
+    else
+        wxLogError( error );
 }
 
 

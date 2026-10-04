@@ -32,6 +32,7 @@
 #include <wx/textctrl.h>
 #include <wx/stattext.h>
 #include <dialogs/rule_editor_dialog_base.h>
+#include <eda_base_frame.h>
 
 
 DRC_RE_ROUTING_WIDTH_OVERLAY_PANEL::DRC_RE_ROUTING_WIDTH_OVERLAY_PANEL(

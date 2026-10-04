@@ -59,7 +59,6 @@
 #include <pgm_base.h>
 #include <libraries/symbol_library_adapter.h>
 #include <core/ki_assert.h>
-#include <sch_edit_frame.h>
 
 
 /* ERC tests :
@@ -2106,7 +2105,8 @@ int ERC_TESTER::TestSimModelIssues()
 }
 
 
-void ERC_TESTER::RunTests( DS_PROXY_VIEW_ITEM* aDrawingSheet, SCH_EDIT_FRAME* aEditFrame,
+void ERC_TESTER::RunTests( DS_PROXY_VIEW_ITEM* aDrawingSheet,
+                           const std::function<void( SCH_CLEANUP_FLAGS )>& aRecalculateConnections,
                            KIFACE* aCvPcb, PROJECT* aProject, PROGRESS_REPORTER* aProgressReporter )
 {
     m_sheetList.AnnotatePowerSymbols();
@@ -2126,12 +2126,12 @@ void ERC_TESTER::RunTests( DS_PROXY_VIEW_ITEM* aDrawingSheet, SCH_EDIT_FRAME* aE
         aProgressReporter->AdvancePhase( _( "Checking conflicts..." ) );
 
     // If we are using the new connectivity, make sure that we do a full-rebuild
-    if( aEditFrame )
+    if( aRecalculateConnections )
     {
         if( ADVANCED_CFG::GetCfg().m_IncrementalConnectivity )
-            aEditFrame->RecalculateConnections( nullptr, GLOBAL_CLEANUP );
+            aRecalculateConnections( GLOBAL_CLEANUP );
         else
-            aEditFrame->RecalculateConnections( nullptr, NO_CLEANUP );
+            aRecalculateConnections( NO_CLEANUP );
     }
 
     m_schematic->ConnectionGraph()->RunERC();

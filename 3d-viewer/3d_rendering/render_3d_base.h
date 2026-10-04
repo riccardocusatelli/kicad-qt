@@ -30,7 +30,7 @@
 #define RENDER_3D_BASE_H
 
 
-#include <pcb_base_frame.h>
+#include <wx/gdicmn.h>
 #include "3d_canvas/board_adapter.h"
 #include <reporter.h>
 

@@ -62,6 +62,7 @@
 #include <project/net_settings.h>
 #include <python_scripting.h>
 #include <sch_edit_frame.h>
+#include <sch_pane_info.h>
 #include <symbol_chooser_frame.h>
 #include <sch_painter.h>
 #include <sch_marker.h>
@@ -1906,7 +1907,6 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FL
             };
 
     Schematic().RecalculateConnections( aCommit, aCleanupFlags,
-                                        m_toolManager,
                                         aProgressReporter,
                                         GetCanvas()->GetView(),
                                         &changeHandler,

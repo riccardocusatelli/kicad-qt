@@ -237,31 +237,13 @@ FIELD_VALIDATOR::FIELD_VALIDATOR( FIELD_T aFieldId, wxString* aValue ) :
         wxTextValidator( wxFILTER_EXCLUDE_CHAR_LIST, aValue ),
         m_fieldId( aFieldId )
 {
-    // Fields cannot contain carriage returns, line feeds, or tabs.
-    wxString excludes( wxT( "\r\n\t" ) );
-
-    // The reference and sheet name fields cannot contain spaces.
-    if( aFieldId == FIELD_T::REFERENCE )
-    {
-        excludes += wxT( " " );
-    }
-    else if( m_fieldId == FIELD_T::SHEET_NAME )
-    {
-        excludes += wxT( "/" );
-    }
-
     long style = GetStyle();
 
-    // The reference, sheetname and sheetfilename fields cannot be empty.
-    if( aFieldId == FIELD_T::REFERENCE
-        || aFieldId == FIELD_T::SHEET_NAME
-        || aFieldId == FIELD_T::SHEET_FILENAME )
-    {
+    if( FieldCannotBeEmpty( aFieldId ) )
         style |= wxFILTER_EMPTY;
-    }
 
     SetStyle( style );
-    SetCharExcludes( excludes );
+    SetCharExcludes( FieldExcludedChars( aFieldId ) );
 }
 
 
@@ -289,113 +271,6 @@ bool FIELD_VALIDATOR::Validate( wxWindow* aParent )
 }
 
 
-wxString GetFieldValidationErrorMessage( FIELD_T aFieldId, const wxString& aValue )
-{
-    FIELD_VALIDATOR validator( aFieldId );
-    wxString        msg;
-
-    if( validator.HasFlag( wxFILTER_EMPTY ) && aValue.empty() )
-    {
-        switch( aFieldId )
-        {
-        case FIELD_T::SHEET_NAME:     msg = _( "A sheet must have a name." );               break;
-        case FIELD_T::SHEET_FILENAME: msg = _( "A sheet must have a file specified." );     break;
-        default:                      msg = _( "The value of the field cannot be empty." ); break;
-        }
-    }
-
-    if( msg.empty() && validator.HasFlag( wxFILTER_EXCLUDE_CHAR_LIST ) )
-    {
-        wxArrayString badCharsFound;
-
-        for( const wxUniCharRef& excludeChar : validator.GetCharExcludes() )
-        {
-            if( aValue.Find( excludeChar ) != wxNOT_FOUND )
-            {
-                if( excludeChar == '\r' )
-                    badCharsFound.Add( _( "carriage return" ) );
-                else if( excludeChar == '\n' )
-                    badCharsFound.Add( _( "line feed" ) );
-                else if( excludeChar == '\t' )
-                    badCharsFound.Add( _( "tab" ) );
-                else if( excludeChar == ' ' )
-                    badCharsFound.Add( _( "space" ) );
-                else
-                    badCharsFound.Add( wxString::Format( wxT( "'%c'" ), excludeChar ) );
-            }
-        }
-
-        if( !badCharsFound.IsEmpty() )
-        {
-            wxString badChars;
-
-            for( size_t i = 0; i < badCharsFound.GetCount(); i++ )
-            {
-                if( !badChars.IsEmpty() )
-                {
-                    if( badCharsFound.GetCount() == 2 )
-                    {
-                        badChars += _( " or " );
-                    }
-                    else
-                    {
-                        if( i < badCharsFound.GetCount() - 2 )
-                            badChars += _( ", or " );
-                        else
-                            badChars += wxT( ", " );
-                    }
-                }
-
-                badChars += badCharsFound.Item( i );
-            }
-
-            switch( aFieldId )
-            {
-            case FIELD_T::REFERENCE:
-                msg.Printf( _( "The reference designator cannot contain %s character(s)." ), badChars );
-                break;
-
-            case FIELD_T::VALUE:
-                msg.Printf( _( "The value field cannot contain %s character(s)." ), badChars );
-                break;
-
-            case FIELD_T::FOOTPRINT:
-                msg.Printf( _( "The footprint field cannot contain %s character(s)." ), badChars );
-                break;
-
-            case FIELD_T::DATASHEET:
-                msg.Printf( _( "The datasheet field cannot contain %s character(s)." ), badChars );
-                break;
-
-            case FIELD_T::SHEET_NAME:
-                msg.Printf( _( "The sheet name cannot contain %s character(s)." ), badChars );
-                break;
-
-            case FIELD_T::SHEET_FILENAME:
-                msg.Printf( _( "The sheet filename cannot contain %s character(s)." ), badChars );
-                break;
-
-            default:
-                msg.Printf( _( "The field cannot contain %s character(s)." ), badChars );
-                break;
-            };
-        }
-    }
-
-    if( msg.empty() )
-    {
-        if( aFieldId == FIELD_T::REFERENCE && aValue.Contains( wxT( "${" ) ) )
-        {
-            msg.Printf( _( "The reference designator cannot contain text variable references" ) );
-        }
-        else if( aFieldId == FIELD_T::REFERENCE && UTIL::GetRefDesPrefix( aValue ).IsEmpty() )
-        {
-            msg.Printf( _( "References must start with a letter." ) );
-        }
-    }
-
-    return msg;
-}
 
 
 bool FIELD_VALIDATOR::DoValidate( const wxString& aValue, wxWindow* aParent )

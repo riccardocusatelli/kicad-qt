@@ -173,3 +173,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_TRACK_SEGMENT_LENGTH> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( track_segment_length )

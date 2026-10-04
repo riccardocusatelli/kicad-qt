@@ -28,7 +28,7 @@
 #include <wx/stdpaths.h>
 #include <wx/wxcrtvararg.h>     //for wxPrintf
 
-#include <kiway.h>
+#include <kiway_base.h>
 #include <libraries/library_manager.h>
 #include <string_utils.h>
 #include <paths.h>
@@ -99,6 +99,10 @@
 #include <thread_pool.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+
+
+/// The KIWAY of kicad-cli: it loads the KIFACEs without GUI (_eeschema_cli, _pcbnew_cli).
+static KIWAY_BASE s_kiway( KFCTL_CPP_PROJECT_SUITE | KFCTL_CLI );
 
 
 KIFACE_BASE& Kiface()
@@ -450,7 +454,7 @@ bool PGM_KICAD_CLI::OnPgmInit()
 
     m_bm.InitSettings( new KICAD_SETTINGS );
     GetSettingsManager().RegisterSettings( PgmSettings() );
-    GetSettingsManager().SetKiway( &Kiway );
+    GetSettingsManager().SetKiway( &s_kiway );
     m_bm.Init();
 
     GetLibraryManager().LoadGlobalTables();
@@ -565,7 +569,7 @@ int PGM_KICAD_CLI::OnPgmRun()
 
     if( cliCmd )
     {
-        int exitCode = cliCmd->Perform( Kiway );
+        int exitCode = cliCmd->Perform( s_kiway );
 
         if( exitCode != CLI::EXIT_CODES::AVOID_CLOSING )
         {
@@ -591,7 +595,7 @@ void PGM_KICAD_CLI::OnPgmExit()
     GetKiCadThreadPool().purge();
     GetKiCadThreadPool().wait();
 
-    Kiway.OnKiwayEnd();
+    s_kiway.OnKiwayEnd();
 
     if( m_settings_manager && m_settings_manager->IsOK() )
     {
@@ -616,8 +620,6 @@ void PGM_KICAD_CLI::Destroy()
     PGM_BASE::Destroy();
 }
 
-
-KIWAY Kiway( KFCTL_CPP_PROJECT_SUITE | KFCTL_CLI );
 
 static PGM_KICAD_CLI program;
 
@@ -747,5 +749,5 @@ IMPLEMENT_APP_CONSOLE( APP_KICAD_CLI )
 // this link image need this function.
 PROJECT& Prj()
 {
-    return Kiway.Prj();
+    return s_kiway.Prj();
 }

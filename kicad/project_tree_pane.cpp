@@ -28,6 +28,7 @@
 #include <git/git_backend.h>
 
 #include <wx/regex.h>
+#include <widgets/wx_progress_reporters.h>
 #include <wx/richmsgdlg.h>
 #include <wx/stdpaths.h>
 #include <wx/string.h>

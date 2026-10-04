@@ -28,21 +28,44 @@
  */
 
 #include "buffers_debug.h"
-#include <wx/image.h>   // Used for save an image to disk
+#include <raster_image.h>
+#include <wx/ffile.h>
 
-/**
- * @param aRGBpixelBuffer from the wxWidgets documentation
- * "The data given must have the size (width*height*3).
- *  The data must have been allocated with malloc(), NOT with operator new."
- */
+#include <cstring>
+#include <vector>
+
+/// Save a buffer as a PNG file (mirrored top-bottom), and free it (allocated with malloc()).
+static void dbg_save_image( const wxString& aFileName, unsigned char* aRGBpixelBuffer,
+                            unsigned char* aAlphaBuffer, unsigned int aXSize, unsigned int aYSize )
+{
+    RASTER_IMAGE image( aXSize, aYSize );
+    memcpy( image.GetData(), aRGBpixelBuffer, (size_t) aXSize * aYSize * 3 );
+
+    if( aAlphaBuffer )
+    {
+        image.InitAlpha();
+        memcpy( image.GetAlpha(), aAlphaBuffer, (size_t) aXSize * aYSize );
+    }
+
+    free( aRGBpixelBuffer );
+    free( aAlphaBuffer );
+
+    std::vector<unsigned char> png;
+
+    if( image.Mirror( false ).Save( png, RASTER_IMAGE::TYPE::PNG ) )
+    {
+        wxFFile file( aFileName + wxT( ".png" ), wxT( "wb" ) );
+
+        if( file.IsOpened() )
+            file.Write( png.data(), png.size() );
+    }
+}
+
+
 static void dbg_save_rgb_buffer( const wxString& aFileName, unsigned char *aRGBpixelBuffer,
                                  unsigned int aXSize, unsigned int aYSize )
 {
-    wxImage image( aXSize, aYSize );
-    image.SetData( aRGBpixelBuffer );
-    image = image.Mirror( false );
-    image.SaveFile( aFileName + wxT( ".png" ), wxBITMAP_TYPE_PNG );
-    image.Destroy();
+    dbg_save_image( aFileName, aRGBpixelBuffer, nullptr, aXSize, aYSize );
 }
 
 
@@ -50,12 +73,7 @@ static void dbg_save_rgb_a_buffer( const wxString& aFileName, unsigned char* aRG
                                    unsigned char* aAlphaBuffer, unsigned int aXSize,
                                    unsigned int aYSize )
 {
-    wxImage image( aXSize, aYSize );
-    image.SetData( aRGBpixelBuffer );
-    image.SetAlpha( aAlphaBuffer );
-    image = image.Mirror( false );
-    image.SaveFile( aFileName + wxT( ".png" ), wxBITMAP_TYPE_PNG );
-    image.Destroy();
+    dbg_save_image( aFileName, aRGBpixelBuffer, aAlphaBuffer, aXSize, aYSize );
 }
 
 

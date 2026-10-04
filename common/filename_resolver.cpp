@@ -35,7 +35,7 @@
 #include <embedded_files.h>
 #include <env_vars.h>
 #include <filename_resolver.h>
-#include <confirm.h>
+#include <wx/log.h>
 #include <wx_filename.h>
 #include <core/ki_log.h>
 
@@ -548,7 +548,7 @@ bool FILENAME_RESOLVER::addPath( const SEARCH_PATH& aPath )
             wxString msg = _( "The given path does not exist" );
             msg.append( wxT( "\n" ) );
             msg.append( tpath.m_Pathvar );
-            DisplayErrorMessage( nullptr, msg );
+            wxLogError( msg );
         }
 
         tpath.m_Pathexp.clear();
@@ -581,7 +581,7 @@ bool FILENAME_RESOLVER::addPath( const SEARCH_PATH& aPath )
             msg.append( wxT( "\n" ) );
             msg.append( _( "Existing path:" ) + wxS( " " ) );
             msg.append( sPL->m_Pathvar );
-            DisplayErrorMessage( nullptr, _( "Bad alias (duplicate name)" ), msg );
+            wxLogError( _( "Bad alias (duplicate name)" ) + wxS( "\n" ) + msg );
             return false;
         }
 

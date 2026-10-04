@@ -77,14 +77,16 @@ public:
 
     const KIFONT::METRICS& GetFontMetrics() const;
 
-    // The function to print a WS_DRAW_ITEM
-    virtual void PrintWsItem( const RENDER_SETTINGS* aSettings )
+    /**
+     * Print the item on the wxDC of @a aSettings (printing).  GUI only: the printing code is
+     * in ds_draw_item_print.cpp, which calls the PrintWsItem() of the item type.
+     */
+    void PrintWsItem( const RENDER_SETTINGS* aSettings )
     {
         PrintWsItem( aSettings, VECTOR2I( 0, 0 ) );
     }
 
-    // More advanced version of DrawWsItem. This is what must be defined in the derived type.
-    virtual void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset ) = 0;
+    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset );
 
     // We can't cache bounding boxes because we're recreated for each draw event.  This method
     // can be overridden by items whose real bounding boxes are expensive to calculate.  It is
@@ -153,7 +155,7 @@ public:
 
     bool HitTest( const VECTOR2I& aPosition, int aAccuracy = 0 ) const override;
 
-    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset ) override;
+    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset );
 
     wxString GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const override;
 
@@ -188,7 +190,7 @@ public:
     bool HitTest( const VECTOR2I& aPosition, int aAccuracy = 0 ) const override;
     bool HitTest( const BOX2I& aRect, bool aContained, int aAccuracy = 0 ) const override;
 
-    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset ) override;
+    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset );
 
     wxString GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const override;
 
@@ -236,7 +238,7 @@ public:
     VECTOR2I GetPosition() const override { return GetStart(); }
     void     SetPosition( const VECTOR2I& aPos ) override { SetStart( aPos ); }
 
-    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset ) override;
+    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset );
 
     const BOX2I GetBoundingBox() const override;
 
@@ -285,7 +287,7 @@ public:
     VECTOR2I GetPosition() const override { return VECTOR2I( 0, 0 ); }
     void SetPosition( const VECTOR2I& aPos ) override { /* do nothing */ }
 
-    void PrintWsItem( const RENDER_SETTINGS* , const VECTOR2I& ) override { /* do nothing */ }
+    void PrintWsItem( const RENDER_SETTINGS* , const VECTOR2I& ) { /* do nothing */ }
 
     const BOX2I GetBoundingBox() const override;
     bool HitTest( const VECTOR2I& aPosition, int aAccuracy = 0 ) const override { return false; }
@@ -331,7 +333,7 @@ public:
 
     virtual wxString GetClass() const override { return wxT( "DS_DRAW_ITEM_TEXT" ); }
 
-    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset ) override;
+    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset );
 
     VECTOR2I GetPosition() const override { return GetTextPos(); }
     void     SetPosition( const VECTOR2I& aPos ) override { SetTextPos( aPos ); }
@@ -373,7 +375,7 @@ public:
     VECTOR2I GetPosition() const override { return m_pos; }
     void     SetPosition( const VECTOR2I& aPos ) override { m_pos = aPos; }
 
-    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset ) override;
+    void PrintWsItem( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset );
 
     bool HitTest( const VECTOR2I& aPosition, int aAccuracy = 0 ) const override;
     bool HitTest( const BOX2I& aRect, bool aContained, int aAccuracy = 0 ) const override;

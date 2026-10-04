@@ -66,7 +66,7 @@ PDF_PLOTTER::~PDF_PLOTTER() = default;
 #define GLM_ENABLE_EXPERIMENTAL //for older glm to enable euler angles
 #include <glm/glm.hpp>
 #include <glm/gtx/euler_angles.hpp>
-#include <wx/image.h>
+#include <raster_image.h>
 #include <wx/colour.h>
 
 
@@ -624,7 +624,7 @@ void PDF_PLOTTER::PenTo( const VECTOR2I& pos, char plume )
 }
 
 
-void PDF_PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double aScaleFactor )
+void PDF_PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor )
 {
     KI_ASSERT( m_workFile );
     VECTOR2I pix_size( aImage.GetWidth(), aImage.GetHeight() );
@@ -638,7 +638,7 @@ void PDF_PLOTTER::PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double
 
     // Deduplicate images
     auto findHandleForImage =
-            [&]( const wxImage& aCurrImage ) -> int
+            [&]( const RASTER_IMAGE& aCurrImage ) -> int
             {
                 for( const auto& [imgHandle, image] : m_imageHandles )
                 {
@@ -880,7 +880,7 @@ void PDF_PLOTTER::StartPage( const wxString& aPageNumber, const wxString& aPageN
 }
 
 
-void WriteImageStream( const wxImage& aImage, wxDataOutputStream& aOut, wxColor bg, bool colorMode )
+void WriteImageStream( const RASTER_IMAGE& aImage, wxDataOutputStream& aOut, const COLOR4D& bg, bool colorMode )
 {
     int w = aImage.GetWidth();
     int h = aImage.GetHeight();
@@ -897,9 +897,9 @@ void WriteImageStream( const wxImage& aImage, wxDataOutputStream& aOut, wxColor 
             {
                 if( r == aImage.GetMaskRed() && g == aImage.GetMaskGreen() && b == aImage.GetMaskBlue() )
                 {
-                    r = bg.Red();
-                    g = bg.Green();
-                    b = bg.Blue();
+                    r = bg.Red8();
+                    g = bg.Green8();
+                    b = bg.Blue8();
                 }
             }
 
@@ -921,7 +921,7 @@ void WriteImageStream( const wxImage& aImage, wxDataOutputStream& aOut, wxColor 
 }
 
 
-void WriteImageSMaskStream( const wxImage& aImage, wxDataOutputStream& aOut )
+void WriteImageSMaskStream( const RASTER_IMAGE& aImage, wxDataOutputStream& aOut )
 {
     int w = aImage.GetWidth();
     int h = aImage.GetHeight();
@@ -1618,7 +1618,7 @@ void PDF_PLOTTER::endPlotEmitResources()
             wxZlibOutputStream  zos( ffos, wxZ_BEST_COMPRESSION, wxZLIB_ZLIB );
             wxDataOutputStream  dos( zos );
 
-            WriteImageStream( image, dos, m_renderSettings->GetBackgroundColor().ToColour(),
+            WriteImageStream( image, dos, m_renderSettings->GetBackgroundColor(),
                               m_colorMode );
         }
 

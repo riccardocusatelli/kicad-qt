@@ -119,7 +119,7 @@ if( KICAD_USE_PCH )
             <kiid.h>
             <board.h>
             <pgm_base.h>
-            <wx/wx.h>
+            <wx/string.h>
             )
 endif()
 

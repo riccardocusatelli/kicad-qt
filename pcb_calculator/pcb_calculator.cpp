@@ -19,7 +19,7 @@
  */
 
 #include <pgm_base.h>
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <settings/settings_manager.h>
 
 #include "pcb_calculator_frame.h"
@@ -31,15 +31,15 @@ const wxString PcbCalcDataFileExt( wxT( "pcbcalc" ) );
 
 namespace PCBCALC {
 
-static struct IFACE : public KIFACE_BASE
+static struct IFACE : public KIFACE_GUI
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
     IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
-            KIFACE_BASE( aName, aType )
+            KIFACE_GUI( aName, aType )
     {}
 
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     void OnKifaceEnd() override;
 
@@ -84,7 +84,7 @@ KIFACE_API KIFACE* KIFACE_GETTER(  int* aKIFACEversion, int aKiwayVersion, PGM_B
 }
 
 
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     InitSettings( new PCB_CALCULATOR_SETTINGS );
     aProgram->GetSettingsManager().RegisterSettings( KifaceSettings() );

@@ -611,7 +611,11 @@ void DIALOG_ERC::testErc()
 
     {
         wxBusyCursor dummy;
-        tester.RunTests( m_parent->GetCanvas()->GetView()->GetDrawingSheet(), m_parent,
+        tester.RunTests( m_parent->GetCanvas()->GetView()->GetDrawingSheet(),
+                         [this]( SCH_CLEANUP_FLAGS aFlags )
+                         {
+                             m_parent->RecalculateConnections( nullptr, aFlags );
+                         },
                          m_parent->Kiway().KiFACE( KIWAY_FACES::FACE_CVPCB ), &m_parent->Prj(), this );
     }
 

@@ -19,6 +19,7 @@
  */
 
 #include <gui_reporters.h>
+#include <widgets/wx_progress_reporters.h>
 #include <wildcards_and_files_ext.h>
 #include <common.h>
 #include <env_vars.h>

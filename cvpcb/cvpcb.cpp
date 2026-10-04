@@ -25,7 +25,7 @@
 
 #include <confirm.h>
 #include <footprint_library_adapter.h>
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 
@@ -64,15 +64,15 @@ int testFootprintLink( const wxString& aFootprint, PROJECT* aProject )
 }
 
 
-static struct IFACE : public KIFACE_BASE
+static struct IFACE : public KIFACE_GUI
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
     IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
-            KIFACE_BASE( aName, aType )
+            KIFACE_GUI( aName, aType )
     {}
 
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     void OnKifaceEnd() override;
 
@@ -132,7 +132,7 @@ KIFACE_API KIFACE* KIFACE_GETTER(  int* aKIFACEversion, int aKIWAYversion, PGM_B
 // A short lived implementation.  cvpcb will get combine into Pcbnew shortly, so
 // we skip setting KICAD7_FOOTPRINT_DIR here for now.  User should set the environment
 // variable.
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     // This is process level, not project level, initialization of the DSO.
 

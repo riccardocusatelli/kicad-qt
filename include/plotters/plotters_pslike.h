@@ -202,7 +202,7 @@ public:
     /**
      * PostScript-likes at the moment are the only plot engines supporting bitmaps.
      */
-    virtual void PlotImage( const wxImage& aImage, const VECTOR2I& aPos,
+    virtual void PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos,
                             double aScaleFactor ) override;
 
     virtual void PenTo( const VECTOR2I& pos, char plume ) override;
@@ -439,7 +439,7 @@ public:
     /**
      * PDF images are handles as inline, not XObject streams...
      */
-    void PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double aScaleFactor ) override;
+    void PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor ) override;
 
     /**
      * Generates the camera to world matrix for use with a 3D View.
@@ -609,7 +609,7 @@ protected:
 
     std::map<wxString, std::vector<std::pair<BOX2I, wxString>>>      m_bookmarksInPage;
 
-    std::map<int, wxImage> m_imageHandles;
+    std::map<int, RASTER_IMAGE> m_imageHandles;
 
     std::unique_ptr<OUTLINE_NODE> m_outlineRoot;        ///< Root outline node.
     int                           m_totalOutlineNodes;  ///< Total number of outline nodes.
@@ -671,7 +671,7 @@ public:
     /**
      * PostScript-likes at the moment are the only plot engines supporting bitmaps.
      */
-    virtual void PlotImage( const wxImage& aImage, const VECTOR2I& aPos,
+    virtual void PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos,
                             double aScaleFactor ) override;
 
     virtual void PenTo( const VECTOR2I& pos, char plume ) override;

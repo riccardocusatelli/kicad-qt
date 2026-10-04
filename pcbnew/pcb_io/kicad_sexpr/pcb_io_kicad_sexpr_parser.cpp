@@ -2162,14 +2162,11 @@ void PCB_IO_KICAD_SEXPR_PARSER::parseBoardStackup()
                             else
                                 color = color.WithAlpha( 1.0 );
 
-                            wxColour wx_color = color.ToColour();
-
-                            // Open-code wxColour::GetAsString() because 3.0 doesn't handle rgba
                             name.Printf( wxT("#%02X%02X%02X%02X" ),
-                                         wx_color.Red(),
-                                         wx_color.Green(),
-                                         wx_color.Blue(),
-                                         wx_color.Alpha() );
+                                         color.Red8(),
+                                         color.Green8(),
+                                         color.Blue8(),
+                                         color.Alpha8() );
                         }
 
                         item->SetColor( name, sublayer_idx );

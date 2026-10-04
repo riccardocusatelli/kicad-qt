@@ -22,7 +22,7 @@
 #include <api/api_enums.h>
 #include <api/board/board_types.pb.h>
 #include <api/board/board_commands.pb.h>
-#include <wx/wx.h>
+#include <wx/string.h>
 #include <widgets/report_severity.h>
 
 #include <board_stackup_manager/board_stackup.h>

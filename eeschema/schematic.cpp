@@ -50,7 +50,6 @@
 #include <sch_rule_area.h>
 #include <sch_screen.h>
 #include <sch_sheet_pin.h>
-#include <sch_selection_tool.h>
 #include <sim/spice_settings.h>
 #include <sim/spice_value.h>
 #include <trace_helpers.h>
@@ -1525,7 +1524,6 @@ bool SCHEMATIC::IsComplexHierarchy() const
 
 void SCHEMATIC::CleanUp( SCH_COMMIT* aCommit, SCH_SCREEN* aScreen )
 {
-    SCH_SELECTION_TOOL*          selectionTool = m_schematicHolder ? m_schematicHolder->GetSelectionTool() : nullptr;
     std::vector<SCH_LINE*>       lines;
     std::vector<SCH_JUNCTION*>   junctions;
     std::vector<SCH_NO_CONNECT*> ncs;
@@ -1543,8 +1541,8 @@ void SCHEMATIC::CleanUp( SCH_COMMIT* aCommit, SCH_SCREEN* aScreen )
         {
             aItem->SetFlags( STRUCT_DELETED );
 
-            if( aItem->IsSelected() && selectionTool )
-                selectionTool->RemoveItemFromSel( aItem, true /*quiet mode*/ );
+            if( aItem->IsSelected() && m_schematicHolder )
+                m_schematicHolder->RemoveFromSelection( aItem );
 
             if( m_schematicHolder )
             {
@@ -1706,8 +1704,8 @@ void SCHEMATIC::CleanUp( SCH_COMMIT* aCommit, SCH_SCREEN* aScreen )
 
                     aCommit->Added( mergedLine, aScreen );
 
-                    if( selectionTool && ( firstLine->IsSelected() || secondLine->IsSelected() ) )
-                        selectionTool->AddItemToSel( mergedLine, true /*quiet mode*/ );
+                    if( m_schematicHolder && ( firstLine->IsSelected() || secondLine->IsSelected() ) )
+                        m_schematicHolder->AddToSelection( mergedLine );
 
                     break;
                 }
@@ -1718,7 +1716,7 @@ void SCHEMATIC::CleanUp( SCH_COMMIT* aCommit, SCH_SCREEN* aScreen )
 
 
 void SCHEMATIC::RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS aCleanupFlags,
-                                        TOOL_MANAGER* aToolManager, PROGRESS_REPORTER* aProgressReporter,
+                                        PROGRESS_REPORTER* aProgressReporter,
                                         KIGFX::SCH_VIEW*                  aSchView,
                                         std::function<void( SCH_ITEM* )>* aChangedItemHandler,
                                         PICKED_ITEMS_LIST*                aLastChangeList )
@@ -1726,7 +1724,7 @@ void SCHEMATIC::RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS a
     SCHEMATIC_SETTINGS& settings = Settings();
     RefreshHierarchy();
     SCH_SHEET_LIST list = Hierarchy();
-    SCH_COMMIT     localCommit( aToolManager );
+    SCH_COMMIT     localCommit;
 
     if( !aCommit )
         aCommit = &localCommit;

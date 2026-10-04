@@ -46,6 +46,7 @@ class LINE_READER;
 class OUTPUTFORMATTER;
 class SCH_IO;
 class LEGACY_SYMBOL_LIB;
+class PROGRESS_REPORTER;
 
 
 /**
@@ -93,8 +94,10 @@ public:
      *
      * @note This method is only to be used when loading legacy projects.  All further symbol
      *       library access should be done via the symbol library table.
+     *
+     * @param aProgress (optional) shows which library is loading.
      */
-    void LoadAllLibraries( PROJECT* aProject, bool aShowProgress=true );
+    void LoadAllLibraries( PROJECT* aProject, PROGRESS_REPORTER* aProgress = nullptr );
 
     static void GetLibNamesAndPaths( PROJECT* aProject, wxString* aPaths,
                                      wxArrayString* aNames = nullptr );

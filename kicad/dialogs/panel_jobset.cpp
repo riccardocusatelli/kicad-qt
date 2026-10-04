@@ -30,6 +30,7 @@
 #include <bitmaps.h>
 #include <i18n_utility.h>
 #include <jobs_runner.h>
+#include <jobs_progress_reporter.h>
 #include <widgets/wx_progress_reporters.h>
 #include <kicad_manager_frame.h>
 #include <vector>
@@ -276,7 +277,11 @@ public:
                     {
                         JOBS_PROGRESS_REPORTER progressReporter( m_frame, _( "Running Jobs" ) );
                         JOBS_RUNNER            jobRunner( &m_frame->Kiway(), m_jobsFile, &project,
-                                                          NULL_REPORTER::GetInstance(), &progressReporter );
+                                                          NULL_REPORTER::GetInstance(), &progressReporter,
+                                                          [&]( const wxString& aMessage )
+                                                          {
+                                                              progressReporter.AdvanceJob( aMessage );
+                                                          } );
 
                         if( JOBSET_DESTINATION* destination = GetDestination() )
                             jobRunner.RunJobsForDestination( destination );
@@ -1012,7 +1017,11 @@ void PANEL_JOBSET::OnGenerateAllDestinationsClick( wxCommandEvent& event )
                 {
                     JOBS_PROGRESS_REPORTER progressReporter( m_frame, _( "Running Jobs" ) );
                     JOBS_RUNNER            jobRunner( &m_frame->Kiway(), m_jobsFile.get(), &project,
-                                                      NULL_REPORTER::GetInstance(), &progressReporter );
+                                                      NULL_REPORTER::GetInstance(), &progressReporter,
+                                                          [&]( const wxString& aMessage )
+                                                          {
+                                                              progressReporter.AdvanceJob( aMessage );
+                                                          } );
 
                     jobRunner.RunJobsAllDestinations();
 

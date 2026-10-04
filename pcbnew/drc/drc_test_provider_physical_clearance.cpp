@@ -862,3 +862,5 @@ namespace detail
 {
     static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_PHYSICAL_CLEARANCE> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( physical_clearance )

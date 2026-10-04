@@ -174,6 +174,12 @@ public:
 
     wxColour ToColour() const;
 
+    /// The channels as 8 bit values, rounded as ToColour() rounds them.
+    unsigned char Red8() const { return static_cast<unsigned char>( r * 255 + 0.5 ); }
+    unsigned char Green8() const { return static_cast<unsigned char>( g * 255 + 0.5 ); }
+    unsigned char Blue8() const { return static_cast<unsigned char>( b * 255 + 0.5 ); }
+    unsigned char Alpha8() const { return static_cast<unsigned char>( a * 255 + 0.5 ); }
+
     /**
      * Mix this COLOR4D with an input COLOR4D using the OR-mixing of legacy canvas.
      *

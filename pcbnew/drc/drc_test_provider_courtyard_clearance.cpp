@@ -403,3 +403,5 @@ namespace detail
 {
     static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_COURTYARD_CLEARANCE> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( courtyard_clearance )

@@ -187,20 +187,29 @@ else()
         ${wxWidgets_LIBRARIES}
         )
 
+endif()
+
+# kicad-cli runs without GUI: it links the model library and wxBase only, and loads the
+# KIFACEs without GUI (_eeschema_cli.kiface, _pcbnew_cli.kiface).  The objects of the static
+# common library are linked as an archive (only the ones it needs), by file so that the GUI
+# libraries common depends on are not linked.
+if( NOT APPLE )
+    target_include_directories( kicad-cli PRIVATE
+        $<TARGET_PROPERTY:common,INTERFACE_INCLUDE_DIRECTORIES>
+        )
+
     target_link_libraries( kicad-cli
         nlohmann_json
-        common
-        gal
-        common      #repeated due to a circular dependency between gal and common
-        pads_common
-        kicommon
+        "$<TARGET_FILE:common>"
+        kicommon_model
         core
-        ${wxWidgets_LIBRARIES}
+        ${wxWidgets_BASE_LIBRARIES}
         )
+
+    add_dependencies( kicad-cli common eeschema_cli_kiface pcbnew_cli_kiface )
 endif()
 
 target_link_libraries( kicad pcm )
-target_link_libraries( kicad-cli pcm )
 
 install( TARGETS kicad
     DESTINATION ${KICAD_BIN}

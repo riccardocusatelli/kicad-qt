@@ -285,6 +285,7 @@ set( EESCHEMA_SIM_SRCS
     sim/sim_tab.cpp
     sim/spice_simulator.cpp
     sim/spice_value.cpp
+    sim/spice_validator.cpp
     sim/toolbars_simulator_frame.cpp
 
     sim/legacy_workbook.cpp
@@ -382,6 +383,7 @@ set( EESCHEMA_SRCS
     eeschema_jobs_handler_gui.cpp
     eeschema_settings.cpp
     fields_data_model.cpp
+    fields_editor_grid_data_model.cpp
     fields_grid_table.cpp
     files-io.cpp
     generate_alias_info.cpp
@@ -402,6 +404,9 @@ set( EESCHEMA_SRCS
     sch_bus_entry.cpp
     sch_collectors.cpp
     sch_commit.cpp
+    sch_commit_gui.cpp
+    sch_pane_info.cpp
+    kiface_netlist.cpp
     sch_connection.cpp
     sch_draw_panel.cpp
     sch_edit_frame.cpp
@@ -610,12 +615,11 @@ if( KICAD_USE_PCH )
             <memory>
             <unordered_map>
             <core/json_serializers.h>
-            <sch_edit_frame.h>
             <schematic.h>
             <sim/sim_model.h>
             <string_utils.h>
             <pgm_base.h>
-            <wx/wx.h> )
+            <wx/string.h> )
 endif()
 
 target_include_directories( eeschema_kiface_objects
@@ -685,6 +689,18 @@ set_source_files_properties( eeschema.cpp PROPERTIES
 
 # if building eeschema, then also build eeschema_kiface if out of date.
 add_dependencies( eeschema eeschema_kiface )
+
+# Eeschema without GUI, loaded by kicad-cli: _eeschema_cli.kiface
+add_headless_kiface( eeschema_cli_kiface
+    OUTPUT_NAME eeschema_cli
+    SOURCES     eeschema_cli.cpp
+    OBJECTS     eeschema_kiface_objects
+    USAGE       eeschema_kiface_objects
+    ARCHIVES    common pads_common
+    LIBRARIES   kicommon_model gal_model core nanodbc nanosvg Boost::headers ${wxWidgets_BASE_LIBRARIES} ${NGSPICE_LIBRARY}
+    )
+
+add_dependencies( eeschema_cli_kiface eeschema_kiface_objects )
 
 # Generate link map with cross reference
 target_link_options( eeschema_kiface PRIVATE

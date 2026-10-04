@@ -27,7 +27,7 @@
 #include <core/json_serializers.h>
 #include <pgm_base.h>
 #include <pgm_gui.h>
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <background_jobs_monitor.h>
 #include <cli_progress_reporter.h>
 #include <confirm.h>
@@ -57,7 +57,9 @@
 #include <thread_pool.h>
 #include <kiface_ids.h>
 #include <widgets/kistatusbar.h>
-#include <netlist_exporters/netlist_exporter_kicad.h>
+#include <kiface_netlist.h>
+#include <dialog_database_lib_settings.h>
+#include <sch_io/database/sch_io_database.h>
 #include <wx/ffile.h>
 #include <wx/tokenzr.h>
 #include <wildcards_and_files_ext.h>
@@ -84,105 +86,20 @@
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
-// The main sheet of the project
-SCH_SHEET*  g_RootSheet = nullptr;
-
-
 namespace SCH {
 
 
-// TODO: This should move out of this file
-static std::unique_ptr<SCHEMATIC> readSchematicFromFile( const std::string& aFilename )
-{
-    SCH_IO* pi = SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD );
-    std::unique_ptr<SCHEMATIC> schematic = std::make_unique<SCHEMATIC>( nullptr );
-
-    SETTINGS_MANAGER& manager = Pgm().GetSettingsManager();
-
-    wxFileName pro( aFilename );
-    pro.SetExt( FILEEXT::ProjectFileExtension );
-    pro.MakeAbsolute();
-    wxString projectPath = pro.GetFullPath();
-
-    PROJECT* project = manager.GetProject( projectPath );
-
-    if( !project )
-    {
-        manager.LoadProject( projectPath, true );
-        project = manager.GetProject( projectPath );
-    }
-
-    schematic->Reset();
-    schematic->SetProject( project );
-    SCH_SHEET* rootSheet = pi->LoadSchematicFile( aFilename, schematic.get() );
-
-    if( !rootSheet )
-        return nullptr;
-
-    schematic->SetTopLevelSheets( { rootSheet } );
-
-    SCH_SCREENS screens( schematic->Root() );
-
-    for( SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
-        screen->UpdateLocalLibSymbolLinks();
-
-    SCH_SHEET_LIST sheets = schematic->Hierarchy();
-
-    // Restore all of the loaded symbol instances from the root sheet screen.
-    sheets.UpdateSymbolInstanceData( schematic->RootScreen()->GetSymbolInstances() );
-
-    if( schematic->RootScreen()->GetFileFormatVersionAtLoad() < 20230221 )
-    {
-        for( SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
-            screen->FixLegacyPowerSymbolMismatches();
-    }
-
-    for( SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
-        screen->MigrateSimModels();
-
-    sheets.AnnotatePowerSymbols();
-
-    // NOTE: This is required for multi-unit symbols to be correct
-    for( SCH_SHEET_PATH& sheet : sheets )
-        sheet.UpdateAllScreenReferences();
-
-    // TODO: this must handle SchematicCleanup somehow.  The original version didn't because
-    // it knew that QA test cases were saved in a clean state.
-
-    // TODO: does this need to handle PruneOrphanedSymbolInstances() and
-    // PruneOrphanedSheetInstances()?
-
-    schematic->ConnectionGraph()->Recalculate( sheets, true );
-
-    return schematic;
-}
-
-
-// TODO: This should move out of this file
-bool generateSchematicNetlist( const wxString& aFilename, std::string& aNetlist )
-{
-    std::unique_ptr<SCHEMATIC> schematic = readSchematicFromFile( aFilename.ToStdString() );
-    NETLIST_EXPORTER_KICAD exporter( schematic.get() );
-    STRING_FORMATTER formatter;
-
-    exporter.Format( &formatter, GNL_ALL | GNL_OPT_KICAD );
-    aNetlist = formatter.GetString();
-
-    return true;
-}
-
-
-static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
+static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
     IFACE( const char* aName, KIWAY::FACE_T aType ) :
-            KIFACE_BASE( aName, aType ),
+            KIFACE_GUI( aName, aType ),
             UNITS_PROVIDER( schIUScale, EDA_UNITS::MM ),
             m_libraryPreloadInProgress( false )
     {}
 
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     void Reset() override;
 
@@ -196,7 +113,11 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
         {
             SCH_EDIT_FRAME* frame = new SCH_EDIT_FRAME( aKiway, aParent );
 
-            EESCHEMA_HELPERS::SetSchEditFrame( frame );
+            EESCHEMA_HELPERS::SetEditorSchematic(
+                    [frame]()
+                    {
+                        return &frame->Schematic();
+                    } );
 
             if( Kiface().IsSingle() )
             {
@@ -403,7 +324,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
         switch( aDataId )
         {
             case KIFACE_NETLIST_SCHEMATIC:
-                return (void*) generateSchematicNetlist;
+                return (void*) GenerateSchematicNetlist;
         }
 
         return nullptr;
@@ -452,7 +373,7 @@ KIFACE_API KIFACE* KIFACE_GETTER(  int* aKIFACEversion, int aKiwayVersion, PGM_B
 }
 
 
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     // This is process-level-initialization, not project-level-initialization of the DSO.
     // Do nothing in here pertinent to a project!
@@ -471,7 +392,24 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
 
     start_common( aCtlBits );
 
-    m_jobHandler = std::make_unique<EESCHEMA_JOBS_HANDLER_GUI>( aKiway );
+    // In kicad-cli (no KIWAY of the editors) the jobs run on the files only.
+    if( KIWAY* kiway = dynamic_cast<KIWAY*>( aKiway ) )
+        m_jobHandler = std::make_unique<EESCHEMA_JOBS_HANDLER_GUI>( kiway );
+    else
+        m_jobHandler = std::make_unique<EESCHEMA_JOBS_HANDLER>( aKiway );
+
+    IO_BASE::AddConfigurationDialogHandler(
+            []( IO_BASE* aPlugin, wxWindow* aParent ) -> bool
+            {
+                SCH_IO_DATABASE* database = dynamic_cast<SCH_IO_DATABASE*>( aPlugin );
+
+                if( !database )
+                    return false;
+
+                DIALOG_DATABASE_LIB_SETTINGS dlg( aParent, database );
+                dlg.ShowModal();
+                return true;
+            } );
 
     PROJECT_SCH::SetLegacyLibsErrorHandler(
             []( const wxString& aMissingLibs, const wxString& aError )

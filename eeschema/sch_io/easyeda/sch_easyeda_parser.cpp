@@ -535,12 +535,9 @@ void SCH_EASYEDA_PARSER::ParseSymbolShapes( LIB_SYMBOL*                  aSymbol
                     }
                     else
                     {
-                        wxMemoryInputStream memis( buf.GetData(), buf.GetDataLen() );
+                        RASTER_IMAGE img;
 
-                        wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags()
-                                                      & ~wxImage::Load_Verbose );
-                        wxImage img;
-                        if( img.LoadFile( memis, mimeType ) )
+                        if( img.Load( buf.GetData(), buf.GetDataLen() ) )
                         {
                             int    dimMul = img.GetWidth() * img.GetHeight();
                             double maxPixels = 30000;
@@ -548,7 +545,7 @@ void SCH_EASYEDA_PARSER::ParseSymbolShapes( LIB_SYMBOL*                  aSymbol
                             if( dimMul > maxPixels )
                             {
                                 double scale = sqrt( maxPixels / dimMul );
-                                img.Rescale( img.GetWidth() * scale, img.GetHeight() * scale );
+                                img = img.Rescale( img.GetWidth() * scale, img.GetHeight() * scale );
                             }
 
                             VECTOR2D pixelScale( ScaleSize( size.x ) / img.GetWidth(),
@@ -1598,8 +1595,6 @@ void SCH_EASYEDA_PARSER::ParseSchematic( SCHEMATIC* aSchematic, SCH_SHEET* aRoot
                         std::unique_ptr<SCH_BITMAP> bitmap = std::make_unique<SCH_BITMAP>();
                         REFERENCE_IMAGE&            refImage = bitmap->GetReferenceImage();
 
-                        wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags()
-                                                      & ~wxImage::Load_Verbose );
 
                         if( refImage.ReadImageFile( buf ) )
                         {

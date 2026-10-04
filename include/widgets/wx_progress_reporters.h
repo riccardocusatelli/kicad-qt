@@ -86,6 +86,11 @@ public:
         WX_PROGRESS_REPORTER_BASE::Pulse( aMessage );
     }
 
+    void SetVisible( bool aVisible ) override
+    {
+        WX_PROGRESS_REPORTER_BASE::Show( aVisible );
+    }
+
     ///< Gate expensive dialog work while always allowing the final tick.
     static bool shouldRefresh( int aProgress, int aMaxProgress, int aPhase, int aNumPhases,
                                THROTTLE& aThrottle )

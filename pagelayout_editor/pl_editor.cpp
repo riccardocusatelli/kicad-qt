@@ -26,7 +26,7 @@
 #include <wx/file.h>
 #include <wx/snglinst.h>
 
-#include <kiface_base.h>
+#include <kiface_gui.h>
 #include <gestfich.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
@@ -45,16 +45,16 @@
 
 namespace PGE {
 
-static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
+static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
     IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
-            KIFACE_BASE( aName, aType ),
+            KIFACE_GUI( aName, aType ),
             UNITS_PROVIDER( drawSheetIUScale, EDA_UNITS::MM )
     {}
 
-    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway ) override;
+    bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
     void OnKifaceEnd() override;
 
@@ -149,7 +149,7 @@ KIFACE_API KIFACE* KIFACE_GETTER(  int* aKIFACEversion, int aKiwayVersion, PGM_B
     return &kiface;
 }
 
-bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY* aKiway )
+bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway )
 {
     InitSettings( new PL_EDITOR_SETTINGS );
     aProgram->GetSettingsManager().RegisterSettings( KifaceSettings() );

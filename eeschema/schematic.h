@@ -42,7 +42,6 @@ class SCH_SHEET_LIST;
 class SCH_GLOBALLABEL;
 class SCH_REFERENCE;
 class PROGRESS_REPORTER;
-class TOOL_MANAGER;
 class PICKED_ITEMS_LIST;
 
 namespace KIFONT
@@ -416,7 +415,6 @@ public:
      * Generate the connection data for the entire schematic hierarchy.
      */
     void RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS aCleanupFlags,
-                                 TOOL_MANAGER* aToolManager,
                                  PROGRESS_REPORTER* aProgressReporter = nullptr,
                                  KIGFX::SCH_VIEW* aSchView = nullptr,
                                  std::function<void( SCH_ITEM* )>* aChangedItemHandler = nullptr,

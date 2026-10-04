@@ -19,6 +19,8 @@
  */
 
 #include <wx/crt.h>
+#include <wx/ffile.h>
+#include <raster_image.h>
 #include <wx/dir.h>
 #include <wx/zipstrm.h>
 #include <wx/filename.h>
@@ -29,6 +31,7 @@
 
 #include "pcbnew_jobs_handler.h"
 #include <board_commit.h>
+#include <zone_filler.h>
 #include <board_design_settings.h>
 #include <drc/drc_engine.h>
 #include <board_statistics_report.h>
@@ -67,8 +70,6 @@
 #include <plotters/plotter_dxf.h>
 #include <plotters/plotter_gerber.h>
 #include <plotters/plotters_pslike.h>
-#include <tool/tool_manager.h>
-#include <tools/drc_tool.h>
 #include <filename_resolver.h>
 #include <gerber_jobfile_writer.h>
 #include "gerber_placefile_writer.h"
@@ -102,12 +103,12 @@
 #include <kiplatform/io.h>
 #include <settings/settings_manager.h>
 #include <paths.h>
-#include <tools/zone_filler_tool.h>
 
 #include "pcbnew_scripting_helpers.h"
 #include <locale_io.h>
 #include <core/ki_assert.h>
 #include <kiway_services.h>
+#include <base_screen.h>
 
 
 #ifdef _WIN32
@@ -119,8 +120,7 @@
 
 PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY_SERVICES* aKiway ) :
         JOB_DISPATCHER( aKiway ),
-        m_cliBoard( nullptr ),
-        m_toolManager( nullptr )
+        m_cliBoard( nullptr )
 {
     Register( "3d", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStep, this, std::placeholders::_1 ) );
     Register( "render",
@@ -168,27 +168,15 @@ PCBNEW_JOBS_HANDLER::~PCBNEW_JOBS_HANDLER()
 }
 
 
-TOOL_MANAGER* PCBNEW_JOBS_HANDLER::getToolManager( BOARD* aBrd )
+void PCBNEW_JOBS_HANDLER::fillAllZones( BOARD* aBoard )
 {
-    TOOL_MANAGER* toolManager = nullptr;
-    if( Pgm().IsGUI() )
-    {
-        // we assume the PCB we are working on here is the one in the frame
-        // so use the frame's tool manager
-        toolManager = getEditorToolManager();
-    }
-    else
-    {
-        if( m_toolManager == nullptr )
-        {
-            m_toolManager = std::make_unique<TOOL_MANAGER>();
-        }
+    FillAllBoardZones( aBoard, m_progressReporter );
+}
 
-        toolManager = m_toolManager.get();
 
-        toolManager->SetEnvironment( aBrd, nullptr, nullptr, Kiface().KifaceSettings(), nullptr );
-    }
-    return toolManager;
+std::unique_ptr<BOARD_COMMIT> PCBNEW_JOBS_HANDLER::makeCommit( BOARD* aBoard )
+{
+    return std::make_unique<BOARD_COMMIT>( aBoard );
 }
 
 
@@ -665,14 +653,12 @@ int PCBNEW_JOBS_HANDLER::JobExportRender( JOB* aJob )
 
     if( rgbaBuffer )
     {
-        const unsigned int wxh = realSize.x * realSize.y;
-
-        unsigned char* rgbBuffer = (unsigned char*) malloc( wxh * 3 );
-        unsigned char* alphaBuffer = (unsigned char*) malloc( wxh );
+        RASTER_IMAGE image( realSize.x, realSize.y );
+        image.InitAlpha();
 
         unsigned char* rgbaPtr = rgbaBuffer;
-        unsigned char* rgbPtr = rgbBuffer;
-        unsigned char* alphaPtr = alphaBuffer;
+        unsigned char* rgbPtr = image.GetData();
+        unsigned char* alphaPtr = image.GetAlpha();
 
         for( int y = 0; y < realSize.y; y++ )
         {
@@ -689,14 +675,18 @@ int PCBNEW_JOBS_HANDLER::JobExportRender( JOB* aJob )
             }
         }
 
-        wxImage image( realSize );
-        image.SetData( rgbBuffer );
-        image.SetAlpha( alphaBuffer );
         image = image.Mirror( false );
 
-        image.SetOption( wxIMAGE_OPTION_QUALITY, 90 );
-        image.SaveFile( outPath, aRenderJob->m_format == JOB_PCB_RENDER::FORMAT::PNG ? wxBITMAP_TYPE_PNG
-                                                                                     : wxBITMAP_TYPE_JPEG );
+        std::vector<unsigned char> encoded;
+        bool                       png = aRenderJob->m_format == JOB_PCB_RENDER::FORMAT::PNG;
+
+        success = image.Save( encoded, png ? RASTER_IMAGE::TYPE::PNG : RASTER_IMAGE::TYPE::JPEG, 90 );
+
+        if( success )
+        {
+            wxFFile file( outPath, wxT( "wb" ) );
+            success = file.IsOpened() && file.Write( encoded.data(), encoded.size() ) == encoded.size();
+        }
     }
 
     if( success )
@@ -720,7 +710,6 @@ int PCBNEW_JOBS_HANDLER::JobExportSvg( JOB* aJob )
         return CLI::EXIT_CODES::ERR_UNKNOWN;
 
     BOARD*        brd = getBoard( aSvgJob->m_filename );
-    TOOL_MANAGER* toolManager = getToolManager( brd );
 
     if( !brd )
         return CLI::EXIT_CODES::ERR_INVALID_INPUT_FILE;
@@ -750,10 +739,7 @@ int PCBNEW_JOBS_HANDLER::JobExportSvg( JOB* aJob )
 
     if( aSvgJob->m_checkZonesBeforePlot )
     {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     if( aSvgJob->m_argLayers )
@@ -815,14 +801,10 @@ int PCBNEW_JOBS_HANDLER::JobExportDxf( JOB* aJob )
     if( !aDxfJob->m_variant.IsEmpty() )
         brd->SetCurrentVariant( aDxfJob->m_variant );
 
-    TOOL_MANAGER* toolManager = getToolManager( brd );
 
     if( aDxfJob->m_checkZonesBeforePlot )
     {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     if( aDxfJob->m_argLayers )
@@ -905,14 +887,10 @@ int PCBNEW_JOBS_HANDLER::JobExportPdf( JOB* aJob )
     if( !pdfJob->m_variant.IsEmpty() )
         brd->SetCurrentVariant( pdfJob->m_variant );
 
-    TOOL_MANAGER* toolManager = getToolManager( brd );
 
     if( pdfJob->m_checkZonesBeforePlot )
     {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     if( pdfJob->m_argLayers )
@@ -996,14 +974,10 @@ int PCBNEW_JOBS_HANDLER::JobExportPs( JOB* aJob )
     if( !psJob->m_variant.IsEmpty() )
         brd->SetCurrentVariant( psJob->m_variant );
 
-    TOOL_MANAGER* toolManager = getToolManager( brd );
 
     if( psJob->m_checkZonesBeforePlot )
     {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     if( psJob->m_argLayers )
@@ -1095,14 +1069,10 @@ int PCBNEW_JOBS_HANDLER::JobExportGerbers( JOB* aJob )
         return CLI::EXIT_CODES::ERR_INVALID_OUTPUT_CONFLICT;
     }
 
-    TOOL_MANAGER* toolManager = getToolManager( brd );
 
     if( aGerberJob->m_checkZonesBeforePlot )
     {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     bool hasLayerListSpecified = false; // will be true if the user layer list is not empty
@@ -1390,7 +1360,6 @@ int PCBNEW_JOBS_HANDLER::JobExportGerber( JOB* aJob )
     if( !aGerberJob->m_variant.IsEmpty() )
         brd->SetCurrentVariant( aGerberJob->m_variant );
 
-    TOOL_MANAGER* toolManager = getToolManager( brd );
 
     if( aGerberJob->m_argLayers )
         aGerberJob->m_plotLayerSequence = convertLayerArg( aGerberJob->m_argLayers.value(), brd );
@@ -1417,10 +1386,7 @@ int PCBNEW_JOBS_HANDLER::JobExportGerber( JOB* aJob )
 
     if( aGerberJob->m_checkZonesBeforePlot )
     {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     PCB_PLOT_PARAMS plotOpts;
@@ -2114,10 +2080,7 @@ int PCBNEW_JOBS_HANDLER::JobExportDrc( JOB* aJob )
 
     drcEngine->SetDrawingSheet( getDrawingSheetProxyView( brd ) );
 
-    // BOARD_COMMIT uses TOOL_MANAGER to grab the board internally so we must give it one
-    TOOL_MANAGER* toolManager = getToolManager( brd );
-
-    BOARD_COMMIT commit( toolManager );
+    std::unique_ptr<BOARD_COMMIT> commit = makeCommit( brd );
     bool         checkParity = drcJob->m_parity;
     std::string  netlist_str;
 
@@ -2183,10 +2146,7 @@ int PCBNEW_JOBS_HANDLER::JobExportDrc( JOB* aJob )
 
     if( drcJob->m_refillZones )
     {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     drcEngine->SetProgressReporter( m_progressReporter );
@@ -2196,7 +2156,7 @@ int PCBNEW_JOBS_HANDLER::JobExportDrc( JOB* aJob )
             {
                 PCB_MARKER* marker = new PCB_MARKER( aItem, aPos, aLayer );
                 aPathGenerator( marker );
-                commit.Add( marker );
+                commit->Add( marker );
             } );
 
     brd->RecordDRCExclusions();
@@ -2204,7 +2164,7 @@ int PCBNEW_JOBS_HANDLER::JobExportDrc( JOB* aJob )
     drcEngine->RunTests( units, drcJob->m_reportAllTrackErrors, checkParity );
     drcEngine->ClearViolationHandler();
 
-    commit.Push( _( "DRC" ), SKIP_UNDO | SKIP_SET_DIRTY );
+    commit->Push( _( "DRC" ), SKIP_UNDO | SKIP_SET_DIRTY );
 
     // Update the exclusion status on any excluded markers that still exist.
     brd->ResolveDRCExclusions( false );
@@ -2422,12 +2382,8 @@ int PCBNEW_JOBS_HANDLER::JobExportOdb( JOB* aJob )
 
     if( job->m_checkZonesBeforeExport )
     {
-        TOOL_MANAGER* toolManager = getToolManager( brd );
 
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+        fillAllZones( brd );
     }
 
     ExportODBPP( *job, brd, m_progressReporter, m_reporter );

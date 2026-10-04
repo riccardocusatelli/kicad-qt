@@ -274,3 +274,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_SLIVER_CHECKER> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( sliver_checker )

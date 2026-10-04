@@ -31,12 +31,12 @@
 #include <gr_text.h>
 #include <page_info.h>
 #include <gal/color4d.h>
+#include <raster_image.h>
 #include <stroke_params.h>
 #include <render_settings.h>
 #include <font/font.h>
 #include <core/ki_assert.h>
 
-class wxImage;
 
 
 class COLOR_SETTINGS;
@@ -362,7 +362,7 @@ public:
      * @param aScaleFactor is the scale factor to apply to the bitmap size
      *                      (this is not the plot scale factor).
      */
-    virtual void PlotImage( const wxImage& aImage, const VECTOR2I& aPos, double aScaleFactor );
+    virtual void PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor );
 
     // Higher level primitives -- can be drawn as line, sketch or 'filled'
     virtual void ThickSegment( const VECTOR2I& start, const VECTOR2I& end, int width, void* aData );

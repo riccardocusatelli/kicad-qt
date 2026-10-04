@@ -29,6 +29,7 @@
 #include <kiid.h>
 #include <project.h>
 #include <reporter.h>
+#include <progress_reporter.h>
 #include <optional>
 #include <wx/process.h>
 #include <wx/txtstrm.h>
@@ -39,11 +40,13 @@
 #include <gestfich.h>
 
 JOBS_RUNNER::JOBS_RUNNER( KIWAY_SERVICES* aKiway, JOBSET* aJobsFile, PROJECT* aProject,
-                          REPORTER& aReporter, JOBS_PROGRESS_REPORTER* aProgressReporter ) :
+                          REPORTER& aReporter, PROGRESS_REPORTER* aProgressReporter,
+                          JOB_STARTED_HANDLER aJobStarted ) :
         m_kiway( aKiway ),
         m_jobsFile( aJobsFile ),
         m_reporter( aReporter ),
         m_progressReporter( aProgressReporter ),
+        m_jobStarted( std::move( aJobStarted ) ),
         m_project( aProject )
 {
 }
@@ -252,7 +255,11 @@ bool JOBS_RUNNER::RunJobsForDestination( JOBSET_DESTINATION* aDestination, bool 
         if( m_progressReporter )
         {
             msg.Printf( _( "Running job %d: %s" ), jobNum, job.GetDescription() );
-            m_progressReporter->AdvanceJob( msg );
+            if( m_jobStarted )
+                m_jobStarted( msg );
+            else
+                m_progressReporter->Report( msg );
+
             m_progressReporter->KeepRefreshing();
         }
 

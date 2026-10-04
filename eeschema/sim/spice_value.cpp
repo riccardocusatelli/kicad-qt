@@ -30,9 +30,7 @@
 #include <stdexcept>
 #include <cmath>
 
-#include <wx/textentry.h>
 #include <wx/numformatter.h>
-#include <confirm.h>
 #include <common.h>
 #include <locale_io.h>
 #include <geometry/eda_angle.h>
@@ -381,47 +379,4 @@ void SPICE_VALUE::StripZeros( wxString& aString )
         if( aString.EndsWith( '.' ) || aString.EndsWith( ',' ) )
             aString.RemoveLast();
     }
-}
-
-
-bool SPICE_VALIDATOR::Validate( wxWindow* aParent )
-{
-    wxTextEntry* const text = GetTextEntry();
-
-    if( !text )
-        return false;
-
-    if( text->IsEmpty() )
-    {
-        if( m_emptyAllowed )
-            return true;
-
-        DisplayError( aParent, wxString::Format( _( "Please, fill required fields" ) ) );
-        return false;
-    }
-
-    wxString svalue = text->GetValue();
-
-    // In countries where the decimal separator is not a point, if the user
-    // has not used a point, replace the decimal separator by the point, as needed
-    // by spice simulator which uses the "C" decimal separator
-    svalue.Replace(",", "." );
-
-    try
-    {
-        // If SPICE_VALUE can be constructed, then it is a valid Spice value
-        SPICE_VALUE val( svalue );
-    }
-    catch( ... )
-    {
-        DisplayError( aParent, wxString::Format( _( "'%s' is not a valid SPICE value." ),
-                                                 text->GetValue() ) );
-
-        return false;
-    }
-
-    if( svalue != text->GetValue() )
-        text->SetValue( svalue );
-
-    return true;
 }

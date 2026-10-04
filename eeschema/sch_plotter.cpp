@@ -39,7 +39,6 @@
 #include <settings/settings_manager.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
-#include <sch_edit_frame.h>
 
 // Note:
 // We need to switch between sheets to plot a hierarchy and update references and sheet number
@@ -51,13 +50,6 @@
 
 SCH_PLOTTER::SCH_PLOTTER( SCHEMATIC* aSchematic ) :
         m_schematic( aSchematic )
-{
-    m_colorSettings = nullptr;
-}
-
-
-SCH_PLOTTER::SCH_PLOTTER( SCH_EDIT_FRAME* aFrame ) :
-        m_schematic( &aFrame->Schematic() )
 {
     m_colorSettings = nullptr;
 }

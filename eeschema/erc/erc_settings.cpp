@@ -19,6 +19,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <widgets/report_severity.h>
 #include <algorithm>
 #include <erc/erc_item.h>
 #include <erc/erc_settings.h>

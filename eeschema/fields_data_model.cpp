@@ -23,10 +23,7 @@
 #include <nlohmann/json.hpp>
 #include <wx/string.h>
 #include <wx/debug.h>
-#include <wx/grid.h>
-#include <wx/settings.h>
 #include <common.h>
-#include <widgets/wx_grid.h>
 #include <sch_reference_list.h>
 #include <sch_commit.h>
 #include <sch_screen.h>
@@ -35,49 +32,6 @@
 
 #include "fields_data_model.h"
 #include <core/ki_assert.h>
-
-
-/**      
- * Cell renderer that shows the expanded result of text variables (e.g. "${VALUE}" is
- * displayed as "10K").  The actual cell still stores the raw variable so it can be                                   
- * edited directly.                                                                                                   
- */
-class GRID_CELL_RESOLVED_TEXT_RENDERER : public wxGridCellStringRenderer
-{
-public:
-    GRID_CELL_RESOLVED_TEXT_RENDERER() :
-            wxGridCellStringRenderer()
-    {
-    }
-
-    void Draw( wxGrid& aGrid, wxGridCellAttr& aAttr, wxDC& aDC, const wxRect& aRect, int aRow, int aCol,
-               bool isSelected ) override
-    {
-        wxString value = aGrid.GetCellValue( aRow, aCol );
-
-        if( auto* model = dynamic_cast<FIELDS_EDITOR_GRID_DATA_MODEL*>( aGrid.GetTable() ) )
-            value = model->GetResolvedValue( aRow, aCol );
-
-        wxRect rect = aRect;
-        rect.Inflate( -1 );
-
-        wxGridCellRenderer::Draw( aGrid, aAttr, aDC, aRect, aRow, aCol, isSelected );
-        SetTextColoursAndFont( aGrid, aAttr, aDC, isSelected );
-        aGrid.DrawTextRectangle( aDC, value, rect, wxALIGN_LEFT, wxALIGN_CENTRE );
-    }
-
-    wxSize GetBestSize( wxGrid& aGrid, wxGridCellAttr& aAttr, wxDC& aDC, int aRow, int aCol ) override
-    {
-        wxString value = aGrid.GetCellValue( aRow, aCol );
-
-        if( auto* model = dynamic_cast<FIELDS_EDITOR_GRID_DATA_MODEL*>( aGrid.GetTable() ) )
-            value = model->GetResolvedValue( aRow, aCol );
-
-        return wxGridCellStringRenderer::DoGetBestSize( aAttr, aDC, value );
-    }
-
-    wxGridCellRenderer* Clone() const override { return new GRID_CELL_RESOLVED_TEXT_RENDERER(); }
-};
 
 
 /**
@@ -96,158 +50,11 @@ static KIID_PATH makeDataStoreKey( const SCH_SHEET_PATH& aSheetPath, const SCH_S
 }
 
 
-wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetColLabelValue( int aCol )
-{
-    switch( aCol )
-    {
-    case DISPLAY_NAME_COLUMN: return _( "Field" );
-    case LABEL_COLUMN:        return m_forBOM ? _( "BOM Name" ) : _( "Label" );
-    case SHOW_FIELD_COLUMN:   return _( "Include" );
-    case GROUP_BY_COLUMN:     return _( "Group By" );
-    default:                  return wxT( "unknown column" );
-    };
-}
+const wxString FIELDS_DATA_MODEL::QUANTITY_VARIABLE = wxS( "${QUANTITY}" );
+const wxString FIELDS_DATA_MODEL::ITEM_NUMBER_VARIABLE = wxS( "${ITEM_NUMBER}" );
 
 
-wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetValue( int aRow, int aCol )
-{
-    KI_CHECK( aRow < GetNumberRows(), wxT( "bad row!" ) );
-
-    BOM_FIELD& rowData = m_fields[aRow];
-
-    switch( aCol )
-    {
-    case DISPLAY_NAME_COLUMN:
-        for( FIELD_T fieldId : MANDATORY_FIELDS )
-        {
-            if( GetDefaultFieldName( fieldId, !DO_TRANSLATE ) == rowData.name )
-                return GetDefaultFieldName( fieldId, DO_TRANSLATE );
-        }
-
-        return rowData.name;
-
-    case LABEL_COLUMN:
-        return rowData.label;
-
-    default:
-        // we can't assert here because wxWidgets sometimes calls this without checking
-        // the column type when trying to see if there's an overflow
-        return wxT( "bad wxWidgets!" );
-    }
-}
-
-
-bool VIEW_CONTROLS_GRID_DATA_MODEL::GetValueAsBool( int aRow, int aCol )
-{
-    KI_CHECK( aRow < GetNumberRows(), false );
-
-    BOM_FIELD& rowData = m_fields[aRow];
-
-    switch( aCol )
-    {
-    case SHOW_FIELD_COLUMN: return rowData.show;
-    case GROUP_BY_COLUMN:   return rowData.groupBy;
-
-    default:
-        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
-        return false;
-    }
-}
-
-
-void VIEW_CONTROLS_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString &aValue )
-{
-    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
-
-    BOM_FIELD& rowData = m_fields[aRow];
-
-    switch( aCol )
-    {
-    case DISPLAY_NAME_COLUMN:
-        // Not editable
-        break;
-
-    case LABEL_COLUMN:
-        rowData.label = aValue;
-        break;
-
-    default:
-        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
-    }
-
-    GetView()->Refresh();
-}
-
-
-void VIEW_CONTROLS_GRID_DATA_MODEL::SetValueAsBool( int aRow, int aCol, bool aValue )
-{
-    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
-
-    BOM_FIELD& rowData = m_fields[aRow];
-
-    switch( aCol )
-    {
-    case SHOW_FIELD_COLUMN: rowData.show = aValue;    break;
-    case GROUP_BY_COLUMN:   rowData.groupBy = aValue; break;
-
-    default:
-        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
-    }
-}
-
-
-void VIEW_CONTROLS_GRID_DATA_MODEL::AppendRow( const wxString& aFieldName, const wxString& aBOMName,
-                                               bool aShow, bool aGroupBy )
-{
-    m_fields.emplace_back( BOM_FIELD{ aFieldName, aBOMName, aShow, aGroupBy } );
-
-    if( wxGrid* grid = GetView() )
-    {
-        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_APPENDED, 1 );
-        grid->ProcessTableMessage( msg );
-    }
-}
-
-
-void VIEW_CONTROLS_GRID_DATA_MODEL::DeleteRow( int aRow )
-{
-    KI_CHECK( aRow >= 0 && aRow < GetNumberRows(), /* void */ );
-
-    m_fields.erase( m_fields.begin() + aRow );
-
-    if( wxGrid* grid = GetView() )
-    {
-        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_DELETED, aRow, 1 );
-        grid->ProcessTableMessage( msg );
-    }
-}
-
-
-wxString VIEW_CONTROLS_GRID_DATA_MODEL::GetCanonicalFieldName( int aRow )
-{
-    KI_CHECK( aRow >= 0 && aRow < GetNumberRows(), wxEmptyString );
-
-    BOM_FIELD& rowData = m_fields[aRow];
-
-    return rowData.name;
-}
-
-
-void VIEW_CONTROLS_GRID_DATA_MODEL::SetCanonicalFieldName( int aRow, const wxString& aName )
-{
-    KI_CHECK( aRow >= 0 && aRow < GetNumberRows(), /* void */ );
-
-    BOM_FIELD& rowData = m_fields[aRow];
-
-    rowData.name = aName;
-}
-
-
-const wxString FIELDS_EDITOR_GRID_DATA_MODEL::QUANTITY_VARIABLE = wxS( "${QUANTITY}" );
-const wxString FIELDS_EDITOR_GRID_DATA_MODEL::ITEM_NUMBER_VARIABLE = wxS( "${ITEM_NUMBER}" );
-
-
-void FIELDS_EDITOR_GRID_DATA_MODEL::AddColumn( const wxString& aFieldName, const wxString& aLabel, bool aAddedByUser )
+void FIELDS_DATA_MODEL::AddColumn( const wxString& aFieldName, const wxString& aLabel, bool aAddedByUser )
 {
     // Don't add a field twice
     if( GetFieldNameCol( aFieldName ) != -1 )
@@ -260,7 +67,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::AddColumn( const wxString& aFieldName, const
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::updateDataStoreSymbolField( const SCH_REFERENCE& aSymbolRef,
+void FIELDS_DATA_MODEL::updateDataStoreSymbolField( const SCH_REFERENCE& aSymbolRef,
                                                                 const wxString&      aFieldName )
 {
     const SCH_SYMBOL* symbol = aSymbolRef.GetSymbol();
@@ -300,7 +107,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::updateDataStoreSymbolField( const SCH_REFERE
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::RemoveColumn( int aCol )
+void FIELDS_DATA_MODEL::RemoveColumn( int aCol )
 {
     for( unsigned i = 0; i < m_symbolsList.GetCount(); ++i )
     {
@@ -313,15 +120,11 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::RemoveColumn( int aCol )
 
     m_cols.erase( m_cols.begin() + aCol );
 
-    if( wxGrid* grid = GetView() )
-    {
-        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_COLS_DELETED, aCol, 1 );
-        grid->ProcessTableMessage( msg );
-    }
+    colsDeleted( aCol, 1 );
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::RenameColumn( int aCol, const wxString& newName )
+void FIELDS_DATA_MODEL::RenameColumn( int aCol, const wxString& newName )
 {
     for( unsigned i = 0; i < m_symbolsList.GetCount(); ++i )
     {
@@ -341,7 +144,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::RenameColumn( int aCol, const wxString& newN
 }
 
 
-int FIELDS_EDITOR_GRID_DATA_MODEL::GetFieldNameCol( const wxString& aFieldName ) const
+int FIELDS_DATA_MODEL::GetFieldNameCol( const wxString& aFieldName ) const
 {
     for( size_t i = 0; i < m_cols.size(); i++ )
     {
@@ -353,7 +156,7 @@ int FIELDS_EDITOR_GRID_DATA_MODEL::GetFieldNameCol( const wxString& aFieldName )
 }
 
 
-std::vector<BOM_FIELD> FIELDS_EDITOR_GRID_DATA_MODEL::GetFieldsOrdered()
+std::vector<BOM_FIELD> FIELDS_DATA_MODEL::GetFieldsOrdered()
 {
     std::vector<BOM_FIELD> fields;
 
@@ -364,7 +167,7 @@ std::vector<BOM_FIELD> FIELDS_EDITOR_GRID_DATA_MODEL::GetFieldsOrdered()
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::SetFieldsOrder( const std::vector<wxString>& aNewOrder )
+void FIELDS_DATA_MODEL::SetFieldsOrder( const std::vector<wxString>& aNewOrder )
 {
     size_t foundCount = 0;
 
@@ -386,7 +189,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::SetFieldsOrder( const std::vector<wxString>&
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::IsExpanderColumn( int aCol ) const
+bool FIELDS_DATA_MODEL::IsExpanderColumn( int aCol ) const
 {
     // Check if aCol is the first visible column
     for( int col = 0; col < aCol; ++col )
@@ -399,156 +202,103 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::IsExpanderColumn( int aCol ) const
 }
 
 
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::GetValue( int aRow, int aCol )
+wxString FIELDS_DATA_MODEL::GetValue( int aRow, int aCol )
 {
-    GetView()->SetReadOnly( aRow, aCol,
-                            IsExpanderColumn( aCol ) || rowAttributeInheritedFromSheet( m_rows[aRow], aCol ) );
     return GetValue( m_rows[aRow], aCol );
 }
 
 
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::GetResolvedValue( int aRow, int aCol )
+bool FIELDS_DATA_MODEL::IsCellReadOnly( int aRow, int aCol )
+{
+    return IsExpanderColumn( aCol ) || rowAttributeInheritedFromSheet( m_rows[aRow], aCol );
+}
+
+
+bool FIELDS_DATA_MODEL::CellHasTextVariable( int aRow, int aCol )
+{
+    if( aRow < 0 || aRow >= (int) m_rows.size() || aCol < 0 || aCol >= (int) m_cols.size()
+            || ColIsReference( aCol ) || ColIsQuantity( aCol ) || ColIsItemNumber( aCol ) )
+    {
+        return false;
+    }
+
+    return GetValue( m_rows[aRow], aCol ).Contains( wxT( "${" ) );
+}
+
+
+bool FIELDS_DATA_MODEL::CellDiffersFromDefault( int aRow, int aCol )
+{
+    if( m_currentVariant.IsEmpty() || aRow < 0 || aRow >= (int) m_rows.size() || aCol < 0
+            || aCol >= (int) m_cols.size() )
+    {
+        return false;
+    }
+
+    // Reference and generated fields (like ${QUANTITY}) have no variant values
+    if( ColIsReference( aCol ) || ColIsQuantity( aCol ) || ColIsItemNumber( aCol ) )
+        return false;
+
+    const wxString&       fieldName = m_cols[aCol].m_fieldName;
+    const DATA_MODEL_ROW& row = m_rows[aRow];
+
+    // Check if any symbol in this row has a variant-specific value
+    for( const SCH_REFERENCE& ref : row.m_Refs )
+    {
+        wxString  defaultValue = getDefaultFieldValue( ref, fieldName );
+        KIID_PATH symbolKey = KIID_PATH();
+
+        if( const SCH_SYMBOL* symbol = ref.GetSymbol() )
+        {
+            symbolKey = ref.GetSheetPath().Path();
+            symbolKey.push_back( symbol->m_Uuid );
+        }
+
+        // Get the current value from the data store
+        wxString currentValue;
+
+        if( m_dataStore.contains( symbolKey ) && m_dataStore[symbolKey].contains( fieldName ) )
+            currentValue = m_dataStore[symbolKey][fieldName];
+
+        if( currentValue != defaultValue )
+            return true;
+    }
+
+    return false;
+}
+
+
+std::vector<wxString> FIELDS_DATA_MODEL::GetColumnTexts( int aCol )
+{
+    std::vector<wxString> texts;
+
+    if( ColIsReference( aCol ) )
+    {
+        for( int row = 0; row < GetNumberRows(); ++row )
+            texts.push_back( GetValue( row, aCol ) );
+    }
+    else
+    {
+        wxString fieldName = GetColFieldName( aCol ); // symbol fieldName or Qty string
+
+        for( unsigned symbolRef = 0; symbolRef < m_symbolsList.GetCount(); ++symbolRef )
+        {
+            KIID_PATH key = makeDataStoreKey( m_symbolsList[symbolRef].GetSheetPath(),
+                                              *m_symbolsList[symbolRef].GetSymbol() );
+            texts.push_back( m_dataStore[key][fieldName] );
+        }
+    }
+
+    return texts;
+}
+
+
+wxString FIELDS_DATA_MODEL::GetResolvedValue( int aRow, int aCol )
 {
     return GetValue( m_rows[aRow], aCol, wxT( ", " ), wxT( "-" ), true, false );
 }
 
 
-wxGridCellAttr* FIELDS_EDITOR_GRID_DATA_MODEL::GetAttr( int aRow, int aCol, wxGridCellAttr::wxAttrKind aKind )
-{
-    wxGridCellAttr* attr = nullptr;
-    bool            needsUrlEditor = false;
-    bool            needsVariantHighlight = false;
-    bool            needsTextVarRenderer = false;
-    wxColour        highlightColor;
-
-    // Check if we need URL editor
-    if( GetColFieldName( aCol ) == GetCanonicalFieldName( FIELD_T::DATASHEET )
-            || IsURL( GetValue( m_rows[aRow], aCol ) ) )
-    {
-        if( m_urlEditor )
-            needsUrlEditor = true;
-    }
-
-    // Check if the raw value contains a text variable that should be resolved for display
-    if( aRow >= 0 && aRow < (int) m_rows.size() && aCol >= 0 && aCol < (int) m_cols.size() && !ColIsReference( aCol )
-        && !ColIsQuantity( aCol ) && !ColIsItemNumber( aCol ) )
-    {
-        wxString rawValue = GetValue( m_rows[aRow], aCol );
-
-        if( rawValue.Contains( wxT( "${" ) ) )
-            needsTextVarRenderer = true;
-    }
-
-    // Check if we need variant highlighting
-    if( !m_currentVariant.IsEmpty() && aRow >= 0 && aRow < (int) m_rows.size()
-            && aCol >= 0 && aCol < (int) m_cols.size() )
-    {
-        const wxString& fieldName = m_cols[aCol].m_fieldName;
-
-        // Skip Reference and generated fields (like ${QUANTITY}) for highlighting
-        if( !ColIsReference( aCol ) && !ColIsQuantity( aCol ) && !ColIsItemNumber( aCol ) )
-        {
-            const DATA_MODEL_ROW& row = m_rows[aRow];
-
-            // Check if any symbol in this row has a variant-specific value
-            for( const SCH_REFERENCE& ref : row.m_Refs )
-            {
-                wxString defaultValue = getDefaultFieldValue( ref, fieldName );
-
-                KIID_PATH symbolKey = KIID_PATH();
-
-                if( const SCH_SYMBOL* symbol = ref.GetSymbol() )
-                {
-                    symbolKey = ref.GetSheetPath().Path();
-                    symbolKey.push_back( symbol->m_Uuid );
-                }
-
-                // Get the current value from the data store
-                wxString currentValue;
-
-                if( m_dataStore.contains( symbolKey ) && m_dataStore[symbolKey].contains( fieldName ) )
-                    currentValue = m_dataStore[symbolKey][fieldName];
-
-                if( currentValue != defaultValue )
-                {
-                    needsVariantHighlight = true;
-
-                    // Use a subtle highlight color that works in both light and dark themes
-                    wxColour bg = wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW );
-                    bool     isDark = ( bg.Red() + bg.Green() + bg.Blue() ) < 384;
-
-                    if( isDark )
-                        highlightColor = wxColour( 80, 80, 40 );   // Dark gold/brown
-                    else
-                        highlightColor = wxColour( 255, 255, 200 ); // Light yellow
-
-                    break;
-                }
-            }
-        }
-    }
-
-    // If we don't need any custom attributes, use the base class behavior
-    if( !needsUrlEditor && !needsVariantHighlight && !needsTextVarRenderer )
-        return WX_GRID_TABLE_BASE::GetAttr( aRow, aCol, aKind );
-
-    // URL cells: use m_urlEditor as base, potentially with variant highlight overlay
-    if( needsUrlEditor )
-    {
-        if( needsVariantHighlight )
-        {
-            // Clone the URL editor attribute and add highlight color
-            attr = m_urlEditor->Clone();
-            attr->SetBackgroundColour( highlightColor );
-        }
-        else
-        {
-            // Just use the URL editor attribute directly
-            m_urlEditor->IncRef();
-            attr = m_urlEditor;
-        }
-
-        return enhanceAttr( attr, aRow, aCol, aKind );
-    }
-
-    // Non-URL cells: start with column attributes if they exist.
-    // This preserves checkbox renderers and other column-specific settings.
-    if( m_colAttrs.find( aCol ) != m_colAttrs.end() && m_colAttrs[aCol] )
-    {
-        attr = m_colAttrs[aCol]->Clone();
-    }
-    else
-    {
-        attr = new wxGridCellAttr();
-    }
-
-    if( needsVariantHighlight )
-        attr->SetBackgroundColour( highlightColor );
-
-    if( needsTextVarRenderer )
-    {
-        if( !m_textVarRenderer )
-            m_textVarRenderer = new GRID_CELL_RESOLVED_TEXT_RENDERER();
-
-        m_textVarRenderer->IncRef();
-        attr->SetRenderer( m_textVarRenderer );
-
-        // Tint text-var cells if not already highlighted by variant
-        if( !needsVariantHighlight )
-        {
-            wxColour bg = wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW );
-            bool     isDark = ( bg.Red() + bg.Green() + bg.Blue() ) < 384;
-
-            attr->SetBackgroundColour( isDark ? wxColour( 80, 70, 30 )       // Dark amber
-                                              : wxColour( 255, 252, 200 ) ); // Light yellow
-        }
-    }
-
-    return enhanceAttr( attr, aRow, aCol, aKind );
-}
-
-
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::GetValue( const DATA_MODEL_ROW& group, int aCol,
+wxString FIELDS_DATA_MODEL::GetValue( const DATA_MODEL_ROW& group, int aCol,
                                                   const wxString& refDelimiter,
                                                   const wxString& refRangeDelimiter,
                                                   bool            resolveVars,
@@ -661,7 +411,7 @@ wxString FIELDS_EDITOR_GRID_DATA_MODEL::GetValue( const DATA_MODEL_ROW& group, i
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString& aValue )
+void FIELDS_DATA_MODEL::SetValue( int aRow, int aCol, const wxString& aValue )
 {
     KI_CHECK_RET( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), wxS( "Invalid column number" ) );
 
@@ -708,44 +458,44 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsReference( int aCol )
+bool FIELDS_DATA_MODEL::ColIsReference( int aCol )
 {
     KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == GetCanonicalFieldName( FIELD_T::REFERENCE );
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsValue( int aCol )
+bool FIELDS_DATA_MODEL::ColIsValue( int aCol )
 {
     KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == GetCanonicalFieldName( FIELD_T::VALUE );
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsQuantity( int aCol )
+bool FIELDS_DATA_MODEL::ColIsQuantity( int aCol )
 {
     KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == QUANTITY_VARIABLE;
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsItemNumber( int aCol )
+bool FIELDS_DATA_MODEL::ColIsItemNumber( int aCol )
 {
     KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == ITEM_NUMBER_VARIABLE;
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::ColIsAttribute( int aCol )
+bool FIELDS_DATA_MODEL::ColIsAttribute( int aCol )
 {
     KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return isAttribute( m_cols[aCol].m_fieldName );
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::cmp( const DATA_MODEL_ROW&          lhGroup,
+bool FIELDS_DATA_MODEL::cmp( const DATA_MODEL_ROW&          lhGroup,
                                          const DATA_MODEL_ROW&          rhGroup,
-                                         FIELDS_EDITOR_GRID_DATA_MODEL* dataModel, int sortCol,
+                                         FIELDS_DATA_MODEL* dataModel, int sortCol,
                                          bool ascending )
 {
     // Empty rows always go to the bottom, whether ascending or descending
@@ -785,7 +535,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::cmp( const DATA_MODEL_ROW&          lhGroup,
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::Sort()
+void FIELDS_DATA_MODEL::Sort()
 {
     CollapseForSort();
 
@@ -820,7 +570,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::Sort()
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::unitMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef )
+bool FIELDS_DATA_MODEL::unitMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef )
 {
     // If items are unannotated then we can't tell if they're units of the same symbol or not
     if( lhRef.GetRefNumber() == wxT( "?" ) )
@@ -830,7 +580,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::unitMatch( const SCH_REFERENCE& lhRef, const
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::groupMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef )
+bool FIELDS_DATA_MODEL::groupMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef )
 {
     int  refCol = GetFieldNameCol( GetCanonicalFieldName( FIELD_T::REFERENCE ) );
     bool matchFound = false;
@@ -897,7 +647,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::groupMatch( const SCH_REFERENCE& lhRef, cons
 }
 
 
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::getFieldShownText( const SCH_REFERENCE& aRef,
+wxString FIELDS_DATA_MODEL::getFieldShownText( const SCH_REFERENCE& aRef,
                                                            const wxString&      aFieldName )
 {
     SCH_FIELD* field = aRef.GetSymbol()->GetField( aFieldName );
@@ -929,7 +679,7 @@ wxString FIELDS_EDITOR_GRID_DATA_MODEL::getFieldShownText( const SCH_REFERENCE& 
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::isAttribute( const wxString& aFieldName )
+bool FIELDS_DATA_MODEL::isAttribute( const wxString& aFieldName )
 {
     return aFieldName == wxS( "${DNP}" ) || aFieldName == wxS( "${EXCLUDE_FROM_BOARD}" )
            || aFieldName == wxS( "${EXCLUDE_FROM_BOM}" ) || aFieldName == wxS( "${EXCLUDE_FROM_POS_FILES}" )
@@ -937,7 +687,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::isAttribute( const wxString& aFieldName )
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::storageIsSharedAcrossPaths( const wxString& aFieldName ) const
+bool FIELDS_DATA_MODEL::storageIsSharedAcrossPaths( const wxString& aFieldName ) const
 {
     // Variant edits are kept on the symbol instance, but SCH_REFERENCE has no variant form of
     // the board exclusion so that one always lands on the symbol
@@ -948,7 +698,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::storageIsSharedAcrossPaths( const wxString& 
 }
 
 
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::getAttributeValue( const SCH_REFERENCE& aRef, const wxString& aAttributeName,
+wxString FIELDS_DATA_MODEL::getAttributeValue( const SCH_REFERENCE& aRef, const wxString& aAttributeName,
                                                            const wxString& aVariantName )
 {
     if( aAttributeName == wxS( "${DNP}" ) )
@@ -970,7 +720,7 @@ wxString FIELDS_EDITOR_GRID_DATA_MODEL::getAttributeValue( const SCH_REFERENCE& 
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::attributeInheritedFromSheet( const SCH_REFERENCE& aRef,
+bool FIELDS_DATA_MODEL::attributeInheritedFromSheet( const SCH_REFERENCE& aRef,
                                                                  const wxString&      aAttributeName ) const
 {
     const SCH_SHEET_PATH& path = aRef.GetSheetPath();
@@ -988,7 +738,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::attributeInheritedFromSheet( const SCH_REFER
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::rowAttributeInheritedFromSheet( const DATA_MODEL_ROW& aGroup, int aCol )
+bool FIELDS_DATA_MODEL::rowAttributeInheritedFromSheet( const DATA_MODEL_ROW& aGroup, int aCol )
 {
     if( !ColIsAttribute( aCol ) || aGroup.m_Refs.empty() )
         return false;
@@ -1005,7 +755,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::rowAttributeInheritedFromSheet( const DATA_M
 }
 
 
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::getDefaultFieldValue( const SCH_REFERENCE& aRef,
+wxString FIELDS_DATA_MODEL::getDefaultFieldValue( const SCH_REFERENCE& aRef,
                                                                const wxString& aFieldName )
 {
     const SCH_SYMBOL* symbol = aRef.GetSymbol();
@@ -1037,7 +787,7 @@ wxString FIELDS_EDITOR_GRID_DATA_MODEL::getDefaultFieldValue( const SCH_REFERENC
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::setAttributeValue( SCH_REFERENCE&  aRef,
+bool FIELDS_DATA_MODEL::setAttributeValue( SCH_REFERENCE&  aRef,
                                                        const wxString& aAttributeName,
                                                        const wxString& aValue,
                                                        const wxString& aVariantName )
@@ -1085,32 +835,26 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::setAttributeValue( SCH_REFERENCE&  aRef,
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::EnableRebuilds()
+void FIELDS_DATA_MODEL::EnableRebuilds()
 {
     m_rebuildsEnabled = true;
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::DisableRebuilds()
+void FIELDS_DATA_MODEL::DisableRebuilds()
 {
     m_rebuildsEnabled = false;
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
+void FIELDS_DATA_MODEL::RebuildRows()
 {
     if( !m_rebuildsEnabled )
         return;
 
-    if( GetView() )
-    {
-        // Commit any pending in-place edits before the row gets moved out from under
-        // the editor.
-        static_cast<WX_GRID*>( GetView() )->CommitPendingChanges( true );
-
-        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_DELETED, 0, m_rows.size() );
-        GetView()->ProcessTableMessage( msg );
-    }
+    // Commit any pending in-place edits before the row gets moved out from under the editor.
+    commitPendingEdits();
+    rowsDeleted( 0, m_rows.size() );
 
     m_rows.clear();
 
@@ -1218,17 +962,13 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
             m_rows.emplace_back( DATA_MODEL_ROW( ref, GROUP_SINGLETON ) );
     }
 
-    if( GetView() )
-    {
-        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_APPENDED, m_rows.size() );
-        GetView()->ProcessTableMessage( msg );
-    }
+    rowsAppended( m_rows.size() );
 
     Sort();
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::ExpandRow( int aRow )
+void FIELDS_DATA_MODEL::ExpandRow( int aRow )
 {
     std::vector<DATA_MODEL_ROW> children;
 
@@ -1265,12 +1005,11 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::ExpandRow( int aRow )
     m_rows[aRow].m_Flag = GROUP_EXPANDED;
     m_rows.insert( m_rows.begin() + aRow + 1, children.begin(), children.end() );
 
-    wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_INSERTED, aRow, children.size() );
-    GetView()->ProcessTableMessage( msg );
+    rowsInserted( aRow, children.size() );
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::CollapseRow( int aRow )
+void FIELDS_DATA_MODEL::CollapseRow( int aRow )
 {
     auto firstChild = m_rows.begin() + aRow + 1;
     auto afterLastChild = firstChild;
@@ -1285,12 +1024,11 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::CollapseRow( int aRow )
     m_rows[aRow].m_Flag = GROUP_COLLAPSED;
     m_rows.erase( firstChild, afterLastChild );
 
-    wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_DELETED, aRow + 1, deleted );
-    GetView()->ProcessTableMessage( msg );
+    rowsDeleted( aRow + 1, deleted );
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::ExpandCollapseRow( int aRow )
+void FIELDS_DATA_MODEL::ExpandCollapseRow( int aRow )
 {
     DATA_MODEL_ROW& group = m_rows[aRow];
 
@@ -1301,7 +1039,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::ExpandCollapseRow( int aRow )
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::CollapseForSort()
+void FIELDS_DATA_MODEL::CollapseForSort()
 {
     for( size_t i = 0; i < m_rows.size(); ++i )
     {
@@ -1314,7 +1052,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::CollapseForSort()
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::ExpandAfterSort()
+void FIELDS_DATA_MODEL::ExpandAfterSort()
 {
     for( size_t i = 0; i < m_rows.size(); ++i )
     {
@@ -1324,7 +1062,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::ExpandAfterSort()
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::ApplyData( SCH_COMMIT& aCommit, TEMPLATES& aTemplateFieldnames,
+void FIELDS_DATA_MODEL::ApplyData( SCH_COMMIT& aCommit, TEMPLATES& aTemplateFieldnames,
                                                const wxString& aVariantName )
 {
     bool symbolModified = false;
@@ -1443,34 +1181,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::ApplyData( SCH_COMMIT& aCommit, TEMPLATES& a
 }
 
 
-int FIELDS_EDITOR_GRID_DATA_MODEL::GetDataWidth( int aCol )
-{
-    int width = 0;
-
-    if( ColIsReference( aCol ) )
-    {
-        for( int row = 0; row < GetNumberRows(); ++row )
-            width = std::max( width, KIUI::GetTextSize( GetValue( row, aCol ), GetView() ).x );
-    }
-    else
-    {
-        wxString fieldName = GetColFieldName( aCol ); // symbol fieldName or Qty string
-
-        for( unsigned symbolRef = 0; symbolRef < m_symbolsList.GetCount(); ++symbolRef )
-        {
-            KIID_PATH key = makeDataStoreKey( m_symbolsList[symbolRef].GetSheetPath(),
-                                              *m_symbolsList[symbolRef].GetSymbol() );
-            wxString text = m_dataStore[key][fieldName];
-
-            width = std::max( width, KIUI::GetTextSize( text, GetView() ).x );
-        }
-    }
-
-    return width;
-}
-
-
-void FIELDS_EDITOR_GRID_DATA_MODEL::ApplyBomPreset( const BOM_PRESET& aPreset )
+void FIELDS_DATA_MODEL::ApplyBomPreset( const BOM_PRESET& aPreset )
 {
     // Hide and un-group everything by default
     for( size_t i = 0; i < m_cols.size(); i++ )
@@ -1531,7 +1242,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::ApplyBomPreset( const BOM_PRESET& aPreset )
 }
 
 
-BOM_PRESET FIELDS_EDITOR_GRID_DATA_MODEL::GetBomSettings()
+BOM_PRESET FIELDS_DATA_MODEL::GetBomSettings()
 {
     BOM_PRESET current;
     current.readOnly = false;
@@ -1550,7 +1261,7 @@ BOM_PRESET FIELDS_EDITOR_GRID_DATA_MODEL::GetBomSettings()
 }
 
 
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::Export( const BOM_FMT_PRESET& settings )
+wxString FIELDS_DATA_MODEL::Export( const BOM_FMT_PRESET& settings )
 {
     wxString out;
 
@@ -1626,7 +1337,7 @@ wxString FIELDS_EDITOR_GRID_DATA_MODEL::Export( const BOM_FMT_PRESET& settings )
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::AddReferences( const SCH_REFERENCE_LIST& aRefs )
+void FIELDS_DATA_MODEL::AddReferences( const SCH_REFERENCE_LIST& aRefs )
 {
     bool refListChanged = false;
 
@@ -1664,7 +1375,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::AddReferences( const SCH_REFERENCE_LIST& aRe
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::RemoveSymbol( const SCH_SYMBOL& aSymbol )
+void FIELDS_DATA_MODEL::RemoveSymbol( const SCH_SYMBOL& aSymbol )
 {
     // The schematic event listener passes us the symbol after it has been removed,
     // so we can't just work with a SCH_REFERENCE_LIST like the other handlers as the
@@ -1694,7 +1405,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::RemoveSymbol( const SCH_SYMBOL& aSymbol )
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::RemoveReferences( const SCH_REFERENCE_LIST& aRefs )
+void FIELDS_DATA_MODEL::RemoveReferences( const SCH_REFERENCE_LIST& aRefs )
 {
     for( const SCH_REFERENCE& ref : aRefs )
     {
@@ -1710,7 +1421,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::RemoveReferences( const SCH_REFERENCE_LIST& 
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::UpdateReferences( const SCH_REFERENCE_LIST& aRefs )
+void FIELDS_DATA_MODEL::UpdateReferences( const SCH_REFERENCE_LIST& aRefs )
 {
     bool refListChanged = false;
 
@@ -1738,7 +1449,7 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::UpdateReferences( const SCH_REFERENCE_LIST& 
 }
 
 
-wxString FIELDS_EDITOR_GRID_DATA_MODEL::SerializeUndoState() const
+wxString FIELDS_DATA_MODEL::SerializeUndoState() const
 {
     // Serialize the un-applied edit store keyed by symbol identity (sheet path + UUID), so that
     // restoring it is independent of the current row grouping/order.
@@ -1758,7 +1469,7 @@ wxString FIELDS_EDITOR_GRID_DATA_MODEL::SerializeUndoState() const
 }
 
 
-void FIELDS_EDITOR_GRID_DATA_MODEL::RestoreUndoState( const wxString& aState )
+void FIELDS_DATA_MODEL::RestoreUndoState( const wxString& aState )
 {
     nlohmann::json j = nlohmann::json::parse( aState.ToStdString(), nullptr, false );
 
@@ -1778,18 +1489,17 @@ void FIELDS_EDITOR_GRID_DATA_MODEL::RestoreUndoState( const wxString& aState )
     m_edited = true;
     RebuildRows();
 
-    if( GetView() )
-        GetView()->ForceRefresh();
+    dataChanged();
 }
 
 
-bool FIELDS_EDITOR_GRID_DATA_MODEL::DeleteRows( size_t aPosition, size_t aNumRows )
+bool FIELDS_DATA_MODEL::DeleteRows( size_t aPosition, size_t aNumRows )
 {
     size_t curNumRows = m_rows.size();
 
     if( aPosition >= curNumRows )
     {
-       KI_FAIL_MSG( wxString::Format( wxT( "Called FIELDS_EDITOR_GRID_DATA_MODEL::DeleteRows(aPosition=%lu, "
+       KI_FAIL_MSG( wxString::Format( wxT( "Called FIELDS_DATA_MODEL::DeleteRows(aPosition=%lu, "
                                           "aNumRows=%lu)\nPosition value is invalid for present table with %lu rows" ),
                                       (unsigned long) aPosition, (unsigned long) aNumRows,
                                       (unsigned long) curNumRows ) );
@@ -1817,11 +1527,7 @@ bool FIELDS_EDITOR_GRID_DATA_MODEL::DeleteRows( size_t aPosition, size_t aNumRow
             m_dataStore.erase( ref.GetSheetPath().Path() );
     }
 
-    if( GetView() )
-    {
-        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_DELETED, aPosition, aNumRows );
-        GetView()->ProcessTableMessage( msg );
-    }
+    rowsDeleted( aPosition, aNumRows );
 
     return true;
 }

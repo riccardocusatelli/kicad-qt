@@ -38,14 +38,13 @@
 #include "../3d_viewer/eda_3d_viewer_settings.h"
 
 #include <layer_ids.h>
-#include <pcb_base_frame.h>
 #include <pcb_text.h>
 #include <pcb_textbox.h>
 #include <pcb_table.h>
 #include <pcb_shape.h>
 #include <pcb_dimension.h>
 #include <reporter.h>
-#include <dialogs/dialog_color_picker.h>
+#include <custom_color_item.h>
 
 class COLOR_SETTINGS;
 class FOOTPRINT;

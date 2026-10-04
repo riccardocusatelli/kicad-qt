@@ -643,11 +643,11 @@ void GERBER_JOBFILE_WRITER::addJSONMaterialStackup()
                     {
                         // In job file a color can be given by its RGB values (0...255)
                         // like R<number><G<number>B<number> notation
-                        wxColor color( COLOR4D( colorName ).ToColour() );
+                        COLOR4D color( colorName );
                         colorName.Printf( wxT( "R%dG%dB%d" ),
-                                          color.Red(),
-                                          color.Green(),
-                                          color.Blue() );
+                                          color.Red8(),
+                                          color.Green8(),
+                                          color.Blue8() );
                     }
                     else
                     {

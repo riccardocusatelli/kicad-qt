@@ -797,6 +797,7 @@ mark_as_advanced( KICAD_BIN
     KICAD_TEMPLATE )
 
 include( Functions )
+include( HeadlessKiface )
 
 include( ExternalProject )
 

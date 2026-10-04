@@ -397,8 +397,7 @@ void SYMBOL_LIBRARY_ADAPTER::ShowConfigurationDialog( const wxString& aNickname,
     if( !( *optRow )->plugin->SupportsConfigurationDialog() )
         return;
 
-    DIALOG_SHIM* dialog = ( *optRow )->plugin->CreateConfigurationDialog( aParent );
-    dialog->ShowModal();
+    ( *optRow )->plugin->ShowConfigurationDialog( aParent );
 }
 
 

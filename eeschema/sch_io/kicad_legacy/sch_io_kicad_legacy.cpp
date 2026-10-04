@@ -1791,9 +1791,9 @@ void SCH_IO_KICAD_LEGACY::saveBitmap( const SCH_BITMAP& aBitmap )
 {
     const REFERENCE_IMAGE& refImage = aBitmap.GetReferenceImage();
 
-    const wxImage* image = refImage.GetImage().GetImageData();
+    const RASTER_IMAGE* image = refImage.GetImage().GetImageData();
 
-    KI_CHECK_RET( image != nullptr, "wxImage* is NULL" );
+    KI_CHECK_RET( image != nullptr, "no image data" );
 
     m_out->Print( 0, "$Bitmap\n" );
     m_out->Print( 0, "Pos %-4d %-4d\n",
@@ -1802,15 +1802,14 @@ void SCH_IO_KICAD_LEGACY::saveBitmap( const SCH_BITMAP& aBitmap )
     m_out->Print( "%s", fmt::format("Scale {:g}\n", refImage.GetImageScale()).c_str() );
     m_out->Print( 0, "Data\n" );
 
-    wxMemoryOutputStream stream;
+    std::vector<unsigned char> data;
 
-    image->SaveFile( stream, wxBITMAP_TYPE_PNG );
+    image->Save( data, RASTER_IMAGE::TYPE::PNG );
 
     // Write binary data in hexadecimal form (ASCII)
-    wxStreamBuffer* buffer = stream.GetOutputStreamBuffer();
-    char*           begin  = (char*) buffer->GetBufferStart();
+    const unsigned char* begin = data.data();
 
-    for( int ii = 0; begin < buffer->GetBufferEnd(); begin++, ii++ )
+    for( int ii = 0; begin < data.data() + data.size(); begin++, ii++ )
     {
         if( ii >= 32 )
         {

@@ -125,6 +125,8 @@ public:
 
     bool ConfirmAction( const wxString& aTitle, const wxString& aMessage ) override;
 
+    void SafeYield() override;
+
     void ShowSplash();
     void HideSplash();
 

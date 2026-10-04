@@ -33,6 +33,7 @@
 #include <wx/stattext.h>
 #include <wx/checkbox.h>
 #include <dialogs/rule_editor_dialog_base.h>
+#include <eda_base_frame.h>
 
 DRC_RE_MATCHED_LENGTH_DIFF_PAIR_OVERLAY_PANEL::DRC_RE_MATCHED_LENGTH_DIFF_PAIR_OVERLAY_PANEL(
         wxWindow* aParent, DRC_RE_MATCHED_LENGTH_DIFF_PAIR_CONSTRAINT_DATA* aData, EDA_UNITS aUnits ) :

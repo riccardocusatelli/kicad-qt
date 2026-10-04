@@ -26,6 +26,7 @@
 #define __PCBNEW_SCRIPTING_HELPERS_H
 
 #include <deque>
+#include <functional>
 #include <pcb_io/pcb_io_mgr.h>
 #include <layer_ids.h>
 
@@ -43,6 +44,16 @@ enum PCB_LAYER_ID : int;
 #ifndef SWIG
 void ScriptingSetPcbEditFrame( PCB_EDIT_FRAME* aPCBEdaFrame );
 void ScriptingOnDestructPcbEditFrame( PCB_EDIT_FRAME* aPCBEdaFrame );
+
+/// What the scripting functions use of the board editor, when they run inside it.
+struct SCRIPTING_EDITOR_HOOKS
+{
+    std::function<BOARD*()>            getBoard;
+    std::function<SETTINGS_MANAGER*()> getSettingsManager;
+};
+
+/// Set by ScriptingSetPcbEditFrame() (pcbnew_scripting_helpers_gui.cpp).
+void ScriptingSetEditorHooks( const SCRIPTING_EDITOR_HOOKS& aHooks );
 
 #endif
 

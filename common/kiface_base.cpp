@@ -24,7 +24,6 @@
  */
 
 #include <kiface_base.h>
-#include <tool/action_manager.h>
 #include <search_stack.h>
 #include <systemdirsappend.h>
 
@@ -45,8 +44,3 @@ void KIFACE_BASE::end_common()
 }
 
 
-void KIFACE_BASE::GetActions( std::vector<TOOL_ACTION*>& aActions ) const
-{
-    for( TOOL_ACTION* action : ACTION_MANAGER::GetActionList() )
-        aActions.push_back( action );
-}

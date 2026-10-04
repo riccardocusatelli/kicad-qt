@@ -1045,7 +1045,7 @@ BOOST_FIXTURE_TEST_CASE( RegressionRoundRectTeardropGeometry, ZONE_FILL_TEST_FIX
 
     // Generate teardrops
     BOARD_COMMIT commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -1128,7 +1128,7 @@ BOOST_FIXTURE_TEST_CASE( RegressionTeardropSpike, ZONE_FILL_TEST_FIXTURE )
     toolMgr.RegisterTool( dummyTool );
 
     BOARD_COMMIT commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -1223,7 +1223,7 @@ BOOST_FIXTURE_TEST_CASE( RegressionTeardropCustomPadAnchor, ZONE_FILL_TEST_FIXTU
     toolMgr.RegisterTool( dummyTool );
 
     BOARD_COMMIT     commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -1319,7 +1319,7 @@ BOOST_FIXTURE_TEST_CASE( OvalPadTeardropGeometry, ZONE_FILL_TEST_FIXTURE )
 
     // Generate teardrops
     BOARD_COMMIT commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -1397,7 +1397,7 @@ BOOST_FIXTURE_TEST_CASE( LargeCircleTeardropGeometry, ZONE_FILL_TEST_FIXTURE )
 
     // Generate teardrops
     BOARD_COMMIT commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -1992,7 +1992,7 @@ BOOST_FIXTURE_TEST_CASE( OffCenterTeardropSymmetry, ZONE_FILL_TEST_FIXTURE )
     toolMgr.RegisterTool( dummyTool );
 
     BOARD_COMMIT commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -2077,7 +2077,7 @@ BOOST_FIXTURE_TEST_CASE( ElongatedPadTeardropContainment, ZONE_FILL_TEST_FIXTURE
     toolMgr.RegisterTool( dummyTool );
 
     BOARD_COMMIT commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -2186,7 +2186,7 @@ BOOST_FIXTURE_TEST_CASE( TwoSegmentAngledTeardropNoSelfIntersection, ZONE_FILL_T
         toolMgr.RegisterTool( dummyTool );
 
         BOARD_COMMIT commit( dummyTool );
-        TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+        TEARDROP_MANAGER teardropMgr( m_board.get() );
         teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
         if( !commit.Empty() )
@@ -2308,7 +2308,7 @@ BOOST_FIXTURE_TEST_CASE( OffCenterTwoSegmentTeardropNoSpike, ZONE_FILL_TEST_FIXT
         toolMgr.RegisterTool( dummyTool );
 
         BOARD_COMMIT commit( dummyTool );
-        TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+        TEARDROP_MANAGER teardropMgr( m_board.get() );
         teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
         if( !commit.Empty() )
@@ -2416,7 +2416,7 @@ BOOST_FIXTURE_TEST_CASE( MultiTrackSharedInsideJunctionNoSelfIntersection,
         toolMgr.RegisterTool( dummyTool );
 
         BOARD_COMMIT commit( dummyTool );
-        TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+        TEARDROP_MANAGER teardropMgr( m_board.get() );
         teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
         if( !commit.Empty() )
@@ -2517,7 +2517,7 @@ BOOST_FIXTURE_TEST_CASE( CloseViaShortRadialTrackTeardrop, ZONE_FILL_TEST_FIXTUR
         toolMgr.RegisterTool( dummyTool );
 
         BOARD_COMMIT     commit( dummyTool );
-        TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+        TEARDROP_MANAGER teardropMgr( m_board.get() );
         teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
         if( !commit.Empty() )

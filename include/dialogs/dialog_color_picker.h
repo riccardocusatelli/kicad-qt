@@ -22,43 +22,12 @@
 
 
 #include <gal/color4d.h>
+#include <custom_color_item.h>
 #include "../../common/dialogs/dialog_color_picker_base.h"
 
 class COLOR_SWATCH;
 
 
-/**
- * A class to handle a custom color (predefined color) for the color picker dialog.
- */
-struct CUSTOM_COLOR_ITEM
-{
-    KIGFX::COLOR4D m_Color;
-    wxString m_ColorName;
-
-    CUSTOM_COLOR_ITEM( double red, double green, double blue, const wxString& aName )
-    {
-        m_Color.r = red;
-        m_Color.g = green;
-        m_Color.b = blue;
-        m_ColorName = aName;
-    }
-
-    CUSTOM_COLOR_ITEM( double red, double green, double blue, double alpha, const wxString& aName )
-    {
-        m_Color.r = red;
-        m_Color.g = green;
-        m_Color.b = blue;
-        m_Color.a = alpha;
-        m_ColorName = aName;
-    }
-
-    CUSTOM_COLOR_ITEM( const KIGFX::COLOR4D& aColor, const wxString& aName )
-        : m_Color( aColor ), m_ColorName( aName)
-    {}
-};
-
-
-typedef std::vector<CUSTOM_COLOR_ITEM> CUSTOM_COLORS_LIST;
 
 
 enum CHANGED_COLOR

@@ -34,7 +34,7 @@
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
 #include <eeschema_helpers.h>
-#include <fields_data_model.h>
+#include <fields_editor_grid_data_model.h>
 #include <locale_io.h>
 #include <sch_reference_list.h>
 #include <sch_sheet_path.h>

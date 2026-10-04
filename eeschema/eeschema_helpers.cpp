@@ -28,24 +28,23 @@
 #include <project/project_file.h>
 #include <schematic.h>
 #include <sch_commit.h>
-#include <sch_edit_frame.h>
 #include <sch_label.h>
+#include <sch_screen.h>
+#include <sch_sheet.h>
 #include <sch_io/sch_io.h>
 #include <sch_io/sch_io_mgr.h>
 #include <settings/settings_manager.h>
 #include <wildcards_and_files_ext.h>
-#include <tool/tool_manager.h>
-#include <kiface_base.h>
 
 #include <wx/app.h>
 
 
-SCH_EDIT_FRAME*   EESCHEMA_HELPERS::s_SchEditFrame = nullptr;
+std::function<SCHEMATIC*()> EESCHEMA_HELPERS::s_editorSchematic;
 
 
-void EESCHEMA_HELPERS::SetSchEditFrame( SCH_EDIT_FRAME* aSchEditFrame )
+void EESCHEMA_HELPERS::SetEditorSchematic( std::function<SCHEMATIC*()> aGetter )
 {
-    s_SchEditFrame = aSchEditFrame;
+    s_editorSchematic = std::move( aGetter );
 }
 
 
@@ -99,10 +98,10 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
                 project = mgr.GetProject( projectPath );
             }
         }
-        else if( s_SchEditFrame && project == &mgr.Prj() )
+        else if( s_editorSchematic && project == &mgr.Prj() )
         {
-            // Project is already loaded?  Then so is the board
-            return &s_SchEditFrame->Schematic();
+            // Project is already loaded?  Then so is the schematic
+            return s_editorSchematic();
         }
     }
 
@@ -192,13 +191,10 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
 
     schematic->ConnectionGraph()->Reset();
 
-    TOOL_MANAGER* toolManager = new TOOL_MANAGER;
-    toolManager->SetEnvironment( schematic, nullptr, nullptr, Kiface().KifaceSettings(), nullptr );
-
     if( aCalculateConnectivity )
     {
-        SCH_COMMIT dummyCommit( toolManager );
-        schematic->RecalculateConnections( &dummyCommit, GLOBAL_CLEANUP, toolManager );
+        SCH_COMMIT dummyCommit;
+        schematic->RecalculateConnections( &dummyCommit, GLOBAL_CLEANUP );
     }
 
     schematic->ResolveERCExclusionsPostUpdate();

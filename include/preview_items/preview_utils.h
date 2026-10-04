@@ -27,6 +27,7 @@
 #include <eda_units.h>
 #include <gal/color4d.h>
 #include <math/vector2d.h>
+#include <wx/arrstr.h>
 
 namespace KIGFX
 {

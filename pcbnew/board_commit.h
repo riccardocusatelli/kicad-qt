@@ -26,8 +26,14 @@
 #pragma once
 
 #include <commit.h>
+#include <math/box2.h>
+
+#include <memory>
+#include <unordered_set>
+#include <vector>
 
 class BOARD_ITEM;
+class PCB_GROUP;
 class PCB_SHAPE;
 class ZONE;
 class BOARD;
@@ -45,15 +51,92 @@ class TOOL_BASE;
 #define SKIP_TEARDROPS     0x0020
 #define SKIP_ENTERED_GROUP 0x0040
 
+
+/**
+ * The editor side of a BOARD_COMMIT.
+ *
+ * The commit applies its changes to the BOARD (the data model); the listener keeps the view,
+ * the selection, the undo list and the frame in step with them.  A commit without a listener
+ * (kicad-cli, scripts, tests) only changes the board.
+ *
+ * board_commit_gui.cpp implements the listener on top of a TOOL_MANAGER.
+ */
+class BOARD_COMMIT_LISTENER
+{
+public:
+    /// What a BOARD_COMMIT::Push() did, for BOARD_COMMIT_LISTENER::Pushed().
+    struct PUSH_RESULT
+    {
+        bool               itemsDeselected = false;   ///< Removed items were selected
+        bool               selectedModified = false;  ///< Selected items were changed
+        bool               autofillZones = false;     ///< staleZones must be refilled
+        std::vector<ZONE*> staleZones;
+    };
+
+    virtual ~BOARD_COMMIT_LISTENER() = default;
+
+    /// The board being edited.
+    virtual BOARD* Board() const = 0;
+
+    /// The group the user has entered (new items are added to it), if any.
+    virtual PCB_GROUP* EnteredGroup() const = 0;
+
+    /// True if the zones touched by a commit are refilled automatically.
+    virtual bool AutoRefillZones() const = 0;
+
+    /// @a aItem has been added to, removed from or changed in the board.
+    virtual void ItemAdded( BOARD_ITEM* aItem ) = 0;
+    virtual void ItemRemoved( BOARD_ITEM* aItem ) = 0;
+    virtual void ItemChanged( BOARD_ITEM* aItem ) = 0;
+
+    /// @a aItem is selected and is being removed from the board: drop it from the selection.
+    virtual void Deselect( BOARD_ITEM* aItem ) = 0;
+
+    /**
+     * Drop from the selection the items that are descendants of @a aRemoved (pads, fields,
+     * table cells...): they are freed with their parent.
+     * @return true if the selection has changed.
+     */
+    virtual bool PruneSelection( const std::unordered_set<EDA_ITEM*>& aRemoved ) = 0;
+
+    virtual void RatsnestChanged() = 0;
+    virtual void SolderMaskChanged() = 0;
+
+    /// The board outline has been rebuilt.
+    virtual void BoardOutlineChanged() = 0;
+
+    /// Zones that can have custom DRC rules have changed in @a aAreas.
+    virtual void RuleAreasChanged( const std::vector<BOX2I>& aAreas ) = 0;
+
+    /**
+     * The commit has been applied.
+     * @param aUndoList the undo entries (empty with SKIP_UNDO); the listener takes them.
+     */
+    virtual void Pushed( PICKED_ITEMS_LIST& aUndoList, int aCommitFlags,
+                         const PUSH_RESULT& aResult ) = 0;
+
+    /// The commit has been reverted.
+    virtual void Reverted() = 0;
+};
+
+
 class BOARD_COMMIT : public COMMIT
 {
 public:
+    /**
+     * A commit on @a aBoard with no editor: the changes are applied to the board only.
+     * Used by kicad-cli, the scripting API and the tests.
+     */
+    explicit BOARD_COMMIT( BOARD* aBoard, bool aIsBoardEditor = false,
+                           bool aIsFootprintEditor = false );
+
+    /// Commits in an editor (board_commit_gui.cpp).
     BOARD_COMMIT( EDA_DRAW_FRAME* aFrame );
     BOARD_COMMIT( TOOL_BASE* aTool );
     BOARD_COMMIT( TOOL_MANAGER* aMgr );
     BOARD_COMMIT( TOOL_MANAGER* aMgr, bool aIsBoardEditor, bool aIsFootprintEditor );
 
-    virtual ~BOARD_COMMIT() {}
+    virtual ~BOARD_COMMIT();
 
     BOARD* GetBoard() const;
 
@@ -80,7 +163,8 @@ private:
                           std::vector<BOX2I>& aStaleRuleAreas );
 
 private:
-    TOOL_MANAGER*  m_toolMgr;
-    bool           m_isBoardEditor;
-    bool           m_isFootprintEditor;
+    BOARD*                                 m_board;      ///< Set when there is no listener
+    std::unique_ptr<BOARD_COMMIT_LISTENER> m_listener;
+    bool                                   m_isBoardEditor;
+    bool                                   m_isFootprintEditor;
 };

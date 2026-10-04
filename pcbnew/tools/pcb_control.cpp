@@ -23,6 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <raster_image_wx.h>
 #include "pcb_control.h"
 #include "convert_basic_shapes_to_polygon.h"
 
@@ -1175,7 +1176,7 @@ int PCB_CONTROL::Paste( const TOOL_EVENT& aEvent )
         {
             auto refImg = std::make_unique<PCB_REFERENCE_IMAGE>( m_frame->GetModel() );
 
-            if( refImg->GetReferenceImage().SetImage( clipImg->ConvertToImage() ) )
+            if( refImg->GetReferenceImage().SetImage( FromWxImage( clipImg->ConvertToImage() ) ) )
                 newItems.push_back( refImg.release() );
         }
         else

@@ -290,6 +290,7 @@ set( PCBNEW_MICROWAVE_SRCS
 
 set( PCBNEW_GENERATORS_SRCS
     generators/pcb_tuning_pattern.cpp
+    generators/pcb_tuning_pattern_edit.cpp
     )
 
 set( PCBNEW_DRC_SRCS
@@ -297,6 +298,7 @@ set( PCBNEW_DRC_SRCS
     drc/drc_creepage_utils.cpp
     drc/drc_report.cpp
     drc/drc_test_provider.cpp
+    drc/drc_test_provider_links.cpp
     drc/drc_test_provider_annular_width.cpp
     drc/drc_test_provider_disallow.cpp
     drc/drc_test_provider_creepage.cpp
@@ -531,6 +533,7 @@ set( PCBNEW_SCRIPTING_PYTHON_HELPERS
     python/scripting/pcbnew_action_plugins.cpp
     python/scripting/pcbnew_footprint_wizards.cpp
     python/scripting/pcbnew_scripting_helpers.cpp
+    python/scripting/pcbnew_scripting_helpers_gui.cpp
     python/scripting/pcbnew_scripting.cpp
     python/scripting/pcbnew_utils_3d.cpp
     python/scripting/pcb_scripting_tool.cpp
@@ -824,12 +827,11 @@ if( KICAD_USE_PCH )
             <map>
             <memory>
             <unordered_map>
-            <pcb_edit_frame.h>
             <board.h>
             <footprint.h>
             <macros.h>
             <pgm_base.h>
-            <wx/wx.h> )
+            <wx/string.h> )
 endif()
 
 #auto - generate specctra_lexer.h and specctra_keywords.cpp
@@ -915,6 +917,20 @@ target_link_options( pcbnew_kiface PRIVATE
 
 #if building pcbnew, then also build pcbnew_kiface if out of date.
 add_dependencies( pcbnew pcbnew_kiface )
+
+# Pcbnew without GUI, loaded by kicad-cli: _pcbnew_cli.kiface
+add_headless_kiface( pcbnew_cli_kiface
+    OUTPUT_NAME pcbnew_cli
+    SOURCES     pcbnew_cli.cpp generators/pcb_tuning_pattern_headless.cpp
+    OBJECTS     pcbnew_kiface_objects
+    USAGE       pcbnew_kiface_objects common pcbcommon core 3d-viewer
+    ARCHIVES    3d-viewer connectivity pcbcommon pnsrouter common idf3 ${PCBNEW_IO_LIBRARIES}
+                pads_common allegro_convert
+    LIBRARIES   kicommon_model gal_model core kicad_3dsg zint delaunator ${OPENGL_glu_LIBRARY} ZLIB::ZLIB Boost::headers ${wxWidgets_BASE_LIBRARIES} ${OCC_LIBRARIES}
+                ${PCBNEW_EXTRA_LIBS}
+    )
+
+add_dependencies( pcbnew_cli_kiface pcbnew_kiface_objects )
 
 if( WIN32 )
 #Copy dynamic lib dependency to build dir to allow running directly

@@ -31,13 +31,13 @@
 #include <sch_screen.h>
 #include <sch_reference_list.h>
 #include <connection_graph.h>
+#include <functional>
 #include <vector>
 #include <map>
 
 
 class SCHEMATIC;
 class DS_PROXY_VIEW_ITEM;
-class SCH_EDIT_FRAME;
 class PROGRESS_REPORTER;
 struct KIFACE;
 class PROJECT;
@@ -196,7 +196,15 @@ public:
      */
     int RunRuleAreaERC();
 
-    void RunTests( DS_PROXY_VIEW_ITEM* aDrawingSheet, SCH_EDIT_FRAME* aEditFrame,
+    /**
+     * Run the enabled tests.
+     *
+     * @param aRecalculateConnections (optional) rebuilds the connectivity of the schematic
+     *        editor (with its view), using the clean up flags given; without it, the connection
+     *        graph of the schematic is used as is.
+     */
+    void RunTests( DS_PROXY_VIEW_ITEM* aDrawingSheet,
+                   const std::function<void( SCH_CLEANUP_FLAGS )>& aRecalculateConnections,
                    KIFACE* aCvPcb, PROJECT* aProject, PROGRESS_REPORTER* aProgressReporter );
 
 private:

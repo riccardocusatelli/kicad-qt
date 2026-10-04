@@ -31,6 +31,7 @@
 #include <widgets/unit_binder.h>
 
 #include <wx/textctrl.h>
+#include <eda_base_frame.h>
 
 
 DRC_RE_MIN_TXT_HT_TH_OVERLAY_PANEL::DRC_RE_MIN_TXT_HT_TH_OVERLAY_PANEL(

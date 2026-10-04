@@ -166,3 +166,5 @@ namespace detail
 {
 static DRC_REGISTER_TEST_PROVIDER<DRC_TEST_PROVIDER_TRACK_WIDTH> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( track_width )

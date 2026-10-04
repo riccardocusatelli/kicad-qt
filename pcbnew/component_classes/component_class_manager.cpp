@@ -18,6 +18,7 @@
  */
 
 
+#include <ranges>
 #include <component_classes/component_class_manager.h>
 
 #include <board.h>
@@ -27,7 +28,6 @@
 #include <drc/drc_rule_parser.h>
 #include <footprint.h>
 #include <project/component_class_settings.h>
-#include <tools/drc_tool.h>
 #include <core/ki_assert.h>
 
 

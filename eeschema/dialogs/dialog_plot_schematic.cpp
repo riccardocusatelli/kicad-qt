@@ -354,7 +354,7 @@ void DIALOG_PLOT_SCHEMATIC::plotSchematic( bool aPlotAll )
 
     getPlotOptions( &renderSettings );
 
-    std::unique_ptr<SCH_PLOTTER> schPlotter = std::make_unique<SCH_PLOTTER>( m_editFrame );
+    std::unique_ptr<SCH_PLOTTER> schPlotter = std::make_unique<SCH_PLOTTER>( &m_editFrame->Schematic() );
 
     SCH_PLOT_OPTS plotOpts;
     plotOpts.m_plotDrawingSheet = m_plotDrawingSheet->GetValue();

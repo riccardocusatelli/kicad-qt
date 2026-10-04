@@ -31,7 +31,7 @@ class FOOTPRINT;
 class JOB_EXPORT_PCB_GERBER;
 class JOB_EXPORT_PCB_GERBERS;
 class JOB_FP_EXPORT_SVG;
-class TOOL_MANAGER;
+class BOARD_COMMIT;
 
 /**
  * Run the Pcbnew jobs (exports, DRC, upgrades...).
@@ -70,8 +70,11 @@ protected:
     /// The board open in the board editor, if any (GUI only).
     virtual BOARD* getEditorBoard() { return nullptr; }
 
-    /// The tool manager of the board editor, if open (GUI only).
-    virtual TOOL_MANAGER* getEditorToolManager() { return nullptr; }
+    /// Fill the zones of @a aBoard (in the board editor, through its zone filler tool).
+    virtual void fillAllZones( BOARD* aBoard );
+
+    /// A commit on @a aBoard (in the board editor, one that updates the editor).
+    virtual std::unique_ptr<BOARD_COMMIT> makeCommit( BOARD* aBoard );
 
     /**
      * Get the netlist of the schematic open in the schematic editor (GUI only).
@@ -94,10 +97,7 @@ private:
 
     DS_PROXY_VIEW_ITEM* getDrawingSheetProxyView( BOARD* aBrd );
 
-    TOOL_MANAGER* getToolManager( BOARD* aBrd );
-
     BOARD* m_cliBoard;
-    std::unique_ptr<TOOL_MANAGER> m_toolManager;
 };
 
 #endif

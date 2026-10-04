@@ -102,7 +102,7 @@ public:
         TD_TYPE_TRACKEND    // specify a teardrop on a rond end of a wide track
     };
 
-    TEARDROP_MANAGER( BOARD* aBoard, TOOL_MANAGER* aToolManager );
+    explicit TEARDROP_MANAGER( BOARD* aBoard );
 
     /**
      * Remove teardrops connected to any dirty pads, vias or tracks.  They need to be removed
@@ -273,7 +273,6 @@ private:
     int                       m_tolerance;      // max dist between track end point and pad/via
                                                 //   center to see them connected to ut a teardrop
     BOARD*                    m_board;
-    TOOL_MANAGER*             m_toolManager;
     TEARDROP_PARAMETERS_LIST* m_prmsList;       // the teardrop parameters list, from the board design settings
 
     DRC_RTREE                 m_tracksRTree;

@@ -20,7 +20,9 @@
 
 #pragma once
 
-#include <widgets/wx_progress_reporters.h>
+#include <functional>
+
+#include <wx/string.h>
 
 class JOBSET;
 struct JOBSET_DESTINATION;
@@ -31,38 +33,15 @@ class REPORTER;
 class PROGRESS_REPORTER;
 class PROJECT;
 
-class JOBS_PROGRESS_REPORTER : public WX_PROGRESS_REPORTER
-{
-public:
-    JOBS_PROGRESS_REPORTER(wxWindow* aParent, const wxString& aTitle ) :
-            WX_PROGRESS_REPORTER( aParent, aTitle, 1000, PR_NO_ABORT )
-    {}
-
-    void AdvancePhase() override
-    {
-    }
-
-    void AdvanceJob( const wxString& aMessage )
-    {
-        m_jobStatus = aMessage;
-        WX_PROGRESS_REPORTER::Report( aMessage );
-    }
-
-    void Report( const wxString& aMessage ) override
-    {
-        WX_PROGRESS_REPORTER::Report( m_jobStatus + wxS( "\n" ) + aMessage );
-    }
-
-private:
-    wxString m_jobStatus;
-};
-
-
 class JOBS_RUNNER
 {
 public:
+    /// Called when a job starts, with a message saying which (for a progress dialog).
+    using JOB_STARTED_HANDLER = std::function<void( const wxString& aMessage )>;
+
     JOBS_RUNNER( KIWAY_SERVICES* aKiway, JOBSET* aJobsFile, PROJECT* aProject,
-                 REPORTER& aReporter, JOBS_PROGRESS_REPORTER* aProgressReporter );
+                 REPORTER& aReporter, PROGRESS_REPORTER* aProgressReporter,
+                 JOB_STARTED_HANDLER aJobStarted = nullptr );
 
     bool RunJobsAllDestinations( bool aBail = false );
     bool RunJobsForDestination( JOBSET_DESTINATION* aDestination, bool aBail = false );
@@ -76,6 +55,7 @@ private:
     KIWAY_SERVICES*         m_kiway;
     JOBSET*                 m_jobsFile;
     REPORTER&               m_reporter;
-    JOBS_PROGRESS_REPORTER* m_progressReporter;
+    PROGRESS_REPORTER*      m_progressReporter;
+    JOB_STARTED_HANDLER     m_jobStarted;
     PROJECT*                m_project;
 };

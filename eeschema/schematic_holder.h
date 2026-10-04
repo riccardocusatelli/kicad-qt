@@ -21,7 +21,6 @@
 
 class EDA_ITEM;
 class SCH_SCREEN;
-class SCH_SELECTION_TOOL;
 class SCH_GLOBALLABEL;
 
 /**
@@ -40,7 +39,11 @@ public:
      */
     virtual void AddToScreen( EDA_ITEM* aItem, SCH_SCREEN* aScreen = nullptr ) = 0;
 
-    virtual SCH_SELECTION_TOOL* GetSelectionTool() { return nullptr; }
+    /// @a aItem is being deleted: drop it from the selection.
+    virtual void RemoveFromSelection( EDA_ITEM* aItem ) {}
+
+    /// @a aItem replaces selected items: select it.
+    virtual void AddToSelection( EDA_ITEM* aItem ) {}
 
     virtual void RemoveFromScreen( EDA_ITEM* aItem, SCH_SCREEN* aScreen ) = 0;
 

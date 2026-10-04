@@ -35,19 +35,10 @@
 #include <kicommon.h>
 #include <libeval/numeric_evaluator.h>
 #include <units_provider.h>
+#include <table_group_type.h>
 
 class wxTextEntryBase;
 class ROW_ICON_PROVIDER;
-
-
-enum KICOMMON_API GROUP_TYPE
-{
-    GROUP_SINGLETON,
-    GROUP_COLLAPSED,
-    GROUP_COLLAPSED_DURING_SORT,
-    GROUP_EXPANDED,
-    CHILD_ITEM
-};
 
 
 class KICOMMON_API WX_GRID_TABLE_BASE : public wxGridTableBase

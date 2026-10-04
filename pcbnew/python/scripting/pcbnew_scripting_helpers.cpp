@@ -33,7 +33,6 @@
 
 #include "pcbnew_scripting_helpers.h"
 
-#include <action_plugin.h>
 #include <board.h>
 #include <board_design_settings.h>
 #include <settings/common_settings.h>
@@ -67,30 +66,31 @@
 #include <wx/image.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <base_screen.h>
 
-static PCB_EDIT_FRAME* s_PcbEditFrame = nullptr;
-static SETTINGS_MANAGER* s_SettingsManager = nullptr;
+static SCRIPTING_EDITOR_HOOKS s_editor;
+static SETTINGS_MANAGER*      s_SettingsManager = nullptr;
+
+
+void ScriptingSetEditorHooks( const SCRIPTING_EDITOR_HOOKS& aHooks )
+{
+    s_editor = aHooks;
+}
+
+
+/// True when the scripts run inside the board editor.
+static bool editorIsOpen()
+{
+    return static_cast<bool>( s_editor.getBoard );
+}
 
 
 BOARD* GetBoard()
 {
-    if( s_PcbEditFrame )
-        return s_PcbEditFrame->GetBoard();
+    if( editorIsOpen() )
+        return s_editor.getBoard();
     else
         return nullptr;
-}
-
-
-void ScriptingSetPcbEditFrame( PCB_EDIT_FRAME* aPcbEditFrame )
-{
-    s_PcbEditFrame = aPcbEditFrame;
-}
-
-
-void ScriptingOnDestructPcbEditFrame( PCB_EDIT_FRAME* aPcbEditFrame )
-{
-    if( s_PcbEditFrame == aPcbEditFrame )
-        s_PcbEditFrame = nullptr;
 }
 
 
@@ -116,9 +116,9 @@ SETTINGS_MANAGER* GetSettingsManager()
 {
     if( !s_SettingsManager )
     {
-        if( s_PcbEditFrame )
+        if( editorIsOpen() )
         {
-            s_SettingsManager = s_PcbEditFrame->GetSettingsManager();
+            s_SettingsManager = s_editor.getSettingsManager();
         }
         else
         {
@@ -159,11 +159,6 @@ BOARD* LoadBoard( const wxString& aFileName, PCB_IO_MGR::PCB_FILE_T aFormat, boo
     pro.MakeAbsolute();
     wxString projectPath = pro.GetFullPath();
 
-    // Ensure image handlers are loaded, because a board can include bitmap images
-    // using various formats.
-    // By default only the BMP handler is available.
-    wxInitAllImageHandlers();
-
     SETTINGS_MANAGER& settingsManager = PgmOrNull() ? Pgm().GetSettingsManager() : *GetSettingsManager();
 
     PROJECT* project = settingsManager.GetProject( projectPath );
@@ -174,10 +169,10 @@ BOARD* LoadBoard( const wxString& aFileName, PCB_IO_MGR::PCB_FILE_T aFormat, boo
         settingsManager.LoadProject( projectPath, aSetActive );
         project = settingsManager.GetProject( projectPath );
     }
-    else if( s_PcbEditFrame && project == &settingsManager.Prj() )
+    else if( editorIsOpen() && project == &settingsManager.Prj() )
     {
         // Project is already loaded?  Then so is the board
-        return s_PcbEditFrame->GetBoard();
+        return s_editor.getBoard();
     }
 
     // Board cannot be loaded without a project, so create the default project
@@ -311,7 +306,7 @@ BOARD* NewBoard( wxString& aFileName )
 BOARD* CreateEmptyBoard()
 {
     // Creating a new board is not possible if running inside KiCad
-    if( s_PcbEditFrame )
+    if( editorIsOpen() )
         return nullptr;
 
     BOARD* brd = new BOARD();
@@ -403,20 +398,6 @@ wxArrayString GetFootprints( const wxString& aNickName )
 }
 
 
-bool ExportSpecctraDSN( wxString& aFullFilename )
-{
-    if( s_PcbEditFrame )
-    {
-        bool ok = s_PcbEditFrame->ExportSpecctraFile( aFullFilename );
-        return ok;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-
 bool ExportSpecctraDSN( BOARD* aBoard, wxString& aFullFilename )
 {
     try
@@ -432,37 +413,6 @@ bool ExportSpecctraDSN( BOARD* aBoard, wxString& aFullFilename )
 }
 
 
-bool ExportVRML( const wxString& aFullFileName, double aMMtoWRMLunit, bool aIncludeUnspecified,
-                 bool aIncludeDNP, bool aExport3DFiles,
-                 bool aUseRelativePaths, const wxString& a3D_Subdir, double aXRef, double aYRef )
-{
-    if( s_PcbEditFrame )
-    {
-        bool ok = s_PcbEditFrame->ExportVRML_File( aFullFileName, aMMtoWRMLunit,
-                                                   aIncludeUnspecified, aIncludeDNP,
-                                                   aExport3DFiles, aUseRelativePaths,
-                                                   a3D_Subdir, aXRef, aYRef );
-        return ok;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-bool ImportSpecctraSES( wxString& aFullFilename )
-{
-    if( s_PcbEditFrame )
-    {
-        bool ok = s_PcbEditFrame->ImportSpecctraSession( aFullFilename );
-        return ok;
-    }
-    else
-    {
-        return false;
-    }
-}
-
 bool ImportSpecctraSES( BOARD* aBoard, wxString& aFullFilename )
 {
     try
@@ -475,78 +425,6 @@ bool ImportSpecctraSES( BOARD* aBoard, wxString& aFullFilename )
     }
 
     return true;
-}
-
-
-bool ExportFootprintsToLibrary( bool aStoreInNewLib, const wxString& aLibName, wxString* aLibPath )
-{
-    if( s_PcbEditFrame )
-    {
-        s_PcbEditFrame->ExportFootprintsToLibrary( aStoreInNewLib, aLibName, aLibPath );
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-void Refresh()
-{
-    if( s_PcbEditFrame )
-    {
-        s_PcbEditFrame->RebuildAndRefresh();
-    }
-}
-
-
-void UpdateUserInterface()
-{
-    if( s_PcbEditFrame )
-        s_PcbEditFrame->UpdateUserInterface();
-}
-
-
-int GetUserUnits()
-{
-    if( s_PcbEditFrame )
-        return static_cast<int>( s_PcbEditFrame->GetUserUnits() );
-
-    return -1;
-}
-
-
-std::deque<BOARD_ITEM*> GetCurrentSelection()
-{
-    std::deque<BOARD_ITEM*> items;
-
-    if( s_PcbEditFrame )
-    {
-        SELECTION& selection = s_PcbEditFrame->GetCurrentSelection();
-
-        std::for_each( selection.begin(), selection.end(),
-                       [&items]( EDA_ITEM* item )
-                       {
-                           if( item->IsBOARD_ITEM() )
-                               items.push_back( static_cast<BOARD_ITEM*>( item ) );
-                       } );
-    }
-
-    return items;
-}
-
-void FocusOnItem( BOARD_ITEM* aItem, PCB_LAYER_ID aLayer )
-{
-    if( s_PcbEditFrame )
-    {
-        s_PcbEditFrame->FocusOnItem( aItem, aLayer );
-    }
-}
-
-
-bool IsActionRunning()
-{
-    return ACTION_PLUGINS::IsActionRunning();
 }
 
 
@@ -724,7 +602,7 @@ bool WriteDRCReport( BOARD* aBoard, const wxString& aFileName, EDA_UNITS aUnits,
 
 wxString GetLanguage()
 {
-    if( s_PcbEditFrame )
+    if( editorIsOpen() )
         return GetSettingsManager()->GetCommonSettings()->m_System.language;
     else
         return "";

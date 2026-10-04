@@ -51,3 +51,24 @@ wxString formatSeverities( int aSeverities )
     return result;
 }
 
+
+SEVERITY SeverityFromString( const wxString& aSeverity )
+{
+    if( aSeverity == wxT( "warning" ) )
+        return RPT_SEVERITY_WARNING;
+    else if( aSeverity == wxT( "ignore" ) )
+        return RPT_SEVERITY_IGNORE;
+    else
+        return RPT_SEVERITY_ERROR;
+}
+
+
+wxString SeverityToString( const SEVERITY& aSeverity )
+{
+    if( aSeverity == RPT_SEVERITY_IGNORE )
+        return wxT( "ignore" );
+    else if( aSeverity == RPT_SEVERITY_WARNING )
+        return wxT( "warning" );
+    else
+        return wxT( "error" );
+}

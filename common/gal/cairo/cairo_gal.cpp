@@ -533,7 +533,7 @@ void CAIRO_GAL_BASE::DrawBitmap( const BITMAP_BASE& aBitmap, double alphaBlend )
     unsigned char* pix_buffer = cairo_image_surface_get_data( image );
 
     // The pixel buffer of the initial bitmap:
-    const wxImage& bm_pix_buffer = *aBitmap.GetImageData();
+    const RASTER_IMAGE& bm_pix_buffer = *aBitmap.GetImageData();
 
     uint32_t mask_color = ( bm_pix_buffer.GetMaskRed() << 16 )
                           + ( bm_pix_buffer.GetMaskGreen() << 8 ) + ( bm_pix_buffer.GetMaskBlue() );
@@ -548,7 +548,7 @@ void CAIRO_GAL_BASE::DrawBitmap( const BITMAP_BASE& aBitmap, double alphaBlend )
             unsigned char r = bm_pix_buffer.GetRed( col, row );
             unsigned char g = bm_pix_buffer.GetGreen( col, row );
             unsigned char b = bm_pix_buffer.GetBlue( col, row );
-            unsigned char a = wxALPHA_OPAQUE;
+            unsigned char a = 255;      // opaque
 
             if( bm_pix_buffer.HasAlpha() )
             {

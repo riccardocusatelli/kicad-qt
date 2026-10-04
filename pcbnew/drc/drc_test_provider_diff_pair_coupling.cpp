@@ -777,3 +777,5 @@ namespace detail
 {
     static DRC_REGISTER_TEST_PROVIDER<test::DRC_TEST_PROVIDER_DIFF_PAIR_COUPLING> dummy;
 }
+
+DRC_TEST_PROVIDER_LINK_ANCHOR( diff_pair_coupling )
