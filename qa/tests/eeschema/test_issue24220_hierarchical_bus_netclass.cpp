@@ -44,6 +44,7 @@
 #include <schematic.h>
 #include <settings/settings_manager.h>
 #include <string_utils.h>
+#include <reporter.h>
 
 
 struct ISSUE24220_FIXTURE

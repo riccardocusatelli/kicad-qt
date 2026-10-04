@@ -25,6 +25,7 @@
 #include <sch_io/sch_io.h>
 #include <project/net_settings.h>
 #include <project/project_file.h>
+#include <sch_screen.h>
 
 class TEST_SCH_NETCLASS_FIXTURE : public KI_TEST::SCHEMATIC_TEST_FIXTURE
 {};

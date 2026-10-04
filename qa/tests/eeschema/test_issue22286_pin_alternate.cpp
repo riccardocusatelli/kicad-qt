@@ -38,6 +38,7 @@
 #include <sch_pin.h>
 #include <sch_symbol.h>
 #include <wildcards_and_files_ext.h>
+#include <sch_screen.h>
 
 
 class TEST_ISSUE22286_FIXTURE : public KI_TEST::SCHEMATIC_TEST_FIXTURE

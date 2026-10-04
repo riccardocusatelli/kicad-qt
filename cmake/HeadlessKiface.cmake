@@ -21,12 +21,38 @@
 #  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 #
 
+# Link <target> with the archives and libraries of a headless kiface (see below).
+function( headless_link target kiface )
+    get_target_property( _archive_targets ${kiface} HEADLESS_ARCHIVE_TARGETS )
+    get_target_property( _libraries ${kiface} HEADLESS_LIBRARIES )
+
+    set( _archives "" )
+
+    foreach( _lib ${_archive_targets} )
+        list( APPEND _archives $<TARGET_FILE:${_lib}> )
+        add_dependencies( ${target} ${_lib} )
+    endforeach()
+
+    if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+        # The archives depend on each other: let the linker go through them until all the
+        # symbols are resolved.
+        target_link_libraries( ${target} PRIVATE
+            "-Wl,--start-group" ${_archives} "-Wl,--end-group"
+            ${_libraries} )
+
+        target_link_options( ${target} PRIVATE "LINKER:--no-undefined" )
+    else()
+        target_link_libraries( ${target} PRIVATE ${_archives} ${_archives} ${_libraries} )
+    endif()
+endfunction()
+
+
 # add_headless_kiface( <target>
 #     OUTPUT_NAME <name>              # builds _<name>.kiface
 #     SOURCES <files...>              # the KIFACE without GUI (KIFACE_GETTER, Kiface()), and
 #                                     # the headless definitions of editor functions
 #     OBJECTS <object library>        # the objects of the editor KIFACE
-#     USAGE <targets...>              # targets whose usage requirements SOURCE needs
+#     USAGE <targets...>              # targets whose usage requirements SOURCES need
 #     ARCHIVES <static libraries...>  # linked by file, without their link dependencies
 #     LIBRARIES <libraries...> )      # linked as usual; they must not bring the GUI toolkit
 #
@@ -37,7 +63,7 @@
 #
 # An object that is only reached through a static constructor (a self-registering DRC test
 # provider, for instance) is not pulled in: something must refer to it (see
-# DRC_TEST_PROVIDER_REGISTRY::LinkTestProviders()).
+# LinkDrcTestProviders()).
 function( add_headless_kiface target )
     cmake_parse_arguments( ARG "" "OUTPUT_NAME;OBJECTS" "SOURCES;USAGE;ARCHIVES;LIBRARIES" ${ARGN} )
 
@@ -56,22 +82,42 @@ function( add_headless_kiface target )
         LINKER_LANGUAGE CXX
         )
 
-    set( _archives $<TARGET_FILE:${target}_archive> )
+    set_target_properties( ${target} PROPERTIES
+        HEADLESS_ARCHIVE_TARGETS "${target}_archive;${ARG_ARCHIVES}"
+        HEADLESS_LIBRARIES       "${ARG_LIBRARIES}"
+        HEADLESS_USAGE           "${ARG_USAGE}"
+        )
 
-    foreach( _lib ${ARG_ARCHIVES} )
-        list( APPEND _archives $<TARGET_FILE:${_lib}> )
-        add_dependencies( ${target} ${_lib} )
-    endforeach()
+    headless_link( ${target} ${target} )
+endfunction()
 
-    if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
-        # The archives depend on each other: let the linker go through them until all the
-        # symbols are resolved.
-        target_link_libraries( ${target} PRIVATE
-            "-Wl,--start-group" ${_archives} "-Wl,--end-group"
-            ${ARG_LIBRARIES} )
 
-        target_link_options( ${target} PRIVATE "LINKER:--no-undefined" )
-    else()
-        target_link_libraries( ${target} PRIVATE ${_archives} ${_archives} ${ARG_LIBRARIES} )
-    endif()
+# add_headless_executable( <target>
+#     KIFACE <headless kiface target>
+#     SOURCES <files...> )
+#
+# Builds a program that uses the data model of a kiface directly, without loading it: it is
+# linked with the KIFACE source (Kiface()) and the same archives and libraries as the headless
+# kiface, so it is checked the same way (no GUI toolkit, --no-undefined).
+function( add_headless_executable target )
+    cmake_parse_arguments( ARG "" "KIFACE" "SOURCES" ${ARGN} )
+
+    get_target_property( _usage ${ARG_KIFACE} HEADLESS_USAGE )
+
+    # Compiled like the KIFACE source: same usage requirements, include directories and
+    # definitions (the editors set some of them for their whole directory).
+    add_library( ${target}_objects OBJECT ${ARG_SOURCES} )
+    target_link_libraries( ${target}_objects PRIVATE ${_usage} )
+    target_include_directories( ${target}_objects PRIVATE
+        $<TARGET_PROPERTY:${ARG_KIFACE}_iface,INCLUDE_DIRECTORIES> )
+    target_compile_definitions( ${target}_objects PRIVATE
+        $<TARGET_PROPERTY:${ARG_KIFACE}_iface,COMPILE_DEFINITIONS> )
+
+    add_executable( ${target}
+        $<TARGET_OBJECTS:${target}_objects>
+        $<TARGET_OBJECTS:${ARG_KIFACE}_iface> )
+
+    set_target_properties( ${target} PROPERTIES LINKER_LANGUAGE CXX )
+
+    headless_link( ${target} ${ARG_KIFACE} )
 endfunction()

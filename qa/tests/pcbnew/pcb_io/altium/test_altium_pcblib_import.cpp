@@ -26,10 +26,12 @@
  * Test suite for import of *.PcbLib libraries
  */
 
+// Before the wx headers: <wx/intl.h> defines a _() macro that clashes with Boost.Test data.
+#include <boost/test/data/test_case.hpp>
+
 #include <pcbnew_utils/board_test_utils.h>
 #include <pcbnew_utils/board_file_utils.h>
 #include <qa_utils/wx_utils/unit_test_utils.h>
-#include <boost/test/data/test_case.hpp>
 
 #include <pcbnew/pcb_io/altium/pcb_io_altium_designer.h>
 #include <pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h>

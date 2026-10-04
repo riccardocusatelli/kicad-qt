@@ -194,7 +194,10 @@ static struct CLASS_E_DESC
         wxArrayString labels;
         labels.Add( "T1" );
         labels.Add( "T3" );
-        PROPERTY_CHOICES newChoices( labels, values );
+        PROPERTY_CHOICES newChoices;
+
+        for( size_t i = 0; i < labels.size(); ++i )
+            newChoices.Add( labels[i], values[i] );
 
         PROPERTY_MANAGER& propMgr = PROPERTY_MANAGER::Instance();
         auto prop = new PROPERTY_ENUM<E, enum_glob, D>( "enumGlob",

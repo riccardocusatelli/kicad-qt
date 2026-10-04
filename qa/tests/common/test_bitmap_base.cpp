@@ -30,6 +30,7 @@
 
 // Code under test
 #include <bitmap_base.h>
+#include <raster_image_wx.h>
 
 #include "wximage_test_utils.h"
 
@@ -172,8 +173,10 @@ BOOST_AUTO_TEST_CASE( BasicProps )
  */
 BOOST_AUTO_TEST_CASE( BasicImage )
 {
-    const wxImage* img_data = m_4tile.GetImageData();
-    BOOST_REQUIRE_NE( img_data, nullptr );
+    BOOST_REQUIRE_NE( m_4tile.GetImageData(), nullptr );
+
+    const wxImage  image = ToWxImage( *m_4tile.GetImageData() );
+    const wxImage* img_data = &image;
 
     //   green, black,
     //   red,   blue
@@ -198,8 +201,10 @@ BOOST_AUTO_TEST_CASE( RotateImageCCW )
 {
     m_4tile.Rotate( true );  // true = CCW
 
-    const wxImage* img_data = m_4tile.GetImageData();
-    BOOST_REQUIRE_NE( img_data, nullptr );
+    BOOST_REQUIRE_NE( m_4tile.GetImageData(), nullptr );
+
+    const wxImage  image = ToWxImage( *m_4tile.GetImageData() );
+    const wxImage* img_data = &image;
 
     // Original:        After 90 CCW:
     //   green, black,     black, blue,
@@ -225,8 +230,10 @@ BOOST_AUTO_TEST_CASE( RotateImageCW )
 {
     m_4tile.Rotate( false );  // false = CW
 
-    const wxImage* img_data = m_4tile.GetImageData();
-    BOOST_REQUIRE_NE( img_data, nullptr );
+    BOOST_REQUIRE_NE( m_4tile.GetImageData(), nullptr );
+
+    const wxImage  image = ToWxImage( *m_4tile.GetImageData() );
+    const wxImage* img_data = &image;
 
     // Original:        After 90 CW:
     //   green, black,     red,   green,
@@ -252,8 +259,10 @@ BOOST_AUTO_TEST_CASE( MirrorImage )
 {
     m_4tile.Mirror( FLIP_DIRECTION::TOP_BOTTOM );
 
-    const wxImage* img_data = m_4tile.GetImageData();
-    BOOST_REQUIRE_NE( img_data, nullptr );
+    BOOST_REQUIRE_NE( m_4tile.GetImageData(), nullptr );
+
+    const wxImage  image = ToWxImage( *m_4tile.GetImageData() );
+    const wxImage* img_data = &image;
 
     //   red,   blue
     //   green, black
@@ -288,7 +297,7 @@ BOOST_AUTO_TEST_CASE( SetImageOutputsData )
 
     // Set the wxImage directly, not via a stream/file
     // (this happens, e.g. when the clipboard gives you a wxImage)
-    bitmap.SetImage( img );
+    bitmap.SetImage( FromWxImage( img ) );
 
     wxMemoryOutputStream mos;
     BOOST_CHECK( bitmap.SaveImageData( mos ) );
@@ -296,11 +305,13 @@ BOOST_AUTO_TEST_CASE( SetImageOutputsData )
     BOOST_REQUIRE( mos.GetSize() > 0 );
 
     // check the output is the same as the input
-    wxMemoryInputStream mis( mos );
-    wxImage             img2;
+    std::vector<unsigned char> data( mos.GetSize() );
+    mos.CopyTo( data.data(), data.size() );
 
-    BOOST_CHECK( img2.LoadFile( mis, wxBITMAP_TYPE_PNG ) );
+    RASTER_IMAGE decoded;
+    BOOST_CHECK( decoded.Load( data.data(), data.size() ) );
 
+    const wxImage img2 = ToWxImage( decoded );
     BOOST_CHECK_PREDICATE( KI_TEST::ImagesHaveSamePixels, (img) ( img2 ) );
 }
 

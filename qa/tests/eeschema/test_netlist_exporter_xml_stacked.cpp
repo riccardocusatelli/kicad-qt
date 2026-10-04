@@ -30,6 +30,7 @@
 
 #include <wx/filename.h>
 #include <wx/xml/xml.h>
+#include <reporter.h>
 
 struct XML_STACKED_PIN_FIXTURE
 {

@@ -21,6 +21,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+// Before the wx headers: <wx/intl.h> defines a _() macro that clashes with Boost.Test data.
+#include <boost/test/data/test_case.hpp>
+
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
 #include "allegro_block_tests.h"
@@ -29,7 +32,6 @@
 #include <filesystem>
 #include <fstream>
 
-#include <boost/test/data/test_case.hpp>
 
 #include <json_common.h>
 

@@ -23,6 +23,7 @@
 
 #include <sch_reference_list.h>
 #include <sch_sheet_path.h> // SCH_MULTI_UNIT_REFERENCE_MAP
+#include <sch_screen.h>
 
 
 struct REANNOTATED_REFERENCE

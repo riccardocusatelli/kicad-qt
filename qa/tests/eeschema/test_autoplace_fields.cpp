@@ -33,6 +33,7 @@
 #include <sch_field.h>
 #include <sch_item.h>
 #include <geometry/eda_angle.h>
+#include <sch_screen.h>
 
 
 class TEST_AUTOPLACE_FIELDS_FIXTURE : public KI_TEST::SCHEMATIC_TEST_FIXTURE

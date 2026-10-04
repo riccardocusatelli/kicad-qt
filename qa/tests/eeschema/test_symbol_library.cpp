@@ -25,6 +25,7 @@
 #include "eeschema_test_utils.h"
 
 #include <libraries/symbol_library_adapter.h>
+#include <wx/utils.h>
 
 // NOTE: this is for the new symbol library manager adapter and
 // library manager system.  There is also test_symbol_library_manager.cpp

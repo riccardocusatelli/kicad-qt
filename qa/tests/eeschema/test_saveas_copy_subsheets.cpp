@@ -37,6 +37,7 @@
 #include <wx/filename.h>
 #include <wx/ffile.h>
 #include <wx/filefn.h>
+#include <sch_screen.h>
 
 class SAVEAS_SUBSHEET_FIXTURE : public KI_TEST::SCHEMATIC_TEST_FIXTURE
 {
