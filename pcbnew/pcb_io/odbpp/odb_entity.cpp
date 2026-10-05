@@ -30,6 +30,7 @@
 #include <convert_basic_shapes_to_polygon.h>
 #include <font/font.h>
 #include <footprint.h>
+#include <pcb_io/common/footprint_order.h>
 #include <hash_eda.h>
 #include <pad.h>
 #include <padstack.h>
@@ -699,20 +700,14 @@ void ODB_LAYER_ENTITY::InitFeatureData()
     if( m_layerItems.empty() )
         return;
 
-    const NETINFO_LIST& nets = m_board->GetNetInfo();
+    const NETINFO_LIST&   nets = m_board->GetNetInfo();
+    const FOOTPRINT_ORDER footprintOrder( m_board );
 
     for( const NETINFO_ITEM* net : nets )
     {
         std::vector<BOARD_ITEM*>& vec = m_layerItems[net->GetNetCode()];
 
-        std::stable_sort( vec.begin(), vec.end(),
-                          []( BOARD_ITEM* a, BOARD_ITEM* b )
-                          {
-                              if( a->GetParentFootprint() == b->GetParentFootprint() )
-                                  return a->Type() < b->Type();
-
-                              return a->GetParentFootprint() < b->GetParentFootprint();
-                          } );
+        std::stable_sort( vec.begin(), vec.end(), footprintOrder );
 
         if( vec.empty() )
             continue;

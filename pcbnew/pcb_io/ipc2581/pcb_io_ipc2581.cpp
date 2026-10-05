@@ -46,6 +46,7 @@
 #include <settings/settings_manager.h>
 #include <string_utils.h>
 #include <wx_fstream_progress.h>
+#include <pcb_io/common/footprint_order.h>
 
 #include <geometry/shape_line_chain.h>
 #include <geometry/shape_poly_set.h>
@@ -3501,6 +3502,8 @@ void PCB_IO_IPC2581::generateLayerFeatures( wxXmlNode* aStepNode )
         }
     }
 
+    const FOOTPRINT_ORDER footprintOrder( m_board );
+
     for( PCB_LAYER_ID layer : layers )
     {
         if( m_progressReporter )
@@ -3516,14 +3519,7 @@ void PCB_IO_IPC2581::generateLayerFeatures( wxXmlNode* aStepNode )
             if( vec.empty() )
                 return;
 
-            std::stable_sort( vec.begin(), vec.end(),
-                       []( BOARD_ITEM* a, BOARD_ITEM* b )
-                       {
-                            if( a->GetParentFootprint() == b->GetParentFootprint() )
-                                return a->Type() < b->Type();
-
-                            return a->GetParentFootprint() < b->GetParentFootprint();
-                       } );
+            std::stable_sort( vec.begin(), vec.end(), footprintOrder );
 
             generateLayerSetNet( layerNode, layer, vec );
         };
@@ -4051,8 +4047,15 @@ wxXmlNode* PCB_IO_IPC2581::generateAvlSection()
     std::set<wxString> unique_parts;
     std::map<wxString,wxString> unique_vendors;
 
-    for( auto& [fp, name] : m_OEMRef_dict )
+    // In the order of the board: the first footprint of each part gives its vendor data
+    for( FOOTPRINT* fp : m_board->Footprints() )
     {
+        auto refIt = m_OEMRef_dict.find( fp );
+
+        if( refIt == m_OEMRef_dict.end() )
+            continue;
+
+        const wxString& name = refIt->second;
         auto [ it, success ] = unique_parts.insert( name );
 
         if( !success )
