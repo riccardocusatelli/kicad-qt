@@ -33,10 +33,12 @@ set( QA_UTIL_COMMON_SRC
 
     wx_utils/unit_test_utils.cpp
     wx_utils/wx_assert.cpp
-
-    # PDF testing helpers
-    pdf_test_utils.cpp
 )
+
+# PDF testing helpers (they decode images with wxImage, so not without wxWidgets)
+if( NOT KICAD_WX_FREE )
+    list( APPEND QA_UTIL_COMMON_SRC pdf_test_utils.cpp )
+endif()
 
 # A generic library of useful functions for various testing purposes
 add_library( qa_utils STATIC

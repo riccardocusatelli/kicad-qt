@@ -72,11 +72,19 @@ endmacro()
 
 # Shared QA helper libraries
 add_subdirectory( qa_utils )
-add_subdirectory( pcbnew_utils )
-add_subdirectory( schematic_utils )
+
+# Without wxWidgets (KICAD_WX_FREE) only the suites that do not use the GUI are built
+if( NOT KICAD_WX_FREE )
+    add_subdirectory( pcbnew_utils )
+    add_subdirectory( schematic_utils )
+endif()
 
 # Unit tests
 add_subdirectory( tests )
+
+if( KICAD_WX_FREE )
+    return()
+endif()
 
 # Utility/debugging/profiling programs
 add_subdirectory( tools )

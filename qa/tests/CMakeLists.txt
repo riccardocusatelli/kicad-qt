@@ -20,15 +20,20 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 
 ## Unit tests
-add_subdirectory( api )
-add_subdirectory( common )
-add_subdirectory( gerbview )
-add_subdirectory( eeschema )
+# Without wxWidgets (KICAD_WX_FREE): the library suites, the headless programs and the tests of
+# kicad-cli; the other suites use the GUI
+if( NOT KICAD_WX_FREE )
+    add_subdirectory( api )
+    add_subdirectory( common )
+    add_subdirectory( gerbview )
+    add_subdirectory( eeschema )
+    add_subdirectory( pcbnew )
+endif()
+
 add_subdirectory( libs )
-add_subdirectory( pcbnew )
 add_subdirectory( headless )
 
-if( KICAD_SPICE_QA )
+if( KICAD_SPICE_QA AND NOT KICAD_WX_FREE )
     add_subdirectory( spice )
 endif()
 
@@ -49,7 +54,8 @@ elseif ( MSVC )
     set( EXTRA_PYTEST_ENVIRONMENT "FONTCONFIG_PATH=${CMAKE_SOURCE_DIR}/qa/resources/windows/fonts/" )
 endif()
 
-if( NOT (MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug") )
+# qa_python needs the pcbnew Python module, which is not built without wxWidgets
+if( NOT KICAD_WX_FREE AND NOT (MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug") )
 # qa_python will never work under MSVC + Debug because we only have the Release mode python.exe
 # but the kicad binaries are linked to the debug mode python
 # Test that runs the QA tests through scripting

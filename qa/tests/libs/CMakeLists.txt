@@ -24,6 +24,6 @@
 add_subdirectory( sexpr )
 add_subdirectory( kimath )
 
-if( KICAD_IPC_API )
+if( KICAD_IPC_API AND NOT KICAD_WX_FREE )
     add_subdirectory( kinng )
 endif()

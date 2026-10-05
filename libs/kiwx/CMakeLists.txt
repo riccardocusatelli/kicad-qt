@@ -39,8 +39,10 @@ add_library( kiwx SHARED
     src/files.cpp
     src/format.cpp
     src/gdicmn.cpp
+    src/init.cpp
     src/intl.cpp
     src/log.cpp
+    src/msgout.cpp
     src/regex.cpp
     src/stdpaths.cpp
     src/strconv.cpp

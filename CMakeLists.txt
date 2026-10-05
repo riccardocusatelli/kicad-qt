@@ -142,9 +142,9 @@ option( KICAD_WX_FREE
     OFF )
 
 if( KICAD_WX_FREE )
-    # Nothing of the GUI: no wxPython, no QA suites (they use the GUI), no update check
+    # Nothing of the GUI: no wxPython, no update check.  The QA builds only the suites without
+    # the GUI (see qa/CMakeLists.txt).
     set( KICAD_SCRIPTING_WXPYTHON OFF CACHE BOOL "" FORCE )
-    set( KICAD_BUILD_QA_TESTS OFF CACHE BOOL "" FORCE )
     set( KICAD_UPDATE_CHECK OFF CACHE BOOL "" FORCE )
 endif()
 

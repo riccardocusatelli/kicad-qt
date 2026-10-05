@@ -138,6 +138,11 @@ function( kicad_wx_free_restrict_targets )
         eeschema_cli_kiface eeschema_cli_kiface_archive
         pcbnew_cli_kiface pcbnew_cli_kiface_archive
         s3d_plugin_idf s3d_plugin_oce s3d_plugin_vrml     # 3D models (VRML export, render)
+
+        # The QA without the GUI (KICAD_BUILD_QA_TESTS, see qa/CMakeLists.txt)
+        qa_utils qa_kimath qa_sexpr
+        qa_headless_pcbnew qa_headless_pcbnew_objects
+        qa_headless_eeschema qa_headless_eeschema_objects
         ${KICAD_WX_FREE_EXTRA_TARGETS}
         )
 
