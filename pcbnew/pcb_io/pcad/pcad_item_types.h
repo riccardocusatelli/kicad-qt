@@ -28,7 +28,7 @@
 
 #include <wx/dynarray.h>
 
-class wxRealPoint;
+#include <wx/gdicmn.h>     // wxRealPoint
 
 WX_DEFINE_ARRAY( wxRealPoint*, VERTICES_ARRAY );
 WX_DEFINE_ARRAY( VERTICES_ARRAY*, ISLANDS_ARRAY );

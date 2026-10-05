@@ -24,7 +24,7 @@
 
 #include <iostream>
 #include <sstream>
-#include <wx/dynload.h>
+#include <wx/dynlib.h>
 #include <wx/log.h>
 #include <wx/string.h>
 #include <wx/translation.h>

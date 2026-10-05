@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <dialogs/dialog_color_picker.h>
+#include <custom_color_item.h>
 #include <export_vrml.h>
 
 // offset for art layers, mm (silk, paste, etc)

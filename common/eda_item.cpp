@@ -32,7 +32,6 @@
 #include <i18n_utility.h>
 #include <wx/log.h>
 
-#include <wx/fdrepdlg.h>
 #include <wx/regex.h>
 #include <eda_pattern_match.h>
 #include <properties/property.h>

@@ -23,7 +23,6 @@
  */
 
 #include <wx/log.h>
-#include <wx/menu.h>
 
 #include <advanced_config.h>
 #include <base_units.h>

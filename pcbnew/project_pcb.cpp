@@ -28,6 +28,8 @@
 #include <paths.h>
 #include <settings/common_settings.h>
 #include <footprint_library_adapter.h>
+#include <kiface_ids.h>
+#include <lib_id.h>
 
 #include <mutex>
 #include <core/ki_assert.h>
@@ -114,4 +116,31 @@ void PROJECT_PCB::Cleanup3DCache( PROJECT* aProject )
         if( clearCacheInterval > 0 )
             cache->CleanCacheDir( clearCacheInterval );
     }
+}
+
+
+int PROJECT_PCB::TestFootprintLink( const wxString& aFootprint, PROJECT* aProject )
+{
+    FOOTPRINT_LIBRARY_ADAPTER* adapter = FootprintLibAdapter( aProject );
+    LIB_ID                     fpID;
+
+    fpID.Parse( aFootprint );
+
+    wxString libName = fpID.GetLibNickname();
+    wxString fpName = fpID.GetLibItemName();
+
+    // TODO(JE) this is a bit of a hack; CLI lazy-loading of libraries should be more unified
+    // Libraries may not be present at this point if running in kicad-cli because nothings will
+    // have triggered a load up to this point
+    if( !adapter->GetLibraryStatus( libName ) )
+        adapter->LoadOne( libName );
+
+    if( !adapter->HasLibrary( libName, false ) )
+        return KIFACE_TEST_FOOTPRINT_LINK_NO_LIBRARY;
+    else if( !adapter->HasLibrary( libName, true ) )
+        return KIFACE_TEST_FOOTPRINT_LINK_LIBRARY_NOT_ENABLED;
+    else if( !adapter->FootprintExists( libName, fpName ) )
+        return KIFACE_TEST_FOOTPRINT_LINK_NO_FOOTPRINT;
+
+    return 0;
 }

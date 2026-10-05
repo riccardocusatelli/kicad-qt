@@ -29,6 +29,7 @@
 #define  PANELGAL_WXSTRUCT_H
 
 #include <wx/window.h>
+#include <gal/gal_backend.h>
 #include <wx/timer.h>
 #include <wx/grid.h> // needed for MSVC to see wxScrolledCanvas indirectly exported
 #include <math/box2.h>
@@ -63,13 +64,8 @@ struct VC_SETTINGS;
 class EDA_DRAW_PANEL_GAL : public wxScrolledCanvas
 {
 public:
-    enum GAL_TYPE {
-        GAL_TYPE_UNKNOWN = -1,  ///< not specified: a GAL engine must be set by the client
-        GAL_TYPE_NONE = 0,      ///< GAL not used (the legacy wxDC engine is used)
-        GAL_TYPE_OPENGL,        ///< OpenGL implementation
-        GAL_TYPE_CAIRO,         ///< Cairo implementation
-        GAL_TYPE_LAST           ///< Sentinel, do not use as a parameter
-    };
+    typedef KIGFX::GAL_BACKEND_TYPE GAL_TYPE;
+    using enum KIGFX::GAL_BACKEND_TYPE;
 
 #ifdef __WXMAC__
     // Cairo doesn't work on OSX so we really have no fallback available.

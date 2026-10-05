@@ -133,7 +133,7 @@ public:
 
     struct GRAPHICS
     {
-        int canvas_type; ///< EDA_DRAW_PANEL_GAL::GAL_TYPE_* value, see gal_options_panel.cpp
+        int canvas_type; ///< KIGFX::GAL_BACKEND_TYPE value, see gal_options_panel.cpp
         int aa_mode;
     };
 

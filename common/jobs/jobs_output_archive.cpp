@@ -20,9 +20,8 @@
 
 #include <jobs/jobs_output_archive.h>
 #include <wx/filename.h>
-#include <wx/fs_zip.h>
-#include <wx/wfstream.h>
 #include <wx/zipstrm.h>
+#include <wx/wfstream.h>
 #include <gestfich.h>
 #include <common.h>
 #include <wildcards_and_files_ext.h>

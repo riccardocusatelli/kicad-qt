@@ -35,7 +35,6 @@
 #include <core/arraydim.h>
 #include <geometry/shape_line_chain.h>
 #include <geometry/geometry_utils.h>
-#include "dialogs/dialog_display_html_text_base.h"
 
 
 /**

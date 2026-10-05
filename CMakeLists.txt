@@ -136,6 +136,18 @@ option( KICAD_UPDATE_CHECK
     "Build in update check"
     ON )
 
+# The core and kicad-cli without wxWidgets, on the kiwx library (see cmake/WxFree.cmake)
+option( KICAD_WX_FREE
+    "Build only the core libraries and kicad-cli, without wxWidgets (default OFF)"
+    OFF )
+
+if( KICAD_WX_FREE )
+    # Nothing of the GUI: no wxPython, no QA suites (they use the GUI), no update check
+    set( KICAD_SCRIPTING_WXPYTHON OFF CACHE BOOL "" FORCE )
+    set( KICAD_BUILD_QA_TESTS OFF CACHE BOOL "" FORCE )
+    set( KICAD_UPDATE_CHECK OFF CACHE BOOL "" FORCE )
+endif()
+
 cmake_dependent_option( KICAD_WAYLAND
     "Support Wayland features"
     ON "UNIX_NOT_APPLE"
@@ -1063,90 +1075,95 @@ if( WXPYTHON_FLAVOR )
         "(wxWidgets ${WXPYTHON_WXVERSION})" )
 endif()
 
-#
-# Find wxWidgets library, required
-#
-
-# Check if '--toolkit=xxx' option has been passed
-string( REGEX MATCH "--toolkit=([a-zA-Z0-9]+)"
-    WXWIDGETS_REQUESTED_TOOLKIT "${wxWidgets_CONFIG_OPTIONS}" )
-
-if( WXWIDGETS_REQUESTED_TOOLKIT
-        AND NOT WXWIDGETS_REQUESTED_TOOLKIT STREQUAL "--toolkit=${WXPYTHON_TOOLKIT}" )
-    message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
-        "It will be fixed automatically if you skip the '--toolkit=xxx' "
-        "wxWidgets_CONFIG_OPTIONS parameter.")
-elseif( UNIX AND NOT APPLE )
-    # Force the use of GTK3 on Linux
-    set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
+if( KICAD_WX_FREE )
+    include( WxFree )
+    kicad_wx_free_setup()
 else()
-    # Use the same toolkit as wxPython otherwise there will be a symbol conflict
-    set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=${WXPYTHON_TOOLKIT}" )
-endif()
+    #
+    # Find wxWidgets library, required
+    #
 
-# Require the same wxWidgets version as is used by wxPython
-if( KICAD_SCRIPTING_WXPYTHON )
-    set( wxWidgets_REQ_VERSION ${WXPYTHON_WXVERSION} )
-else()
-    set( wxWidgets_REQ_VERSION 3.2.0 )
-endif()
+    # Check if '--toolkit=xxx' option has been passed
+    string( REGEX MATCH "--toolkit=([a-zA-Z0-9]+)"
+        WXWIDGETS_REQUESTED_TOOLKIT "${wxWidgets_CONFIG_OPTIONS}" )
 
-# See line 49 of cmake/FindwxWidgets.cmake
-set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --static=no )
-
-find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS gl aui adv html core net base propgrid xml stc richtext webview REQUIRED )
-
-# Include wxWidgets macros.
-include( ${wxWidgets_USE_FILE} )
-
-# wxBase (with its net and xml companions) without the GUI libraries: for the parts of KiCad
-# that must not use the GUI (kicommon_model, kiplatform_core, core, kicad-cli).
-set( wxWidgets_BASE_LIBRARIES "" )
-
-foreach( _wxlib ${wxWidgets_LIBRARIES} )
-    if( NOT _wxlib MATCHES "wx_?(gtk|msw|osx|qt|x11|univ)[0-9]*u?_" )
-        list( APPEND wxWidgets_BASE_LIBRARIES ${_wxlib} )
+    if( WXWIDGETS_REQUESTED_TOOLKIT
+            AND NOT WXWIDGETS_REQUESTED_TOOLKIT STREQUAL "--toolkit=${WXPYTHON_TOOLKIT}" )
+        message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
+            "It will be fixed automatically if you skip the '--toolkit=xxx' "
+            "wxWidgets_CONFIG_OPTIONS parameter.")
+    elseif( UNIX AND NOT APPLE )
+        # Force the use of GTK3 on Linux
+        set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
+    else()
+        # Use the same toolkit as wxPython otherwise there will be a symbol conflict
+        set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=${WXPYTHON_TOOLKIT}" )
     endif()
-endforeach()
 
-# Detect wxWidgets port being used
-if( wxWidgets_FIND_STYLE STREQUAL "win32" )
-    string(REGEX MATCH "(msw|qt|gtk)" KICAD_WX_PORT "${WX_CONFIGURATION}")
-
-    if( KICAD_WX_PORT STREQUAL "qt" )
-        add_compile_definitions( __WXQT__ )
-    elseif( KICAD_WX_PORT STREQUAL "gtk" )
-        add_compile_definitions( __WXGTK__ )
+    # Require the same wxWidgets version as is used by wxPython
+    if( KICAD_SCRIPTING_WXPYTHON )
+        set( wxWidgets_REQ_VERSION ${WXPYTHON_WXVERSION} )
+    else()
+        set( wxWidgets_REQ_VERSION 3.2.0 )
     endif()
-elseif( _wx_selected_config )
-    string(REGEX MATCH "(msw|qt|gtk|osx)" KICAD_WX_PORT "${_wx_selected_config}")
-endif()
 
-if( KICAD_WX_PORT )
-    message( STATUS "Detected wxWidgets port: ${KICAD_WX_PORT}")
-else()
-    message( FATAL_ERROR "Unable to detect wxWidgets port")
-endif()
+    # See line 49 of cmake/FindwxWidgets.cmake
+    set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --static=no )
 
-if( NOT MSVC )
-    if( ${wxWidgets_VERSION_STRING} VERSION_LESS 3.2 )
-        message( FATAL_ERROR "wxWidgets 3.2.0 or greater is required" )
+    find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS gl aui adv html core net base propgrid xml stc richtext webview REQUIRED )
+
+    # Include wxWidgets macros.
+    include( ${wxWidgets_USE_FILE} )
+
+    # wxBase (with its net and xml companions) without the GUI libraries: for the parts of KiCad
+    # that must not use the GUI (kicommon_model, kiplatform_core, core, kicad-cli).
+    set( wxWidgets_BASE_LIBRARIES "" )
+
+    foreach( _wxlib ${wxWidgets_LIBRARIES} )
+        if( NOT _wxlib MATCHES "wx_?(gtk|msw|osx|qt|x11|univ)[0-9]*u?_" )
+            list( APPEND wxWidgets_BASE_LIBRARIES ${_wxlib} )
+        endif()
+    endforeach()
+
+    # Detect wxWidgets port being used
+    if( wxWidgets_FIND_STYLE STREQUAL "win32" )
+        string(REGEX MATCH "(msw|qt|gtk)" KICAD_WX_PORT "${WX_CONFIGURATION}")
+
+        if( KICAD_WX_PORT STREQUAL "qt" )
+            add_compile_definitions( __WXQT__ )
+        elseif( KICAD_WX_PORT STREQUAL "gtk" )
+            add_compile_definitions( __WXGTK__ )
+        endif()
+    elseif( _wx_selected_config )
+        string(REGEX MATCH "(msw|qt|gtk|osx)" KICAD_WX_PORT "${_wx_selected_config}")
     endif()
-endif()
 
-if( MINGW )
-    # This needs to be on a separate line to protect against a broken FindWxWidgets.cmake in vcpkg
-    if( ${wxWidgets_VERSION_STRING} VERSION_LESS 3.1 )
-        # Work around a bug in wx < 3.1 -- when wx itself is compiled with
-        # compiler extensions enabled, it assumes these are also available for
-        # applications.
-        add_definitions( -U__STRICT_ANSI__ )
+    if( KICAD_WX_PORT )
+        message( STATUS "Detected wxWidgets port: ${KICAD_WX_PORT}")
+    else()
+        message( FATAL_ERROR "Unable to detect wxWidgets port")
     endif()
-endif()
 
-message(STATUS "wxUSE_GLCANVAS_EGL=${wxWidgets_GLCANVAS_EGL}")
-message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
-message(STATUS "wxHAS_EGL=${wxWidgets_HAS_EGL}")
+    if( NOT MSVC )
+        if( ${wxWidgets_VERSION_STRING} VERSION_LESS 3.2 )
+            message( FATAL_ERROR "wxWidgets 3.2.0 or greater is required" )
+        endif()
+    endif()
+
+    if( MINGW )
+        # This needs to be on a separate line to protect against a broken FindWxWidgets.cmake in vcpkg
+        if( ${wxWidgets_VERSION_STRING} VERSION_LESS 3.1 )
+            # Work around a bug in wx < 3.1 -- when wx itself is compiled with
+            # compiler extensions enabled, it assumes these are also available for
+            # applications.
+            add_definitions( -U__STRICT_ANSI__ )
+        endif()
+    endif()
+
+    message(STATUS "wxUSE_GLCANVAS_EGL=${wxWidgets_GLCANVAS_EGL}")
+    message(STATUS "wxHAS_GLX=${wxWidgets_HAS_GLX}")
+    message(STATUS "wxHAS_EGL=${wxWidgets_HAS_EGL}")
+endif()
 
 # Find OpenGL with GLU
 find_package( OpenGL REQUIRED )
@@ -1257,6 +1274,11 @@ add_subdirectory( utils )
 
 if( KICAD_BUILD_QA_TESTS )
     add_subdirectory( qa )
+endif()
+
+if( KICAD_WX_FREE )
+    # Only the targets of kicad-cli, with the sources it links
+    kicad_wx_free_restrict_targets()
 endif()
 
 # Demos

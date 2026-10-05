@@ -28,6 +28,7 @@
 #include <pcbnew_settings.h>
 #include <footprint_editor_settings.h>
 #include <panel_edit_options.h>
+#include <widgets/ui_common.h>
 #include <geometry/geometry_utils.h>
 #include <core/ki_assert.h>
 

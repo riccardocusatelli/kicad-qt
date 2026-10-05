@@ -28,7 +28,6 @@
  * @brief Functions for file management
  */
 
-#include <wx/mimetype.h>
 #include <wx/dir.h>
 #include <wx/stdpaths.h>
 
@@ -43,7 +42,6 @@
 #include <sexpr/sexpr_parser.h>
 
 #include <wx/wfstream.h>
-#include <wx/fs_zip.h>
 #include <wx/zipstrm.h>
 
 #include <filesystem>

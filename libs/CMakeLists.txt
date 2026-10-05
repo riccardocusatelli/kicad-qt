@@ -22,6 +22,10 @@
 #
 
 # Build file for generic re-useable libraries
+if( KICAD_WX_FREE )
+    add_subdirectory( kiwx )
+endif()
+
 add_subdirectory( core )
 add_subdirectory( kimath )
 add_subdirectory( kiplatform )

@@ -32,7 +32,6 @@
 #include <vector>
 #include <cctype>
 #include <odb_netlist.h>
-#include <wx/filedlg.h>
 #include <wx/log.h>
 #include "odb_util.h"
 

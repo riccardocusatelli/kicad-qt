@@ -22,7 +22,7 @@
 #include <fstream>
 #include <sstream>
 
-#include <class_draw_panel_gal.h>
+#include <gal/gal_backend.h>
 #include <env_vars.h>
 #include <paths.h>
 #include <search_stack.h>
@@ -38,7 +38,13 @@
 #include <wx/log.h>
 #include <wx/regex.h>
 #include <wx/tokenzr.h>
+#include <wx/utils.h>
+
+#ifndef KICAD_WX_FREE
 #include <wx/window.h>
+#else
+#include <wx/gdicmn.h>
+#endif
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
@@ -326,7 +332,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
             &m_SpaceMouse.reverse_zoom, false ) );
 
     m_params.emplace_back( new PARAM<int>( "graphics.canvas_type",
-            &m_Graphics.canvas_type, EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL ) );
+            &m_Graphics.canvas_type, KIGFX::GAL_TYPE_OPENGL ) );
 
     m_params.emplace_back( new PARAM<int>( "graphics.antialiasing_mode",
             &m_Graphics.aa_mode, 2, 0, 2 ) );
@@ -716,7 +722,12 @@ bool COMMON_SETTINGS::migrateSchema4to5()
             int w = geom.value( "w", 0 );
             int h = geom.value( "h", 0 );
 
+#ifdef KICAD_WX_FREE
+            // without a display (core build without wxWidgets) pixels and DIP are the same
+            wxSize dipSize( w, h );
+#else
             wxSize dipSize = wxWindow::ToDIP( wxSize( w, h ), nullptr );
+#endif
             geom[ "w" ] = dipSize.x;
             geom[ "h" ] = dipSize.y;
 

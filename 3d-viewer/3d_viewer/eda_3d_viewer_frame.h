@@ -33,8 +33,8 @@
 #ifndef EDA_3D_VIEWER_H
 #define EDA_3D_VIEWER_H
 
-#include "3d_canvas/board_adapter.h"
 #include "3d_canvas/eda_3d_canvas.h"
+#include "3d_canvas/board_adapter.h"
 #include "3d_rendering/track_ball.h"
 #include <kiway_player.h>
 #include <pcb_base_frame.h>

@@ -37,7 +37,6 @@
 #include <wx/wfstream.h>
 #include <wx/mstream.h>
 #include <wx/zipstrm.h>
-#include <wx/fs_zip.h>
 #include <wx/log.h>
 
 #include <json_common.h>

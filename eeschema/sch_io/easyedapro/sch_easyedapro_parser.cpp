@@ -40,7 +40,6 @@
 #include <bezier_curves.h>
 #include <wx/base64.h>
 #include <wx/log.h>
-#include <wx/url.h>
 #include <wx/mstream.h>
 #include <gfx_import_utils.h>
 #include <import_gfx/svg_import_plugin.h>

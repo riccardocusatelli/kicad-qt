@@ -24,7 +24,6 @@
 #include <wx/debug.h>
 #include <wx/dir.h>
 #include <wx/filename.h>
-#include <wx/snglinst.h>
 #include <wx/stdpaths.h>
 #include <wx/utils.h>
 

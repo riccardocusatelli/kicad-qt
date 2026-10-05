@@ -36,7 +36,7 @@
 #include <wx/log.h>
 #include <wx/stdpaths.h>
 #include <wx/string.h>
-#include <wx/utils.h>
+#include <wx/filefn.h>
 #include <wx/wfstream.h>
 #include <wx/zipstrm.h>
 
@@ -639,7 +639,6 @@ bool readSTEPZ( Handle(TDocStd_Document)& m_doc, const char* aFileName )
     outFile.SetExt( wxT( "STEP" ) );
 
     wxFileOffset size = ifile.GetLength();
-    wxBusyCursor busycursor;
 
     if( size == wxInvalidOffset )
         return false;

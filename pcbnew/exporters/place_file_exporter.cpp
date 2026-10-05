@@ -37,7 +37,6 @@
 
 #include <fmt/format.h>
 
-#include <wx/dirdlg.h>
 #include <core/ki_assert.h>
 
 class LIST_MOD      // An helper class used to build a list of useful footprints.

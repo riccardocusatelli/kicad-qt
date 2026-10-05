@@ -32,6 +32,7 @@
 #include <wx/filename.h>
 
 #include <kicommon.h>
+#include <widgets/report_severity.h>
 
 class PROJECT;
 
@@ -527,7 +528,14 @@ KICOMMON_API wxString GetDefaultVariantName();
 
 KICOMMON_API int SortVariantNames( const wxString& aLhs, const wxString& aRhs );
 
-struct LOAD_MESSAGE;
+/**
+ * A load message with its severity.
+ */
+struct LOAD_MESSAGE
+{
+    wxString  message;
+    SEVERITY  severity;
+};
 
 /**
  * Parse library load error messages, extracting user-facing information while

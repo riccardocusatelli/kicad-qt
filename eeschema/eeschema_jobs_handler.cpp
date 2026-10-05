@@ -1272,7 +1272,9 @@ int EESCHEMA_JOBS_HANDLER::JobSchErc( JOB* aJob )
     ERC_TESTER ercTester( sch );
 
     std::unique_ptr<DS_PROXY_VIEW_ITEM> drawingSheet( getDrawingSheetProxyView( sch ) );
-    ercTester.RunTests( drawingSheet.get(), {}, m_kiway->KiFACE( KIWAY_FACES::FACE_CVPCB ),
+    // The footprint links are checked by pcbnew (KIFACE_TEST_FOOTPRINT_LINK), which kicad-cli
+    // loads without the GUI
+    ercTester.RunTests( drawingSheet.get(), {}, m_kiway->KiFACE( KIWAY_FACES::FACE_PCB ),
                         &sch->Project(), m_progressReporter );
 
     markersProvider->SetSeverities( ercJob->m_severity );

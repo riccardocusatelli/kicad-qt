@@ -29,6 +29,7 @@ class FOOTPRINT_LIBRARY_ADAPTER;
 class PROJECT;
 class S3D_CACHE;
 class FILENAME_RESOLVER;
+class wxString;
 
 class PROJECT_PCB
 {
@@ -48,6 +49,17 @@ public:
 
     /// Accessor for 3D path resolver
     static FILENAME_RESOLVER* Get3DFilenameResolver( PROJECT* aProject );
+
+    /**
+     * Check a footprint link ("library:footprint") against the footprint libraries of a project.
+     *
+     * Used by the ERC through KIFACE_TEST_FOOTPRINT_LINK.
+     *
+     * @return 0 when the footprint exists, or KIFACE_TEST_FOOTPRINT_LINK_NO_LIBRARY,
+     *         KIFACE_TEST_FOOTPRINT_LINK_LIBRARY_NOT_ENABLED or
+     *         KIFACE_TEST_FOOTPRINT_LINK_NO_FOOTPRINT.
+     */
+    static int TestFootprintLink( const wxString& aFootprint, PROJECT* aProject );
 
 private:
     PROJECT_PCB() {}

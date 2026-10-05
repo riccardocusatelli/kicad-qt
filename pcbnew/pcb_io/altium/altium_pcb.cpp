@@ -60,7 +60,6 @@
 #include <reporter.h>
 #include <trigo.h>
 #include <utf.h>
-#include <wx/docview.h>
 #include <wx/log.h>
 #include <wx/mstream.h>
 #include <wx/wfstream.h>

@@ -27,7 +27,7 @@
 #include <jobs/jobs_output.h>
 #include <settings/json_settings.h>
 #include <settings/parameters.h>
-#include <widgets/wx_progress_reporters.h>
+#include <progress_reporter.h>
 #include <ctime>
 #include <memory>
 #include <optional>

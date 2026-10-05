@@ -28,6 +28,7 @@
 #include <kicommon.h>
 #include <cstdio>
 #include <hashtables.h>
+#include <wx/arrstr.h>
 #include <string>
 #include <vector>
 

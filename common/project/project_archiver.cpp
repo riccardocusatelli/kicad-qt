@@ -19,12 +19,10 @@
 
 #include <memory>
 #include <wx/dir.h>
-#include <wx/filedlg.h>
-#include <wx/fs_zip.h>
+#include <wx/zipstrm.h>
 #include <wx/regex.h>
 #include <wx/uri.h>
 #include <wx/wfstream.h>
-#include <wx/zipstrm.h>
 
 #include <core/arraydim.h>
 #include <macros.h>
@@ -298,22 +296,23 @@ bool PROJECT_ARCHIVER::Archive( const wxString& aSrcDir, const wxString& aDestFi
         if( !archive )
             continue;
 
-        wxFileSystem fsFile;
         fn.MakeRelativeTo( aSrcDir );
 
         wxString relativeFn = fn.GetFullPath();
 
-        // Read input file and add it to the zip file:
-        wxFSFile* infile = nullptr;
-        wxString  sysError;
+        // Read input file and add it to the zip file (relative to the working directory):
+        std::unique_ptr<wxFFileInputStream> infile;
+        wxString                            sysError;
 
         {
             // Failures are reported through aReporter, wx would also pop its own dialog.
             wxLogNull suppressSysErrorPopups;
-            infile = fsFile.OpenFile( relativeFn );
+            infile = std::make_unique<wxFFileInputStream>( relativeFn );
 
-            if( !infile )
+            if( !infile->IsOk() )
             {
+                infile.reset();
+
                 if( unsigned long code = wxSysErrorCode() )
                     sysError = wxSysErrorMsgStr( code );
             }
@@ -321,19 +320,17 @@ bool PROJECT_ARCHIVER::Archive( const wxString& aSrcDir, const wxString& aDestFi
 
         if( infile )
         {
-            zipstream.PutNextEntry( relativeFn, infile->GetModificationTime() );
-            infile->GetStream()->Read( zipstream );
+            zipstream.PutNextEntry( relativeFn, wxFileName( relativeFn ).GetModificationTime() );
+            infile->Read( zipstream );
             zipstream.CloseEntry();
 
-            uncompressedBytes += infile->GetStream()->GetSize();
+            uncompressedBytes += infile->GetSize();
 
             if( aVerbose )
             {
                 msg.Printf( _( "Archived file '%s'." ), relativeFn );
                 aReporter.Report( msg, RPT_SEVERITY_INFO );
             }
-
-            delete infile;
         }
         else
         {

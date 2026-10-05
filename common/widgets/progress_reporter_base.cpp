@@ -24,9 +24,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <wx/evtloop.h>
 #include <thread>
 #include <widgets/progress_reporter_base.h>
+#include <wx/utils.h>
 
 PROGRESS_REPORTER_BASE::PROGRESS_REPORTER_BASE( int aNumPhases ) :
     PROGRESS_REPORTER(),

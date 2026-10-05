@@ -67,7 +67,6 @@ PDF_PLOTTER::~PDF_PLOTTER() = default;
 #include <glm/glm.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <raster_image.h>
-#include <wx/colour.h>
 
 
 std::string PDF_PLOTTER::encodeStringForPlotter( const wxString& aText )

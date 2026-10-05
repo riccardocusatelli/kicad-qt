@@ -29,6 +29,7 @@
 
 #include <pcad/pcad2kicad_common.h>
 #include <pcad/pcad_item_types.h>
+#include <wx/object.h>
 
 class wxString;
 class XNODE;

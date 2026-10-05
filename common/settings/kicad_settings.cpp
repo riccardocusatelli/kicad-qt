@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <wx/aui/framemanager.h>    // ensure class wxAuiPaneInfo is defined for other includes
 
 #include "settings/kicad_settings.h"
 #include <json_common.h>

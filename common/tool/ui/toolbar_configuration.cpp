@@ -25,7 +25,6 @@
 #include <magic_enum.hpp>
 #include <json_common.h>
 
-#include <tool/action_toolbar.h>
 #include <tool/ui/toolbar_configuration.h>
 #include <tool/ui/toolbar_context_menu_registry.h>
 
@@ -267,4 +266,11 @@ TOOLBAR_CONFIGURATION& TOOLBAR_ITEM_REF::AppendControl( const std::string& aCont
 TOOLBAR_CONFIGURATION& TOOLBAR_ITEM_REF::AppendControl( const ACTION_TOOLBAR_CONTROL& aControl )
 {
     return m_parent.AppendControl( aControl );
+}
+
+
+std::list<ACTION_TOOLBAR_CONTROL*>& ACTION_TOOLBAR_CONTROL::GetAll()
+{
+    static std::list<ACTION_TOOLBAR_CONTROL*> s_controls;
+    return s_controls;
 }

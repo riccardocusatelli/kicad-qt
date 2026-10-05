@@ -41,7 +41,6 @@
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
 #include <sch_sheet.h>
-#include <widgets/ui_common.h>
 #include <msg_panel_context.h>
 
 

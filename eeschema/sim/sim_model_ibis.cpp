@@ -26,10 +26,10 @@
 #include <sim/sim_library_ibis.h>
 #include <fmt/core.h>
 #include <wx/filename.h>
-#include <kiway.h>
 #include <schematic.h>
 #include "sim_lib_mgr.h"
 #include <core/ki_assert.h>
+#include <ki_exception.h>
 
 std::string SPICE_GENERATOR_IBIS::ModelName( const SPICE_ITEM& aItem ) const
 {

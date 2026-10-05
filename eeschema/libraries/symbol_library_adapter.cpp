@@ -23,7 +23,6 @@
 #include <memory>
 
 #include <common.h>
-#include <dialog_shim.h>
 #include <ki_exception.h>
 #include <wx/log.h>
 

@@ -24,7 +24,7 @@
 #include <erc/erc_item.h>
 #include <pin_type.h>
 #include <settings/nested_settings.h>
-#include <widgets/ui_common.h>
+#include <widgets/report_severity.h>
 #include <core/ki_assert.h>
 
 

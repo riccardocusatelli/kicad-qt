@@ -26,6 +26,7 @@
 #include <trace_helpers.h>
 
 #include <wx/arrstr.h>
+#include <wx/intl.h>
 #include <wx/log.h>
 #include <core/ki_log.h>
 

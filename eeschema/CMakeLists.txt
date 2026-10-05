@@ -643,7 +643,10 @@ add_subdirectory( navlib )
 
 target_link_libraries( eeschema_kiface_objects PUBLIC eeschema_navlib)
 
-add_dependencies( eeschema_kiface_objects eeschema_navlib )
+# The SpaceMouse support is GUI: not in the core build without wxWidgets
+if( NOT KICAD_WX_FREE )
+    add_dependencies( eeschema_kiface_objects eeschema_navlib )
+endif()
 
 add_library( eeschema_kiface MODULE
     eeschema.cpp

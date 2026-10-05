@@ -30,7 +30,7 @@
 #include <mutex>
 #include <vector>
 #include <unordered_map>
-#include <widgets/report_severity.h>
+#include <string_utils.h>       // LOAD_MESSAGE
 #include <wx/statusbr.h>
 
 class wxGauge;
@@ -46,15 +46,6 @@ class BITMAP_BUTTON;
  * Background background stop button (FIELD_OFFSET_BGJOB_CANCEL offset id)
  * Background notifications button (FIELD_OFFSET_NOTIFICATION_BUTTON  offset id)
  */
-
-/**
- * Structure to store a load message with its severity.
- */
-struct LOAD_MESSAGE
-{
-    wxString  message;
-    SEVERITY  severity;
-};
 
 
 class KICOMMON_API KISTATUSBAR : public wxStatusBar

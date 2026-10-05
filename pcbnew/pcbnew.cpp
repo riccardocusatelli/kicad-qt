@@ -547,6 +547,9 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
             return reinterpret_cast<void*>( &filterFootprints );
         }
 
+        case KIFACE_TEST_FOOTPRINT_LINK:
+            return reinterpret_cast<void*>( &PROJECT_PCB::TestFootprintLink );
+
         case KIFACE_SCRIPTING_LEGACY:
             return reinterpret_cast<void*>( PyInit__pcbnew );
 

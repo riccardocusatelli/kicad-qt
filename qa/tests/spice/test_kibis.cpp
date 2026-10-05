@@ -25,6 +25,8 @@
 
 #include <sim/kibis/kibis.h>
 
+#include <wx/filename.h>
+
 namespace
 {
 std::string GetLibraryPath( const std::string& aBaseName )

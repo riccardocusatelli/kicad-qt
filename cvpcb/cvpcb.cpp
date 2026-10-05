@@ -24,7 +24,6 @@
  */
 
 #include <confirm.h>
-#include <footprint_library_adapter.h>
 #include <kiface_gui.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
@@ -36,33 +35,6 @@
 #include <project_pcb.h>
 
 namespace CV {
-
-int testFootprintLink( const wxString& aFootprint, PROJECT* aProject )
-{
-    FOOTPRINT_LIBRARY_ADAPTER* adapter = PROJECT_PCB::FootprintLibAdapter( aProject );
-    LIB_ID                  fpID;
-
-    fpID.Parse( aFootprint );
-
-    wxString libName = fpID.GetLibNickname();
-    wxString fpName = fpID.GetLibItemName();
-
-    // TODO(JE) this is a bit of a hack; CLI lazy-loading of libraries should be more unified
-    // Libraries may not be present at this point if running in kicad-cli because nothings will
-    // have triggered a load up to this point
-    if( !adapter->GetLibraryStatus( libName ) )
-        adapter->LoadOne( libName );
-
-    if( !adapter->HasLibrary( libName, false ) )
-        return KIFACE_TEST_FOOTPRINT_LINK_NO_LIBRARY;
-    else if( !adapter->HasLibrary( libName, true ) )
-        return KIFACE_TEST_FOOTPRINT_LINK_LIBRARY_NOT_ENABLED;
-    else if( !adapter->FootprintExists( libName, fpName ) )
-        return KIFACE_TEST_FOOTPRINT_LINK_NO_FOOTPRINT;
-
-    return 0;
-}
-
 
 static struct IFACE : public KIFACE_GUI
 {
@@ -102,7 +74,7 @@ static struct IFACE : public KIFACE_GUI
         switch( aDataId )
         {
         case KIFACE_TEST_FOOTPRINT_LINK:
-            return (void*) testFootprintLink;
+            return reinterpret_cast<void*>( &PROJECT_PCB::TestFootprintLink );
 
         default:
             return nullptr;

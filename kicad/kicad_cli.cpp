@@ -99,6 +99,7 @@
 #include <thread_pool.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <wx/utils.h>
 
 
 /// The KIWAY of kicad-cli: it loads the KIFACEs without GUI (_eeschema_cli, _pcbnew_cli).
@@ -693,53 +694,6 @@ struct APP_KICAD_CLI : public wxAppConsole
 
         return -1;
     }
-
-    int FilterEvent( wxEvent& aEvent ) override
-    {
-        return Event_Skip;
-    }
-
-#if defined( DEBUG )
-    /**
-     * Process any unhandled events at the application level.
-     */
-    bool ProcessEvent( wxEvent& aEvent ) override
-    {
-        if( aEvent.GetEventType() == wxEVT_CHAR || aEvent.GetEventType() == wxEVT_CHAR_HOOK )
-        {
-            wxKeyEvent* keyEvent = static_cast<wxKeyEvent*>( &aEvent );
-
-            if( keyEvent )
-            {
-                KI_LOG_TRACE( kicadTraceKeyEvent, "APP_KICAD::ProcessEvent %s", dump( *keyEvent ) );
-            }
-        }
-
-        aEvent.Skip();
-        return false;
-    }
-
-    /**
-     * Override main loop exception handling on debug builds.
-     *
-     * It can be painfully difficult to debug exceptions that happen in wxUpdateUIEvent
-     * handlers.  The override provides a bit more useful information about the exception
-     * and a breakpoint can be set to pin point the event where the exception was thrown.
-     */
-    bool OnExceptionInMainLoop() override
-    {
-        try
-        {
-            throw;
-        }
-        catch( ... )
-        {
-            Pgm().HandleException( std::current_exception() );
-        }
-
-        return false; // continue on. Return false to abort program
-    }
-#endif
 };
 
 IMPLEMENT_APP_CONSOLE( APP_KICAD_CLI )

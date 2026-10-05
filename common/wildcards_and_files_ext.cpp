@@ -29,7 +29,6 @@
  */
 #include <regex>
 #include <wildcards_and_files_ext.h>
-#include <wx/filedlg.h>
 #include <wx/regex.h>
 #include <wx/translation.h>
 #include <regex>

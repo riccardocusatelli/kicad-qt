@@ -34,7 +34,6 @@
 #include <gal/3d/camera.h>
 #include <3d_enums.h>
 #include "../3d_cache/3d_cache.h"
-#include "../common_ogl/ogl_attr_list.h"
 #include "../3d_viewer/eda_3d_viewer_settings.h"
 
 #include <layer_ids.h>

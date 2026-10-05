@@ -23,8 +23,6 @@
  */
 
 
-#include "wx/html/m_templ.h"
-#include "wx/html/styleparams.h"
 #include "core/kicad_algo.h"
 #include <algorithm>
 #include <drc/drc_item.h>

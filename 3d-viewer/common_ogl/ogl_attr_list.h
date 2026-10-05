@@ -33,15 +33,7 @@
 #include <kicad_gl/kiglad.h> // Must be included first
 #include <wx/glcanvas.h>
 
-/// Anti-aliasing options
-enum class ANTIALIASING_MODE
-{
-    // Do not change these numbers, they are stored in the config file
-    AA_NONE = 0,
-    AA_2X   = 1,
-    AA_4X   = 2,
-    AA_8X   = 3
-};
+#include "antialiasing_mode.h"
 
 /**
  *  Helper class to create an attribute list.

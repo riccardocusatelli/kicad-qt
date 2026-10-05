@@ -23,6 +23,7 @@
 #include <wx/brush.h>
 #include <common.h>
 #include <widgets/wx_grid.h>
+#include <widgets/ui_common.h>
 #include <sch_reference_list.h>
 #include <schematic_settings.h>
 #include <template_fieldnames.h>

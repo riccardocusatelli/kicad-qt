@@ -26,6 +26,7 @@
 #define EDA_3D_CANVAS_H
 
 #include <atomic>
+#include "../common_ogl/ogl_attr_list.h"  // first: the GL loader comes before GL headers
 #include "board_adapter.h"
 #include "3d_rendering/raytracing/accelerators/accelerator_3d.h"
 #include "3d_rendering/render_3d_base.h"

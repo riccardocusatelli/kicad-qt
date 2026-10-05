@@ -63,7 +63,6 @@
 #include <wildcards_and_files_ext.h>
 #include <wx/app.h>
 #include <wx/crt.h>
-#include <wx/image.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <base_screen.h>

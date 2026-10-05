@@ -139,16 +139,10 @@ bool TRACE_MANAGER::IsTraceEnabled( const wxString& aWhat )
 }
 
 
-void TRACE_MANAGER::traceV( const wxString& aWhat, const wxString& aFmt, va_list vargs )
+void TRACE_MANAGER::printTrace( const wxString& aWhat, const wxString& aMessage )
 {
-    if( !IsTraceEnabled( aWhat ) )
-        return;
-
-    wxString str;
-    str.PrintfV( aFmt, vargs );
-
 #if defined( __UNIX__ ) || defined( _WIN32 )
-    fprintf( stderr, " %-30s | %s", aWhat.c_str().AsChar(), str.c_str().AsChar() );
+    fprintf( stderr, " %-30s | %s", aWhat.c_str().AsChar(), aMessage.c_str().AsChar() );
 #endif
 }
 

@@ -30,7 +30,6 @@
 #include <stdexcept>
 #include <cmath>
 
-#include <wx/numformatter.h>
 #include <common.h>
 #include <locale_io.h>
 #include <geometry/eda_angle.h>

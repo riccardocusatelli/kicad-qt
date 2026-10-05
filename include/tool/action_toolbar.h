@@ -33,6 +33,7 @@
 #include <wx/panel.h>
 #include <tool/action_manager.h>
 #include <frame_type.h>
+#include <tool/action_toolbar_control.h>
 #include <core/ki_assert.h>
 
 class ACTION_MENU;
@@ -190,7 +191,6 @@ protected:
 };
 
 // Forward declare this because the toolbar wants it
-class ACTION_TOOLBAR_CONTROL;
 
 /**
  * Define the structure of a toolbar with buttons that invoke ACTIONs.
@@ -354,8 +354,7 @@ public:
      */
     static std::list<ACTION_TOOLBAR_CONTROL*>& GetAllCustomControls()
     {
-        static std::list<ACTION_TOOLBAR_CONTROL*> m_controls;
-        return m_controls;
+        return ACTION_TOOLBAR_CONTROL::GetAll();
     }
 
     /**
@@ -446,70 +445,4 @@ protected:
 typedef std::function<void ( ACTION_TOOLBAR* )> ACTION_TOOLBAR_CONTROL_FACTORY;
 
 
-/**
- * Class to hold basic information about controls that can be added to the toolbars.
- */
-class ACTION_TOOLBAR_CONTROL
-{
-public:
-    ACTION_TOOLBAR_CONTROL( const std::string& aName, const wxString& aUiName,
-                            const wxString& aDescription, std::vector<FRAME_T> aSupportedContexts ) :
-        m_name( aName ),
-        m_uiname( aUiName ),
-        m_description( aDescription ),
-        m_supportedContexts( aSupportedContexts )
-    {
-        KI_ASSERT_MSG( aName.starts_with( "control" ),
-                      wxString::Format( "Control name \"%s\" must start with \"control\"", aName ) );
 
-        ACTION_TOOLBAR::GetAllCustomControls().push_back( this );
-    }
-
-    const std::string& GetName() const { return m_name; }
-    const wxString& GetUiName() const { return m_uiname; }
-    const wxString& GetDescription() const { return m_description; }
-
-    bool SupportedFor( FRAME_T aFrame ) const
-    {
-        for( FRAME_T candidate : m_supportedContexts )
-        {
-            if( aFrame == candidate )
-                return true;
-        }
-
-        return false;
-    }
-
-protected:
-    /**
-     * Name of the control - must start with "control."
-     */
-    std::string m_name;
-
-    /**
-     * Short description to show for the control
-     */
-    wxString m_uiname;
-
-    /**
-     * User-visible tooltip for the control
-     */
-    wxString m_description;
-
-    /**
-     * List of frame types that support the control.
-     */
-    std::vector<FRAME_T> m_supportedContexts;
-};
-
-class ACTION_TOOLBAR_CONTROLS
-{
-public:
-    static ACTION_TOOLBAR_CONTROL gridSelect;
-    static ACTION_TOOLBAR_CONTROL zoomSelect;
-    static ACTION_TOOLBAR_CONTROL ipcScripting;
-    static ACTION_TOOLBAR_CONTROL unitSelector;
-    static ACTION_TOOLBAR_CONTROL bodyStyleSelector;
-    static ACTION_TOOLBAR_CONTROL layerSelector;
-    static ACTION_TOOLBAR_CONTROL overrideLocks;
-};

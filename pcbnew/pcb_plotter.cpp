@@ -40,7 +40,6 @@
 #include <pcbnew_settings.h>
 #include <geometry/shape_poly_set.h>
 #include <math/util.h> // for KiROUND
-#include <wx/image.h>
 
 
 static int scaleToSelection( double scale )

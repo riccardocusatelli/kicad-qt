@@ -99,6 +99,9 @@ static struct IFACE : public KIFACE_BASE
         case KIFACE_FOOTPRINT_LIBRARY_ADAPTER:
             return PROJECT_PCB::FootprintLibAdapter( &Pgm().GetSettingsManager().Prj() );
 
+        case KIFACE_TEST_FOOTPRINT_LINK:
+            return reinterpret_cast<void*>( &PROJECT_PCB::TestFootprintLink );
+
         default:
             return nullptr;
         }

@@ -374,31 +374,18 @@ public:
 
     static TRACE_MANAGER& Instance();
 
-    WX_DEFINE_VARARG_FUNC_VOID( Trace, 2, (const wxString, const wxFormatString&), DoTrace,
-                                DoTraceUtf8 )
-
-    void DoTrace( const wxString aWhat, const wxChar* aFmt, ... )
+    /// Prints the formatted message on stderr if the trace is enabled.
+    template <typename... ARGS>
+    void Trace( const wxString& aWhat, const wxString& aFmt, const ARGS&... aArgs )
     {
-        va_list argptr;
-        va_start( argptr, aFmt );
-        traceV( aWhat, aFmt, argptr );
-        va_end( argptr );
+        if( IsTraceEnabled( aWhat ) )
+            printTrace( aWhat, wxString::Format( aFmt, aArgs... ) );
     }
-
-#if wxUSE_UNICODE_UTF8
-    void DoTraceUtf8( const wxString aWhat, const wxChar* aFmt, ... )
-    {
-        va_list argptr;
-        va_start( argptr, aFmt );
-        traceV( aWhat, aFmt, argptr );
-        va_end( argptr );
-    }
-#endif
 
     bool IsTraceEnabled( const wxString& aWhat );
 
 private:
-    void traceV( const wxString& aWhat, const wxString& aFmt, va_list vargs );
+    void printTrace( const wxString& aWhat, const wxString& aMessage );
     void init();
 
     std::map<wxString, bool> m_enabledTraces;

@@ -29,6 +29,12 @@ function( headless_link target kiface )
     set( _archives "" )
 
     foreach( _lib ${_archive_targets} )
+        # Without wxWidgets, only the archives of the wx-free build (cmake/WxFree.cmake)
+        if( KICAD_WX_FREE AND NOT _lib MATCHES "_archive$"
+                AND NOT _lib IN_LIST KICAD_WX_FREE_TARGETS )
+            continue()
+        endif()
+
         list( APPEND _archives $<TARGET_FILE:${_lib}> )
         add_dependencies( ${target} ${_lib} )
     endforeach()

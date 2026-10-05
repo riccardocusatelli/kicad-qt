@@ -46,7 +46,6 @@
 #include <gbr_metadata.h>
 #include <advanced_config.h>
 #include <core/ki_assert.h>
-#include <wx/image.h>
 
 void GenerateLayerPoly( SHAPE_POLY_SET* aResult, BOARD *aBoard, PLOTTER* aPlotter, PCB_LAYER_ID aLayer,
                         bool aPlotFPText, bool aPlotReferences, bool aPlotValues );

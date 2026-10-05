@@ -29,7 +29,7 @@
 #include <board_stackup_manager/board_stackup.h>
 #include <lset.h>
 #include <settings/nested_settings.h>
-#include <widgets/ui_common.h>
+#include <widgets/report_severity.h>
 #include <zone_settings.h>
 #include <teardrop/teardrop_parameters.h>
 #include <router/pns_meander.h>

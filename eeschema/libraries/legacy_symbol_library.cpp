@@ -31,7 +31,6 @@
 #include <richio.h>
 #include <wildcards_and_files_ext.h>
 #include <project/project_file.h>
-#include <project_rescue.h>
 #include <project_sch.h>
 #include <progress_reporter.h>
 
@@ -39,10 +38,10 @@
 #include <sch_io/kicad_legacy/sch_io_kicad_legacy.h>
 
 #include <wx/log.h>
-#include <wx/progdlg.h>
 #include <wx/tokenzr.h>
 #include <sim/sim_model.h>
 #include <core/ki_assert.h>
+#include <lib_symbol.h>
 
 LEGACY_SYMBOL_LIB::LEGACY_SYMBOL_LIB( SCH_LIB_TYPE aType, const wxString& aFileName,
                         SCH_IO_MGR::SCH_FILE_T aPluginType ) :

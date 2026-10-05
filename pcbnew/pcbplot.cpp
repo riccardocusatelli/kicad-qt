@@ -35,7 +35,6 @@
 #include <plotcontroller.h>
 #include <pcb_plot_params.h>
 #include <wx/ffile.h>
-#include <dialog_plot.h>
 #include <build_version.h>
 #include <gbr_metadata.h>
 #include <render_settings.h>

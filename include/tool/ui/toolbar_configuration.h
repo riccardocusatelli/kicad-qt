@@ -30,7 +30,7 @@
 
 #include <settings/json_settings.h>
 #include <settings/parameters.h>
-#include <tool/action_toolbar.h>
+#include <tool/action_toolbar_control.h>
 #include <tool/tool_action.h>
 #include <tool/ui/toolbar_context_menu_registry.h>
 #include <core/ki_assert.h>

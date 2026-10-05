@@ -21,7 +21,7 @@
 
 #include <fmt/format.h>
 #include <3d_enums.h>
-#include <common_ogl/ogl_attr_list.h>
+#include <common_ogl/antialiasing_mode.h>
 #include <settings/parameters.h>
 #include <settings/json_settings_internals.h>
 #include <3d_canvas/board_adapter.h>

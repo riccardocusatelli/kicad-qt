@@ -22,7 +22,6 @@
 
 #include <inspectable_impl.h>
 
-#include <wx/propgrid/property.h>
 
 
 bool INSPECTABLE::Set( PROPERTY_BASE* aProperty, wxAny& aValue, bool aNotify )

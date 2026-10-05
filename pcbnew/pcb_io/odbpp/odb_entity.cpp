@@ -51,7 +51,6 @@
 #include <geometry/shape_segment.h>
 
 #include <wx/log.h>
-#include <wx/numformatter.h>
 #include <wx/mstream.h>
 
 #include "odb_attribute.h"

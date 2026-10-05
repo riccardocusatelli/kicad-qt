@@ -41,7 +41,7 @@
 
 #include <wx/string.h>
 #include <reporter.h>
-#include "widgets/wx_html_report_panel.h"
+#include <reporter.h>
 #include <iostream>
 #include <fstream>
 #include <vector>

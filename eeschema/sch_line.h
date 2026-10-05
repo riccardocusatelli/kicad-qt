@@ -26,7 +26,6 @@
 #define _SCH_LINE_H_
 
 #include <sch_item.h>
-#include <wx/pen.h>     // for wxPenStyle
 #include <list>         // for std::list
 #include <geometry/seg.h>
 #include <math/vector3.h>
@@ -41,7 +40,6 @@ class NETLIST_OBJECT_LIST;
 class SCH_LINE : public SCH_ITEM
 {
 public:
-    static const enum wxPenStyle PenStyle[];
 
     SCH_LINE( const VECTOR2I& pos = VECTOR2I( 0, 0 ), int layer = LAYER_NOTES );
 
