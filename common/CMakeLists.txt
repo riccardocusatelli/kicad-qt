@@ -1088,6 +1088,7 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/footprint_editor_settings.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/generators_mgr.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/kicad_clipboard.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/kicad_clipboard_gui.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/netlist_reader/kicad_netlist_reader.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/netlist_reader/legacy_netlist_reader.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/netlist_reader/netlist_reader.cpp

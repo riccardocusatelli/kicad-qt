@@ -29,7 +29,9 @@
 
 class BOARD;
 class BOARD_COMMIT;
+class BOARD_CONNECTED_ITEM;
 class BOARD_ITEM;
+class PCB_TRACK;
 class PICKED_ITEMS_LIST;
 class PROPERTY_PANEL;
 class QListWidget;
@@ -44,10 +46,12 @@ class PCB_VIEW;
 
 /**
  * A board in the Qt shell: the canvas, the layers (visibility, active layer), the properties
- * of the selection, and the editing of the items (move, rotate, delete, undo, save).
+ * of the selection, and the editing of the items: move and drag, rotate, delete, edit the
+ * properties, copy and paste, route tracks and place vias (board_tools.h), undo, save.
  *
  * The changes are BOARD_COMMITs, kept in step with the view and the selection by a
- * BOARD_COMMIT_LISTENER; they are undone by BOARD_UNDO_REDO, as in the board editor.
+ * BOARD_COMMIT_LISTENER; they are undone by BOARD_UNDO_REDO, as in the board editor.  The
+ * clipboard has the format of the board editor (CLIPBOARD_IO).
  */
 class BOARD_DOCUMENT : public QT_DOCUMENT
 {
@@ -67,6 +71,20 @@ public:
     bool CanUndo() const override;
     bool CanRedo() const override;
 
+    // For the tools of the document
+
+    BOARD*           Board() const { return m_board.get(); }
+    KIGFX::PCB_VIEW* View() const { return view(); }
+
+    /// The layer the tools draw on: the copper layer chosen in the list (F.Cu otherwise).
+    PCB_LAYER_ID ActiveCopperLayer() const { return m_activeLayer; }
+
+    /// A new commit, kept in step with this document.
+    std::unique_ptr<BOARD_COMMIT> MakeCommit();
+
+    /// The pad, via or track end at a point, on a layer (any copper layer with UNDEFINED_LAYER).
+    BOARD_CONNECTED_ITEM* ConnectionAt( const VECTOR2I& aPoint, PCB_LAYER_ID aLayer ) const;
+
 protected:
     EDA_ITEM*              itemAt( const VECTOR2I& aPoint, Qt::KeyboardModifiers aModifiers ) override;
     std::vector<EDA_ITEM*> itemsInArea( const BOX2I& aArea, bool aCrossing ) override;
@@ -74,8 +92,11 @@ protected:
     void                   setItemSelected( EDA_ITEM* aItem, bool aSelected ) override;
     void                   selectionChanged() override;
     VECTOR2I               snapToGrid( const VECTOR2D& aDelta ) const override;
+    VECTOR2I               snapPoint( const VECTOR2D& aPoint ) const override;
 
-    bool beginMove() override;
+    bool    beginMove( bool aWithConnections ) override;
+    QString copyItems( const std::vector<EDA_ITEM*>& aItems ) override;
+    bool    beginPaste( const QString& aText, const VECTOR2I& aPosition ) override;
     void moveBy( const VECTOR2I& aDelta ) override;
     void endMove( bool aCommit ) override;
     void rotateItems( const std::vector<EDA_ITEM*>& aItems ) override;
@@ -88,6 +109,9 @@ private:
     class UNDO_LISTENER;
 
     void onCursorMoved( double aX, double aY );
+
+    /// Set a property of the selected items from the property panel, as one change.
+    void onPropertyEdited( const void* aKey, const QString& aValue );
     void onLayerChanged( QListWidgetItem* aItem );
     void onCurrentLayerChanged( QListWidgetItem* aCurrent );
 
@@ -115,6 +139,9 @@ private:
     /// Show the board outline again, after a change of the board.
     void updateBoardOutline();
 
+    /// The ends of the tracks connected to the items being moved: they follow them (drag).
+    void findConnectedTrackEnds();
+
     KIGFX::PCB_VIEW* view() const;
 
     GAL_CANVAS*                   m_canvas;
@@ -126,8 +153,20 @@ private:
     QString                       m_fileName;
 
     VECTOR2D                      m_gridSize;
+    PCB_LAYER_ID                  m_activeLayer = F_Cu;
+
     std::unique_ptr<BOARD_COMMIT> m_moveCommit;     ///< The move in progress
     std::vector<BOARD_ITEM*>      m_moving;
+
+    /// An end of a track that follows the items moved (the start or the end of the track)
+    struct TRACK_END
+    {
+        PCB_TRACK* m_Track;
+        bool       m_Start;
+    };
+
+    std::vector<TRACK_END>        m_followingEnds;
+    bool                          m_pasting = false;  ///< m_moving are pasted, not on the board
 };
 
 

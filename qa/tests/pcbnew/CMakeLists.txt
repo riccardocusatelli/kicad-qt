@@ -44,6 +44,7 @@ set( QA_PCBNEW_SRCS
     test_board_commit.cpp
     test_board_undo_redo.cpp
     test_clipboard_group.cpp
+    test_clipboard_io.cpp
     test_board_statistics.cpp
     test_cam_backdrill.cpp
     test_backdrill_properties.cpp

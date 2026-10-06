@@ -32,6 +32,7 @@ class QListWidget;
 class QMenu;
 class QStackedWidget;
 class QTabWidget;
+class QToolBar;
 class QTreeView;
 class QT_DOCUMENT;
 
@@ -74,6 +75,9 @@ private:
 
     /// The name of a document in its tab, marked if it has changes not saved.
     void updateTabTitle( QT_DOCUMENT* aDocument );
+
+    /// Show the tools of the current document in the Place menu and the tool bar.
+    void updateTools();
     void onCurrentTabChanged( int aIndex );
     void onProjectFileActivated( const QModelIndex& aIndex );
 
@@ -97,6 +101,13 @@ private:
     QAction*           m_rotateAction;
     QAction*           m_deleteAction;
     QAction*           m_selectAllAction;
+    QAction*           m_moveAction;
+    QAction*           m_dragAction;
+    QAction*           m_copyAction;
+    QAction*           m_cutAction;
+    QAction*           m_pasteAction;
+    QMenu*             m_placeMenu;
+    QToolBar*          m_toolsBar;
     QLabel*            m_cursorLabel;
     QString            m_projectFile;
 };

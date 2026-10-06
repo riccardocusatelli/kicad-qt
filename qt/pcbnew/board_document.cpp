@@ -24,6 +24,7 @@
 #include <limits>
 #include <unordered_set>
 
+#include <QKeySequence>
 #include <QListWidget>
 #include <QPainter>
 #include <QPixmap>
@@ -36,7 +37,9 @@
 #include <board_commit.h>
 #include <board_design_settings.h>
 #include <board_undo_redo.h>
+#include <kicad_clipboard.h>
 #include <footprint.h>
+#include <pad.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <pcb_board_outline.h>
 #include <pcb_display_options.h>
@@ -55,6 +58,8 @@
 #include <property_panel.h>
 #include <qt_strings.h>
 #include <undo_stack.h>
+
+#include "board_tools.h"
 
 
 /// Role of the layer list items holding the PCB_LAYER_ID
@@ -235,7 +240,12 @@ BOARD_DOCUMENT::BOARD_DOCUMENT( QWidget* aParent ) :
 
     setupEditing( m_canvas );
 
+    addTool( tr( "Route Track" ), QKeySequence( Qt::Key_X ), std::make_unique<TRACK_TOOL>( *this ) );
+    addTool( tr( "Place Via" ), QKeySequence( Qt::CTRL | Qt::SHIFT | Qt::Key_V ),
+             std::make_unique<VIA_TOOL>( *this ) );
+
     connect( m_canvas, &GAL_CANVAS::cursorMoved, this, &BOARD_DOCUMENT::onCursorMoved );
+    connect( m_properties, &PROPERTY_PANEL::valueEdited, this, &BOARD_DOCUMENT::onPropertyEdited );
     connect( m_canvas, &GAL_CANVAS::zoomToFitRequested, this, &BOARD_DOCUMENT::ZoomToFit );
     connect( m_layers, &QListWidget::itemChanged, this, &BOARD_DOCUMENT::onLayerChanged );
     connect( m_layers, &QListWidget::currentItemChanged, this,
@@ -245,8 +255,9 @@ BOARD_DOCUMENT::BOARD_DOCUMENT( QWidget* aParent ) :
 
 BOARD_DOCUMENT::~BOARD_DOCUMENT()
 {
-    if( m_moveCommit )
-        m_moveCommit->Revert();
+    // The tool and the move in progress drop their work while the view is there
+    setTool( nullptr );
+    endMove( false );
 
     // The undo entries own items that refer to the board; the view refers to the items of
     // the board
@@ -297,6 +308,8 @@ bool BOARD_DOCUMENT::Open( const QString& aFileName, QString& aError )
     pcbView->ShowBoard( m_board.get() );
     pcbView->SyncLayersVisibility( m_board.get() );
     pcbView->SetActiveLayerOnTop( F_Cu );
+
+    m_activeLayer = F_Cu;
 
     setupGrid();
     fillLayers();
@@ -442,7 +455,13 @@ void BOARD_DOCUMENT::onCurrentLayerChanged( QListWidgetItem* aCurrent )
     if( !m_board || !aCurrent )
         return;
 
-    view()->SetActiveLayerOnTop( static_cast<PCB_LAYER_ID>( aCurrent->data( LAYER_ROLE ).toInt() ) );
+    const PCB_LAYER_ID layer = static_cast<PCB_LAYER_ID>( aCurrent->data( LAYER_ROLE ).toInt() );
+
+    // The tools draw on the copper layer chosen last
+    if( IsCopperLayer( layer ) )
+        m_activeLayer = layer;
+
+    view()->SetActiveLayerOnTop( layer );
     m_canvas->update();
 }
 
@@ -601,20 +620,43 @@ void BOARD_DOCUMENT::setItemSelected( EDA_ITEM* aItem, bool aSelected )
 void BOARD_DOCUMENT::selectionChanged()
 {
     const std::vector<EDA_ITEM*>& selection = Selection();
+    QString                       title;
 
     if( selection.size() == 1 )
-    {
-        m_properties->ShowProperties( ToQString( selection.front()->GetFriendlyName() ),
-                                      PropertyRows( selection.front(), pcbIUScale, EDA_UNITS::MM ) );
-    }
+        title = ToQString( selection.front()->GetFriendlyName() );
     else if( selection.size() > 1 )
+        title = tr( "%1 items" ).arg( selection.size() );
+
+    m_properties->ShowProperties( title, PropertyRows( selection, pcbIUScale, EDA_UNITS::MM ) );
+}
+
+
+void BOARD_DOCUMENT::onPropertyEdited( const void* aKey, const QString& aValue )
+{
+    if( Selection().empty() )
+        return;
+
+    auto    commit = makeCommit();
+    QString error;
+
+    for( EDA_ITEM* item : Selection() )
     {
-        m_properties->ShowProperties( tr( "%1 items" ).arg( selection.size() ), {} );
+        commit->Modify( item );
+
+        if( !SetPropertyValue( item, aKey, aValue, pcbIUScale, EDA_UNITS::MM, error ) )
+        {
+            commit->Revert();
+            emit statusMessage( error );
+            selectionChanged();     // the values as they are
+            return;
+        }
     }
-    else
-    {
-        m_properties->ShowProperties( QString(), {} );
-    }
+
+    commit->Push( ToWxString( tr( "Edit Property" ) ) );
+
+    selectionChanged();
+    m_canvas->update();
+    emit stateChanged();
 }
 
 
@@ -622,6 +664,20 @@ VECTOR2I BOARD_DOCUMENT::snapToGrid( const VECTOR2D& aDelta ) const
 {
     return VECTOR2I( KiROUND( std::round( aDelta.x / m_gridSize.x ) * m_gridSize.x ),
                      KiROUND( std::round( aDelta.y / m_gridSize.y ) * m_gridSize.y ) );
+}
+
+
+VECTOR2I BOARD_DOCUMENT::snapPoint( const VECTOR2D& aPoint ) const
+{
+    const VECTOR2D origin( m_board ? m_board->GetDesignSettings().GetGridOrigin() : VECTOR2I() );
+
+    return VECTOR2I( origin ) + snapToGrid( aPoint - origin );
+}
+
+
+std::unique_ptr<BOARD_COMMIT> BOARD_DOCUMENT::MakeCommit()
+{
+    return makeCommit();
 }
 
 
@@ -661,7 +717,7 @@ std::vector<BOARD_ITEM*> BOARD_DOCUMENT::changeableItems( const std::vector<EDA_
 }
 
 
-bool BOARD_DOCUMENT::beginMove()
+bool BOARD_DOCUMENT::beginMove( bool aWithConnections )
 {
     m_moving = changeableItems( Selection() );
 
@@ -673,7 +729,90 @@ bool BOARD_DOCUMENT::beginMove()
     for( BOARD_ITEM* item : m_moving )
         m_moveCommit->Modify( item );
 
+    if( aWithConnections )
+        findConnectedTrackEnds();
+
     return true;
+}
+
+
+void BOARD_DOCUMENT::findConnectedTrackEnds()
+{
+    m_followingEnds.clear();
+
+    std::unordered_set<BOARD_ITEM*> moving( m_moving.begin(), m_moving.end() );
+
+    // The points the moving items connect at: the pads of the footprints, the ends of the
+    // tracks, the vias
+    std::vector<PAD*>     pads;
+    std::vector<VECTOR2I> points;
+
+    for( BOARD_ITEM* item : m_moving )
+    {
+        switch( item->Type() )
+        {
+        case PCB_FOOTPRINT_T:
+            for( PAD* pad : static_cast<FOOTPRINT*>( item )->Pads() )
+                pads.push_back( pad );
+
+            break;
+
+        case PCB_PAD_T:
+            pads.push_back( static_cast<PAD*>( item ) );
+            break;
+
+        case PCB_TRACE_T:
+        case PCB_ARC_T:
+            points.push_back( static_cast<PCB_TRACK*>( item )->GetStart() );
+            points.push_back( static_cast<PCB_TRACK*>( item )->GetEnd() );
+            break;
+
+        case PCB_VIA_T:
+            points.push_back( static_cast<PCB_VIA*>( item )->GetPosition() );
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    auto connects =
+            [&]( PCB_TRACK* aTrack, const VECTOR2I& aEnd ) -> bool
+            {
+                for( PAD* pad : pads )
+                {
+                    if( pad->GetNetCode() == aTrack->GetNetCode() && pad->IsOnLayer( aTrack->GetLayer() )
+                            && pad->HitTest( aEnd ) )
+                    {
+                        return true;
+                    }
+                }
+
+                return std::find( points.begin(), points.end(), aEnd ) != points.end();
+            };
+
+    // The straight tracks with an end there follow it; the ones with both ends there move
+    for( PCB_TRACK* track : m_board->Tracks() )
+    {
+        if( track->Type() != PCB_TRACE_T || moving.count( track ) || track->IsLocked() )
+            continue;
+
+        const bool start = connects( track, track->GetStart() );
+        const bool end = connects( track, track->GetEnd() );
+
+        if( !start && !end )
+            continue;
+
+        m_moveCommit->Modify( track );
+
+        if( start && end )
+        {
+            m_moving.push_back( track );
+            continue;
+        }
+
+        m_followingEnds.push_back( { track, start } );
+    }
 }
 
 
@@ -682,24 +821,215 @@ void BOARD_DOCUMENT::moveBy( const VECTOR2I& aDelta )
     for( BOARD_ITEM* item : m_moving )
     {
         item->Move( aDelta );
-        view()->Update( item );
+
+        // The pasted items are drawn by the preview of the view: they are not in it
+        if( !m_pasting )
+            view()->Update( item );
     }
+
+    for( const TRACK_END& end : m_followingEnds )
+    {
+        if( end.m_Start )
+            end.m_Track->SetStart( end.m_Track->GetStart() + aDelta );
+        else
+            end.m_Track->SetEnd( end.m_Track->GetEnd() + aDelta );
+
+        view()->Update( end.m_Track );
+    }
+
+    if( m_pasting )
+        view()->MarkDirty();
 }
 
 
 void BOARD_DOCUMENT::endMove( bool aCommit )
 {
+    if( m_pasting )
+    {
+        // The pasted items go to the board, or are dropped
+        m_pasting = false;
+        view()->ClearPreview();
+
+        if( aCommit )
+        {
+            std::unique_ptr<BOARD_COMMIT> commit = makeCommit();
+
+            for( BOARD_ITEM* item : m_moving )
+                commit->Add( item );
+
+            commit->Push( ToWxString( tr( "Paste" ) ) );
+
+            std::vector<EDA_ITEM*> pasted( m_moving.begin(), m_moving.end() );
+            m_moving.clear();
+            setSelection( pasted );
+        }
+        else
+        {
+            for( BOARD_ITEM* item : m_moving )
+                delete item;
+
+            m_moving.clear();
+        }
+
+        m_canvas->update();
+        return;
+    }
+
     if( !m_moveCommit )
         return;
 
     if( aCommit )
-        m_moveCommit->Push( ToWxString( tr( "Move" ) ) );
+        m_moveCommit->Push( ToWxString( m_followingEnds.empty() ? tr( "Move" ) : tr( "Drag" ) ) );
     else
         m_moveCommit->Revert();
 
     m_moveCommit.reset();
     m_moving.clear();
+    m_followingEnds.clear();
     m_canvas->update();
+}
+
+
+QString BOARD_DOCUMENT::copyItems( const std::vector<EDA_ITEM*>& aItems )
+{
+    if( !m_board || aItems.empty() )
+        return QString();
+
+    // The items are placed around the center of their box, on the grid, at (0, 0)
+    BOX2I box;
+
+    for( EDA_ITEM* item : aItems )
+        box.Merge( item->GetBoundingBox() );
+
+    wxString     text;
+    CLIPBOARD_IO io( [&text]( const wxString& aText ) { text = aText; },
+                     []() { return wxString(); } );
+
+    io.SetBoard( m_board.get() );
+    io.SaveItems( aItems, snapPoint( VECTOR2D( box.GetCenter() ) ), false );
+
+    return ToQString( text );
+}
+
+
+bool BOARD_DOCUMENT::beginPaste( const QString& aText, const VECTOR2I& aPosition )
+{
+    if( !m_board )
+        return false;
+
+    const wxString text = ToWxString( aText );
+    CLIPBOARD_IO   io( []( const wxString& ) {}, [text]() { return text; } );
+    BOARD_ITEM*    clip = io.Parse();
+
+    if( !clip )
+        return false;
+
+    std::vector<BOARD_ITEM*> items;
+
+    if( clip->Type() == PCB_T )
+    {
+        // A board: its items, with their nets mapped to the ones of this board by name
+        BOARD* clipBoard = static_cast<BOARD*>( clip );
+        clipBoard->MapNets( m_board.get() );
+
+        for( BOARD_ITEM* item : clipBoard->GetItemSet() )
+        {
+            if( item->Type() != PCB_MARKER_T )
+                items.push_back( item );
+        }
+
+        clipBoard->RemoveAll();
+        delete clipBoard;
+    }
+    else if( clip->Type() == PCB_FOOTPRINT_T )
+    {
+        items.push_back( clip );
+    }
+    else
+    {
+        delete clip;
+        return false;
+    }
+
+    for( BOARD_ITEM* item : items )
+    {
+        // New items, as the board editor pastes them
+        item->SetParent( m_board.get() );
+        item->ResetUuid();
+        item->RunOnChildren( []( BOARD_ITEM* aChild ) { aChild->ResetUuid(); },
+                             RECURSE_MODE::RECURSE );
+
+        if( FOOTPRINT* footprint = dynamic_cast<FOOTPRINT*>( item ) )
+        {
+            footprint->ResolveComponentClassNames( m_board.get(),
+                                                   footprint->GetTransientComponentClassNames() );
+            footprint->ClearTransientComponentClassNames();
+            footprint->SetPath( KIID_PATH() );
+        }
+        else if( ZONE* zone = dynamic_cast<ZONE*>( item ) )
+        {
+            // A pasted zone must not reuse a name already on the board
+            if( !zone->GetZoneName().IsEmpty() )
+                zone->SetZoneName( m_board->GetUniqueZoneName( zone->GetZoneName() ) );
+        }
+
+        // The clipboard has its items around (0, 0)
+        item->Move( aPosition );
+    }
+
+    if( items.empty() )
+        return false;
+
+    // The items follow the cursor in the preview of the view until they are placed
+    for( BOARD_ITEM* item : items )
+    {
+        view()->AddToPreview( item, false );
+
+        item->RunOnChildren( [this]( BOARD_ITEM* aChild ) { view()->AddToPreview( aChild, false ); },
+                             RECURSE_MODE::RECURSE );
+    }
+
+    m_moving = std::move( items );
+    m_pasting = true;
+    return true;
+}
+
+
+BOARD_CONNECTED_ITEM* BOARD_DOCUMENT::ConnectionAt( const VECTOR2I& aPoint,
+                                                    PCB_LAYER_ID aLayer ) const
+{
+    if( !m_board )
+        return nullptr;
+
+    auto onLayer =
+            [aLayer]( const BOARD_ITEM* aItem )
+            {
+                return aLayer == UNDEFINED_LAYER ? aItem->IsOnCopperLayer()
+                                                 : aItem->IsOnLayer( aLayer );
+            };
+
+    for( FOOTPRINT* footprint : m_board->Footprints() )
+    {
+        for( PAD* pad : footprint->Pads() )
+        {
+            if( onLayer( pad ) && pad->HitTest( aPoint ) )
+                return pad;
+        }
+    }
+
+    for( PCB_TRACK* track : m_board->Tracks() )
+    {
+        if( !onLayer( track ) )
+            continue;
+
+        if( track->Type() == PCB_VIA_T ? track->HitTest( aPoint )
+                                       : track->GetStart() == aPoint || track->GetEnd() == aPoint )
+        {
+            return track;
+        }
+    }
+
+    return nullptr;
 }
 
 
@@ -725,8 +1055,7 @@ void BOARD_DOCUMENT::rotateItems( const std::vector<EDA_ITEM*>& aItems )
         for( BOARD_ITEM* item : items )
             box.Merge( item->GetBoundingBox() );
 
-        const VECTOR2D origin( m_board->GetDesignSettings().GetGridOrigin() );
-        center = VECTOR2I( origin ) + snapToGrid( VECTOR2D( box.GetCenter() ) - origin );
+        center = snapPoint( VECTOR2D( box.GetCenter() ) );
     }
 
     std::unique_ptr<BOARD_COMMIT> commit = makeCommit();

@@ -87,6 +87,9 @@ public:
      */
     void SetSelectionArea( const std::optional<BOX2D>& aArea, bool aCrossing );
 
+    /// Show a cross at a point (in world units: the cursor on the grid of a tool), or none.
+    void SetCrosshair( const std::optional<VECTOR2D>& aPoint );
+
 signals:
     /// The cursor moved, at a point in world units.
     void cursorMoved( double aX, double aY );
@@ -102,6 +105,9 @@ signals:
 
     /// The left button was released; @a aDragged if it was a drag, not a click.
     void leftReleased( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers, bool aDragged );
+
+    /// A double click with the left button (after the press and release of its first click).
+    void leftDoubleClicked( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers );
 
     /// The Escape key.
     void cancelRequested();
@@ -119,6 +125,7 @@ protected:
     void mousePressEvent( QMouseEvent* aEvent ) override;
     void mouseMoveEvent( QMouseEvent* aEvent ) override;
     void mouseReleaseEvent( QMouseEvent* aEvent ) override;
+    void mouseDoubleClickEvent( QMouseEvent* aEvent ) override;
     void keyPressEvent( QKeyEvent* aEvent ) override;
 
 private:
@@ -151,4 +158,5 @@ private:
 
     std::optional<BOX2D>                  m_selectionArea;
     bool                                  m_selectionCrossing = false;
+    std::optional<VECTOR2D>               m_crosshair;
 };

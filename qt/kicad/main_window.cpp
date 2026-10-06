@@ -288,6 +288,35 @@ void MAIN_WINDOW::createActions()
                                      QKeySequence( Qt::CTRL | Qt::SHIFT | Qt::Key_Z ) },
                                    false, &QT_DOCUMENT::Redo );
     editMenu->addSeparator();
+    m_cutAction = documentAction( tr( "Cu&t" ), QKeySequence::keyBindings( QKeySequence::Cut ), true,
+                                  &QT_DOCUMENT::Cut );
+    m_copyAction = documentAction( tr( "&Copy" ), QKeySequence::keyBindings( QKeySequence::Copy ),
+                                   true, &QT_DOCUMENT::Copy );
+    m_pasteAction = documentAction( tr( "&Paste" ), QKeySequence::keyBindings( QKeySequence::Paste ),
+                                    true, &QT_DOCUMENT::Paste );
+    editMenu->addSeparator();
+
+    // Move and Drag attach the selection to the cursor; Drag takes the connections along
+    m_moveAction = editMenu->addAction( tr( "&Move" ), this,
+                                        [this]()
+                                        {
+                                            if( QT_DOCUMENT* doc = currentDocument() )
+                                                doc->MoveSelection( false );
+                                        } );
+    m_moveAction->setShortcut( QKeySequence( Qt::Key_M ) );
+    m_moveAction->setShortcutContext( Qt::WidgetWithChildrenShortcut );
+    m_tabs->addAction( m_moveAction );
+
+    m_dragAction = editMenu->addAction( tr( "Dra&g" ), this,
+                                        [this]()
+                                        {
+                                            if( QT_DOCUMENT* doc = currentDocument() )
+                                                doc->MoveSelection( true );
+                                        } );
+    m_dragAction->setShortcut( QKeySequence( Qt::Key_G ) );
+    m_dragAction->setShortcutContext( Qt::WidgetWithChildrenShortcut );
+    m_tabs->addAction( m_dragAction );
+
     m_rotateAction = documentAction( tr( "R&otate" ), { QKeySequence( Qt::Key_R ) }, true,
                                      &QT_DOCUMENT::RotateSelection );
     m_deleteAction = documentAction( tr( "&Delete" ), { QKeySequence::Delete }, true,
@@ -295,6 +324,9 @@ void MAIN_WINDOW::createActions()
     editMenu->addSeparator();
     m_selectAllAction = documentAction( tr( "Select &All" ), { QKeySequence::SelectAll }, true,
                                         &QT_DOCUMENT::SelectAll );
+
+    // The tools of the current document (updateTools())
+    m_placeMenu = menuBar()->addMenu( tr( "&Place" ) );
 
     QMenu* viewMenu = menuBar()->addMenu( tr( "&View" ) );
 
@@ -352,6 +384,11 @@ void MAIN_WINDOW::createActions()
     toolbar->addAction( zoomOut );
     toolbar->addAction( zoomFit );
 
+    m_toolsBar = addToolBar( tr( "Tools" ) );
+    m_toolsBar->setObjectName( QStringLiteral( "tools" ) );
+    m_toolsBar->setMovable( false );
+    m_toolsBar->setToolButtonStyle( Qt::ToolButtonTextOnly );
+
     QMenu* helpMenu = menuBar()->addMenu( tr( "&Help" ) );
 
     helpMenu->addAction( tr( "&About KiCad" ), this,
@@ -365,6 +402,7 @@ void MAIN_WINDOW::createActions()
                          } );
 
     updateActions();
+    updateTools();
 }
 
 
@@ -614,7 +652,30 @@ void MAIN_WINDOW::updateActions()
     m_redoAction->setEnabled( doc && doc->CanRedo() );
     m_rotateAction->setEnabled( selection );
     m_deleteAction->setEnabled( selection );
+    m_moveAction->setEnabled( selection );
+    m_dragAction->setEnabled( selection );
+    m_copyAction->setEnabled( selection );
+    m_cutAction->setEnabled( selection );
+    m_pasteAction->setEnabled( doc != nullptr );
     m_selectAllAction->setEnabled( doc != nullptr );
+}
+
+
+void MAIN_WINDOW::updateTools()
+{
+    m_placeMenu->clear();
+    m_toolsBar->clear();
+
+    QT_DOCUMENT* doc = currentDocument();
+
+    m_placeMenu->setEnabled( doc != nullptr );
+    m_toolsBar->setVisible( doc != nullptr );
+
+    if( !doc )
+        return;
+
+    m_placeMenu->addActions( doc->ToolActions() );
+    m_toolsBar->addActions( doc->ToolActions() );
 }
 
 
@@ -634,6 +695,7 @@ void MAIN_WINDOW::updateTabTitle( QT_DOCUMENT* aDocument )
 void MAIN_WINDOW::onCurrentTabChanged( int aIndex )
 {
     updateActions();
+    updateTools();
 
     if( aIndex < 0 )
         return;

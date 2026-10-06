@@ -22,12 +22,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <wx/clipbrd.h>
-#include <wx/log.h>
 
 #include <board.h>
 #include <build_version.h>
-#include <core/ignore.h>
 #include <footprint.h>
 #include <font/fontconfig.h>
 #include <pad.h>
@@ -40,15 +37,15 @@
 #include <pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h>
 #include <pcb_io/kicad_sexpr/pcb_io_kicad_sexpr_parser.h>
 #include <kicad_clipboard.h>
-#include <kidialog.h>
 #include <io/kicad/kicad_io_utils.h>
 #include <core/ki_assert.h>
 
-CLIPBOARD_IO::CLIPBOARD_IO():
-        PCB_IO_KICAD_SEXPR(CTL_FOR_CLIPBOARD ),
+CLIPBOARD_IO::CLIPBOARD_IO( std::function<void( const wxString& )> aWriter,
+                            std::function<wxString()>                aReader ) :
+        PCB_IO_KICAD_SEXPR( CTL_FOR_CLIPBOARD ),
         m_formatter(),
-        m_writer( &CLIPBOARD_IO::clipboardWriter ),
-        m_reader( &CLIPBOARD_IO::clipboardReader )
+        m_writer( std::move( aWriter ) ),
+        m_reader( std::move( aReader ) )
 {
     m_out = &m_formatter;
 }
@@ -65,68 +62,14 @@ void CLIPBOARD_IO::SetBoard( BOARD* aBoard )
 }
 
 
-void CLIPBOARD_IO::clipboardWriter( const wxString& aData )
+void CLIPBOARD_IO::SaveItems( const std::vector<EDA_ITEM*>& aItems, const VECTOR2I& aRefPoint,
+                              bool isFootprintEditor )
 {
-    wxLogNull         doNotLog; // disable logging of failed clipboard actions
-    auto clipboard = wxTheClipboard;
-    wxClipboardLocker clipboardLock( clipboard );
-
-    if( !clipboardLock || !clipboard->IsOpened() )
-        return;
-
-    clipboard->SetData( new wxTextDataObject( aData ) );
-
-    clipboard->Flush();
-
-#ifndef __WXOSX__
-    // This section exists to return the clipboard data, ensuring it has fully
-    // been processed by the system clipboard.  This appears to be needed for
-    // extremely large clipboard copies on asynchronous linux clipboard managers
-    // such as KDE's Klipper. However, a read back of the data on OSX before the
-    // clipboard is closed seems to cause an ASAN error (heap-buffer-overflow)
-    // since it uses the cached version of the clipboard data and not the system
-    // clipboard data.
-    if( clipboard->IsSupported( wxDF_TEXT ) || clipboard->IsSupported( wxDF_UNICODETEXT ) )
-    {
-        wxTextDataObject data;
-        clipboard->GetData( data );
-        ignore_unused( data.GetText() );
-    }
-#endif
-}
-
-
-wxString CLIPBOARD_IO::clipboardReader()
-{
-    wxLogNull doNotLog; // disable logging of failed clipboard actions
-
-    auto clipboard = wxTheClipboard;
-    wxClipboardLocker clipboardLock( clipboard );
-
-    if( !clipboardLock )
-        return wxEmptyString;
-
-    if( clipboard->IsSupported( wxDF_TEXT ) || clipboard->IsSupported( wxDF_UNICODETEXT ) )
-    {
-        wxTextDataObject data;
-        clipboard->GetData( data );
-        return data.GetText();
-    }
-
-    return wxEmptyString;
-}
-
-
-void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootprintEditor )
-{
-    VECTOR2I refPoint( 0, 0 );
+    VECTOR2I refPoint = aRefPoint;
 
     // dont even start if the selection is empty
-    if( aSelected.Empty() )
+    if( aItems.empty() )
         return;
-
-    if( aSelected.HasReferencePoint() )
-        refPoint = aSelected.GetReferencePoint();
 
     auto deleteUnselectedCells =
             []( PCB_TABLE* aTable )
@@ -189,10 +132,10 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
                 return false;
             };
 
-    if( aSelected.Size() == 1 && aSelected.Front()->Type() == PCB_FOOTPRINT_T )
+    if( aItems.size() == 1 && aItems.front()->Type() == PCB_FOOTPRINT_T )
     {
         // make the footprint safe to transfer to other pcbs
-        const FOOTPRINT* footprint = static_cast<FOOTPRINT*>( aSelected.Front() );
+        const FOOTPRINT* footprint = static_cast<FOOTPRINT*>( aItems.front() );
         // Do not modify existing board
         FOOTPRINT newFootprint( *footprint );
 
@@ -221,7 +164,7 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
         LIB_ID id( "clipboard", dummy.AsString() );
         partialFootprint.SetFPID( id );
 
-        for( EDA_ITEM* item : aSelected )
+        for( EDA_ITEM* item : aItems )
         {
             if( !item->IsBOARD_ITEM() )
                 continue;
@@ -333,7 +276,7 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
 
         formatBoardLayers( m_board );
 
-        for( EDA_ITEM* item : aSelected )
+        for( EDA_ITEM* item : aItems )
         {
             if( !item->IsBOARD_ITEM() )
                 continue;
@@ -503,21 +446,8 @@ BOARD* CLIPBOARD_IO::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
 {
     std::string result( m_reader().mb_str() );
 
-    std::function<bool( wxString, int, wxString, wxString )> queryUser =
-            [&]( wxString aTitle, int aIcon, wxString aMessage, wxString aAction ) -> bool
-            {
-                KIDIALOG dlg( nullptr, aMessage, aTitle, wxOK | wxCANCEL | aIcon );
-
-                if( !aAction.IsEmpty() )
-                    dlg.SetOKLabel( aAction );
-
-                dlg.DoNotShowCheckbox( aMessage, 0 );
-
-                return dlg.ShowModal() == wxID_OK;
-            };
-
     STRING_LINE_READER reader( result, wxT( "clipboard" ) );
-    PCB_IO_KICAD_SEXPR_PARSER         parser( &reader, aAppendToMe, queryUser );
+    PCB_IO_KICAD_SEXPR_PARSER         parser( &reader, aAppendToMe, m_queryUserCallback );
 
     init( aProperties );
 

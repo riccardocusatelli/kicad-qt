@@ -829,6 +829,9 @@ void PCB_VIEW::ShowBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter )
 
     aBoard->UpdateBoardOutline();
     Add( aBoard->BoardOutline() );
+
+    // Clear() removed the preview group: a new one for the board shown
+    InitPreview();
 }
 
 

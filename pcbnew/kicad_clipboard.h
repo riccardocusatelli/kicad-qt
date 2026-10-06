@@ -30,17 +30,32 @@
 #ifndef KICAD_CLIPBOARD_H
 #define KICAD_CLIPBOARD_H
 
+#include <functional>
+#include <vector>
+
 #include <board_item.h>
 #include <pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h>
 #include <pcb_io/kicad_sexpr/pcb_io_kicad_sexpr_parser.h>
-#include <memory.h>
-#include <tools/pcb_selection.h>
+
+class PCB_SELECTION;
 
 
+/**
+ * The board items on a clipboard, as KiCad s-expression text.
+ *
+ * The text goes to and comes from the clipboard through a writer and a reader: the ones of
+ * the toolkit of the editor.
+ */
 class CLIPBOARD_IO : public PCB_IO_KICAD_SEXPR
 {
 public:
+    /// With the clipboard of wxWidgets, and its dialogs to ask the user (kicad_clipboard_gui.cpp).
     CLIPBOARD_IO();
+
+    /// With a clipboard that @a aWriter writes and @a aReader reads.
+    CLIPBOARD_IO( std::function<void( const wxString& )> aWriter,
+                  std::function<wxString()>                aReader );
+
     ~CLIPBOARD_IO();
 
     void SetWriter( std::function<void(const wxString&)> aWriter ) { m_writer = aWriter; }
@@ -52,10 +67,16 @@ public:
     void SaveBoard( const wxString& aFileName, BOARD* aBoard,
                     const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
-    /*
-     * Write all the settings of the BOARD* set by setBoard() and then adds all the
-     * BOARD_ITEMs found in selection formatted by PCB_IO_KICAD_SEXPR to clipboard as sexpr text
+    /**
+     * Write all the settings of the BOARD* set by SetBoard() and then the board items of
+     * @a aItems formatted by PCB_IO_KICAD_SEXPR to the clipboard as sexpr text.
+     *
+     * @param aRefPoint the point of the items placed at (0, 0) in the clipboard.
      */
+    void SaveItems( const std::vector<EDA_ITEM*>& aItems, const VECTOR2I& aRefPoint,
+                    bool isFootprintEditor );
+
+    /// SaveItems() for the items of a selection, from its reference point (kicad_clipboard_gui.cpp).
     void SaveSelection( const PCB_SELECTION& selected, bool isFootprintEditor );
 
     BOARD_ITEM* Parse();
@@ -66,9 +87,6 @@ public:
     void SetBoard( BOARD* aBoard );
 
 private:
-    static void clipboardWriter( const wxString& aData );
-    static wxString clipboardReader();
-
     STRING_FORMATTER m_formatter;
     std::function<void(const wxString&)> m_writer;
     std::function<wxString()> m_reader;

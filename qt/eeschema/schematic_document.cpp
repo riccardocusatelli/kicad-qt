@@ -24,9 +24,11 @@
 #include <functional>
 #include <limits>
 #include <unordered_set>
+#include <set>
 #include <utility>
 
 #include <QHeaderView>
+#include <QKeySequence>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTreeWidget>
@@ -38,16 +40,21 @@
 #include <eeschema_settings.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <io/io_mgr.h>
+#include <richio.h>
 #include <lib_symbol.h>
 #include <math/util.h>
 #include <project.h>
 #include <sch_commit.h>
 #include <sch_group.h>
 #include <sch_io/sch_io.h>
+#include <sch_io/kicad_sexpr/sch_io_kicad_sexpr.h>
 #include <sch_io/sch_io_mgr.h>
 #include <sch_item.h>
 #include <sch_line.h>
 #include <sch_painter.h>
+#include <sch_paste.h>
+#include <sch_pin.h>
+#include <sch_reference_list.h>
 #include <sch_screen.h>
 #include <sch_sheet.h>
 #include <sch_sheet_path.h>
@@ -56,6 +63,7 @@
 #include <schematic.h>
 #include <settings/color_settings.h>
 #include <settings/settings_manager.h>
+#include <tools/sch_selection.h>
 #include <zoom_defines.h>
 
 #include <gal_canvas.h>
@@ -63,6 +71,8 @@
 #include <property_panel.h>
 #include <qt_strings.h>
 #include <undo_stack.h>
+
+#include "schematic_tools.h"
 
 
 /// Role of the sheet list items holding the page index
@@ -277,7 +287,11 @@ SCHEMATIC_DOCUMENT::SCHEMATIC_DOCUMENT( QWidget* aParent ) :
 
     setupEditing( m_canvas );
 
+    addTool( tr( "Draw Wire" ), QKeySequence( Qt::Key_W ), std::make_unique<WIRE_TOOL>( *this ) );
+    addTool( tr( "Place Label" ), QKeySequence( Qt::Key_L ), std::make_unique<LABEL_TOOL>( *this ) );
+
     connect( m_canvas, &GAL_CANVAS::cursorMoved, this, &SCHEMATIC_DOCUMENT::onCursorMoved );
+    connect( m_properties, &PROPERTY_PANEL::valueEdited, this, &SCHEMATIC_DOCUMENT::onPropertyEdited );
     connect( m_canvas, &GAL_CANVAS::zoomToFitRequested, this, &SCHEMATIC_DOCUMENT::ZoomToFit );
     connect( m_sheets, &QTreeWidget::itemActivated, this,
              &SCHEMATIC_DOCUMENT::onSheetActivated );
@@ -286,8 +300,9 @@ SCHEMATIC_DOCUMENT::SCHEMATIC_DOCUMENT( QWidget* aParent ) :
 
 SCHEMATIC_DOCUMENT::~SCHEMATIC_DOCUMENT()
 {
-    if( m_moveCommit )
-        m_moveCommit->Revert();
+    // The tool and the move in progress drop their work while the view is there
+    setTool( nullptr );
+    endMove( false );
 
     // The undo entries own items that refer to the schematic; the view refers to the items
     // of the schematic
@@ -665,20 +680,43 @@ void SCHEMATIC_DOCUMENT::setItemSelected( EDA_ITEM* aItem, bool aSelected )
 void SCHEMATIC_DOCUMENT::selectionChanged()
 {
     const std::vector<EDA_ITEM*>& selection = Selection();
+    QString                       title;
 
     if( selection.size() == 1 )
-    {
-        m_properties->ShowProperties( ToQString( selection.front()->GetFriendlyName() ),
-                                      PropertyRows( selection.front(), schIUScale, EDA_UNITS::MM ) );
-    }
+        title = ToQString( selection.front()->GetFriendlyName() );
     else if( selection.size() > 1 )
+        title = tr( "%1 items" ).arg( selection.size() );
+
+    m_properties->ShowProperties( title, PropertyRows( selection, schIUScale, EDA_UNITS::MM ) );
+}
+
+
+void SCHEMATIC_DOCUMENT::onPropertyEdited( const void* aKey, const QString& aValue )
+{
+    if( Selection().empty() )
+        return;
+
+    auto    commit = makeCommit();
+    QString error;
+
+    for( EDA_ITEM* item : Selection() )
     {
-        m_properties->ShowProperties( tr( "%1 items" ).arg( selection.size() ), {} );
+        commit->Modify( item, currentScreen() );
+
+        if( !SetPropertyValue( item, aKey, aValue, schIUScale, EDA_UNITS::MM, error ) )
+        {
+            commit->Revert();
+            emit statusMessage( error );
+            selectionChanged();     // the values as they are
+            return;
+        }
     }
-    else
-    {
-        m_properties->ShowProperties( QString(), {} );
-    }
+
+    commit->Push( ToWxString( tr( "Edit Property" ) ) );
+
+    selectionChanged();
+    m_canvas->update();
+    emit stateChanged();
 }
 
 
@@ -686,6 +724,19 @@ VECTOR2I SCHEMATIC_DOCUMENT::snapToGrid( const VECTOR2D& aDelta ) const
 {
     return VECTOR2I( KiROUND( std::round( aDelta.x / m_gridSize.x ) * m_gridSize.x ),
                      KiROUND( std::round( aDelta.y / m_gridSize.y ) * m_gridSize.y ) );
+}
+
+
+VECTOR2I SCHEMATIC_DOCUMENT::snapPoint( const VECTOR2D& aPoint ) const
+{
+    // The grid of the schematics starts at (0, 0)
+    return snapToGrid( aPoint );
+}
+
+
+std::unique_ptr<SCH_COMMIT> SCHEMATIC_DOCUMENT::MakeCommit()
+{
+    return makeCommit();
 }
 
 
@@ -751,7 +802,7 @@ void SCHEMATIC_DOCUMENT::redrawItem( EDA_ITEM* aItem, bool aIsAddOrDelete, bool 
 }
 
 
-bool SCHEMATIC_DOCUMENT::beginMove()
+bool SCHEMATIC_DOCUMENT::beginMove( bool aWithConnections )
 {
     m_moving = changeableItems( Selection() );
 
@@ -763,7 +814,78 @@ bool SCHEMATIC_DOCUMENT::beginMove()
     for( SCH_ITEM* item : m_moving )
         m_moveCommit->Modify( item, currentScreen() );
 
+    if( aWithConnections )
+        findConnectedWires();
+
     return true;
+}
+
+
+void SCHEMATIC_DOCUMENT::findConnectedWires()
+{
+    m_followingEnds.clear();
+    m_dragged = VECTOR2I( 0, 0 );
+
+    std::unordered_set<SCH_ITEM*> moving( m_moving.begin(), m_moving.end() );
+    std::vector<VECTOR2I>         points;
+
+    // The points the moving items connect at: pins, wire ends, label anchors...
+    for( SCH_ITEM* item : m_moving )
+    {
+        for( const VECTOR2I& point : item->GetConnectionPoints() )
+            points.push_back( point );
+    }
+
+    auto connected =
+            [&]( const VECTOR2I& aPoint )
+            {
+                return std::find( points.begin(), points.end(), aPoint ) != points.end();
+            };
+
+    std::vector<SCH_ITEM*> joined;
+
+    for( SCH_ITEM* item : currentScreen()->Items() )
+    {
+        if( moving.count( item ) || item->IsLocked() )
+            continue;
+
+        if( item->Type() == SCH_JUNCTION_T )
+        {
+            // A junction on a moving pin or wire end goes with it
+            if( connected( item->GetPosition() ) )
+                joined.push_back( item );
+
+            continue;
+        }
+
+        SCH_LINE* line = dynamic_cast<SCH_LINE*>( item );
+
+        if( !line || !( line->IsWire() || line->IsBus() ) )
+            continue;
+
+        const bool start = connected( line->GetStartPoint() );
+        const bool end = connected( line->GetEndPoint() );
+
+        if( start && end )
+        {
+            joined.push_back( line );
+        }
+        else if( start || end )
+        {
+            m_followingEnds.push_back( { line, start,
+                                         start ? line->GetStartPoint() : line->GetEndPoint(),
+                                         start ? line->GetEndPoint() : line->GetStartPoint() } );
+        }
+    }
+
+    for( SCH_ITEM* item : joined )
+    {
+        m_moveCommit->Modify( item, currentScreen() );
+        m_moving.push_back( item );
+    }
+
+    for( const WIRE_END& end : m_followingEnds )
+        m_moveCommit->Modify( end.m_Wire, currentScreen() );
 }
 
 
@@ -772,24 +894,256 @@ void SCHEMATIC_DOCUMENT::moveBy( const VECTOR2I& aDelta )
     for( SCH_ITEM* item : m_moving )
     {
         item->Move( aDelta );
-        redrawItem( item, false, true );
+
+        // The pasted items are drawn by the preview of the view: they are not on the screen
+        if( !m_pasting )
+            redrawItem( item, false, true );
     }
+
+    m_dragged += aDelta;
+
+    for( WIRE_END& end : m_followingEnds )
+    {
+        const VECTOR2I target = end.m_Origin + m_dragged;
+        VECTOR2I       bend = target;
+
+        // A horizontal or vertical wire keeps its direction; the jog goes to the moved point
+        if( end.m_Fixed.y == end.m_Origin.y )
+            bend = VECTOR2I( target.x, end.m_Fixed.y );
+        else if( end.m_Fixed.x == end.m_Origin.x )
+            bend = VECTOR2I( end.m_Fixed.x, target.y );
+
+        if( end.m_Start )
+            end.m_Wire->SetStartPoint( bend );
+        else
+            end.m_Wire->SetEndPoint( bend );
+
+        if( bend != target && !end.m_Jog )
+        {
+            end.m_Jog = new SCH_LINE( bend, end.m_Wire->GetLayer() );
+            end.m_Jog->SetParent( currentScreen() );
+            view()->AddToPreview( end.m_Jog, false );
+        }
+
+        if( end.m_Jog )
+        {
+            end.m_Jog->SetStartPoint( bend );
+            end.m_Jog->SetEndPoint( target );
+        }
+
+        redrawItem( end.m_Wire, false, true );
+    }
+
+    if( m_pasting || !m_followingEnds.empty() )
+        view()->MarkDirty();
 }
 
 
 void SCHEMATIC_DOCUMENT::endMove( bool aCommit )
 {
+    if( m_pasting )
+    {
+        // The pasted items go to the screen shown, or are dropped
+        m_pasting = false;
+        view()->ClearPreview();
+
+        if( aCommit )
+        {
+            std::unique_ptr<SCH_COMMIT> commit = makeCommit();
+
+            for( SCH_ITEM* item : m_moving )
+                commit->Add( item, currentScreen() );
+
+            commit->Push( ToWxString( tr( "Paste" ) ) );
+
+            std::vector<EDA_ITEM*> pasted( m_moving.begin(), m_moving.end() );
+            m_moving.clear();
+            setSelection( pasted );
+        }
+        else
+        {
+            for( SCH_ITEM* item : m_moving )
+                delete item;
+
+            m_moving.clear();
+        }
+
+        m_canvas->update();
+        return;
+    }
+
     if( !m_moveCommit )
         return;
 
+    // The jogs of the wires join the drag, or are dropped
+    view()->ClearPreview();
+
+    for( const WIRE_END& end : m_followingEnds )
+    {
+        if( !end.m_Jog )
+            continue;
+
+        if( aCommit && end.m_Jog->GetStartPoint() != end.m_Jog->GetEndPoint() )
+            m_moveCommit->Add( end.m_Jog, currentScreen() );
+        else
+            delete end.m_Jog;
+    }
+
     if( aCommit )
-        m_moveCommit->Push( ToWxString( tr( "Move" ) ) );
+        m_moveCommit->Push( ToWxString( m_followingEnds.empty() ? tr( "Move" ) : tr( "Drag" ) ) );
     else
         m_moveCommit->Revert();
 
     m_moveCommit.reset();
     m_moving.clear();
+    m_followingEnds.clear();
     m_canvas->update();
+}
+
+
+QString SCHEMATIC_DOCUMENT::copyItems( const std::vector<EDA_ITEM*>& aItems )
+{
+    if( !m_schematic || aItems.empty() )
+        return QString();
+
+    SCH_SELECTION selection( currentScreen() );
+
+    for( EDA_ITEM* item : aItems )
+        selection.Add( item );
+
+    STRING_FORMATTER   formatter;
+    SCH_IO_KICAD_SEXPR io;
+    SCH_SHEET_PATH     sheet = m_schematic->CurrentSheet();
+
+    io.Format( &selection, &sheet, *m_schematic, &formatter, true );
+
+    return QString::fromStdString( formatter.GetString() );
+}
+
+
+bool SCHEMATIC_DOCUMENT::beginPaste( const QString& aText, const VECTOR2I& aPosition )
+{
+    if( !m_schematic )
+        return false;
+
+    // The items of the clipboard, in a sheet of their own
+    const std::string  text = aText.toStdString();
+    STRING_LINE_READER reader( text, wxT( "Clipboard" ) );
+    SCH_IO_KICAD_SEXPR io;
+    SCH_SHEET          clipSheet;
+    SCH_SCREEN*        clipScreen = new SCH_SCREEN( m_schematic.get() );
+
+    clipSheet.SetScreen( clipScreen );
+
+    try
+    {
+        io.LoadContent( reader, &clipSheet );
+    }
+    catch( const IO_ERROR& )
+    {
+        return false;
+    }
+
+    clipScreen->MigrateSimModels();
+
+    std::vector<SCH_ITEM*> items;
+    bool                   sheetsDropped = false;
+
+    for( SCH_ITEM* item : clipScreen->Items() )
+        items.push_back( item );
+
+    // The items leave the clipboard screen
+    clipScreen->Clear( false );
+
+    // The references in the schematic: a pasted symbol keeps its reference if it is new
+    const wxString     projectName = m_schematic->Project().GetProjectName();
+    SCH_SHEET_LIST     hierarchy = m_schematic->Hierarchy();
+    SCH_SHEET_LIST     pastePaths = hierarchy.FindAllSheetsForScreen( currentScreen() );
+    SCH_REFERENCE_LIST existingRefs;
+    std::set<wxString> existing;
+
+    hierarchy.GetSymbols( existingRefs, SYMBOL_FILTER_ALL );
+
+    for( const SCH_REFERENCE& ref : existingRefs )
+        existing.insert( ref.GetRef() );
+
+    std::vector<SCH_ITEM*> pasted;
+
+    for( SCH_ITEM* item : items )
+    {
+        // The shell pastes the items of a sheet, not sheets (their files and hierarchy)
+        if( item->Type() == SCH_SHEET_T )
+        {
+            sheetsDropped = true;
+            delete item;
+            continue;
+        }
+
+        // The clipboard screen goes away: the items reach the schematic through this one
+        item->SetParent( currentScreen() );
+
+        // New items: new UUIDs, for them and their fields and pins
+        const_cast<KIID&>( item->m_Uuid ) = KIID();
+        item->RunOnChildren( []( SCH_ITEM* aChild ) { const_cast<KIID&>( aChild->m_Uuid ) = KIID(); },
+                             RECURSE_MODE::RECURSE );
+
+        if( item->IsConnectable() )
+            item->SetConnectivityDirty();
+
+        if( SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( item ) )
+        {
+            if( const LIB_SYMBOL* source = SCH_PASTE::ChooseLibSymbol(
+                        clipScreen, currentScreen(), symbol->GetSchSymbolLibraryName() ) )
+            {
+                symbol->SetLibSymbol( new LIB_SYMBOL( *source ) );
+            }
+
+            bool keepAnnotation = true;
+
+            for( const SCH_SYMBOL_INSTANCE& instance : symbol->GetInstances() )
+            {
+                if( existing.count( instance.m_Reference ) )
+                    keepAnnotation = false;
+            }
+
+            for( const SCH_SHEET_PATH& path : pastePaths )
+            {
+                SCH_PASTE::UpdateSymbolInstance( symbol, path, KIID_PATH( wxT( "/" ) ), projectName,
+                                                 keepAnnotation );
+            }
+
+            SCH_PASTE::PruneSymbolInstances( symbol, projectName );
+
+            for( SCH_PIN* pin : symbol->GetPins() )
+                pin->SetConnectivityDirty();
+        }
+
+        pasted.push_back( item );
+    }
+
+    if( sheetsDropped )
+        emit statusMessage( tr( "The sheets of the clipboard are not pasted." ) );
+
+    if( pasted.empty() )
+        return false;
+
+    // Around the cursor: the center of their box on the grid goes to it
+    BOX2I box;
+
+    for( SCH_ITEM* item : pasted )
+        box.Merge( item->GetBoundingBox() );
+
+    const VECTOR2I offset = aPosition - snapPoint( VECTOR2D( box.GetCenter() ) );
+
+    for( SCH_ITEM* item : pasted )
+    {
+        item->Move( offset );
+        view()->AddToPreview( item, false );
+    }
+
+    m_moving = std::move( pasted );
+    m_pasting = true;
+    return true;
 }
 
 
@@ -815,7 +1169,7 @@ void SCHEMATIC_DOCUMENT::rotateItems( const std::vector<EDA_ITEM*>& aItems )
         for( SCH_ITEM* item : items )
             box.Merge( item->GetBoundingBox() );
 
-        center = snapToGrid( VECTOR2D( box.GetCenter() ) );
+        center = snapPoint( VECTOR2D( box.GetCenter() ) );
     }
 
     std::unique_ptr<SCH_COMMIT> commit = makeCommit();

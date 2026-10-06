@@ -29,6 +29,7 @@
 #include <qt_document.h>
 
 class PICKED_ITEMS_LIST;
+class SCH_LINE;
 class PROPERTY_PANEL;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -40,11 +41,13 @@ class UNDO_STACK;
 
 /**
  * A schematic in the Qt shell: the canvas, the sheets of the hierarchy, the properties of the
- * selection, and the editing of the items of the sheet shown (move, rotate, delete, undo,
- * save).  It hosts the view (SCH_VIEW_HOST): the drawing sheet shows the sheet displayed.
+ * selection, and the editing of the items of the sheet shown: move and drag, rotate, delete,
+ * edit the properties, copy and paste, draw wires and labels (schematic_tools.h), undo, save.
+ * It hosts the view (SCH_VIEW_HOST): the drawing sheet shows the sheet displayed.
  *
  * The changes are SCH_COMMITs, kept in step with the view and the selection by a
- * SCH_COMMIT_LISTENER; they are undone by SCH_UNDO_REDO, as in the schematic editor.
+ * SCH_COMMIT_LISTENER; they are undone by SCH_UNDO_REDO, as in the schematic editor.  The
+ * clipboard has the format of the schematic editor (SCH_IO_KICAD_SEXPR).
  */
 class SCHEMATIC_DOCUMENT : public QT_DOCUMENT, public SCH_VIEW_HOST
 {
@@ -66,6 +69,15 @@ public:
 
     bool GetCurrentSheetInfo( SCH_CURRENT_SHEET_INFO& aInfo ) const override;
 
+    // For the tools of the document
+
+    SCHEMATIC*       Schematic() const { return m_schematic.get(); }
+    KIGFX::SCH_VIEW* View() const { return view(); }
+    SCH_SCREEN*      CurrentScreen() const { return currentScreen(); }
+
+    /// A new commit, kept in step with this document.
+    std::unique_ptr<SCH_COMMIT> MakeCommit();
+
 protected:
     EDA_ITEM*              itemAt( const VECTOR2I& aPoint, Qt::KeyboardModifiers aModifiers ) override;
     std::vector<EDA_ITEM*> itemsInArea( const BOX2I& aArea, bool aCrossing ) override;
@@ -73,8 +85,11 @@ protected:
     void                   setItemSelected( EDA_ITEM* aItem, bool aSelected ) override;
     void                   selectionChanged() override;
     VECTOR2I               snapToGrid( const VECTOR2D& aDelta ) const override;
+    VECTOR2I               snapPoint( const VECTOR2D& aPoint ) const override;
 
-    bool beginMove() override;
+    bool    beginMove( bool aWithConnections ) override;
+    QString copyItems( const std::vector<EDA_ITEM*>& aItems ) override;
+    bool    beginPaste( const QString& aText, const VECTOR2I& aPosition ) override;
     void moveBy( const VECTOR2I& aDelta ) override;
     void endMove( bool aCommit ) override;
     void rotateItems( const std::vector<EDA_ITEM*>& aItems ) override;
@@ -87,6 +102,9 @@ private:
     class UNDO_LISTENER;
 
     void onCursorMoved( double aX, double aY );
+
+    /// Set a property of the selected items from the property panel, as one change.
+    void onPropertyEdited( const void* aKey, const QString& aValue );
     void onSheetActivated( QTreeWidgetItem* aItem );
 
     /// Fill the list of sheets, by page number.
@@ -128,6 +146,9 @@ private:
     /// Undo or redo an entry.
     void applyUndoEntry( PICKED_ITEMS_LIST& aEntry );
 
+    /// The wires and junctions connected to the items being moved: they follow them (drag).
+    void findConnectedWires();
+
     KIGFX::SCH_VIEW* view() const;
 
     GAL_CANVAS*                 m_canvas;
@@ -141,6 +162,23 @@ private:
     VECTOR2D                    m_gridSize;
     std::unique_ptr<SCH_COMMIT> m_moveCommit;       ///< The move in progress
     std::vector<SCH_ITEM*>      m_moving;
+
+    /**
+     * An end of a wire that follows the items moved.  A horizontal or vertical wire stays so:
+     * a new wire (the jog) joins its end to the moved point.
+     */
+    struct WIRE_END
+    {
+        SCH_LINE* m_Wire;
+        bool      m_Start;              ///< The start of the wire follows (or its end)
+        VECTOR2I  m_Origin;             ///< Where the end was
+        VECTOR2I  m_Fixed;              ///< The other end
+        SCH_LINE* m_Jog = nullptr;      ///< In the preview until the drag ends
+    };
+
+    std::vector<WIRE_END>       m_followingEnds;
+    VECTOR2I                    m_dragged;          ///< Displacement of the drag so far
+    bool                        m_pasting = false;    ///< m_moving are pasted, not on the screen
     bool                        m_leaveSheet = false;   ///< The sheet shown has been removed
 };
 

@@ -7,6 +7,7 @@ add_headless_kiface( pcbnew_qt_kiface
     SOURCES     ${CMAKE_SOURCE_DIR}/pcbnew/pcbnew_cli.cpp
                 ${CMAKE_SOURCE_DIR}/pcbnew/generators/pcb_tuning_pattern_headless.cpp
                 board_document.cpp
+                board_tools.cpp
                 ${KIQT_KIFACE_SOURCES}
     USAGE       kiqt
     LIBRARIES   kiqt Qt6::Widgets

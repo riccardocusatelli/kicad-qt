@@ -19,8 +19,10 @@
 
 #pragma once
 
+#include <memory>
 #include <vector>
 
+#include <QList>
 #include <QString>
 #include <QWidget>
 
@@ -31,22 +33,28 @@
 
 class EDA_ITEM;
 class GAL_CANVAS;
+class QAction;
+class QActionGroup;
+class QKeySequence;
+class QT_TOOL;
 
 
 /**
  * A document of the Qt shell (a board, a schematic), made by the KIFACE of its editor
  * (KIFACE_QT_DOCUMENT_FACTORY).
  *
- * The document is an editor: it has a selection and the editing commands of the main window
- * (undo, redo, delete, rotate, save).  QT_DOCUMENT handles the interaction on the canvas, the
- * same for every document:
+ * The document is an editor: it has a selection, the editing commands of the main window
+ * (undo, redo, move, delete, rotate, copy, paste, save) and its tools (QT_TOOL).
+ * QT_DOCUMENT handles the interaction on the canvas, the same for every document:
  *  - a click selects the item under the cursor (Shift adds it to the selection or removes it);
  *  - dragging a selected item moves the selection, on the grid; Escape cancels the move;
  *  - dragging from an empty place selects the items in an area: to the right, the items
  *    inside it, to the left, the items it touches;
- *  - Escape clears the selection.
- * The document provides the items (itemAt(), itemsInArea()) and the changes (moveBy(),
- * rotateItems(), deleteItems()), made with the commits of its model.
+ *  - Move, Drag and Paste attach the items to the cursor until a click places them;
+ *  - while a tool is active, it gets the clicks and the cursor, on the grid;
+ *  - Escape cancels what is in progress, then stops the tool, then clears the selection.
+ * The document provides the items (itemAt(), itemsInArea()), the changes (moveBy(),
+ * rotateItems(), deleteItems(), the paste) and its tools, made with the commits of its model.
  */
 class KIQT_API QT_DOCUMENT : public QWidget
 {
@@ -54,6 +62,7 @@ class KIQT_API QT_DOCUMENT : public QWidget
 
 public:
     using QWidget::QWidget;
+    ~QT_DOCUMENT() override;
 
     /// Load a file; on failure, @a aError says why.
     virtual bool Open( const QString& aFileName, QString& aError ) = 0;
@@ -92,6 +101,24 @@ public:
     /// Rotate the selected items by 90 degrees, counterclockwise.
     void RotateSelection();
 
+    /**
+     * Attach the selected items to the cursor until a click places them.
+     * @param aWithConnections drag: the wires or tracks connected to them follow.
+     */
+    void MoveSelection( bool aWithConnections );
+
+    /// Put the selected items on the clipboard, in the format of the editor.
+    void Copy();
+
+    /// Copy, then delete the selected items.
+    void Cut();
+
+    /// Attach the items of the clipboard to the cursor until a click places them.
+    void Paste();
+
+    /// The tools of the document (the actions that start them, with the selection first).
+    const QList<QAction*>& ToolActions() const { return m_toolActions; }
+
 signals:
     /// The cursor moved (the text shows its position, in the units of the document).
     void cursorPositionChanged( const QString& aText );
@@ -105,6 +132,21 @@ signals:
 protected:
     /// Handle the interaction on @a aCanvas (from the constructor of the document).
     void setupEditing( GAL_CANVAS* aCanvas );
+
+    /**
+     * Add a tool, started by an action with @a aText and the key @a aKey (when the focus is
+     * in the document).
+     */
+    QAction* addTool( const QString& aText, const QKeySequence& aKey,
+                      std::unique_ptr<QT_TOOL> aTool );
+
+    /// Start a tool of the document (stopping the active one), or select with null.
+    void setTool( QT_TOOL* aTool );
+
+    QT_TOOL* activeTool() const { return m_tool; }
+
+    /// The position of the cursor, on the grid.
+    VECTOR2I cursorPosition() const;
 
     /// Select @a aItems (instead of the current selection).
     void setSelection( const std::vector<EDA_ITEM*>& aItems );
@@ -138,10 +180,25 @@ protected:
     /// A displacement on the grid (the nearest one).
     virtual VECTOR2I snapToGrid( const VECTOR2D& aDelta ) const = 0;
 
+    /// A point on the grid (the nearest one).
+    virtual VECTOR2I snapPoint( const VECTOR2D& aPoint ) const = 0;
+
     // The changes
 
-    /// Start moving the selection; false if it cannot be moved.
-    virtual bool beginMove() = 0;
+    /**
+     * Start moving the selection; false if it cannot be moved.
+     * @param aWithConnections the wires or tracks connected to the items follow them.
+     */
+    virtual bool beginMove( bool aWithConnections ) = 0;
+
+    /// The text of the items for the clipboard (empty if they cannot be copied).
+    virtual QString copyItems( const std::vector<EDA_ITEM*>& aItems ) = 0;
+
+    /**
+     * Start moving the items of a clipboard text, placed at @a aPosition (as beginMove()):
+     * endMove() adds them, or drops them.  False if the text has no items of the document.
+     */
+    virtual bool beginPaste( const QString& aText, const VECTOR2I& aPosition ) = 0;
 
     /// Move the selection by @a aDelta (from where it is now), during a move.
     virtual void moveBy( const VECTOR2I& aDelta ) = 0;
@@ -160,7 +217,12 @@ private:
     void onLeftDragStarted( const VECTOR2D& aStart, Qt::KeyboardModifiers aModifiers );
     void onLeftDragged( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers );
     void onLeftReleased( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers, bool aDragged );
+    void onLeftDoubleClicked( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers );
+    void onCursorMoved( double aX, double aY );
     void onCancel();
+
+    /// Follow the cursor with the items being moved (DRAG::FOLLOW).
+    void followCursor();
 
     /// End an interaction in progress (a move is cancelled).
     void cancelInteraction();
@@ -173,8 +235,9 @@ private:
     enum class DRAG
     {
         NONE,
-        MOVE,       ///< Moving the selection
-        AREA        ///< Selecting the items of an area
+        MOVE,       ///< Moving the selection, with the button pressed
+        AREA,       ///< Selecting the items of an area
+        FOLLOW      ///< The items follow the cursor until a click (Move, Drag, Paste)
     };
 
     GAL_CANVAS*            m_editCanvas = nullptr;
@@ -184,7 +247,14 @@ private:
     VECTOR2D               m_pressPoint;
     EDA_ITEM*              m_pressItem = nullptr;
     bool                   m_pressSelected = false; ///< The press selected the item already
+    bool                   m_pressTaken = false;    ///< The press was for a tool or a placement
     VECTOR2I               m_moved;                 ///< Displacement of the move so far
+    VECTOR2D               m_cursor;                ///< The position of the cursor
+
+    QT_TOOL*                              m_tool = nullptr;
+    std::vector<std::unique_ptr<QT_TOOL>> m_tools;
+    QActionGroup*                         m_toolGroup = nullptr;
+    QList<QAction*>                       m_toolActions;
 };
 
 

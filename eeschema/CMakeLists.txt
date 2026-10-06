@@ -405,6 +405,7 @@ set( EESCHEMA_SRCS
     sch_collectors.cpp
     sch_commit.cpp
     sch_commit_gui.cpp
+    sch_paste.cpp
     sch_undo_redo.cpp
     sch_pane_info.cpp
     kiface_netlist.cpp

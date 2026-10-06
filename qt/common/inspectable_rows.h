@@ -29,6 +29,8 @@
 
 #include <vector>
 
+#include <QString>
+
 #include <eda_units.h>
 
 #include "property_panel.h"
@@ -36,6 +38,20 @@
 class EDA_ITEM;
 
 
-/// The properties of an item shown in the editors, by group, with distances in @a aUnits.
-std::vector<PROPERTY_ROW> PropertyRows( EDA_ITEM* aItem, const EDA_IU_SCALE& aIuScale,
-                                        EDA_UNITS aUnits );
+/**
+ * The properties shown in the editors that all @a aItems have, by group, with distances in
+ * @a aUnits.  A value the items do not share is shown empty (PROPERTY_ROW::m_Mixed).
+ */
+std::vector<PROPERTY_ROW> PropertyRows( const std::vector<EDA_ITEM*>& aItems,
+                                        const EDA_IU_SCALE& aIuScale, EDA_UNITS aUnits );
+
+/**
+ * Set a property of an item from a value as the property panel gives it.
+ *
+ * @param aKey the property (PROPERTY_ROW::m_Key).
+ * @param aValue the text (a measure in @a aUnits, unless it says its unit), the label of a
+ *               choice, or "1" / "0".
+ * @return false if the value is not valid for the property; @a aError says why.
+ */
+bool SetPropertyValue( EDA_ITEM* aItem, const void* aKey, const QString& aValue,
+                       const EDA_IU_SCALE& aIuScale, EDA_UNITS aUnits, QString& aError );

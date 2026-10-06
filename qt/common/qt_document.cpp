@@ -20,10 +20,21 @@
 #include "qt_document.h"
 
 #include <algorithm>
+#include <utility>
+
+#include <QAction>
+#include <QActionGroup>
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QKeySequence>
 
 #include <math/util.h>
 
 #include "gal_canvas.h"
+#include "qt_tool.h"
+
+
+QT_DOCUMENT::~QT_DOCUMENT() = default;
 
 
 void QT_DOCUMENT::setupEditing( GAL_CANVAS* aCanvas )
@@ -34,7 +45,85 @@ void QT_DOCUMENT::setupEditing( GAL_CANVAS* aCanvas )
     connect( aCanvas, &GAL_CANVAS::leftDragStarted, this, &QT_DOCUMENT::onLeftDragStarted );
     connect( aCanvas, &GAL_CANVAS::leftDragged, this, &QT_DOCUMENT::onLeftDragged );
     connect( aCanvas, &GAL_CANVAS::leftReleased, this, &QT_DOCUMENT::onLeftReleased );
+    connect( aCanvas, &GAL_CANVAS::leftDoubleClicked, this, &QT_DOCUMENT::onLeftDoubleClicked );
+    connect( aCanvas, &GAL_CANVAS::cursorMoved, this, &QT_DOCUMENT::onCursorMoved );
     connect( aCanvas, &GAL_CANVAS::cancelRequested, this, &QT_DOCUMENT::onCancel );
+
+    // The tools: selection first, then the ones of the document (addTool())
+    m_toolGroup = new QActionGroup( this );
+    m_toolGroup->setExclusive( true );
+
+    QAction* select = new QAction( tr( "Select" ), this );
+    select->setCheckable( true );
+    select->setChecked( true );
+    m_toolGroup->addAction( select );
+    m_toolActions << select;
+
+    connect( select, &QAction::triggered, this, [this]() { setTool( nullptr ); } );
+}
+
+
+QAction* QT_DOCUMENT::addTool( const QString& aText, const QKeySequence& aKey,
+                               std::unique_ptr<QT_TOOL> aTool )
+{
+    QT_TOOL* tool = aTool.get();
+    m_tools.push_back( std::move( aTool ) );
+
+    QAction* action = new QAction( aText, this );
+    action->setCheckable( true );
+    action->setShortcut( aKey );
+    action->setShortcutContext( Qt::WidgetWithChildrenShortcut );
+    m_toolGroup->addAction( action );
+    m_toolActions << action;
+
+    // The key works when the focus is in the document
+    addAction( action );
+
+    connect( action, &QAction::triggered, this, [this, tool]() { setTool( tool ); } );
+    return action;
+}
+
+
+void QT_DOCUMENT::setTool( QT_TOOL* aTool )
+{
+    if( aTool == m_tool )
+        return;
+
+    cancelInteraction();
+
+    if( m_tool )
+        m_tool->Stop();
+
+    m_tool = aTool;
+
+    // The action of the tool shows it active
+    int index = 0;
+
+    for( size_t i = 0; i < m_tools.size(); ++i )
+    {
+        if( m_tools[i].get() == aTool )
+            index = static_cast<int>( i ) + 1;
+    }
+
+    m_toolActions[index]->setChecked( true );
+
+    if( m_tool )
+    {
+        setSelection( {} );
+        m_editCanvas->SetCrosshair( VECTOR2D( cursorPosition() ) );
+    }
+    else
+    {
+        m_editCanvas->SetCrosshair( std::nullopt );
+    }
+
+    emit stateChanged();
+}
+
+
+VECTOR2I QT_DOCUMENT::cursorPosition() const
+{
+    return snapPoint( m_cursor );
 }
 
 
@@ -180,12 +269,83 @@ void QT_DOCUMENT::Redo()
 }
 
 
+void QT_DOCUMENT::MoveSelection( bool aWithConnections )
+{
+    cancelInteraction();
+    setTool( nullptr );
+
+    if( m_selection.empty() || !beginMove( aWithConnections ) )
+        return;
+
+    m_drag = DRAG::FOLLOW;
+    m_pressPoint = m_cursor;
+    m_moved = VECTOR2I( 0, 0 );
+    m_editCanvas->SetCrosshair( VECTOR2D( cursorPosition() ) );
+}
+
+
+void QT_DOCUMENT::Copy()
+{
+    if( m_selection.empty() )
+        return;
+
+    const QString text = copyItems( m_selection );
+
+    if( text.isEmpty() )
+        return;
+
+    QGuiApplication::clipboard()->setText( text );
+    emit statusMessage( tr( "%n item(s) copied.", nullptr, static_cast<int>( m_selection.size() ) ) );
+}
+
+
+void QT_DOCUMENT::Cut()
+{
+    if( m_selection.empty() )
+        return;
+
+    Copy();
+    DeleteSelection();
+}
+
+
+void QT_DOCUMENT::Paste()
+{
+    cancelInteraction();
+    setTool( nullptr );
+    setSelection( {} );
+
+    const QString  text = QGuiApplication::clipboard()->text();
+    const VECTOR2I position = cursorPosition();
+
+    if( text.isEmpty() || !beginPaste( text, position ) )
+    {
+        emit statusMessage( tr( "The clipboard has nothing to paste here." ) );
+        return;
+    }
+
+    m_drag = DRAG::FOLLOW;
+    m_pressPoint = VECTOR2D( position );
+    m_moved = VECTOR2I( 0, 0 );
+    m_editCanvas->SetCrosshair( VECTOR2D( position ) );
+    m_editCanvas->update();
+}
+
+
 void QT_DOCUMENT::cancelInteraction()
 {
     switch( m_drag )
     {
     case DRAG::MOVE:
         endMove( false );
+        break;
+
+    case DRAG::FOLLOW:
+        endMove( false );
+
+        if( !m_tool )
+            m_editCanvas->SetCrosshair( std::nullopt );
+
         break;
 
     case DRAG::AREA:
@@ -216,6 +376,32 @@ BOX2I QT_DOCUMENT::dragArea( const VECTOR2D& aPoint, bool& aCrossing ) const
 
 void QT_DOCUMENT::onLeftPressed( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers )
 {
+    m_pressTaken = false;
+
+    if( m_drag == DRAG::FOLLOW )
+    {
+        // The click places the items that follow the cursor
+        m_drag = DRAG::NONE;
+        m_pressTaken = true;
+        endMove( true );
+
+        if( !m_tool )
+            m_editCanvas->SetCrosshair( std::nullopt );
+
+        selectionChanged();     // the positions have changed
+        emit stateChanged();
+        return;
+    }
+
+    if( m_tool )
+    {
+        m_pressTaken = true;
+        m_tool->Click( snapPoint( aPoint ), aModifiers );
+        m_editCanvas->update();
+        emit stateChanged();
+        return;
+    }
+
     cancelInteraction();
 
     m_pressPoint = aPoint;
@@ -251,11 +437,14 @@ void QT_DOCUMENT::onLeftPressed( const VECTOR2D& aPoint, Qt::KeyboardModifiers a
 
 void QT_DOCUMENT::onLeftDragStarted( const VECTOR2D& aStart, Qt::KeyboardModifiers aModifiers )
 {
+    if( m_pressTaken )
+        return;
+
     m_pressPoint = aStart;
 
     if( m_pressItem && isSelected( m_pressItem ) )
     {
-        if( beginMove() )
+        if( beginMove( false ) )
         {
             m_drag = DRAG::MOVE;
             m_moved = VECTOR2I( 0, 0 );
@@ -270,6 +459,9 @@ void QT_DOCUMENT::onLeftDragStarted( const VECTOR2D& aStart, Qt::KeyboardModifie
 
 void QT_DOCUMENT::onLeftDragged( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers )
 {
+    if( m_pressTaken )
+        return;
+
     switch( m_drag )
     {
     case DRAG::MOVE:
@@ -295,6 +487,7 @@ void QT_DOCUMENT::onLeftDragged( const VECTOR2D& aPoint, Qt::KeyboardModifiers a
         break;
     }
 
+    case DRAG::FOLLOW:
     case DRAG::NONE:
         break;
     }
@@ -304,6 +497,9 @@ void QT_DOCUMENT::onLeftDragged( const VECTOR2D& aPoint, Qt::KeyboardModifiers a
 void QT_DOCUMENT::onLeftReleased( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers,
                                   bool aDragged )
 {
+    if( std::exchange( m_pressTaken, false ) )
+        return;
+
     const DRAG drag = m_drag;
     m_drag = DRAG::NONE;
 
@@ -349,10 +545,67 @@ void QT_DOCUMENT::onLeftReleased( const VECTOR2D& aPoint, Qt::KeyboardModifiers 
 }
 
 
+void QT_DOCUMENT::onLeftDoubleClicked( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers )
+{
+    if( m_tool )
+    {
+        m_tool->DoubleClick( snapPoint( aPoint ) );
+        m_editCanvas->update();
+        emit stateChanged();
+    }
+}
+
+
+void QT_DOCUMENT::onCursorMoved( double aX, double aY )
+{
+    m_cursor = VECTOR2D( aX, aY );
+
+    if( m_drag == DRAG::FOLLOW )
+    {
+        followCursor();
+        m_editCanvas->SetCrosshair( VECTOR2D( cursorPosition() ) );
+    }
+    else if( m_tool )
+    {
+        const VECTOR2I point = cursorPosition();
+
+        m_editCanvas->SetCrosshair( VECTOR2D( point ) );
+        m_tool->Motion( point );
+        m_editCanvas->update();
+    }
+}
+
+
+void QT_DOCUMENT::followCursor()
+{
+    const VECTOR2I moved = snapToGrid( m_cursor - m_pressPoint );
+
+    if( moved != m_moved )
+    {
+        moveBy( moved - m_moved );
+        m_moved = moved;
+        m_editCanvas->update();
+    }
+}
+
+
 void QT_DOCUMENT::onCancel()
 {
     if( m_drag != DRAG::NONE )
+    {
         cancelInteraction();
+    }
+    else if( m_tool )
+    {
+        // Escape drops what the tool is doing, then stops it
+        if( !m_tool->Cancel() )
+            setTool( nullptr );
+
+        m_editCanvas->update();
+        emit stateChanged();
+    }
     else
+    {
         setSelection( {} );
+    }
 }

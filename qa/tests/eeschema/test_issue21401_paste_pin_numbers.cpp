@@ -31,7 +31,7 @@
  * The reproduction is clipboard-driven and only fully exercisable through the GUI Paste action,
  * which the eeschema unit-test harness cannot drive (no frame/tool manager/clipboard). The bug,
  * however, lives entirely in which cached library symbol the paste selects, so these tests drive
- * the production selection helper SCH_EDITOR_CONTROL::ChoosePasteLibSymbol directly and confirm
+ * the production selection helper SCH_PASTE::ChooseLibSymbol directly and confirm
  * the chosen definition survives SCH_SYMBOL::SetLibSymbol() without losing the copied pin numbers.
  */
 
@@ -44,7 +44,7 @@
 #include <sch_pin.h>
 #include <sch_symbol.h>
 #include <sch_screen.h>
-#include <tools/sch_editor_control.h>
+#include <sch_paste.h>
 
 
 namespace
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE( Issue21401_PastePrefersClipboardLibSymbol )
     SCH_SYMBOL symbol( *clipLib, clipLib->GetLibId(), &path, 0, 0, VECTOR2I( 0, 0 ) );
     symbol.UpdatePins();
 
-    const LIB_SYMBOL* source = SCH_EDITOR_CONTROL::ChoosePasteLibSymbol(
+    const LIB_SYMBOL* source = SCH_PASTE::ChooseLibSymbol(
             &clipScreen, &destScreen, symbol.GetSchSymbolLibraryName() );
 
     BOOST_REQUIRE( source );
@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE( Issue22162_PastePrefersClipboardPowerType )
     clipScreen.AddLibSymbol( clipPower );
 
     const wxString    lookupName = clipPower->GetLibId().Format().wx_str();
-    const LIB_SYMBOL* source = SCH_EDITOR_CONTROL::ChoosePasteLibSymbol( &clipScreen, &destScreen,
+    const LIB_SYMBOL* source = SCH_PASTE::ChooseLibSymbol( &clipScreen, &destScreen,
                                                                          lookupName );
 
     BOOST_REQUIRE( source );
@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE( Issue21401_FallsBackToDestinationWhenClipboardEmpty )
     SCH_SCREEN clipScreen;  // no cached symbol
 
     const wxString    lookupName = destLib->GetLibId().Format().wx_str();
-    const LIB_SYMBOL* source = SCH_EDITOR_CONTROL::ChoosePasteLibSymbol( &clipScreen, &destScreen,
+    const LIB_SYMBOL* source = SCH_PASTE::ChooseLibSymbol( &clipScreen, &destScreen,
                                                                          lookupName );
 
     BOOST_CHECK_EQUAL( source, destLib );

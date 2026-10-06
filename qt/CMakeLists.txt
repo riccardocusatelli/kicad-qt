@@ -29,12 +29,18 @@ find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets )
 # (see cmake/WxFree.cmake)
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_pcbcommon
     pcbnew/board_undo_redo.cpp
+    pcbnew/kicad_clipboard.cpp
     pcbnew/pcb_view.cpp
     )
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/sch_painter.cpp
+    eeschema/sch_paste.cpp
     eeschema/sch_undo_redo.cpp
     eeschema/sch_view.cpp
+    eeschema/tools/sch_selection.cpp
+    )
+set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_common
+    common/tool/selection.cpp
     )
 
 # The sources compiled into each Qt KIFACE, with its model (PROPERTY_MANAGER, undo lists)

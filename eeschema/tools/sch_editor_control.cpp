@@ -70,6 +70,7 @@
 #include <sch_table.h>
 #include <sch_tablecell.h>
 #include <sch_commit.h>
+#include <sch_paste.h>
 #include <sim/simulator_frame.h>
 #include <symbol_library_manager.h>
 #include <symbol_viewer_frame.h>
@@ -112,12 +113,6 @@
 #endif
 
 
-/**
- * Flag to enable schematic paste debugging output.
- *
- * @ingroup trace_env_vars
- */
-static const wxChar traceSchPaste[] = wxT( "KICAD_SCH_PASTE" );
 
 namespace
 {
@@ -1861,62 +1856,10 @@ void SCH_EDITOR_CONTROL::updatePastedSymbol( SCH_SYMBOL* aSymbol, const SCH_SHEE
 {
     KI_CHECK( m_frame && aSymbol, /* void */ );
 
-    SCH_SYMBOL_INSTANCE newInstance;
-    bool                instanceFound = false;
-    KIID_PATH           pasteLookupPath = aClipPath;
-
     m_pastedSymbols.insert( aSymbol );
 
-    for( const SCH_SYMBOL_INSTANCE& tmp : aSymbol->GetInstances() )
-    {
-        if( ( tmp.m_Path.empty() && aClipPath.empty() ) || ( !aClipPath.empty() && tmp.m_Path.EndsWith( aClipPath ) ) )
-        {
-            newInstance = tmp;
-            instanceFound = true;
-
-            KI_LOG_TRACE( traceSchPaste, wxS( "Pasting found symbol instance with reference %s, unit %d:\n"
-                                            "\tClipboard path: %s\n"
-                                            "\tSymbol UUID: %s." ),
-                        tmp.m_Reference,
-                        tmp.m_Unit,
-                        aClipPath.AsString(),
-                        aSymbol->m_Uuid.AsString() );
-
-            break;
-        }
-    }
-
-    // The pasted symbol look up paths include the symbol UUID.
-    pasteLookupPath.push_back( aSymbol->m_Uuid );
-
-    if( !instanceFound )
-    {
-        KI_LOG_TRACE( traceSchPaste, wxS( "Clipboard symbol instance **not** found:\n\tClipboard path: %s\n"
-                                        "\tSymbol UUID: %s." ),
-                    aClipPath.AsString(),
-                    aSymbol->m_Uuid.AsString() );
-
-        // Some legacy versions saved value fields escaped.  While we still do in the symbol
-        // editor, we don't anymore in the schematic, so be sure to unescape them.
-        SCH_FIELD* valueField = aSymbol->GetField( FIELD_T::VALUE );
-        valueField->SetText( UnescapeString( valueField->GetText() ) );
-
-        // Pasted from notepad or an older instance of eeschema.  Use the values in the fields
-        // instead.
-        newInstance.m_Reference = aSymbol->GetField( FIELD_T::REFERENCE )->GetText();
-        newInstance.m_Unit = aSymbol->GetUnit();
-    }
-
-    newInstance.m_Path = aPastePath.Path();
-    newInstance.m_ProjectName = m_frame->Prj().GetProjectName();
-
-    aSymbol->AddHierarchicalReference( newInstance );
-
-    if( !aForceKeepAnnotations )
-        aSymbol->ClearAnnotation( &aPastePath, false );
-
-    // We might clear annotations but always leave the original unit number from the paste.
-    aSymbol->SetUnit( newInstance.m_Unit );
+    SCH_PASTE::UpdateSymbolInstance( aSymbol, aPastePath, aClipPath, m_frame->Prj().GetProjectName(),
+                                     aForceKeepAnnotations );
 }
 
 
@@ -2019,48 +1962,11 @@ void SCH_EDITOR_CONTROL::prunePastedSymbolInstances()
     for( SCH_SYMBOL* symbol : m_pastedSymbols )
     {
         KI_CHECK2( symbol, continue );
-
-        std::vector<KIID_PATH> instancePathsToRemove;
-
-        for( const SCH_SYMBOL_INSTANCE& instance : symbol->GetInstances() )
-        {
-            if( instance.m_ProjectName != m_frame->Prj().GetProjectName() || instance.m_Path.empty() )
-                instancePathsToRemove.emplace_back( instance.m_Path );
-        }
-
-        for( const KIID_PATH& path : instancePathsToRemove )
-            symbol->RemoveInstance( path );
+        SCH_PASTE::PruneSymbolInstances( symbol, m_frame->Prj().GetProjectName() );
     }
 }
 
 
-const LIB_SYMBOL* SCH_EDITOR_CONTROL::ChoosePasteLibSymbol( const SCH_SCREEN* aClipboardScreen,
-                                                            const SCH_SCREEN* aDestScreen,
-                                                            const wxString&   aLibSymbolName )
-{
-    // The clipboard's cached library symbol is a matched pair with the pasted instance, so it
-    // must win over the destination's same-named cache. Pasting from the destination cache would
-    // silently remap the instance to a different definition and drop in-place edits such as
-    // renumbered pins (issue 21401) or a changed power type (issue 22162). Fall back to the
-    // destination cache only when the clipboard carries no copy.
-    if( aClipboardScreen )
-    {
-        auto clipIt = aClipboardScreen->GetLibSymbols().find( aLibSymbolName );
-
-        if( clipIt != aClipboardScreen->GetLibSymbols().end() )
-            return clipIt->second;
-    }
-
-    if( aDestScreen )
-    {
-        auto destIt = aDestScreen->GetLibSymbols().find( aLibSymbolName );
-
-        if( destIt != aDestScreen->GetLibSymbols().end() )
-            return destIt->second;
-    }
-
-    return nullptr;
-}
 
 
 int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
@@ -2332,7 +2238,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
 
             KI_CHECK2( currentScreen, continue );
 
-            const LIB_SYMBOL* source = ChoosePasteLibSymbol( tempScreen, currentScreen,
+            const LIB_SYMBOL* source = SCH_PASTE::ChooseLibSymbol( tempScreen, currentScreen,
                                                              symbol->GetSchSymbolLibraryName() );
 
             if( source )

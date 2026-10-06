@@ -6,6 +6,7 @@ add_headless_kiface( eeschema_qt_kiface
     LIKE        eeschema_cli_kiface
     SOURCES     ${CMAKE_SOURCE_DIR}/eeschema/eeschema_cli.cpp
                 schematic_document.cpp
+                schematic_tools.cpp
                 ${KIQT_KIFACE_SOURCES}
     USAGE       kiqt
     LIBRARIES   kiqt Qt6::Widgets

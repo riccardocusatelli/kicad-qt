@@ -178,6 +178,16 @@ void GAL_CANVAS::SetSelectionArea( const std::optional<BOX2D>& aArea, bool aCros
 }
 
 
+void GAL_CANVAS::SetCrosshair( const std::optional<VECTOR2D>& aPoint )
+{
+    if( aPoint == m_crosshair )
+        return;
+
+    m_crosshair = aPoint;
+    update();
+}
+
+
 void GAL_CANVAS::render()
 {
     const VECTOR2I size = m_gal->GetScreenPixelSize();
@@ -276,6 +286,23 @@ void GAL_CANVAS::paintEvent( QPaintEvent* aEvent )
         painter.setPen( pen );
         painter.setBrush( fill );
         painter.drawRect( area );
+    }
+
+    if( m_crosshair && m_view )
+    {
+        // A small cross, in the color of the cursor of the editors
+        const VECTOR2D at = m_view->ToScreen( *m_crosshair ) / devicePixelRatioF();
+        const double   arm = 10.0;
+        const QPointF  center( at.x, at.y );
+
+        const KIGFX::COLOR4D& color = m_painter->GetSettings()->GetCursorColor();
+
+        QPen pen( QColor::fromRgbF( color.r, color.g, color.b ), 1.0 );
+        pen.setCosmetic( true );
+
+        painter.setPen( pen );
+        painter.drawLine( center - QPointF( arm, 0 ), center + QPointF( arm, 0 ) );
+        painter.drawLine( center - QPointF( 0, arm ), center + QPointF( 0, arm ) );
     }
 }
 
@@ -388,6 +415,22 @@ void GAL_CANVAS::mouseReleaseEvent( QMouseEvent* aEvent )
 
         emit leftReleased( m_view->ToWorld( toDevice( aEvent->position() ) ), aEvent->modifiers(),
                            dragged );
+    }
+
+    aEvent->accept();
+}
+
+
+void GAL_CANVAS::mouseDoubleClickEvent( QMouseEvent* aEvent )
+{
+    if( aEvent->button() == Qt::LeftButton && m_view && !m_panning )
+    {
+        // The second press of a double click: no drag can start from it
+        m_leftDown = false;
+        m_dragging = false;
+
+        emit leftDoubleClicked( m_view->ToWorld( toDevice( aEvent->position() ) ),
+                                aEvent->modifiers() );
     }
 
     aEvent->accept();
