@@ -28,15 +28,13 @@
 #include <core/typeinfo.h>
 #include <memory>
 #include <view/view.h>
+#include <view/view_group.h>
 #include <view/view_rtree.h>
-#include <view/wx_view_controls.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
-#include <tool/tool_manager.h>
 #include <layer_ids.h>
+#include <lib_symbol.h>
 #include <sch_screen.h>
 #include <schematic.h>
-#include <sch_base_frame.h>
-#include <sch_edit_frame.h>
 #include <string_utils.h>
 
 #include "sch_view.h"
@@ -46,10 +44,10 @@
 namespace KIGFX {
 
 
-SCH_VIEW::SCH_VIEW( SCH_BASE_FRAME* aFrame ) :
-    VIEW()
+SCH_VIEW::SCH_VIEW( SCH_VIEW_HOST* aHost ) :
+    VIEW(),
+    m_host( aHost )
 {
-    m_frame = aFrame;
 }
 
 
@@ -105,8 +103,8 @@ void SCH_VIEW::SetScale( double aScale, VECTOR2D aAnchor )
     VIEW::SetScale( aScale, aAnchor );
 
     // Redraw items whose rendering is dependent on zoom
-    if( m_frame )
-        m_frame->RefreshZoomDependentItems();
+    if( m_host )
+        m_host->RefreshZoomDependentItems();
 }
 
 
@@ -130,17 +128,15 @@ void SCH_VIEW::DisplaySheet( const SCH_SCREEN *aScreen )
     m_drawingSheet->SetVariantName( TO_UTF8( currentVariant ) );
     m_drawingSheet->SetVariantDesc( TO_UTF8( variantDesc ) );
 
-    if( m_frame && m_frame->IsType( FRAME_SCH ) )
+    SCH_CURRENT_SHEET_INFO currentSheet;
+
+    if( m_host && m_host->GetCurrentSheetInfo( currentSheet ) )
     {
-        SCH_EDIT_FRAME* editFrame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
-
-        KI_CHECK( editFrame, /* void */ );
-
         // The title block metadata (sheet name/path, first-page flag) is derived from the
         // current sheet, so the screen being displayed must be the current sheet's screen.
-        KI_CHECK( editFrame->GetCurrentSheet().LastScreen() == aScreen, /* void */ );
+        KI_CHECK( currentSheet.m_SheetScreen == aScreen, /* void */ );
 
-        syncDrawingSheetToCurrentSheet( editFrame );
+        syncDrawingSheetToCurrentSheet( currentSheet );
     }
     else
     {
@@ -154,14 +150,14 @@ void SCH_VIEW::DisplaySheet( const SCH_SCREEN *aScreen )
     InitPreview();
 
     // Allow tools to add anything they require to the view (such as the selection VIEW_GROUP)
-    if( m_frame && m_frame->GetToolManager() )
-        m_frame->GetToolManager()->ResetTools( TOOL_BASE::REDRAW );
+    if( m_host )
+        m_host->OnSheetDisplayed();
 }
 
 
-void SCH_VIEW::syncDrawingSheetToCurrentSheet( SCH_EDIT_FRAME* aFrame )
+void SCH_VIEW::syncDrawingSheetToCurrentSheet( const SCH_CURRENT_SHEET_INFO& aInfo )
 {
-    SCH_SCREEN* screen = aFrame->GetScreen();
+    SCH_SCREEN* screen = aInfo.m_Screen;
 
     KI_CHECK( screen, /* void */ );
 
@@ -172,9 +168,9 @@ void SCH_VIEW::syncDrawingSheetToCurrentSheet( SCH_EDIT_FRAME* aFrame )
     // Use the sheet path's virtual page number rather than the screen's, because the screen's
     // value can be stale after operations like save that temporarily overwrite all screen page
     // numbers for serialization.
-    m_drawingSheet->SetIsFirstPage( aFrame->GetCurrentSheet().GetVirtualPageNumber() == 1 );
-    m_drawingSheet->SetSheetName( TO_UTF8( aFrame->GetScreenDesc() ) );
-    m_drawingSheet->SetSheetPath( TO_UTF8( aFrame->GetFullScreenDesc() ) );
+    m_drawingSheet->SetIsFirstPage( aInfo.m_VirtualPageNumber == 1 );
+    m_drawingSheet->SetSheetName( TO_UTF8( aInfo.m_Name ) );
+    m_drawingSheet->SetSheetPath( TO_UTF8( aInfo.m_Path ) );
 }
 
 
@@ -183,14 +179,11 @@ void SCH_VIEW::RefreshDrawingSheetPageInfo()
     if( !m_drawingSheet )
         return;
 
-    if( m_frame && m_frame->IsType( FRAME_SCH ) )
+    SCH_CURRENT_SHEET_INFO currentSheet;
+
+    if( m_host && m_host->GetCurrentSheetInfo( currentSheet ) )
     {
-        SCH_EDIT_FRAME* editFrame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
-
-        if( !editFrame )
-            return;
-
-        syncDrawingSheetToCurrentSheet( editFrame );
+        syncDrawingSheetToCurrentSheet( currentSheet );
         Update( m_drawingSheet.get(), KIGFX::REPAINT );
     }
 }
@@ -252,6 +245,55 @@ void SCH_VIEW::ClearHiddenFlags()
 void SCH_VIEW::HideDrawingSheet()
 {
     //    SetVisible( m_drawingSheet.get(), false );
+}
+
+
+void SCH_VIEW::SetDefaultLayerOrder()
+{
+    for( int i = 0; (unsigned) i < sizeof( SCH_LAYER_ORDER ) / sizeof( int ); ++i )
+    {
+        int layer = SCH_LAYER_ORDER[i];
+        KI_ASSERT( layer < VIEW::VIEW_MAX_LAYERS );
+
+        SetLayerOrder( layer, i );
+    }
+}
+
+
+void SCH_VIEW::SetDefaultLayerDeps( bool aCached )
+{
+    // caching makes no sense for Cairo and other software renderers
+    RENDER_TARGET target = aCached ? TARGET_CACHED : TARGET_NONCACHED;
+
+    for( int i = 0; i < VIEW::VIEW_MAX_LAYERS; i++ )
+        SetLayerTarget( i, target );
+
+    SetLayerTarget( LAYER_SCHEMATIC_ANCHOR, TARGET_NONCACHED );
+    SetLayerDisplayOnly( LAYER_SCHEMATIC_ANCHOR );
+
+    // Bitmaps are draw on a non cached GAL layer:
+    SetLayerTarget( LAYER_DRAW_BITMAPS, TARGET_NONCACHED );
+
+    // Some draw layers need specific settings
+    SetLayerTarget( LAYER_GP_OVERLAY, TARGET_OVERLAY );
+    SetLayerDisplayOnly( LAYER_GP_OVERLAY ) ;
+
+    SetLayerTarget( LAYER_SELECT_OVERLAY, TARGET_OVERLAY );
+    SetLayerDisplayOnly( LAYER_SELECT_OVERLAY ) ;
+
+    SetLayerTarget( LAYER_DRAWINGSHEET, TARGET_NONCACHED );
+    SetLayerDisplayOnly( LAYER_DRAWINGSHEET ) ;
+
+    SetLayerTarget( LAYER_OP_VOLTAGES, TARGET_OVERLAY );
+    SetLayerDisplayOnly( LAYER_OP_VOLTAGES );
+    SetLayerTarget( LAYER_OP_CURRENTS, TARGET_OVERLAY );
+    SetLayerDisplayOnly( LAYER_OP_CURRENTS );
+
+    SetLayerTarget( LAYER_SELECTION_SHADOWS, TARGET_OVERLAY );
+    SetLayerDisplayOnly( LAYER_SELECTION_SHADOWS ) ;
+
+    SetLayerDisplayOnly( LAYER_NET_COLOR_HIGHLIGHT );
+    SetLayerDisplayOnly( LAYER_DANGLING );
 }
 
 

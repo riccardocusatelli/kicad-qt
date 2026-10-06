@@ -58,6 +58,9 @@ endfunction()
 #     SOURCES <files...>              # the KIFACE without GUI (KIFACE_GETTER, Kiface()), and
 #                                     # the headless definitions of editor functions
 #     OBJECTS <object library>        # the objects of the editor KIFACE
+#     LIKE <headless kiface>          # or: the objects, archives, libraries and usage of
+#                                     # another headless KIFACE (instead of OBJECTS), to which
+#                                     # ARCHIVES, LIBRARIES and USAGE are added
 #     USAGE <targets...>              # targets whose usage requirements SOURCES need
 #     ARCHIVES <static libraries...>  # linked by file, without their link dependencies
 #     LIBRARIES <libraries...> )      # linked as usual; they must not bring the GUI toolkit
@@ -71,13 +74,39 @@ endfunction()
 # provider, for instance) is not pulled in: something must refer to it (see
 # LinkDrcTestProviders()).
 function( add_headless_kiface target )
-    cmake_parse_arguments( ARG "" "OUTPUT_NAME;OBJECTS" "SOURCES;USAGE;ARCHIVES;LIBRARIES" ${ARGN} )
+    cmake_parse_arguments( ARG "" "OUTPUT_NAME;OBJECTS;LIKE" "SOURCES;USAGE;ARCHIVES;LIBRARIES"
+                           ${ARGN} )
+
+    if( ARG_LIKE )
+        get_target_property( _like_archives ${ARG_LIKE} HEADLESS_ARCHIVE_TARGETS )
+        get_target_property( _like_libraries ${ARG_LIKE} HEADLESS_LIBRARIES )
+        get_target_property( _like_usage ${ARG_LIKE} HEADLESS_USAGE )
+
+        set( ARG_ARCHIVES ${_like_archives} ${ARG_ARCHIVES} )
+        set( ARG_LIBRARIES ${_like_libraries} ${ARG_LIBRARIES} )
+        set( ARG_USAGE ${_like_usage} ${ARG_USAGE} )
+    endif()
 
     add_library( ${target}_iface OBJECT ${ARG_SOURCES} )
     target_link_libraries( ${target}_iface PRIVATE ${ARG_USAGE} )
     target_compile_definitions( ${target}_iface PRIVATE BUILD_KIWAY_DLL COMPILING_DLL )
 
-    add_library( ${target}_archive STATIC $<TARGET_OBJECTS:${ARG_OBJECTS}> )
+    if( ARG_LIKE )
+        # Compiled like the sources of the other KIFACE (the editors set some include
+        # directories and definitions for their whole directory)
+        target_include_directories( ${target}_iface PRIVATE
+            $<TARGET_PROPERTY:${ARG_LIKE}_iface,INCLUDE_DIRECTORIES> )
+        target_compile_definitions( ${target}_iface PRIVATE
+            $<TARGET_PROPERTY:${ARG_LIKE}_iface,COMPILE_DEFINITIONS> )
+    endif()
+
+    # The objects of the editor, as an archive (the one of the other KIFACE with LIKE)
+    set( _objects_archive "" )
+
+    if( NOT ARG_LIKE )
+        set( _objects_archive ${target}_archive )
+        add_library( ${_objects_archive} STATIC $<TARGET_OBJECTS:${ARG_OBJECTS}> )
+    endif()
 
     add_library( ${target} MODULE $<TARGET_OBJECTS:${target}_iface> )
 
@@ -89,7 +118,7 @@ function( add_headless_kiface target )
         )
 
     set_target_properties( ${target} PROPERTIES
-        HEADLESS_ARCHIVE_TARGETS "${target}_archive;${ARG_ARCHIVES}"
+        HEADLESS_ARCHIVE_TARGETS "${_objects_archive};${ARG_ARCHIVES}"
         HEADLESS_LIBRARIES       "${ARG_LIBRARIES}"
         HEADLESS_USAGE           "${ARG_USAGE}"
         )

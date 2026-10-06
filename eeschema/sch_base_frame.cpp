@@ -431,6 +431,13 @@ void SCH_BASE_FRAME::UpdateItem( EDA_ITEM* aItem, bool isAddOrDelete, bool aUpda
 }
 
 
+void SCH_BASE_FRAME::OnSheetDisplayed()
+{
+    if( GetToolManager() )
+        GetToolManager()->ResetTools( TOOL_BASE::REDRAW );
+}
+
+
 void SCH_BASE_FRAME::RefreshZoomDependentItems()
 {
     // We currently have two zoom-dependent renderings: text, which is rendered as bitmap text

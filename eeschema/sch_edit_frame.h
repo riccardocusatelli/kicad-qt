@@ -196,6 +196,9 @@ public:
     wxString GetScreenDesc() const override;
     wxString GetFullScreenDesc() const override;
 
+    /// The current sheet, for the drawing sheet of the view.
+    bool GetCurrentSheetInfo( SCH_CURRENT_SHEET_INFO& aInfo ) const override;
+
     /**
      * Execute a remote command sent via a socket on port KICAD_SCH_PORT_SERVICE_NUMBER (which
      * defaults to 4243).

@@ -1,0 +1,527 @@
+/*
+ * This program source code file is part of KiCad, a free EDA CAD application.
+ *
+ * Copyright The KiCad Developers, see AUTHORS.txt for contributors.
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "main_window.h"
+
+#include <QApplication>
+#include <QDockWidget>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QFileSystemModel>
+#include <QHeaderView>
+#include <QLabel>
+#include <QListWidget>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QPalette>
+#include <QPushButton>
+#include <QSettings>
+#include <QStyle>
+#include <QStackedWidget>
+#include <QStatusBar>
+#include <QTabWidget>
+#include <QToolBar>
+#include <QTreeView>
+#include <QVBoxLayout>
+
+#include <build_version.h>
+#include <ki_exception.h>
+#include <kiface.h>
+#include <kiface_ids.h>
+#include <kiway_base.h>
+#include <pgm_base.h>
+#include <settings/settings_manager.h>
+
+#include <gal_canvas.h>
+#include <qt_document.h>
+#include <qt_strings.h>
+
+
+/// Number of recent files kept
+static constexpr int MAX_RECENT_FILES = 12;
+
+/// The setting of the recent files (QSettings of kicad-qt: the project manager of KiCad keeps
+/// its own list, of projects only)
+static const char* const RECENT_FILES_KEY = "files/recent";
+
+/// The setting of the theme of the window (QSettings of kicad-qt)
+static const char* const DARK_THEME_KEY = "appearance/dark";
+
+
+/// The colors of the window: the light palette of the style, or a dark one.
+static void applyTheme( bool aDark )
+{
+    if( !aDark )
+    {
+        QApplication::setPalette( QApplication::style()->standardPalette() );
+        return;
+    }
+
+    QPalette palette;
+    const QColor window( 0x2b, 0x2d, 0x30 );
+    const QColor base( 0x1e, 0x1f, 0x22 );
+    const QColor text( 0xdf, 0xe1, 0xe5 );
+    const QColor accent( 0x35, 0x74, 0xf0 );
+
+    palette.setColor( QPalette::Window, window );
+    palette.setColor( QPalette::WindowText, text );
+    palette.setColor( QPalette::Base, base );
+    palette.setColor( QPalette::AlternateBase, window );
+    palette.setColor( QPalette::ToolTipBase, base );
+    palette.setColor( QPalette::ToolTipText, text );
+    palette.setColor( QPalette::PlaceholderText, QColor( 0x8c, 0x8f, 0x94 ) );
+    palette.setColor( QPalette::Text, text );
+    palette.setColor( QPalette::Button, window );
+    palette.setColor( QPalette::ButtonText, text );
+    palette.setColor( QPalette::BrightText, Qt::white );
+    palette.setColor( QPalette::Mid, QColor( 0x43, 0x45, 0x4a ) );
+    palette.setColor( QPalette::Link, accent );
+    palette.setColor( QPalette::Highlight, accent );
+    palette.setColor( QPalette::HighlightedText, Qt::white );
+    palette.setColor( QPalette::Disabled, QPalette::Text, QColor( 0x6f, 0x73, 0x7a ) );
+    palette.setColor( QPalette::Disabled, QPalette::WindowText, QColor( 0x6f, 0x73, 0x7a ) );
+    palette.setColor( QPalette::Disabled, QPalette::ButtonText, QColor( 0x6f, 0x73, 0x7a ) );
+
+    QApplication::setPalette( palette );
+}
+
+
+/// The KIFACE that shows a document, from its extension.
+static bool documentFace( const QString& aFileName, KIWAY_FACES::FACE_T& aFace )
+{
+    const QString suffix = QFileInfo( aFileName ).suffix().toLower();
+
+    if( suffix == QLatin1String( "kicad_pcb" ) )
+        aFace = KIWAY_FACES::FACE_PCB;
+    else if( suffix == QLatin1String( "kicad_sch" ) )
+        aFace = KIWAY_FACES::FACE_SCH;
+    else
+        return false;
+
+    return true;
+}
+
+
+MAIN_WINDOW::MAIN_WINDOW( KIWAY_BASE& aKiway ) :
+        m_kiway( aKiway )
+{
+    setWindowTitle( QStringLiteral( "KiCad" ) );
+    resize( 1440, 900 );
+
+    // Documents
+    m_tabs = new QTabWidget;
+    m_tabs->setDocumentMode( true );
+    m_tabs->setTabsClosable( true );
+    m_tabs->setMovable( true );
+
+    connect( m_tabs, &QTabWidget::tabCloseRequested, this, &MAIN_WINDOW::closeTab );
+    connect( m_tabs, &QTabWidget::currentChanged, this, &MAIN_WINDOW::onCurrentTabChanged );
+
+    // Welcome page: open a project or a file, or a recent one
+    auto* welcome = new QWidget;
+    auto* welcomeLayout = new QVBoxLayout( welcome );
+    welcomeLayout->setContentsMargins( 48, 48, 48, 48 );
+    welcomeLayout->setSpacing( 12 );
+
+    auto* title = new QLabel( tr( "KiCad" ) );
+    QFont titleFont = title->font();
+    titleFont.setPointSizeF( titleFont.pointSizeF() * 2.2 );
+    titleFont.setWeight( QFont::DemiBold );
+    title->setFont( titleFont );
+
+    auto* subtitle = new QLabel( tr( "Open a project, a board or a schematic." ) );
+    subtitle->setForegroundRole( QPalette::PlaceholderText );
+
+    auto* openProjectButton = new QPushButton( tr( "Open Project..." ) );
+    auto* openFileButton = new QPushButton( tr( "Open File..." ) );
+    connect( openProjectButton, &QPushButton::clicked, this, &MAIN_WINDOW::openProjectDialog );
+    connect( openFileButton, &QPushButton::clicked, this, &MAIN_WINDOW::openFileDialog );
+
+    auto* buttons = new QHBoxLayout;
+    buttons->addWidget( openProjectButton );
+    buttons->addWidget( openFileButton );
+    buttons->addStretch();
+
+    auto* recentTitle = new QLabel( tr( "Recent Files" ) );
+    QFont recentFont = recentTitle->font();
+    recentFont.setWeight( QFont::DemiBold );
+    recentTitle->setFont( recentFont );
+
+    m_welcomeRecent = new QListWidget;
+    m_welcomeRecent->setMaximumWidth( 720 );
+    connect( m_welcomeRecent, &QListWidget::itemActivated, this,
+             [this]( QListWidgetItem* aItem )
+             {
+                 OpenPath( aItem->data( Qt::UserRole ).toString() );
+             } );
+
+    welcomeLayout->addWidget( title );
+    welcomeLayout->addWidget( subtitle );
+    welcomeLayout->addSpacing( 12 );
+    welcomeLayout->addLayout( buttons );
+    welcomeLayout->addSpacing( 24 );
+    welcomeLayout->addWidget( recentTitle );
+    welcomeLayout->addWidget( m_welcomeRecent, 1 );
+
+    m_center = new QStackedWidget;
+    m_center->addWidget( welcome );
+    m_center->addWidget( m_tabs );
+    setCentralWidget( m_center );
+
+    // Files of the project
+    m_projectModel = new QFileSystemModel( this );
+    m_projectModel->setNameFilters( { QStringLiteral( "*.kicad_pro" ),
+                                      QStringLiteral( "*.kicad_sch" ),
+                                      QStringLiteral( "*.kicad_pcb" ) } );
+    m_projectModel->setNameFilterDisables( false );
+
+    m_projectTree = new QTreeView;
+    m_projectTree->setModel( m_projectModel );
+    m_projectTree->setHeaderHidden( true );
+
+    for( int column = 1; column < m_projectModel->columnCount(); ++column )
+        m_projectTree->hideColumn( column );
+
+    connect( m_projectTree, &QTreeView::activated, this, &MAIN_WINDOW::onProjectFileActivated );
+
+    auto* projectDock = new QDockWidget( tr( "Project" ), this );
+    projectDock->setObjectName( QStringLiteral( "project" ) );
+    projectDock->setWidget( m_projectTree );
+    projectDock->setFeatures( QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable );
+    addDockWidget( Qt::LeftDockWidgetArea, projectDock );
+    resizeDocks( { projectDock }, { 260 }, Qt::Horizontal );
+    projectDock->hide();
+
+    // Status bar
+    m_cursorLabel = new QLabel;
+    m_cursorLabel->setMinimumWidth( 220 );
+    statusBar()->addPermanentWidget( m_cursorLabel );
+
+    createActions();
+    updateRecentFiles();
+}
+
+
+void MAIN_WINDOW::createActions()
+{
+    QMenu* fileMenu = menuBar()->addMenu( tr( "&File" ) );
+
+    QAction* openProject = fileMenu->addAction( tr( "Open &Project..." ), this,
+                                                &MAIN_WINDOW::openProjectDialog );
+    openProject->setShortcut( QKeySequence( Qt::CTRL | Qt::SHIFT | Qt::Key_O ) );
+
+    QAction* openFile = fileMenu->addAction( tr( "&Open File..." ), this,
+                                             &MAIN_WINDOW::openFileDialog );
+    openFile->setShortcut( QKeySequence::Open );
+
+    m_recentMenu = fileMenu->addMenu( tr( "Open &Recent" ) );
+
+    fileMenu->addSeparator();
+
+    QAction* closeTab = fileMenu->addAction( tr( "&Close" ), this,
+                                             [this]()
+                                             {
+                                                 if( m_tabs->currentIndex() >= 0 )
+                                                     MAIN_WINDOW::closeTab( m_tabs->currentIndex() );
+                                             } );
+    closeTab->setShortcut( QKeySequence::Close );
+
+    fileMenu->addSeparator();
+
+    QAction* quit = fileMenu->addAction( tr( "&Quit" ), this, &QWidget::close );
+    quit->setShortcut( QKeySequence::Quit );
+
+    QMenu* viewMenu = menuBar()->addMenu( tr( "&View" ) );
+
+    QAction* zoomIn = viewMenu->addAction( tr( "Zoom &In" ), this,
+                                           [this]()
+                                           {
+                                               if( QT_DOCUMENT* doc = currentDocument() )
+                                                   doc->Canvas()->ZoomIn();
+                                           } );
+    zoomIn->setShortcut( QKeySequence::ZoomIn );
+
+    QAction* zoomOut = viewMenu->addAction( tr( "Zoom &Out" ), this,
+                                            [this]()
+                                            {
+                                                if( QT_DOCUMENT* doc = currentDocument() )
+                                                    doc->Canvas()->ZoomOut();
+                                            } );
+    zoomOut->setShortcut( QKeySequence::ZoomOut );
+
+    QAction* zoomFit = viewMenu->addAction( tr( "Zoom to &Fit" ), this,
+                                            [this]()
+                                            {
+                                                if( QT_DOCUMENT* doc = currentDocument() )
+                                                    doc->ZoomToFit();
+                                            } );
+    zoomFit->setShortcut( QKeySequence( Qt::CTRL | Qt::Key_0 ) );
+
+    viewMenu->addSeparator();
+
+    QAction* darkTheme = viewMenu->addAction( tr( "&Dark Theme" ) );
+    darkTheme->setCheckable( true );
+    darkTheme->setChecked( QSettings().value( DARK_THEME_KEY, false ).toBool() );
+    connect( darkTheme, &QAction::toggled, this,
+             []( bool aDark )
+             {
+                 QSettings().setValue( DARK_THEME_KEY, aDark );
+                 applyTheme( aDark );
+             } );
+    applyTheme( darkTheme->isChecked() );
+
+    QToolBar* toolbar = addToolBar( tr( "Main" ) );
+    toolbar->setObjectName( QStringLiteral( "main" ) );
+    toolbar->setMovable( false );
+    toolbar->setToolButtonStyle( Qt::ToolButtonTextOnly );
+    toolbar->addAction( openProject );
+    toolbar->addAction( openFile );
+    toolbar->addSeparator();
+    toolbar->addAction( zoomIn );
+    toolbar->addAction( zoomOut );
+    toolbar->addAction( zoomFit );
+
+    QMenu* helpMenu = menuBar()->addMenu( tr( "&Help" ) );
+
+    helpMenu->addAction( tr( "&About KiCad" ), this,
+                         [this]()
+                         {
+                             QMessageBox::about( this, tr( "About KiCad" ),
+                                                 tr( "<b>KiCad</b> %1<br>Qt shell on the core "
+                                                     "of KiCad, without wxWidgets.<br>Qt %2" )
+                                                         .arg( ToQString( GetBuildVersion() ) )
+                                                         .arg( QString::fromLatin1( qVersion() ) ) );
+                         } );
+}
+
+
+QT_DOCUMENT* MAIN_WINDOW::currentDocument() const
+{
+    return qobject_cast<QT_DOCUMENT*>( m_tabs->currentWidget() );
+}
+
+
+void MAIN_WINDOW::openProjectDialog()
+{
+    QString file = QFileDialog::getOpenFileName( this, tr( "Open Project" ), QString(),
+                                                 tr( "KiCad projects (*.kicad_pro)" ) );
+
+    if( !file.isEmpty() )
+        openProject( file );
+}
+
+
+void MAIN_WINDOW::openFileDialog()
+{
+    QString dir = m_projectFile.isEmpty() ? QString() : QFileInfo( m_projectFile ).absolutePath();
+    QString file = QFileDialog::getOpenFileName( this, tr( "Open File" ), dir,
+                                                 tr( "KiCad boards and schematics "
+                                                     "(*.kicad_pcb *.kicad_sch)" ) );
+
+    if( !file.isEmpty() )
+        openDocument( file );
+}
+
+
+void MAIN_WINDOW::OpenPath( const QString& aPath )
+{
+    if( QFileInfo( aPath ).suffix().toLower() == QLatin1String( "kicad_pro" ) )
+        openProject( aPath );
+    else
+        openDocument( aPath );
+}
+
+
+void MAIN_WINDOW::openProject( const QString& aProjectFile )
+{
+    QFileInfo info( aProjectFile );
+
+    if( !info.exists() )
+    {
+        QMessageBox::warning( this, tr( "Open Project" ),
+                              tr( "The project %1 does not exist." ).arg( aProjectFile ) );
+        return;
+    }
+
+    m_projectFile = info.absoluteFilePath();
+    Pgm().GetSettingsManager().LoadProject( ToWxString( m_projectFile ), true );
+
+    QString dir = info.absolutePath();
+    m_projectModel->setRootPath( dir );
+    m_projectTree->setRootIndex( m_projectModel->index( dir ) );
+
+    if( auto* dock = findChild<QDockWidget*>( QStringLiteral( "project" ) ) )
+        dock->show();
+
+    setWindowTitle( tr( "%1 — KiCad" ).arg( info.completeBaseName() ) );
+    addRecentFile( m_projectFile );
+    statusBar()->showMessage( tr( "Project %1" ).arg( m_projectFile ), 5000 );
+}
+
+
+void MAIN_WINDOW::openDocument( const QString& aFileName )
+{
+    const QString fileName = QFileInfo( aFileName ).absoluteFilePath();
+
+    // Already open: show it
+    for( int i = 0; i < m_tabs->count(); ++i )
+    {
+        auto* doc = qobject_cast<QT_DOCUMENT*>( m_tabs->widget( i ) );
+
+        if( doc && doc->FileName() == fileName )
+        {
+            m_tabs->setCurrentIndex( i );
+            m_center->setCurrentWidget( m_tabs );
+            return;
+        }
+    }
+
+    KIWAY_FACES::FACE_T face;
+
+    if( !documentFace( fileName, face ) )
+    {
+        QMessageBox::warning( this, tr( "Open File" ),
+                              tr( "%1 is not a board or a schematic." ).arg( fileName ) );
+        return;
+    }
+
+    QT_DOCUMENT_FACTORY factory = nullptr;
+
+    try
+    {
+        if( KIFACE* kiface = m_kiway.KiFACE( face ) )
+        {
+            factory = reinterpret_cast<QT_DOCUMENT_FACTORY>(
+                    kiface->IfaceOrAddress( KIFACE_QT_DOCUMENT_FACTORY ) );
+        }
+    }
+    catch( const IO_ERROR& error )
+    {
+        QMessageBox::critical( this, tr( "Open File" ), ToQString( error.What() ) );
+        return;
+    }
+
+    if( !factory )
+    {
+        QMessageBox::critical( this, tr( "Open File" ),
+                               tr( "The editor module cannot show %1." ).arg( fileName ) );
+        return;
+    }
+
+    QT_DOCUMENT* doc = factory( m_tabs );
+
+    connect( doc, &QT_DOCUMENT::cursorPositionChanged, m_cursorLabel, &QLabel::setText );
+    connect( doc, &QT_DOCUMENT::statusMessage, this,
+             [this]( const QString& aText )
+             {
+                 statusBar()->showMessage( aText, 8000 );
+             } );
+
+    QApplication::setOverrideCursor( Qt::WaitCursor );
+
+    QString error;
+    bool    opened = doc->Open( fileName, error );
+
+    QApplication::restoreOverrideCursor();
+
+    if( !opened )
+    {
+        delete doc;
+        QMessageBox::critical( this, tr( "Open File" ),
+                               tr( "%1 could not be opened.\n\n%2" ).arg( fileName, error ) );
+        return;
+    }
+
+    int index = m_tabs->addTab( doc, QFileInfo( fileName ).fileName() );
+    m_tabs->setTabToolTip( index, fileName );
+    m_tabs->setCurrentIndex( index );
+    m_center->setCurrentWidget( m_tabs );
+    doc->Canvas()->setFocus();
+
+    addRecentFile( fileName );
+}
+
+
+void MAIN_WINDOW::closeTab( int aIndex )
+{
+    QWidget* doc = m_tabs->widget( aIndex );
+    m_tabs->removeTab( aIndex );
+    delete doc;
+
+    if( m_tabs->count() == 0 )
+    {
+        m_center->setCurrentIndex( 0 );
+        m_cursorLabel->clear();
+    }
+}
+
+
+void MAIN_WINDOW::onCurrentTabChanged( int aIndex )
+{
+    if( aIndex < 0 )
+        return;
+
+    m_cursorLabel->clear();
+}
+
+
+void MAIN_WINDOW::onProjectFileActivated( const QModelIndex& aIndex )
+{
+    if( m_projectModel->isDir( aIndex ) )
+        return;
+
+    OpenPath( m_projectModel->filePath( aIndex ) );
+}
+
+
+void MAIN_WINDOW::addRecentFile( const QString& aFileName )
+{
+    QSettings   settings;
+    QStringList files = settings.value( RECENT_FILES_KEY ).toStringList();
+
+    files.removeAll( aFileName );
+    files.prepend( aFileName );
+
+    while( files.size() > MAX_RECENT_FILES )
+        files.removeLast();
+
+    settings.setValue( RECENT_FILES_KEY, files );
+    updateRecentFiles();
+}
+
+
+void MAIN_WINDOW::updateRecentFiles()
+{
+    m_recentMenu->clear();
+    m_welcomeRecent->clear();
+
+    for( const QString& path : QSettings().value( RECENT_FILES_KEY ).toStringList() )
+    {
+        const QString name = QFileInfo( path ).fileName();
+
+        QAction* action = m_recentMenu->addAction( name, this, [this, path]() { OpenPath( path ); } );
+        action->setToolTip( path );
+
+        auto* item = new QListWidgetItem( QStringLiteral( "%1\n%2" ).arg( name, path ),
+                                          m_welcomeRecent );
+        item->setData( Qt::UserRole, path );
+    }
+
+    m_recentMenu->setEnabled( !m_recentMenu->isEmpty() );
+}

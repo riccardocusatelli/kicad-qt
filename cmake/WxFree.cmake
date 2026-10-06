@@ -135,6 +135,7 @@ function( kicad_wx_free_restrict_targets )
         idf3                # also linked whole by the IDF 3D plugin
         kicad-cli
         kicommon_model
+        gal_model           # with the raster Cairo GAL of the Qt canvas
         eeschema_cli_kiface eeschema_cli_kiface_archive
         pcbnew_cli_kiface pcbnew_cli_kiface_archive
         s3d_plugin_idf s3d_plugin_oce s3d_plugin_vrml     # 3D models (VRML export, render)
@@ -145,6 +146,10 @@ function( kicad_wx_free_restrict_targets )
         qa_headless_eeschema qa_headless_eeschema_objects
         ${KICAD_WX_FREE_EXTRA_TARGETS}
         )
+
+    # Targets added by other parts of the build (the Qt shell)
+    get_property( _extra_kept GLOBAL PROPERTY KICAD_WX_FREE_KEPT_TARGETS )
+    list( APPEND _kept_whole ${_extra_kept} )
 
     set( _kept ${KICAD_WX_FREE_TARGETS} ${_kept_whole} )
 
@@ -209,10 +214,12 @@ function( kicad_wx_free_restrict_targets )
             continue()
         endif()
 
-        # The allowed sources, as absolute paths
+        # The allowed sources, as absolute paths (the list of kicad-cli, and the sources added
+        # by other parts of the build)
+        get_property( _extra_sources GLOBAL PROPERTY KICAD_WX_FREE_SOURCES_${_var} )
         set( _allowed "" )
 
-        foreach( _src ${KICAD_WX_FREE_SOURCES_${_var}} )
+        foreach( _src ${KICAD_WX_FREE_SOURCES_${_var}} ${_extra_sources} )
             if( _src MATCHES "^BUILD/(.*)" )
                 list( APPEND _allowed ${PROJECT_BINARY_DIR}/${CMAKE_MATCH_1} )
             else()

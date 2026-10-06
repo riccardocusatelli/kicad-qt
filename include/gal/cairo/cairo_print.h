@@ -22,7 +22,7 @@
 #ifndef _CAIRO_PRINT_H_
 #define _CAIRO_PRINT_H_
 
-#include <gal/cairo/cairo_gal.h>
+#include <gal/cairo/cairo_gal_base.h>
 #include <gal/gal_print.h>
 
 class wxImage;

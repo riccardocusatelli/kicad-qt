@@ -28,7 +28,10 @@
 #include <view/view.h>
 #include <board_item.h>
 
+class BOARD;
+class COLOR_SETTINGS;
 class PCB_DISPLAY_OPTIONS;
+class PROGRESS_REPORTER;
 
 namespace KIGFX {
 
@@ -57,6 +60,32 @@ public:
                                std::initializer_list<KICAD_T> aTypes );
 
     void UpdateDisplayOptions( const PCB_DISPLAY_OPTIONS& aOptions );
+
+    /// Set the default drawing order of the layers.
+    void SetDefaultLayerOrder();
+
+    /**
+     * Set the default layer dependencies and render targets.
+     *
+     * @param aCached is true for a renderer that caches the items (OpenGL); a software
+     *                renderer (Cairo) draws them each time.
+     */
+    void SetDefaultLayerDeps( bool aCached );
+
+    /// Bring a layer, and the layers drawn with it, on top of the others.
+    void SetActiveLayerOnTop( PCB_LAYER_ID aLayer );
+
+    /// Set the layer shown in high contrast mode (and bring it on top).
+    void SetHighContrastLayer( PCB_LAYER_ID aLayer );
+
+    /// Show the layers and the elements visible in the board.
+    void SyncLayersVisibility( const BOARD* aBoard );
+
+    /// Show the items of a board (replacing the current ones).
+    void ShowBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr );
+
+    /// Use the colors of a color theme for the items, the grid and the cursor.
+    void LoadColors( const COLOR_SETTINGS* aSettings );
 };
 
 }

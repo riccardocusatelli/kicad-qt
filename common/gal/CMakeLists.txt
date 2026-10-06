@@ -25,6 +25,11 @@ set( GAL_MODEL_SRCS
     ${FONT_SRCS}
 
     3d/camera.cpp
+
+    # Cairo GAL drawing into a raster, without window (shown by the GUI toolkit)
+    cairo/cairo_gal_base.cpp
+    cairo/cairo_raster_gal.cpp
+    cairo/cairo_compositor.cpp
     )
 
 set( GAL_SRCS
@@ -53,9 +58,8 @@ set( GAL_SRCS
     opengl/opengl_compositor.cpp
     opengl/utils.cpp
 
-    # Cairo GAL
+    # Cairo GAL in a wxWidgets window, printing
     cairo/cairo_gal.cpp
-    cairo/cairo_compositor.cpp
     cairo/cairo_print.cpp
     )
 
@@ -83,6 +87,8 @@ target_link_libraries( gal_model
     kimath
     nlohmann_json
     ${wxWidgets_BASE_LIBRARIES}
+    ${CAIRO_LIBRARIES}
+    ${PIXMAN_LIBRARIES}
     ${FREETYPE_LIBRARIES}
     ${HarfBuzz_LIBRARIES}
     ${Fontconfig_LIBRARIES}

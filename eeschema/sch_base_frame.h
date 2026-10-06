@@ -30,6 +30,7 @@
 #include <libraries/library_table.h>
 #include <sch_draw_panel.h>
 #include <sch_screen.h>
+#include <sch_view.h>
 #include <schematic_settings.h>
 
 #include <stddef.h>
@@ -112,7 +113,7 @@ LIB_SYMBOL* SchGetLibSymbol( const LIB_ID& aLibId, SYMBOL_LIBRARY_ADAPTER* aLibM
  *
  * @author Dick Hollenbeck
  */
-class SCH_BASE_FRAME : public EDA_DRAW_FRAME, public SCHEMATIC_HOLDER
+class SCH_BASE_FRAME : public EDA_DRAW_FRAME, public SCHEMATIC_HOLDER, public SCH_VIEW_HOST
 {
 public:
     SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aWindowType, const wxString& aTitle,
@@ -234,7 +235,10 @@ public:
     /**
      * Mark selected items for refresh.
      */
-    void RefreshZoomDependentItems();
+    void RefreshZoomDependentItems() override;
+
+    /// The tools add what they show in the view (the selection group, for instance).
+    void OnSheetDisplayed() override;
 
     /**
      * Mark all items for refresh.

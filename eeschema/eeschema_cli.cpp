@@ -29,6 +29,9 @@
  *
  * It runs the jobs (ERC, plots, netlists, BOM...) on schematic files; it has no frames.  The
  * KIFACE of the schematic editor is in eeschema.cpp.
+ *
+ * Built with KICAD_QT_MODULE, it is also the KIFACE of the Qt shell (_eeschema_qt.kiface),
+ * which adds the schematic documents (qt/eeschema).
  */
 
 #include <cli_progress_reporter.h>
@@ -41,6 +44,10 @@
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 #include <symbol_editor_settings.h>
+
+#ifdef KICAD_QT_MODULE
+#include <schematic_document.h>
+#endif
 
 
 namespace SCH_CLI
@@ -88,6 +95,11 @@ static struct IFACE : public KIFACE_BASE
         {
         case KIFACE_NETLIST_SCHEMATIC:
             return (void*) GenerateSchematicNetlist;
+
+#ifdef KICAD_QT_MODULE
+        case KIFACE_QT_DOCUMENT_FACTORY:
+            return reinterpret_cast<void*>( &CreateQtSchematicDocument );
+#endif
 
         default:
             return nullptr;

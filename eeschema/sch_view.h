@@ -27,6 +27,7 @@
 #include <layer_ids.h>
 #include <math/vector2d.h>
 #include <view/view.h>
+#include <wx/string.h>
 
 #include <memory>
 #include <vector>
@@ -35,8 +36,6 @@ class SCH_SHEET;
 class SCH_SCREEN;
 class LIB_SYMBOL;
 class SCH_PIN;
-class SCH_BASE_FRAME;
-class SCH_EDIT_FRAME;
 class DS_PROXY_VIEW_ITEM;
 
 
@@ -84,6 +83,41 @@ static const int SCH_LAYER_ORDER[] = { LAYER_GP_OVERLAY,
                                        LAYER_DRAWINGSHEET };
 
 
+/// The current sheet of a schematic editor, for the title block of the drawing sheet.
+struct SCH_CURRENT_SHEET_INFO
+{
+    SCH_SCREEN* m_Screen = nullptr;          ///< The screen being edited
+    SCH_SCREEN* m_SheetScreen = nullptr;     ///< The screen of the current sheet path
+    int         m_VirtualPageNumber = 0;     ///< Of the current sheet path
+    wxString    m_Name;                      ///< Name of the sheet
+    wxString    m_Path;                      ///< Full path of the sheet
+};
+
+
+/**
+ * The editor that shows a SCH_VIEW (the GUI frame, or none): told when the zoom changes and
+ * when a sheet is displayed, and asked for the current sheet.
+ */
+class SCH_VIEW_HOST
+{
+public:
+    virtual ~SCH_VIEW_HOST() = default;
+
+    /// Redraw the items whose rendering depends on the zoom.
+    virtual void RefreshZoomDependentItems() {}
+
+    /// A sheet was added to the view (the tools add the selection group, the previews...).
+    virtual void OnSheetDisplayed() {}
+
+    /**
+     * Fill @a aInfo when the view shows the current sheet of a schematic editor.
+     *
+     * @return false when there is no current sheet: the drawing sheet then uses the screen.
+     */
+    virtual bool GetCurrentSheetInfo( SCH_CURRENT_SHEET_INFO& aInfo ) const { return false; }
+};
+
+
 namespace KIGFX
 {
     class VIEW_GROUP;
@@ -96,9 +130,8 @@ namespace KIGFX
 class SCH_VIEW : public KIGFX::VIEW
 {
 public:
-    // Note: aFrame is used to know the sheet path name when drawing the drawing sheet.
-    // It can be null.
-    SCH_VIEW( SCH_BASE_FRAME* aFrame );
+    /// @param aHost is the editor showing the view; it can be null.
+    SCH_VIEW( SCH_VIEW_HOST* aHost = nullptr );
     ~SCH_VIEW();
 
     void Update( const KIGFX::VIEW_ITEM* aItem, int aUpdateFlags ) const override;
@@ -127,18 +160,28 @@ public:
 
     DS_PROXY_VIEW_ITEM* GetDrawingSheet() const { return m_drawingSheet.get(); }
 
+    /// Set the default drawing order of the layers.
+    void SetDefaultLayerOrder();
+
+    /**
+     * Set the default layer dependencies and render targets.
+     *
+     * @param aCached is true for a renderer that caches the items (OpenGL); a software
+     *                renderer (Cairo) draws them each time.
+     */
+    void SetDefaultLayerDeps( bool aCached );
+
 private:
-    SCH_BASE_FRAME* m_frame;    // The frame using this view. Can be null. Used mainly
-                                // to know the sheet path name when drawing the drawing sheet
+    SCH_VIEW_HOST* m_host;      // The editor using this view, can be null
 
     std::unique_ptr<DS_PROXY_VIEW_ITEM> m_drawingSheet;
 
     /**
-     * Set the drawing-sheet proxy's page number, count and title-block fields from the frame's
+     * Set the drawing-sheet proxy's page number, count and title-block fields from the editor's
      * current sheet. The first-page flag is taken from the current sheet path rather than the
      * screen because save temporarily overwrites screen page numbers for serialization.
      */
-    void syncDrawingSheetToCurrentSheet( SCH_EDIT_FRAME* aFrame );
+    void syncDrawingSheetToCurrentSheet( const SCH_CURRENT_SHEET_INFO& aInfo );
 };
 
 }; // namespace

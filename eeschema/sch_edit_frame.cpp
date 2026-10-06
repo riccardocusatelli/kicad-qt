@@ -1068,6 +1068,17 @@ wxString SCH_EDIT_FRAME::GetFullScreenDesc() const
 }
 
 
+bool SCH_EDIT_FRAME::GetCurrentSheetInfo( SCH_CURRENT_SHEET_INFO& aInfo ) const
+{
+    aInfo.m_Screen = GetScreen();
+    aInfo.m_SheetScreen = GetCurrentSheet().LastScreen();
+    aInfo.m_VirtualPageNumber = GetCurrentSheet().GetVirtualPageNumber();
+    aInfo.m_Name = GetScreenDesc();
+    aInfo.m_Path = GetFullScreenDesc();
+    return true;
+}
+
+
 void SCH_EDIT_FRAME::CreateDefaultScreens()
 {
     m_schematic->CreateDefaultScreens();

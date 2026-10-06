@@ -141,6 +141,11 @@ option( KICAD_WX_FREE
     "Build only the core libraries and kicad-cli, without wxWidgets (default OFF)"
     OFF )
 
+# The Qt shell (qt/), on the core without wxWidgets
+option( KICAD_QT_SHELL
+    "Build kicad-qt and the Qt KIFACEs (with KICAD_WX_FREE; default OFF)"
+    OFF )
+
 if( KICAD_WX_FREE )
     # Nothing of the GUI: no wxPython, no update check.  The QA builds only the suites without
     # the GUI (see qa/CMakeLists.txt).
@@ -1276,8 +1281,12 @@ if( KICAD_BUILD_QA_TESTS )
     add_subdirectory( qa )
 endif()
 
+if( KICAD_WX_FREE AND KICAD_QT_SHELL )
+    add_subdirectory( qt )
+endif()
+
 if( KICAD_WX_FREE )
-    # Only the targets of kicad-cli, with the sources it links
+    # Only the targets of kicad-cli (and of the Qt shell), with the sources they link
     kicad_wx_free_restrict_targets()
 endif()
 

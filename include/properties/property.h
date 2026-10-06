@@ -579,12 +579,10 @@ public:
                                     aDisplay ),
           m_choicesFromENUM_MAP( false )
     {
+        // The choices of an enum come from its ENUM_MAP, read when needed (Choices()): the
+        // map may be filled by a static initializer that runs after this one
         if ( std::is_enum<T>::value )
-        {
-            m_choices = ENUM_MAP<T>::Instance().Choices();
             m_choicesFromENUM_MAP = true;
-            KI_ASSERT_MSG( m_choices.GetCount() > 0, wxT( "No enum choices defined" ) );
-        }
     }
 
     template<typename SetType, typename GetType>
@@ -599,12 +597,10 @@ public:
                                       aDisplay, aCoordType ),
            m_choicesFromENUM_MAP( false )
     {
+        // The choices of an enum come from its ENUM_MAP, read when needed (Choices()): the
+        // map may be filled by a static initializer that runs after this one
         if ( std::is_enum<T>::value )
-        {
-            m_choices = ENUM_MAP<T>::Instance().Choices();
             m_choicesFromENUM_MAP = true;
-            KI_ASSERT_MSG( m_choices.GetCount() > 0, wxT( "No enum choices defined" ) );
-        }
     }
 
     void setter( void* obj, wxAny& v ) override

@@ -46,7 +46,11 @@ enum KIFACE_ADDR_ID : int
     KIFACE_TEST_FOOTPRINT_LINK,
     KIFACE_TEST_FOOTPRINT_LINK_NO_LIBRARY,
     KIFACE_TEST_FOOTPRINT_LINK_LIBRARY_NOT_ENABLED,
-    KIFACE_TEST_FOOTPRINT_LINK_NO_FOOTPRINT
+    KIFACE_TEST_FOOTPRINT_LINK_NO_FOOTPRINT,
+
+    /// The documents of the Qt shell (KIFACEs built for kicad-qt).
+    /// Function pointer type: QT_DOCUMENT* (*)( QWidget* aParent ), see qt/common/qt_document.h
+    KIFACE_QT_DOCUMENT_FACTORY
 };
 
 #endif // KIFACE_IDS

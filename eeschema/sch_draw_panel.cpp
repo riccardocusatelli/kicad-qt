@@ -124,13 +124,7 @@ void SCH_DRAW_PANEL::DisplaySheet( SCH_SCREEN *aScreen )
 
 void SCH_DRAW_PANEL::setDefaultLayerOrder()
 {
-    for( int i = 0; (unsigned) i < sizeof( SCH_LAYER_ORDER ) / sizeof( int ); ++i )
-    {
-        int layer = SCH_LAYER_ORDER[i];
-        KI_ASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
-
-        m_view->SetLayerOrder( layer, i );
-    }
+    GetView()->SetDefaultLayerOrder();
 }
 
 
@@ -149,37 +143,7 @@ bool SCH_DRAW_PANEL::SwitchBackend( GAL_TYPE aGalType )
 void SCH_DRAW_PANEL::setDefaultLayerDeps()
 {
     // caching makes no sense for Cairo and other software renderers
-    auto target = m_backend == GAL_TYPE_OPENGL ? KIGFX::TARGET_CACHED : KIGFX::TARGET_NONCACHED;
-
-    for( int i = 0; i < KIGFX::VIEW::VIEW_MAX_LAYERS; i++ )
-        m_view->SetLayerTarget( i, target );
-
-    m_view->SetLayerTarget( LAYER_SCHEMATIC_ANCHOR, KIGFX::TARGET_NONCACHED );
-    m_view->SetLayerDisplayOnly( LAYER_SCHEMATIC_ANCHOR );
-
-    // Bitmaps are draw on a non cached GAL layer:
-    m_view->SetLayerTarget( LAYER_DRAW_BITMAPS, KIGFX::TARGET_NONCACHED );
-
-    // Some draw layers need specific settings
-    m_view->SetLayerTarget( LAYER_GP_OVERLAY, KIGFX::TARGET_OVERLAY );
-    m_view->SetLayerDisplayOnly( LAYER_GP_OVERLAY ) ;
-
-    m_view->SetLayerTarget( LAYER_SELECT_OVERLAY, KIGFX::TARGET_OVERLAY );
-    m_view->SetLayerDisplayOnly( LAYER_SELECT_OVERLAY ) ;
-
-    m_view->SetLayerTarget( LAYER_DRAWINGSHEET, KIGFX::TARGET_NONCACHED );
-    m_view->SetLayerDisplayOnly( LAYER_DRAWINGSHEET ) ;
-
-    m_view->SetLayerTarget( LAYER_OP_VOLTAGES, KIGFX::TARGET_OVERLAY );
-    m_view->SetLayerDisplayOnly( LAYER_OP_VOLTAGES );
-    m_view->SetLayerTarget( LAYER_OP_CURRENTS, KIGFX::TARGET_OVERLAY );
-    m_view->SetLayerDisplayOnly( LAYER_OP_CURRENTS );
-
-    m_view->SetLayerTarget( LAYER_SELECTION_SHADOWS, KIGFX::TARGET_OVERLAY );
-    m_view->SetLayerDisplayOnly( LAYER_SELECTION_SHADOWS ) ;
-
-    m_view->SetLayerDisplayOnly( LAYER_NET_COLOR_HIGHLIGHT );
-    m_view->SetLayerDisplayOnly( LAYER_DANGLING );
+    GetView()->SetDefaultLayerDeps( m_backend == GAL_TYPE_OPENGL );
 }
 
 

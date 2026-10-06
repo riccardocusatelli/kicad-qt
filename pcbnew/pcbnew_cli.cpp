@@ -29,6 +29,9 @@
  *
  * It runs the jobs (plots, exports, DRC...) on board files; it has no frames.  The KIFACE of
  * the board editor is in pcbnew.cpp.
+ *
+ * Built with KICAD_QT_MODULE, it is also the KIFACE of the Qt shell (_pcbnew_qt.kiface), which
+ * adds the board documents (qt/pcbnew).
  */
 
 #include <3d_viewer/eda_3d_viewer_settings.h>
@@ -44,6 +47,10 @@
 #include <project_pcb.h>
 #include <settings/cvpcb_settings.h>
 #include <settings/settings_manager.h>
+
+#ifdef KICAD_QT_MODULE
+#include <board_document.h>
+#endif
 
 
 namespace PCB_CLI
@@ -101,6 +108,11 @@ static struct IFACE : public KIFACE_BASE
 
         case KIFACE_TEST_FOOTPRINT_LINK:
             return reinterpret_cast<void*>( &PROJECT_PCB::TestFootprintLink );
+
+#ifdef KICAD_QT_MODULE
+        case KIFACE_QT_DOCUMENT_FACTORY:
+            return reinterpret_cast<void*>( &CreateQtBoardDocument );
+#endif
 
         default:
             return nullptr;
