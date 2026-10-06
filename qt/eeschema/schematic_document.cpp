@@ -19,7 +19,12 @@
 
 #include "schematic_document.h"
 
+#include <algorithm>
+#include <cmath>
+#include <functional>
 #include <limits>
+#include <unordered_set>
+#include <utility>
 
 #include <QHeaderView>
 #include <QSplitter>
@@ -32,13 +37,22 @@
 #include <eeschema_helpers.h>
 #include <eeschema_settings.h>
 #include <gal/graphics_abstraction_layer.h>
+#include <io/io_mgr.h>
+#include <lib_symbol.h>
 #include <math/util.h>
+#include <project.h>
+#include <sch_commit.h>
+#include <sch_group.h>
+#include <sch_io/sch_io.h>
+#include <sch_io/sch_io_mgr.h>
 #include <sch_item.h>
+#include <sch_line.h>
 #include <sch_painter.h>
 #include <sch_screen.h>
 #include <sch_sheet.h>
 #include <sch_sheet_path.h>
 #include <sch_symbol.h>
+#include <sch_undo_redo.h>
 #include <schematic.h>
 #include <settings/color_settings.h>
 #include <settings/settings_manager.h>
@@ -48,6 +62,7 @@
 #include <inspectable_rows.h>
 #include <property_panel.h>
 #include <qt_strings.h>
+#include <undo_stack.h>
 
 
 /// Role of the sheet list items holding the page index
@@ -57,14 +72,172 @@ static constexpr int PAGE_ROLE = Qt::UserRole;
 static constexpr double HIT_DISTANCE_PX = 4.0;
 
 
+/// The settings of the schematic editor, if any.
+static EESCHEMA_SETTINGS* eeschemaSettings()
+{
+    return GetAppSettings<EESCHEMA_SETTINGS>( "eeschema" );
+}
+
+
 /// The color theme of the schematic editor.
 static COLOR_SETTINGS* schematicColors()
 {
-    if( EESCHEMA_SETTINGS* cfg = GetAppSettings<EESCHEMA_SETTINGS>( "eeschema" ) )
+    if( EESCHEMA_SETTINGS* cfg = eeschemaSettings() )
         return ::GetColorSettings( cfg->m_ColorTheme );
 
     return ::GetColorSettings( DEFAULT_THEME );
 }
+
+
+/// The item drawn with @a aItem that a selection takes: its symbol, sheet or label.
+static SCH_ITEM* topLevelItem( SCH_ITEM* aItem )
+{
+    EDA_ITEM* parent = aItem->GetParent();
+
+    if( parent && parent->IsSCH_ITEM() && parent->Type() != SCH_SCREEN_T )
+        return static_cast<SCH_ITEM*>( parent );
+
+    return aItem;
+}
+
+
+/**
+ * Keeps the view and the selection of a SCHEMATIC_DOCUMENT in step with the schematic when a
+ * commit is pushed, and records its changes for undo.
+ */
+class SCHEMATIC_DOCUMENT::COMMIT_LISTENER : public SCH_COMMIT_LISTENER
+{
+public:
+    explicit COMMIT_LISTENER( SCHEMATIC_DOCUMENT& aDocument ) :
+            m_doc( aDocument )
+    {
+    }
+
+    SCH_GROUP* EnteredGroup() const override { return nullptr; }
+
+    SCH_SCREEN* CurrentScreen() const override { return m_doc.currentScreen(); }
+
+    bool GetCurrentSheet( SCH_SHEET_PATH& aSheet ) const override
+    {
+        aSheet = m_doc.m_schematic->CurrentSheet();
+        return true;
+    }
+
+    void UpdateHopOveredWires( SCH_ITEM* aItem ) override
+    {
+        m_doc.view()->UpdateHopOveredWires( aItem );
+    }
+
+    void ItemAdded( SCH_ITEM* aItem ) override { m_doc.view()->Add( aItem ); }
+
+    void ItemRemoved( SCH_ITEM* aItem ) override { m_doc.view()->Remove( aItem ); }
+
+    void UpdateItem( SCH_ITEM* aItem, SCH_SCREEN* aScreen, bool aAddOrDelete ) override
+    {
+        if( aScreen == m_doc.currentScreen() )
+            m_doc.redrawItem( aItem, aAddOrDelete, true );
+        else
+            aScreen->Update( aItem );
+    }
+
+    void Deselect( SCH_ITEM* aItem ) override { m_doc.forgetSelected( aItem ); }
+
+    void HierarchyChanged() override { m_doc.fillSheets(); }
+
+    void Pushed( SCH_COMMIT& aCommit, PICKED_ITEMS_LIST& aUndoList, int aCommitFlags,
+                 const PUSH_RESULT& aResult ) override
+    {
+        if( !( aCommitFlags & SKIP_UNDO ) && aUndoList.GetCount() > 0 )
+            m_doc.recordChange( aUndoList );
+
+        if( aResult.dirtyConnectivity )
+        {
+            m_doc.recalculateConnections( &aCommit,
+                                          static_cast<SCH_CLEANUP_FLAGS>( aResult.connectivityCleanUp ) );
+        }
+    }
+
+    void Reverted() override { m_doc.recalculateConnections( nullptr, NO_CLEANUP ); }
+
+    // The shell does not edit library symbols: its commits are not symbol editor ones
+
+    LIB_SYMBOL* CurrentSymbol() const override { return nullptr; }
+
+    void SymbolPushed( LIB_SYMBOL* aSymbol, LIB_SYMBOL* aCopy, const wxString& aMessage,
+                       int aCommitFlags ) override
+    {
+        delete aCopy;
+    }
+
+    void SymbolReverted( LIB_SYMBOL* aCopy ) override { delete aCopy; }
+
+    void Committed( int aCommitFlags ) override {}
+
+private:
+    SCHEMATIC_DOCUMENT& m_doc;
+};
+
+
+/// Keeps the view of a SCHEMATIC_DOCUMENT in step with the schematic during an undo or a redo.
+class SCHEMATIC_DOCUMENT::UNDO_LISTENER : public SCH_UNDO_REDO::LISTENER
+{
+public:
+    explicit UNDO_LISTENER( SCHEMATIC_DOCUMENT& aDocument ) :
+            m_doc( aDocument )
+    {
+    }
+
+    const SCH_SHEET_PATH& CurrentSheet() const override { return m_doc.m_schematic->CurrentSheet(); }
+
+    void AddToScreen( EDA_ITEM* aItem, SCH_SCREEN* aScreen ) override
+    {
+        SCH_SCREEN* screen = aScreen ? aScreen : m_doc.currentScreen();
+
+        if( aItem->Type() != SCH_TABLECELL_T )
+            screen->Append( static_cast<SCH_ITEM*>( aItem ) );
+
+        if( screen == m_doc.currentScreen() )
+        {
+            m_doc.view()->Add( aItem );
+            m_doc.redrawItem( aItem, true, false );
+        }
+    }
+
+    void RemoveFromScreen( EDA_ITEM* aItem, SCH_SCREEN* aScreen ) override
+    {
+        SCH_SCREEN* screen = aScreen ? aScreen : m_doc.currentScreen();
+        const bool  shown = screen == m_doc.currentScreen();
+
+        if( shown )
+            m_doc.view()->Remove( aItem );
+
+        if( aItem->Type() != SCH_TABLECELL_T )
+            screen->Remove( static_cast<SCH_ITEM*>( aItem ) );
+
+        if( shown )
+            m_doc.redrawItem( aItem, true, false );
+    }
+
+    void SheetRemoving( SCH_SHEET* aSheet ) override
+    {
+        // The sheet shown leaves the hierarchy: the document shows the first page after
+        // the undo or the redo
+        if( aSheet->GetScreen() == m_doc.currentScreen() )
+            m_doc.m_leaveSheet = true;
+    }
+
+    void SwapPageSettings( DS_PROXY_UNDO_ITEM* aItem, const SCH_SHEET_PATH& aSheet ) override
+    {
+        // The shell does not change the page settings: its changes have no such entries
+    }
+
+    // The shell does not repeat items (the insert key of the schematic editor)
+    void ClearRepeatItems() override {}
+    void AddRepeatItem( SCH_ITEM* aItem ) override {}
+
+private:
+    SCHEMATIC_DOCUMENT& m_doc;
+};
 
 
 QT_DOCUMENT* CreateQtSchematicDocument( QWidget* aParent )
@@ -74,7 +247,8 @@ QT_DOCUMENT* CreateQtSchematicDocument( QWidget* aParent )
 
 
 SCHEMATIC_DOCUMENT::SCHEMATIC_DOCUMENT( QWidget* aParent ) :
-        QT_DOCUMENT( aParent )
+        QT_DOCUMENT( aParent ),
+        m_undo( std::make_unique<UNDO_STACK>( &SCH_UNDO_REDO::DeleteItems ) )
 {
     m_canvas = new GAL_CANVAS;
     m_sheets = new QTreeWidget;
@@ -101,8 +275,9 @@ SCHEMATIC_DOCUMENT::SCHEMATIC_DOCUMENT( QWidget* aParent ) :
     layout->setContentsMargins( 0, 0, 0, 0 );
     layout->addWidget( splitter );
 
+    setupEditing( m_canvas );
+
     connect( m_canvas, &GAL_CANVAS::cursorMoved, this, &SCHEMATIC_DOCUMENT::onCursorMoved );
-    connect( m_canvas, &GAL_CANVAS::clicked, this, &SCHEMATIC_DOCUMENT::onClicked );
     connect( m_canvas, &GAL_CANVAS::zoomToFitRequested, this, &SCHEMATIC_DOCUMENT::ZoomToFit );
     connect( m_sheets, &QTreeWidget::itemActivated, this,
              &SCHEMATIC_DOCUMENT::onSheetActivated );
@@ -111,7 +286,13 @@ SCHEMATIC_DOCUMENT::SCHEMATIC_DOCUMENT( QWidget* aParent ) :
 
 SCHEMATIC_DOCUMENT::~SCHEMATIC_DOCUMENT()
 {
-    // The view refers to the items of the schematic
+    if( m_moveCommit )
+        m_moveCommit->Revert();
+
+    // The undo entries own items that refer to the schematic; the view refers to the items
+    // of the schematic
+    m_undo->Clear();
+
     delete m_canvas;
     m_canvas = nullptr;
 }
@@ -120,6 +301,12 @@ SCHEMATIC_DOCUMENT::~SCHEMATIC_DOCUMENT()
 KIGFX::SCH_VIEW* SCHEMATIC_DOCUMENT::view() const
 {
     return static_cast<KIGFX::SCH_VIEW*>( m_canvas->GetView() );
+}
+
+
+SCH_SCREEN* SCHEMATIC_DOCUMENT::currentScreen() const
+{
+    return m_schematic->GetCurrentScreen();
 }
 
 
@@ -133,9 +320,10 @@ bool SCHEMATIC_DOCUMENT::Open( const QString& aFileName, QString& aError )
         return false;
     }
 
+    dropSelection();
+    m_undo->Clear();
     m_schematic.reset( schematic );
     m_fileName = aFileName;
-    m_selected = nullptr;
 
     KIGFX::GAL* gal = m_canvas->GetGAL();
     gal->SetWorldUnitLength( SCH_WORLD_UNIT );
@@ -144,7 +332,18 @@ bool SCHEMATIC_DOCUMENT::Open( const QString& aFileName, QString& aError )
     auto painter = std::make_unique<KIGFX::SCH_PAINTER>( gal );
 
     painter->SetSchematic( m_schematic.get() );
-    painter->GetSettings()->LoadColors( schematicColors() );
+
+    // As the schematic editor draws the schematic
+    SCH_RENDER_SETTINGS* settings = painter->GetSettings();
+    settings->LoadColors( schematicColors() );
+    settings->m_ShowPinsElectricalType = false;
+    settings->m_ShowPinNumbers = false;
+
+    if( EESCHEMA_SETTINGS* cfg = eeschemaSettings() )
+    {
+        settings->m_ShowPinAltIcons = cfg->m_Appearance.show_pin_alt_icons;
+        settings->SetDefaultFont( cfg->m_Appearance.default_font );
+    }
 
     view->SetScaleLimits( ZOOM_MAX_LIMIT_EESCHEMA, ZOOM_MIN_LIMIT_EESCHEMA );
 
@@ -157,11 +356,76 @@ bool SCHEMATIC_DOCUMENT::Open( const QString& aFileName, QString& aError )
     schView->SetDefaultLayerDeps( false );      // the Cairo GAL does not cache
     schView->UpdateAllLayersOrder();
 
+    setupGrid();
     fillSheets();
     showSheet( 0 );
 
     emit statusMessage( tr( "%1: %2 sheets" ).arg( aFileName ).arg( m_sheets->topLevelItemCount() ) );
+    emit stateChanged();
     return true;
+}
+
+
+bool SCHEMATIC_DOCUMENT::Save( QString& aError )
+{
+    if( !m_schematic )
+        return false;
+
+    // The files of the sheets changed, as the schematic editor saves them
+    SCH_SCREENS screens( m_schematic->Root() );
+
+    for( size_t i = 0; i < screens.GetCount(); i++ )
+    {
+        SCH_SCREEN* screen = screens.GetScreen( i );
+        SCH_SHEET*  sheet = screens.GetSheet( i );
+
+        if( !screen || !sheet || !screen->IsContentModified() )
+            continue;
+
+        const wxString fileName = m_schematic->Project().AbsolutePath( screen->GetFileName() );
+
+        SCH_IO_MGR::SCH_FILE_T type = SCH_IO_MGR::GuessPluginTypeFromSchPath( fileName );
+
+        if( type == SCH_IO_MGR::SCH_FILE_UNKNOWN )
+            type = SCH_IO_MGR::SCH_KICAD;
+
+        try
+        {
+            IO_RELEASER<SCH_IO> io( SCH_IO_MGR::FindPlugin( type ) );
+            io->SaveSchematicFile( fileName, sheet, m_schematic.get() );
+        }
+        catch( const IO_ERROR& error )
+        {
+            aError = tr( "The schematic could not be saved to %1.\n%2" )
+                             .arg( ToQString( fileName ), ToQString( error.What() ) );
+            return false;
+        }
+
+        screen->SetContentModified( false );
+    }
+
+    m_undo->SetSaved();
+    emit statusMessage( tr( "%1 saved." ).arg( m_fileName ) );
+    emit stateChanged();
+    return true;
+}
+
+
+bool SCHEMATIC_DOCUMENT::IsModified() const
+{
+    return m_undo->IsModified();
+}
+
+
+bool SCHEMATIC_DOCUMENT::CanUndo() const
+{
+    return m_undo->CanUndo();
+}
+
+
+bool SCHEMATIC_DOCUMENT::CanRedo() const
+{
+    return m_undo->CanRedo();
 }
 
 
@@ -181,6 +445,27 @@ bool SCHEMATIC_DOCUMENT::GetCurrentSheetInfo( SCH_CURRENT_SHEET_INFO& aInfo ) co
 }
 
 
+void SCHEMATIC_DOCUMENT::setupGrid()
+{
+    m_gridSize = VECTOR2D( schIUScale.MilsToIU( 50 ), schIUScale.MilsToIU( 50 ) );
+
+    const GRID_SETTINGS* settings = nullptr;
+
+    if( auto* cfg = eeschemaSettings() )
+    {
+        settings = &cfg->m_Window.grid;
+
+        if( settings->last_size_idx >= 0
+                && settings->last_size_idx < static_cast<int>( settings->grids.size() ) )
+        {
+            m_gridSize = settings->grids[settings->last_size_idx].ToDouble( schIUScale );
+        }
+    }
+
+    m_canvas->SetGrid( m_gridSize, VECTOR2D( 0, 0 ), settings );
+}
+
+
 void SCHEMATIC_DOCUMENT::fillSheets()
 {
     const QSignalBlocker blocker( m_sheets );
@@ -194,6 +479,9 @@ void SCHEMATIC_DOCUMENT::fillSheets()
         item->setText( 0, ToQString( sheets[i].GetPageNumber() ) );
         item->setText( 1, ToQString( sheets[i].PathHumanReadable( false, true ) ) );
         item->setData( 0, PAGE_ROLE, static_cast<int>( i ) );
+
+        if( sheets[i] == m_schematic->CurrentSheet() )
+            m_sheets->setCurrentItem( item );
     }
 }
 
@@ -205,7 +493,7 @@ void SCHEMATIC_DOCUMENT::showSheet( int aPage )
     if( aPage < 0 || aPage >= static_cast<int>( sheets.size() ) )
         return;
 
-    select( nullptr );
+    ClearSelection();
 
     // As the editor shows a sheet: its page number and count, the references of its symbols
     // (units of shared screens), the dangling ends
@@ -250,7 +538,7 @@ void SCHEMATIC_DOCUMENT::ZoomToFit()
 
     BOX2I box;
 
-    for( SCH_ITEM* item : m_schematic->GetCurrentScreen()->Items() )
+    for( SCH_ITEM* item : currentScreen()->Items() )
         box.Merge( item->GetBoundingBox() );
 
     m_canvas->ZoomToFit( box );
@@ -265,13 +553,16 @@ void SCHEMATIC_DOCUMENT::onCursorMoved( double aX, double aY )
 }
 
 
-SCH_ITEM* SCHEMATIC_DOCUMENT::itemAt( const VECTOR2I& aPosition ) const
+EDA_ITEM* SCHEMATIC_DOCUMENT::itemAt( const VECTOR2I& aPoint, Qt::KeyboardModifiers aModifiers )
 {
+    if( !m_schematic )
+        return nullptr;
+
     KIGFX::SCH_VIEW* schView = view();
 
     const int accuracy = static_cast<int>( schView->ToWorld( HIT_DISTANCE_PX ) );
-    BOX2I     area( aPosition - VECTOR2I( accuracy, accuracy ), VECTOR2I( 2 * accuracy,
-                                                                          2 * accuracy ) );
+    BOX2I     area( aPoint - VECTOR2I( accuracy, accuracy ), VECTOR2I( 2 * accuracy,
+                                                                       2 * accuracy ) );
 
     std::vector<KIGFX::VIEW::LAYER_ITEM_PAIR> found;
     schView->Query( area, found );
@@ -286,7 +577,7 @@ SCH_ITEM* SCHEMATIC_DOCUMENT::itemAt( const VECTOR2I& aPosition ) const
         if( !item || !schView->IsLayerVisible( layer ) || !schView->IsVisible( item ) )
             continue;
 
-        if( !item->HitTest( aPosition, accuracy ) )
+        if( !item->HitTest( aPoint, accuracy ) )
             continue;
 
         // The view draws the layers of lower order on top
@@ -299,51 +590,363 @@ SCH_ITEM* SCHEMATIC_DOCUMENT::itemAt( const VECTOR2I& aPosition ) const
         }
     }
 
+    // A click on a field or a pin of a symbol selects the symbol, as in the editor; Ctrl
+    // selects the field or the pin
+    if( best && !( aModifiers & Qt::ControlModifier ) )
+    {
+        if( SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( best->GetParentSymbol() ) )
+            best = symbol;
+    }
+
     return best;
 }
 
 
-void SCHEMATIC_DOCUMENT::select( SCH_ITEM* aItem )
+std::vector<EDA_ITEM*> SCHEMATIC_DOCUMENT::itemsInArea( const BOX2I& aArea, bool aCrossing )
 {
+    std::vector<EDA_ITEM*> items;
+
+    if( !m_schematic )
+        return items;
+
     KIGFX::SCH_VIEW* schView = view();
 
-    if( m_selected )
+    std::vector<KIGFX::VIEW::LAYER_ITEM_PAIR> found;
+    schView->Query( aArea, found );
+
+    std::unordered_set<SCH_ITEM*> seen;
+
+    for( const auto& [viewItem, layer] : found )
     {
-        m_selected->ClearSelected();
-        schView->Update( m_selected );
+        SCH_ITEM* item = dynamic_cast<SCH_ITEM*>( viewItem );
+
+        if( !item || !schView->IsLayerVisible( layer ) || !schView->IsVisible( item ) )
+            continue;
+
+        // An area selects whole symbols, sheets and labels
+        item = topLevelItem( item );
+
+        if( !seen.insert( item ).second )
+            continue;
+
+        if( item->HitTest( aArea, !aCrossing ) )
+            items.push_back( item );
     }
 
-    m_selected = aItem;
+    return items;
+}
 
-    if( m_selected )
+
+std::vector<EDA_ITEM*> SCHEMATIC_DOCUMENT::allItems()
+{
+    std::vector<EDA_ITEM*> items;
+
+    if( m_schematic )
     {
-        m_selected->SetSelected();
-        schView->Update( m_selected );
-        m_properties->ShowProperties( ToQString( m_selected->GetFriendlyName() ),
-                                      PropertyRows( m_selected, schIUScale, EDA_UNITS::MM ) );
+        for( SCH_ITEM* item : currentScreen()->Items() )
+            items.push_back( item );
+    }
+
+    return items;
+}
+
+
+void SCHEMATIC_DOCUMENT::setItemSelected( EDA_ITEM* aItem, bool aSelected )
+{
+    if( aSelected )
+        aItem->SetSelected();
+    else
+        aItem->ClearSelected();
+
+    view()->UpdateWithParent( aItem, false );
+}
+
+
+void SCHEMATIC_DOCUMENT::selectionChanged()
+{
+    const std::vector<EDA_ITEM*>& selection = Selection();
+
+    if( selection.size() == 1 )
+    {
+        m_properties->ShowProperties( ToQString( selection.front()->GetFriendlyName() ),
+                                      PropertyRows( selection.front(), schIUScale, EDA_UNITS::MM ) );
+    }
+    else if( selection.size() > 1 )
+    {
+        m_properties->ShowProperties( tr( "%1 items" ).arg( selection.size() ), {} );
     }
     else
     {
         m_properties->ShowProperties( QString(), {} );
     }
+}
 
+
+VECTOR2I SCHEMATIC_DOCUMENT::snapToGrid( const VECTOR2D& aDelta ) const
+{
+    return VECTOR2I( KiROUND( std::round( aDelta.x / m_gridSize.x ) * m_gridSize.x ),
+                     KiROUND( std::round( aDelta.y / m_gridSize.y ) * m_gridSize.y ) );
+}
+
+
+std::unique_ptr<SCH_COMMIT> SCHEMATIC_DOCUMENT::makeCommit()
+{
+    return std::make_unique<SCH_COMMIT>( std::make_unique<COMMIT_LISTENER>( *this ) );
+}
+
+
+std::vector<SCH_ITEM*> SCHEMATIC_DOCUMENT::changeableItems( const std::vector<EDA_ITEM*>& aItems )
+{
+    std::unordered_set<EDA_ITEM*> all( aItems.begin(), aItems.end() );
+    std::vector<SCH_ITEM*>        items;
+
+    for( EDA_ITEM* item : aItems )
+    {
+        SCH_ITEM* schItem = static_cast<SCH_ITEM*>( item );
+
+        if( schItem->IsLocked() )
+            continue;
+
+        // A child changes with its symbol, sheet or label
+        if( topLevelItem( schItem ) != schItem && all.count( topLevelItem( schItem ) ) )
+            continue;
+
+        items.push_back( schItem );
+    }
+
+    if( items.size() < aItems.size() )
+        emit statusMessage( tr( "Locked items are not changed." ) );
+
+    return items;
+}
+
+
+void SCHEMATIC_DOCUMENT::redrawItem( EDA_ITEM* aItem, bool aIsAddOrDelete, bool aUpdateRtree )
+{
+    view()->UpdateWithParent( aItem, aIsAddOrDelete );
+
+    if( !aItem->IsSCH_ITEM() )
+        return;
+
+    SCH_ITEM* item = static_cast<SCH_ITEM*>( aItem );
+
+    // Update will invalidate the RTree iterators of the screen
+    if( aUpdateRtree )
+    {
+        currentScreen()->Update( item );
+
+        // The children of a group are in the RTree too
+        if( SCH_GROUP* group = dynamic_cast<SCH_GROUP*>( item ) )
+        {
+            group->RunOnChildren(
+                    [&]( SCH_ITEM* aChild )
+                    {
+                        currentScreen()->Update( aChild );
+                    },
+                    RECURSE_MODE::RECURSE );
+        }
+    }
+
+    item->ClearCaches();
+}
+
+
+bool SCHEMATIC_DOCUMENT::beginMove()
+{
+    m_moving = changeableItems( Selection() );
+
+    if( m_moving.empty() )
+        return false;
+
+    m_moveCommit = makeCommit();
+
+    for( SCH_ITEM* item : m_moving )
+        m_moveCommit->Modify( item, currentScreen() );
+
+    return true;
+}
+
+
+void SCHEMATIC_DOCUMENT::moveBy( const VECTOR2I& aDelta )
+{
+    for( SCH_ITEM* item : m_moving )
+    {
+        item->Move( aDelta );
+        redrawItem( item, false, true );
+    }
+}
+
+
+void SCHEMATIC_DOCUMENT::endMove( bool aCommit )
+{
+    if( !m_moveCommit )
+        return;
+
+    if( aCommit )
+        m_moveCommit->Push( ToWxString( tr( "Move" ) ) );
+    else
+        m_moveCommit->Revert();
+
+    m_moveCommit.reset();
+    m_moving.clear();
     m_canvas->update();
 }
 
 
-void SCHEMATIC_DOCUMENT::onClicked( double aX, double aY, Qt::KeyboardModifiers aModifiers )
+void SCHEMATIC_DOCUMENT::rotateItems( const std::vector<EDA_ITEM*>& aItems )
 {
-    if( !m_schematic )
+    std::vector<SCH_ITEM*> items = changeableItems( aItems );
+
+    if( items.empty() )
         return;
 
-    SCH_ITEM* item = itemAt( VECTOR2I( KiROUND( aX ), KiROUND( aY ) ) );
+    // A single item turns about its position (the anchor of a symbol), several items about
+    // the center of their box, on the grid
+    VECTOR2I center;
 
-    // A click on a field or a pin of a symbol selects the symbol, as in the editor
-    if( item && !( aModifiers & Qt::ControlModifier ) )
+    if( items.size() == 1 )
     {
-        if( SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( item->GetParentSymbol() ) )
-            item = symbol;
+        center = items.front()->GetPosition();
+    }
+    else
+    {
+        BOX2I box;
+
+        for( SCH_ITEM* item : items )
+            box.Merge( item->GetBoundingBox() );
+
+        center = snapToGrid( VECTOR2D( box.GetCenter() ) );
     }
 
-    select( item );
+    std::unique_ptr<SCH_COMMIT> commit = makeCommit();
+
+    for( SCH_ITEM* item : items )
+    {
+        commit->Modify( item, currentScreen() );
+        item->Rotate( center, true /* counterclockwise */ );
+    }
+
+    commit->Push( ToWxString( tr( "Rotate" ) ) );
+}
+
+
+void SCHEMATIC_DOCUMENT::deleteItems( const std::vector<EDA_ITEM*>& aItems )
+{
+    std::unique_ptr<SCH_COMMIT> commit = makeCommit();
+    bool                        removed = false;
+
+    for( SCH_ITEM* item : changeableItems( aItems ) )
+    {
+        // The fields and the pins of a symbol are deleted with it
+        if( item->Type() == SCH_FIELD_T || item->Type() == SCH_PIN_T
+                || item->Type() == SCH_TABLECELL_T )
+        {
+            continue;
+        }
+
+        commit->Remove( item, currentScreen() );
+        removed = true;
+    }
+
+    if( removed )
+        commit->Push( ToWxString( tr( "Delete" ) ) );
+}
+
+
+void SCHEMATIC_DOCUMENT::markScreensModified( const PICKED_ITEMS_LIST& aEntry )
+{
+    for( unsigned ii = 0; ii < aEntry.GetCount(); ii++ )
+    {
+        if( SCH_SCREEN* screen = dynamic_cast<SCH_SCREEN*>( aEntry.GetScreenForItem( ii ) ) )
+            screen->SetContentModified();
+    }
+}
+
+
+void SCHEMATIC_DOCUMENT::recordChange( PICKED_ITEMS_LIST& aChange )
+{
+    auto* entry = new PICKED_ITEMS_LIST();
+    entry->CopyList( aChange );
+    entry->SetDescription( aChange.GetDescription() );
+
+    markScreensModified( *entry );
+    m_undo->Push( entry );
+}
+
+
+void SCHEMATIC_DOCUMENT::recalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS aCleanUp )
+{
+    KIGFX::SCH_VIEW* schView = view();
+
+    std::function<void( SCH_ITEM* )> changed =
+            [schView]( SCH_ITEM* aItem )
+            {
+                schView->Update( aItem, KIGFX::REPAINT );
+            };
+
+    m_schematic->RecalculateConnections( aCommit, aCleanUp, nullptr, schView, &changed,
+                                         m_undo->LastChange() );
+
+    schView->UpdateConnectionChanges( currentScreen() );
+}
+
+
+void SCHEMATIC_DOCUMENT::applyUndoEntry( PICKED_ITEMS_LIST& aEntry )
+{
+    UNDO_LISTENER listener( *this );
+
+    SCH_UNDO_REDO::RESULT result = SCH_UNDO_REDO::Apply( *m_schematic, aEntry, listener );
+
+    markScreensModified( aEntry );
+    view()->ClearHiddenFlags();
+
+    if( result.connectivityChanged )
+    {
+        // As in the schematic editor, the clean up of the connections is not pushed: it
+        // belongs to the change undone or redone
+        SCH_COMMIT cleanUp( std::make_unique<COMMIT_LISTENER>( *this ) );
+        recalculateConnections( &cleanUp, result.connectivityCleanUp );
+
+        if( result.connectivityCleanUp == GLOBAL_CLEANUP )
+            m_schematic->SetSheetNumberAndCount();
+
+        // Restore the hop-over shapes of the wires
+        if( m_schematic->Settings().GetHopOverScale() > 0.0 )
+        {
+            for( SCH_ITEM* item : currentScreen()->Items() )
+            {
+                if( item->Type() != SCH_LINE_T )
+                    continue;
+
+                SCH_LINE* line = static_cast<SCH_LINE*>( item );
+
+                if( line->IsWire() || line->IsBus() )
+                    view()->UpdateHopOveredWires( line );
+            }
+        }
+    }
+
+    if( result.hierarchyChanged )
+        fillSheets();
+
+    if( result.variantsChanged )
+        m_schematic->LoadVariants();
+}
+
+
+void SCHEMATIC_DOCUMENT::undo()
+{
+    m_undo->Undo( [this]( PICKED_ITEMS_LIST& aEntry ) { applyUndoEntry( aEntry ); } );
+
+    if( std::exchange( m_leaveSheet, false ) )
+        showSheet( 0 );
+}
+
+
+void SCHEMATIC_DOCUMENT::redo()
+{
+    m_undo->Redo( [this]( PICKED_ITEMS_LIST& aEntry ) { applyUndoEntry( aEntry ); } );
+
+    if( std::exchange( m_leaveSheet, false ) )
+        showSheet( 0 );
 }

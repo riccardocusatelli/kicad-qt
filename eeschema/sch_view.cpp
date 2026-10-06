@@ -31,9 +31,12 @@
 #include <view/view_group.h>
 #include <view/view_rtree.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
+#include <eda_text.h>
 #include <layer_ids.h>
 #include <lib_symbol.h>
+#include <sch_connection.h>
 #include <sch_screen.h>
+#include <sch_shape.h>
 #include <schematic.h>
 #include <string_utils.h>
 
@@ -227,6 +230,106 @@ void SCH_VIEW::DisplaySymbol( LIB_SYMBOL* aSymbol )
     }
 
     InitPreview();
+}
+
+
+void SCH_VIEW::UpdateWithParent( EDA_ITEM* aItem, bool aIsAddOrDelete )
+{
+    EDA_ITEM* parent = aItem->GetParent();
+
+    if( aItem->Type() == SCH_SHEET_PIN_T )
+    {
+        // Sheet pins aren't in the view.  Refresh their parent.
+        if( parent )
+            Update( parent );
+
+        return;
+    }
+
+    if( aItem->Type() == SCH_SHAPE_T )
+        static_cast<SCH_SHAPE*>( aItem )->UpdateHatching();
+
+    if( !aIsAddOrDelete )
+        Update( aItem );
+
+    // Some children are drawn from their parents.  Mark them for re-paint.
+    if( parent && ( parent->Type() == SCH_SYMBOL_T
+                    || parent->Type() == SCH_SHEET_T
+                    || parent->Type() == SCH_LABEL_LOCATE_ANY_T
+                    || parent->Type() == SCH_TABLE_T ) )
+    {
+        Update( parent, KIGFX::REPAINT );
+    }
+}
+
+
+void SCH_VIEW::UpdateHopOveredWires( SCH_ITEM* aItem )
+{
+    std::vector<KIGFX::VIEW::LAYER_ITEM_PAIR> items;
+
+    Query( aItem->GetBoundingBox(), items );
+
+    for( const auto& it : items )
+    {
+        if( !it.first->IsSCH_ITEM() )
+            continue;
+
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( it.first );
+
+        if( item == aItem )
+            continue;
+
+        if( item->IsType( { SCH_ITEM_LOCATE_WIRE_T, SCH_ITEM_LOCATE_BUS_T } ) )
+            Update( item );
+    }
+}
+
+
+void SCH_VIEW::UpdateConnectionChanges( SCH_SCREEN* aScreen )
+{
+    UpdateAllItemsConditionally(
+            [&]( KIGFX::VIEW_ITEM* aItem ) -> int
+            {
+                int             flags = 0;
+                SCH_ITEM*       item = dynamic_cast<SCH_ITEM*>( aItem );
+                SCH_CONNECTION* connection = item ? item->Connection() : nullptr;
+
+                auto invalidateTextVars =
+                        [&flags]( EDA_TEXT* text )
+                        {
+                            if( text->HasTextVars() )
+                            {
+                                text->ClearRenderCache();
+                                text->ClearBoundingBoxCache();
+                                flags |= KIGFX::GEOMETRY | KIGFX::REPAINT;
+                            }
+                        };
+
+                if( connection && connection->HasDriverChanged() )
+                {
+                    connection->ClearDriverChanged();
+                    flags |= KIGFX::REPAINT;
+                }
+
+                if( item )
+                {
+                    item->RunOnChildren(
+                            [&invalidateTextVars]( SCH_ITEM* aChild )
+                            {
+                                if( EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aChild ) )
+                                    invalidateTextVars( text );
+                            },
+                            RECURSE_MODE::NO_RECURSE );
+
+                    if( flags & KIGFX::GEOMETRY )
+                        aScreen->Update( item, false );     // Refresh RTree
+                }
+
+                if( EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aItem ) )
+                    invalidateTextVars( text );
+
+                return flags;
+            } );
 }
 
 

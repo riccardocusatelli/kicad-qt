@@ -30,6 +30,7 @@
 
 #include <gal/graphics_abstraction_layer.h>
 #include <gal/painter.h>
+#include <settings/grid_settings.h>
 #include <view/view.h>
 
 #include "qt_cairo_gal.h"
@@ -37,6 +38,9 @@
 
 /// Zoom factor of a wheel notch and of ZoomIn() / ZoomOut()
 static constexpr double ZOOM_STEP = 1.25;
+
+/// Distance the cursor moves with the button pressed before a click becomes a drag, in pixels
+static constexpr double DRAG_THRESHOLD_PX = 4.0;
 
 
 GAL_CANVAS::GAL_CANVAS( QWidget* aParent ) :
@@ -132,6 +136,48 @@ void GAL_CANVAS::Refresh()
 }
 
 
+void GAL_CANVAS::SetGrid( const VECTOR2D& aSize, const VECTOR2D& aOrigin,
+                          const GRID_SETTINGS* aSettings )
+{
+    bool show = true;
+
+    if( aSettings )
+    {
+        // The values of the style setting, as the editors read them
+        switch( aSettings->style )
+        {
+        case 1:  m_options.m_gridStyle = KIGFX::GRID_STYLE::LINES;       break;
+        case 2:  m_options.m_gridStyle = KIGFX::GRID_STYLE::SMALL_CROSS; break;
+        default: m_options.m_gridStyle = KIGFX::GRID_STYLE::DOTS;        break;
+        }
+
+        m_options.m_gridLineWidth = aSettings->line_width;
+        m_options.m_gridMinSpacing = aSettings->min_spacing;
+        m_options.m_axesEnabled = aSettings->axes_enabled;
+        show = aSettings->show;
+    }
+
+    m_options.NotifyChanged();
+
+    m_gal->SetGridSize( aSize );
+    m_gal->SetGridOrigin( aOrigin );
+    m_gal->SetGridVisibility( show );
+
+    if( m_view )
+        m_view->MarkDirty();
+
+    update();
+}
+
+
+void GAL_CANVAS::SetSelectionArea( const std::optional<BOX2D>& aArea, bool aCrossing )
+{
+    m_selectionArea = aArea;
+    m_selectionCrossing = aCrossing;
+    update();
+}
+
+
 void GAL_CANVAS::render()
 {
     const VECTOR2I size = m_gal->GetScreenPixelSize();
@@ -211,6 +257,26 @@ void GAL_CANVAS::paintEvent( QPaintEvent* aEvent )
         painter.fillRect( rect(), palette().window() );
     else
         painter.drawImage( QPointF( 0, 0 ), m_image );
+
+    if( m_selectionArea && m_view )
+    {
+        // As in the editors: a window area is solid, a crossing area is dashed
+        const double   ratio = devicePixelRatioF();
+        const VECTOR2D a = m_view->ToScreen( m_selectionArea->GetOrigin() ) / ratio;
+        const VECTOR2D b = m_view->ToScreen( m_selectionArea->GetEnd() ) / ratio;
+        const QRectF   area = QRectF( QPointF( a.x, a.y ), QPointF( b.x, b.y ) ).normalized();
+        const QColor   color = m_selectionCrossing ? QColor( 80, 200, 120 ) : QColor( 70, 140, 255 );
+
+        QColor fill = color;
+        fill.setAlpha( 40 );
+
+        QPen pen( color, 1.0, m_selectionCrossing ? Qt::DashLine : Qt::SolidLine );
+        pen.setCosmetic( true );
+
+        painter.setPen( pen );
+        painter.setBrush( fill );
+        painter.drawRect( area );
+    }
 }
 
 
@@ -252,10 +318,13 @@ void GAL_CANVAS::mousePressEvent( QMouseEvent* aEvent )
         m_panStart = aEvent->position();
         setCursor( Qt::ClosedHandCursor );
     }
-    else if( aEvent->button() == Qt::LeftButton && m_view )
+    else if( aEvent->button() == Qt::LeftButton && m_view && !m_panning )
     {
-        const VECTOR2D world = m_view->ToWorld( toDevice( aEvent->position() ) );
-        emit clicked( world.x, world.y, aEvent->modifiers() );
+        m_leftDown = true;
+        m_dragging = false;
+        m_leftStart = aEvent->position();
+
+        emit leftPressed( m_view->ToWorld( toDevice( m_leftStart ) ), aEvent->modifiers() );
     }
 
     aEvent->accept();
@@ -279,6 +348,25 @@ void GAL_CANVAS::mouseMoveEvent( QMouseEvent* aEvent )
     }
 
     const VECTOR2D world = m_view->ToWorld( toDevice( aEvent->position() ) );
+
+    if( m_leftDown && ( aEvent->buttons() & Qt::LeftButton ) )
+    {
+        if( !m_dragging )
+        {
+            const QPointF moved = aEvent->position() - m_leftStart;
+
+            if( std::hypot( moved.x(), moved.y() ) >= DRAG_THRESHOLD_PX )
+            {
+                m_dragging = true;
+                emit leftDragStarted( m_view->ToWorld( toDevice( m_leftStart ) ),
+                                      aEvent->modifiers() );
+            }
+        }
+
+        if( m_dragging )
+            emit leftDragged( world, aEvent->modifiers() );
+    }
+
     emit cursorMoved( world.x, world.y );
 }
 
@@ -291,6 +379,16 @@ void GAL_CANVAS::mouseReleaseEvent( QMouseEvent* aEvent )
         m_panning = false;
         unsetCursor();
     }
+    else if( aEvent->button() == Qt::LeftButton && m_leftDown && m_view )
+    {
+        const bool dragged = m_dragging;
+
+        m_leftDown = false;
+        m_dragging = false;
+
+        emit leftReleased( m_view->ToWorld( toDevice( aEvent->position() ) ), aEvent->modifiers(),
+                           dragged );
+    }
 
     aEvent->accept();
 }
@@ -300,11 +398,12 @@ void GAL_CANVAS::keyPressEvent( QKeyEvent* aEvent )
 {
     switch( aEvent->key() )
     {
-    case Qt::Key_Home:  emit zoomToFitRequested(); break;
+    case Qt::Key_Home:   emit zoomToFitRequested(); break;
     case Qt::Key_Plus:
-    case Qt::Key_Equal: ZoomIn();                  break;
-    case Qt::Key_Minus: ZoomOut();                 break;
-    default:            QWidget::keyPressEvent( aEvent ); return;
+    case Qt::Key_Equal:  ZoomIn();                  break;
+    case Qt::Key_Minus:  ZoomOut();                 break;
+    case Qt::Key_Escape: emit cancelRequested();    break;
+    default:             QWidget::keyPressEvent( aEvent ); return;
     }
 
     aEvent->accept();

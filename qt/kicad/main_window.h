@@ -25,6 +25,7 @@
 #include <QStringList>
 
 class KIWAY_BASE;
+class QAction;
 class QFileSystemModel;
 class QLabel;
 class QListWidget;
@@ -37,7 +38,7 @@ class QT_DOCUMENT;
 
 /**
  * The main window of kicad-qt: the files of the project, the open documents (boards and
- * schematics, made by the Qt KIFACEs) in tabs, the recent files.
+ * schematics, made by the Qt KIFACEs) in tabs with their editing commands, the recent files.
  */
 class MAIN_WINDOW : public QMainWindow
 {
@@ -49,6 +50,10 @@ public:
     /// Open a project (.kicad_pro) or a document (.kicad_pcb, .kicad_sch).
     void OpenPath( const QString& aPath );
 
+protected:
+    /// Ask to save the documents changed; the window stays open on Cancel.
+    void closeEvent( QCloseEvent* aEvent ) override;
+
 private:
     void createActions();
 
@@ -57,6 +62,18 @@ private:
     void openProject( const QString& aProjectFile );
     void openDocument( const QString& aFileName );
     void closeTab( int aIndex );
+
+    /// Save a document; on failure, say why.  @return true if saved.
+    bool saveDocument( QT_DOCUMENT* aDocument );
+
+    /// If the document has changes, ask to save them.  @return false to keep it open.
+    bool confirmClose( QT_DOCUMENT* aDocument );
+
+    /// Enable the editing commands for the current document.
+    void updateActions();
+
+    /// The name of a document in its tab, marked if it has changes not saved.
+    void updateTabTitle( QT_DOCUMENT* aDocument );
     void onCurrentTabChanged( int aIndex );
     void onProjectFileActivated( const QModelIndex& aIndex );
 
@@ -74,6 +91,12 @@ private:
     QTreeView*         m_projectTree;
     QFileSystemModel*  m_projectModel;
     QMenu*             m_recentMenu;
+    QAction*           m_saveAction;
+    QAction*           m_undoAction;
+    QAction*           m_redoAction;
+    QAction*           m_rotateAction;
+    QAction*           m_deleteAction;
+    QAction*           m_selectAllAction;
     QLabel*            m_cursorLabel;
     QString            m_projectFile;
 };

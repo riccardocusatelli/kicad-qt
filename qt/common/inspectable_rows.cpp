@@ -82,6 +82,12 @@ static QString valueText( EDA_ITEM* aItem, PROPERTY_BASE* aProperty, const EDA_I
         break;
     }
 
+    // A plain number (a ratio, a factor): without the trailing zeros of its text
+    double number = 0.0;
+
+    if( value.CheckType<double>() && value.GetAs( &number ) )
+        return QString::number( number, 'g', 10 );
+
     bool flag = false;
 
     if( value.CheckType<bool>() && value.GetAs( &flag ) )

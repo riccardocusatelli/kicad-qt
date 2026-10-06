@@ -20,6 +20,7 @@
 #include "main_window.h"
 
 #include <QApplication>
+#include <QCloseEvent>
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -234,6 +235,14 @@ void MAIN_WINDOW::createActions()
 
     fileMenu->addSeparator();
 
+    m_saveAction = fileMenu->addAction( tr( "&Save" ), this,
+                                        [this]()
+                                        {
+                                            if( QT_DOCUMENT* doc = currentDocument() )
+                                                saveDocument( doc );
+                                        } );
+    m_saveAction->setShortcut( QKeySequence::Save );
+
     QAction* closeTab = fileMenu->addAction( tr( "&Close" ), this,
                                              [this]()
                                              {
@@ -246,6 +255,46 @@ void MAIN_WINDOW::createActions()
 
     QAction* quit = fileMenu->addAction( tr( "&Quit" ), this, &QWidget::close );
     quit->setShortcut( QKeySequence::Quit );
+
+    QMenu* editMenu = menuBar()->addMenu( tr( "&Edit" ) );
+
+    // The commands of the current document.  The ones with keys that the other widgets use
+    // (letters, Delete) work when the focus is in the documents
+    auto documentAction =
+            [&]( const QString& aText, const QList<QKeySequence>& aShortcuts, bool aInDocuments,
+                 void ( QT_DOCUMENT::*aCommand )() ) -> QAction*
+            {
+                QAction* action = editMenu->addAction( aText, this,
+                                                       [this, aCommand]()
+                                                       {
+                                                           if( QT_DOCUMENT* doc = currentDocument() )
+                                                               ( doc->*aCommand )();
+                                                       } );
+                action->setShortcuts( aShortcuts );
+
+                if( aInDocuments )
+                {
+                    action->setShortcutContext( Qt::WidgetWithChildrenShortcut );
+                    m_tabs->addAction( action );
+                }
+
+                return action;
+            };
+
+    m_undoAction = documentAction( tr( "&Undo" ), QKeySequence::keyBindings( QKeySequence::Undo ),
+                                   false, &QT_DOCUMENT::Undo );
+    m_redoAction = documentAction( tr( "&Redo" ),
+                                   { QKeySequence( Qt::CTRL | Qt::Key_Y ),
+                                     QKeySequence( Qt::CTRL | Qt::SHIFT | Qt::Key_Z ) },
+                                   false, &QT_DOCUMENT::Redo );
+    editMenu->addSeparator();
+    m_rotateAction = documentAction( tr( "R&otate" ), { QKeySequence( Qt::Key_R ) }, true,
+                                     &QT_DOCUMENT::RotateSelection );
+    m_deleteAction = documentAction( tr( "&Delete" ), { QKeySequence::Delete }, true,
+                                     &QT_DOCUMENT::DeleteSelection );
+    editMenu->addSeparator();
+    m_selectAllAction = documentAction( tr( "Select &All" ), { QKeySequence::SelectAll }, true,
+                                        &QT_DOCUMENT::SelectAll );
 
     QMenu* viewMenu = menuBar()->addMenu( tr( "&View" ) );
 
@@ -292,6 +341,12 @@ void MAIN_WINDOW::createActions()
     toolbar->setToolButtonStyle( Qt::ToolButtonTextOnly );
     toolbar->addAction( openProject );
     toolbar->addAction( openFile );
+    toolbar->addAction( m_saveAction );
+    toolbar->addSeparator();
+    toolbar->addAction( m_undoAction );
+    toolbar->addAction( m_redoAction );
+    toolbar->addAction( m_rotateAction );
+    toolbar->addAction( m_deleteAction );
     toolbar->addSeparator();
     toolbar->addAction( zoomIn );
     toolbar->addAction( zoomOut );
@@ -308,6 +363,8 @@ void MAIN_WINDOW::createActions()
                                                          .arg( ToQString( GetBuildVersion() ) )
                                                          .arg( QString::fromLatin1( qVersion() ) ) );
                          } );
+
+    updateActions();
 }
 
 
@@ -432,6 +489,12 @@ void MAIN_WINDOW::openDocument( const QString& aFileName )
              {
                  statusBar()->showMessage( aText, 8000 );
              } );
+    connect( doc, &QT_DOCUMENT::stateChanged, this,
+             [this, doc]()
+             {
+                 updateTabTitle( doc );
+                 updateActions();
+             } );
 
     QApplication::setOverrideCursor( Qt::WaitCursor );
 
@@ -455,13 +518,18 @@ void MAIN_WINDOW::openDocument( const QString& aFileName )
     doc->Canvas()->setFocus();
 
     addRecentFile( fileName );
+    updateActions();
 }
 
 
 void MAIN_WINDOW::closeTab( int aIndex )
 {
-    QWidget* doc = m_tabs->widget( aIndex );
-    m_tabs->removeTab( aIndex );
+    auto* doc = qobject_cast<QT_DOCUMENT*>( m_tabs->widget( aIndex ) );
+
+    if( !doc || !confirmClose( doc ) )
+        return;
+
+    m_tabs->removeTab( m_tabs->indexOf( doc ) );
     delete doc;
 
     if( m_tabs->count() == 0 )
@@ -469,11 +537,104 @@ void MAIN_WINDOW::closeTab( int aIndex )
         m_center->setCurrentIndex( 0 );
         m_cursorLabel->clear();
     }
+
+    updateActions();
+}
+
+
+bool MAIN_WINDOW::saveDocument( QT_DOCUMENT* aDocument )
+{
+    QApplication::setOverrideCursor( Qt::WaitCursor );
+
+    QString error;
+    bool    saved = aDocument->Save( error );
+
+    QApplication::restoreOverrideCursor();
+
+    if( !saved )
+    {
+        QMessageBox::critical( this, tr( "Save" ),
+                               error.isEmpty() ? tr( "%1 could not be saved." )
+                                                         .arg( aDocument->FileName() )
+                                               : error );
+    }
+
+    return saved;
+}
+
+
+bool MAIN_WINDOW::confirmClose( QT_DOCUMENT* aDocument )
+{
+    if( !aDocument->IsModified() )
+        return true;
+
+    m_tabs->setCurrentWidget( aDocument );
+
+    const QMessageBox::StandardButton answer =
+            QMessageBox::question( this, tr( "Close" ),
+                                   tr( "Save the changes to %1?" )
+                                           .arg( QFileInfo( aDocument->FileName() ).fileName() ),
+                                   QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel,
+                                   QMessageBox::Save );
+
+    if( answer == QMessageBox::Cancel )
+        return false;
+
+    if( answer == QMessageBox::Save )
+        return saveDocument( aDocument );
+
+    return true;
+}
+
+
+void MAIN_WINDOW::closeEvent( QCloseEvent* aEvent )
+{
+    for( int i = 0; i < m_tabs->count(); ++i )
+    {
+        auto* doc = qobject_cast<QT_DOCUMENT*>( m_tabs->widget( i ) );
+
+        if( doc && !confirmClose( doc ) )
+        {
+            aEvent->ignore();
+            return;
+        }
+    }
+
+    aEvent->accept();
+}
+
+
+void MAIN_WINDOW::updateActions()
+{
+    QT_DOCUMENT* doc = currentDocument();
+    const bool   selection = doc && !doc->Selection().empty();
+
+    m_saveAction->setEnabled( doc && doc->IsModified() );
+    m_undoAction->setEnabled( doc && doc->CanUndo() );
+    m_redoAction->setEnabled( doc && doc->CanRedo() );
+    m_rotateAction->setEnabled( selection );
+    m_deleteAction->setEnabled( selection );
+    m_selectAllAction->setEnabled( doc != nullptr );
+}
+
+
+void MAIN_WINDOW::updateTabTitle( QT_DOCUMENT* aDocument )
+{
+    const int index = m_tabs->indexOf( aDocument );
+
+    if( index < 0 )
+        return;
+
+    const QString name = QFileInfo( aDocument->FileName() ).fileName();
+
+    m_tabs->setTabText( index, aDocument->IsModified() ? tr( "%1 •" ).arg( name ) : name );
 }
 
 
 void MAIN_WINDOW::onCurrentTabChanged( int aIndex )
 {
+    updateActions();
+
     if( aIndex < 0 )
         return;
 

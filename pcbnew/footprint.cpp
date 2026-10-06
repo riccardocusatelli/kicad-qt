@@ -176,22 +176,13 @@ FOOTPRINT::FOOTPRINT( const FOOTPRINT& aFootprint ) :
 
     std::map<EDA_ITEM*, EDA_ITEM*> ptrMap;
 
-    // Copy fields
+    // Copy fields, with their UUIDs (as operator=): the copy made for undo takes the place of
+    // the footprint when the change is undone
     for( PCB_FIELD* field : aFootprint.m_fields )
     {
-        if( field->IsMandatory() )
-        {
-            PCB_FIELD* existingField = GetField( field->GetId() );
-            ptrMap[field] = existingField;
-            *existingField = *field;
-            existingField->SetParent( this );
-        }
-        else
-        {
-            PCB_FIELD* newField = static_cast<PCB_FIELD*>( field->Clone() );
-            ptrMap[field] = newField;
-            Add( newField );
-        }
+        PCB_FIELD* newField = new PCB_FIELD( *field );
+        ptrMap[field] = newField;
+        Add( newField );
     }
 
     // Copy pads

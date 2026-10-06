@@ -1924,49 +1924,7 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FL
                                         m_undoList.m_CommandsList.empty() ? nullptr
                                                                           : m_undoList.m_CommandsList.back() );
 
-    GetCanvas()->GetView()->UpdateAllItemsConditionally(
-            [&]( KIGFX::VIEW_ITEM* aItem ) -> int
-            {
-                int             flags = 0;
-                SCH_ITEM*       item = dynamic_cast<SCH_ITEM*>( aItem );
-                SCH_CONNECTION* connection = item ? item->Connection() : nullptr;
-
-                auto invalidateTextVars =
-                        [&flags]( EDA_TEXT* text )
-                        {
-                            if( text->HasTextVars() )
-                            {
-                                text->ClearRenderCache();
-                                text->ClearBoundingBoxCache();
-                                flags |= KIGFX::GEOMETRY | KIGFX::REPAINT;
-                            }
-                        };
-
-                if( connection && connection->HasDriverChanged() )
-                {
-                    connection->ClearDriverChanged();
-                    flags |= KIGFX::REPAINT;
-                }
-
-                if( item )
-                {
-                    item->RunOnChildren(
-                            [&invalidateTextVars]( SCH_ITEM* aChild )
-                            {
-                                if( EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aChild ) )
-                                    invalidateTextVars( text );
-                            },
-                            RECURSE_MODE::NO_RECURSE );
-
-                    if( flags & KIGFX::GEOMETRY )
-                        GetScreen()->Update( item, false );     // Refresh RTree
-                }
-
-                if( EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aItem ) )
-                    invalidateTextVars( text );
-
-                return flags;
-            } );
+    GetCanvas()->GetView()->UpdateConnectionChanges( GetScreen() );
 
     if( m_highlightedConnChanged
         || !Schematic().ConnectionGraph()->FindFirstSubgraphByName( highlightedConn ) )

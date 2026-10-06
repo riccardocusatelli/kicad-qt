@@ -162,6 +162,7 @@ set( QA_EESCHEMA_SRCS
     test_legacy_power_symbols.cpp
     test_history_autosave_legacy.cpp
     test_sch_commit.cpp
+    test_sch_undo_redo.cpp
     test_shape_corner_radius.cpp
     test_sch_group.cpp
     test_pin_numbers.cpp

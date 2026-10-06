@@ -143,6 +143,9 @@ public:
      */
     SCH_COMMIT();
 
+    /// A commit in the schematic editor, which @a aListener keeps in step with the schematic.
+    explicit SCH_COMMIT( std::unique_ptr<SCH_COMMIT_LISTENER> aListener );
+
     /// Commits in an editor (sch_commit_gui.cpp).
     SCH_COMMIT( TOOL_MANAGER* aToolMgr );
     SCH_COMMIT( EDA_DRAW_FRAME* aFrame );

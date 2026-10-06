@@ -52,6 +52,14 @@ SCH_COMMIT::SCH_COMMIT() :
 }
 
 
+SCH_COMMIT::SCH_COMMIT( std::unique_ptr<SCH_COMMIT_LISTENER> aListener ) :
+        COMMIT(),
+        m_listener( std::move( aListener ) ),
+        m_isLibEditor( false )
+{
+}
+
+
 SCH_COMMIT::~SCH_COMMIT()
 {
 }

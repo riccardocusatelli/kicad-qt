@@ -157,8 +157,10 @@ public:
      * Put data pointed by List in the previous state, i.e. the state memorized by \a aList.
      *
      * @param aList a PICKED_ITEMS_LIST pointer to the list of items to undo/redo.
+     * @param aRehatchShapes rehatch the shapes if items that can change them were restored.
+     * @return true if items that can change the board outline or the hatching were restored.
      */
-    void PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool aRehatchShapes = true );
+    bool PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool aRehatchShapes = true );
 
     /**
      * Check if the undo and redo operations are currently blocked.

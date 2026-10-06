@@ -54,6 +54,17 @@ BOARD_COMMIT::BOARD_COMMIT( BOARD* aBoard, bool aIsBoardEditor, bool aIsFootprin
 }
 
 
+BOARD_COMMIT::BOARD_COMMIT( std::unique_ptr<BOARD_COMMIT_LISTENER> aListener,
+                            bool aIsBoardEditor, bool aIsFootprintEditor ) :
+        COMMIT(),
+        m_board( nullptr ),
+        m_listener( std::move( aListener ) ),
+        m_isBoardEditor( aIsBoardEditor ),
+        m_isFootprintEditor( aIsFootprintEditor )
+{
+}
+
+
 BOARD_COMMIT::~BOARD_COMMIT()
 {
 }

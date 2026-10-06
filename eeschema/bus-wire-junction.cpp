@@ -188,23 +188,5 @@ void SCH_EDIT_FRAME::DeleteJunction( SCH_COMMIT* aCommit, SCH_ITEM* aJunction )
 
 void SCH_EDIT_FRAME::UpdateHopOveredWires( SCH_ITEM* aItem )
 {
-    std::vector<KIGFX::VIEW::LAYER_ITEM_PAIR> items;
-
-    GetCanvas()->GetView()->Query( aItem->GetBoundingBox(), items );
-
-    for( const auto& it : items )
-    {
-        if( !it.first->IsSCH_ITEM() )
-            continue;
-
-        SCH_ITEM* item = static_cast<SCH_ITEM*>( it.first );
-
-        if( item == aItem )
-            continue;
-
-        if( item->IsType( { SCH_ITEM_LOCATE_WIRE_T, SCH_ITEM_LOCATE_BUS_T } ) )
-        {
-            GetCanvas()->GetView()->Update( item );
-        }
-    }
+    GetCanvas()->GetView()->UpdateHopOveredWires( aItem );
 }

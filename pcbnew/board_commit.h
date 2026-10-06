@@ -130,6 +130,10 @@ public:
     explicit BOARD_COMMIT( BOARD* aBoard, bool aIsBoardEditor = false,
                            bool aIsFootprintEditor = false );
 
+    /// A commit in an editor, which @a aListener keeps in step with the board.
+    BOARD_COMMIT( std::unique_ptr<BOARD_COMMIT_LISTENER> aListener, bool aIsBoardEditor,
+                  bool aIsFootprintEditor );
+
     /// Commits in an editor (board_commit_gui.cpp).
     BOARD_COMMIT( EDA_DRAW_FRAME* aFrame );
     BOARD_COMMIT( TOOL_BASE* aTool );

@@ -4,7 +4,7 @@ add_library( kiqt SHARED
     gal_canvas.cpp
     property_panel.cpp
     qt_cairo_gal.cpp
-    qt_document.h
+    qt_document.cpp
     )
 
 set_target_properties( kiqt PROPERTIES

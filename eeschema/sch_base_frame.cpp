@@ -374,31 +374,7 @@ void SCH_BASE_FRAME::ActivateGalCanvas()
 
 void SCH_BASE_FRAME::UpdateItem( EDA_ITEM* aItem, bool isAddOrDelete, bool aUpdateRtree )
 {
-    EDA_ITEM* parent = aItem->GetParent();
-
-    if( aItem->Type() == SCH_SHEET_PIN_T )
-    {
-        // Sheet pins aren't in the view.  Refresh their parent.
-        if( parent )
-            GetCanvas()->GetView()->Update( parent );
-    }
-    else
-    {
-        if( aItem->Type() == SCH_SHAPE_T )
-            static_cast<SCH_SHAPE*>( aItem )->UpdateHatching();
-
-        if( !isAddOrDelete )
-            GetCanvas()->GetView()->Update( aItem );
-
-        // Some children are drawn from their parents.  Mark them for re-paint.
-        if( parent && ( parent->Type() == SCH_SYMBOL_T
-                        || parent->Type() == SCH_SHEET_T
-                        || parent->Type() == SCH_LABEL_LOCATE_ANY_T
-                        || parent->Type() == SCH_TABLE_T ) )
-        {
-            GetCanvas()->GetView()->Update( parent, KIGFX::REPAINT );
-        }
-    }
+    GetCanvas()->GetView()->UpdateWithParent( aItem, isAddOrDelete );
 
     /*
      * Be careful when calling this.  Update will invalidate RTree iterators, so you cannot

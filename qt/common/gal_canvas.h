@@ -32,6 +32,8 @@
 
 #include "kiqt.h"
 
+struct GRID_SETTINGS;
+
 namespace KIGFX
 {
 class GAL;
@@ -71,12 +73,38 @@ public:
     /// Redraw the whole view (after a change of the items, layers or colors).
     void Refresh();
 
+    /**
+     * Show a grid of @a aSize from @a aOrigin (in world units), drawn as the settings of an
+     * editor say (style, line width, minimum spacing, axes, visibility), or with the defaults
+     * if @a aSettings is null.
+     */
+    void SetGrid( const VECTOR2D& aSize, const VECTOR2D& aOrigin, const GRID_SETTINGS* aSettings );
+
+    /**
+     * Show the area of a selection by dragging (in world units), or nothing.
+     * @param aCrossing the area selects the items it touches (dashed), not only the ones
+     *                  inside it.
+     */
+    void SetSelectionArea( const std::optional<BOX2D>& aArea, bool aCrossing );
+
 signals:
     /// The cursor moved, at a point in world units.
     void cursorMoved( double aX, double aY );
 
-    /// A left click, at a point in world units.
-    void clicked( double aX, double aY, Qt::KeyboardModifiers aModifiers );
+    /// The left button was pressed, at a point in world units.
+    void leftPressed( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers );
+
+    /// The cursor moved by a few pixels with the left button pressed at @a aStart: a drag.
+    void leftDragStarted( const VECTOR2D& aStart, Qt::KeyboardModifiers aModifiers );
+
+    /// The cursor moved during a drag.
+    void leftDragged( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers );
+
+    /// The left button was released; @a aDragged if it was a drag, not a click.
+    void leftReleased( const VECTOR2D& aPoint, Qt::KeyboardModifiers aModifiers, bool aDragged );
+
+    /// The Escape key.
+    void cancelRequested();
 
     /// The zoom changed (VIEW scale).
     void zoomChanged( double aScale );
@@ -116,4 +144,11 @@ private:
     std::optional<BOX2I>                  m_fitBox;
     bool                                  m_panning = false;
     QPointF                               m_panStart;
+
+    bool                                  m_leftDown = false;
+    bool                                  m_dragging = false;
+    QPointF                               m_leftStart;    ///< Where the left button was pressed
+
+    std::optional<BOX2D>                  m_selectionArea;
+    bool                                  m_selectionCrossing = false;
 };

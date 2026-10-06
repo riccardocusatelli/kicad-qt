@@ -1032,6 +1032,7 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/pcbexpr_functions.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_commit.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_commit_gui.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_undo_redo.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_connected_item.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_design_settings.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/teardrop/teardrop_parameters.cpp     #needed by board_design_settings.cpp

@@ -32,6 +32,8 @@
 #include <memory>
 #include <vector>
 
+class EDA_ITEM;
+class SCH_ITEM;
 class SCH_SHEET;
 class SCH_SCREEN;
 class LIB_SYMBOL;
@@ -138,6 +140,26 @@ public:
     void Update( const KIGFX::VIEW_ITEM* aItem ) const override;
 
     void Cleanup();
+
+    /**
+     * Redraw @a aItem after a change, with the items drawn with it: the parent of a sheet pin
+     * (sheet pins are not in the view) and the parent symbol, sheet, label or table of a child.
+     *
+     * @param aIsAddOrDelete the item has just been added to or removed from the view: it is
+     *                       not updated itself.
+     */
+    void UpdateWithParent( EDA_ITEM* aItem, bool aIsAddOrDelete );
+
+    /// Redraw the wires and buses crossing @a aItem (a wire): their hop-over shapes change.
+    void UpdateHopOveredWires( SCH_ITEM* aItem );
+
+    /**
+     * Redraw the items after the connections have been recalculated: the items whose driver
+     * has changed, the texts with variables (they may show net names).
+     *
+     * @param aScreen the screen shown, whose RTree is updated for the texts that change.
+     */
+    void UpdateConnectionChanges( SCH_SCREEN* aScreen );
 
     void DisplaySheet( const SCH_SCREEN* aScreen );
     void DisplaySymbol( LIB_SYMBOL* aSymbol );

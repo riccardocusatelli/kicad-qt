@@ -28,15 +28,20 @@ find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets )
 # Sources of the model the documents use, besides the ones kicad-cli links
 # (see cmake/WxFree.cmake)
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_pcbcommon
+    pcbnew/board_undo_redo.cpp
     pcbnew/pcb_view.cpp
     )
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/sch_painter.cpp
+    eeschema/sch_undo_redo.cpp
     eeschema/sch_view.cpp
     )
 
-# The sources compiled into each Qt KIFACE, with its PROPERTY_MANAGER
-set( KIQT_KIFACE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/common/inspectable_rows.cpp )
+# The sources compiled into each Qt KIFACE, with its model (PROPERTY_MANAGER, undo lists)
+set( KIQT_KIFACE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/inspectable_rows.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/undo_stack.cpp
+    )
 
 add_subdirectory( common )
 add_subdirectory( pcbnew )
