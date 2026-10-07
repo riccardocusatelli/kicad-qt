@@ -88,7 +88,7 @@ public:
 
     const BOX2I GetDocumentExtents( bool aIncludeAllVisible = true ) const override;
 
-    bool canCloseWindow( wxCloseEvent& Event ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
     void CloseFootprintEditor( wxCommandEvent& Event );
     void OnExitKiCad( wxCommandEvent& aEvent );

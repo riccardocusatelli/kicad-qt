@@ -874,6 +874,7 @@ set( COMMON_SRCS
     tool/action_manager.cpp
     tool/action_menu.cpp
     tool/action_toolbar.cpp
+    tool/action_toolbar_controls.cpp
     tool/actions.cpp
     tool/common_control.cpp
     tool/construction_manager.cpp
@@ -905,6 +906,7 @@ set( COMMON_SRCS
     tool/zoom_menu.cpp
     tool/zoom_tool.cpp
 
+    toolkit/file_watcher_wx.cpp
     toolkit/gui_services_wx.cpp
     toolkit/gui_timer_wx.cpp
 

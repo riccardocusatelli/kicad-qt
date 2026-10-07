@@ -979,7 +979,7 @@ private:
 
     void OnClearFileHistory( wxCommandEvent& aEvent );
 
-    bool canCloseWindow( wxCloseEvent& aCloseEvent ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
 
     /**

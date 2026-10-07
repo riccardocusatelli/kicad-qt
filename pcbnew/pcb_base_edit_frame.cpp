@@ -212,8 +212,7 @@ void PCB_BASE_EDIT_FRAME::SetBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter 
         if( m_toolManager )
             m_toolManager->ResetTools( TOOL_BASE::MODEL_RELOAD );
 
-        wxCommandEvent e( EDA_EVT_BOARD_CHANGING );
-        ProcessEventLocally( e );
+        notifyBoardChange( BOARD_CHANGE::CHANGING );
 
         GetCanvas()->GetView()->Clear();
         GetCanvas()->GetView()->InitPreview();
@@ -294,9 +293,9 @@ wxString PCB_BASE_EDIT_FRAME::GetDesignRulesPath()
 }
 
 
-void PCB_BASE_EDIT_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+void PCB_BASE_EDIT_FRAME::handleActivateEvent( bool aActive )
 {
-    PCB_BASE_FRAME::handleActivateEvent( aEvent );
+    PCB_BASE_FRAME::handleActivateEvent( aActive );
 
     // The text in the collapsible pane headers need to be updated
     if( m_appearancePanel )

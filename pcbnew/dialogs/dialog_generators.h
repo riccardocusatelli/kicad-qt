@@ -61,7 +61,7 @@ private:
     wxDataViewCtrl* addPage( const wxString& aName, const wxString& aTitle );
 
     void onUnitsChanged( wxCommandEvent& event );
-    void onBoardChanged( wxCommandEvent& event );
+    void onBoardChanged();
 
     virtual void OnBoardItemAdded( BOARD& aBoard, BOARD_ITEM* aBoardItem ) override;
     virtual void OnBoardItemsAdded( BOARD& aBoard, std::vector<BOARD_ITEM*>& aBoardItems ) override;

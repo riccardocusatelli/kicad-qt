@@ -36,9 +36,10 @@
 #include <pcb_screen.h>
 #include <vector>
 
+#include <functional>
 #include <wx/datetime.h>
 #include <wx/filename.h>
-#include <wx/timer.h>
+#include <toolkit/gui_timer.h>
 #include <core/ki_assert.h>
 
 /* Forward declarations of classes. */
@@ -70,23 +71,14 @@ class SPNAV_2D_PLUGIN;
 class NL_PCBNEW_PLUGIN;
 #endif
 
-#ifdef wxHAS_INOTIFY
-#define wxFileSystemWatcher wxInotifyFileSystemWatcher
-#elif defined( wxHAS_KQUEUE ) && defined( wxHAVE_FSEVENTS_FILE_NOTIFICATIONS )
-#define wxFileSystemWatcher wxFsEventsFileSystemWatcher
-#elif defined( wxHAS_KQUEUE )
-#define wxFileSystemWatcher wxKqueueFileSystemWatcher
-#elif defined( __WINDOWS__ )
-#define wxFileSystemWatcher wxMSWFileSystemWatcher
-#else
-#define wxFileSystemWatcher wxPollingFileSystemWatcher
-#endif
+class FILE_WATCHER;
 
-class wxFileSystemWatcher;
-class wxFileSystemWatcherEvent;
-
-wxDECLARE_EVENT( EDA_EVT_BOARD_CHANGING, wxCommandEvent );
-wxDECLARE_EVENT( EDA_EVT_BOARD_CHANGED, wxCommandEvent );
+/// The notifications of the board changes of a frame (see PCB_BASE_FRAME::AddBoardChangeListener).
+enum class BOARD_CHANGE
+{
+    CHANGING,   ///< The board of the frame is about to be replaced
+    CHANGED     ///< The frame has a new board
+};
 
 /**
  * Base PCB main window class for Pcbnew, Gerbview, and CvPcb footprint viewer.
@@ -94,7 +86,7 @@ wxDECLARE_EVENT( EDA_EVT_BOARD_CHANGED, wxCommandEvent );
 class PCB_BASE_FRAME : public EDA_DRAW_FRAME
 {
 public:
-    PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrameType,
+    PCB_BASE_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent, FRAME_T aFrameType,
                     const wxString& aTitle, const wxPoint& aPos, const wxSize& aSize,
                     long aStyle, const wxString& aFrameName );
 
@@ -381,40 +373,44 @@ public:
     virtual void ActivateGalCanvas() override;
 
     /**
-     * Add \a aListener to post #EDA_EVT_BOARD_CHANGED command events to.
+     * Add a listener of the board changes of the frame (#BOARD_CHANGE).
      *
-     * @warning The caller is responsible for removing any listeners that are no long valid.
+     * @warning The owner is responsible for removing its listener when it goes away.
      *
-     * @note This only gets called when the board editor is in stand alone mode.  Changing
+     * @note The board changes only when the board editor is in stand alone mode.  Changing
      *       projects in the project manager closes the board editor when a new project is
      *       loaded.
+     *
+     * @param aOwner identifies the listener for #RemoveBoardChangeListener.
+     * @param aHandler is called with each change.
      */
-    void AddBoardChangeListener( wxEvtHandler* aListener );
+    void AddBoardChangeListener( const void* aOwner,
+                                 std::function<void( BOARD_CHANGE )> aHandler );
 
     /**
-     * Remove \a aListener to from the board changed listener list.
+     * Remove the listener of \a aOwner.
      */
-    void RemoveBoardChangeListener( wxEvtHandler* aListener );
+    void RemoveBoardChangeListener( const void* aOwner );
 
     /**
      * Handler for FP change events.  Responds to the filesystem watcher set in #setFPWatcher.
     */
-    void OnFPChange( wxFileSystemWatcherEvent& aEvent );
+    void OnFPChange();
 
     /**
      * Handler for the filesystem watcher debounce timer.
      */
-    void OnFpChangeDebounceTimer( wxTimerEvent& aEvent );
+    void OnFpChangeDebounceTimer();
 
     void GetLibraryItemsForListDialog( wxArrayString& aHeaders,
                                        std::vector<wxArrayString>& aItemsToDisplay );
 
 protected:
-    bool canCloseWindow( wxCloseEvent& aCloseEvent ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
 
-    void handleActivateEvent( wxActivateEvent& aEvent ) override;
+    void handleActivateEvent( bool aActive ) override;
 
-    void handleIconizeEvent( wxIconizeEvent& aEvent ) override;
+    void handleIconizeEvent( bool aIconized ) override;
 
     virtual void doReCreateMenuBar() override;
 
@@ -440,6 +436,9 @@ protected:
      */
     void setFPWatcher( FOOTPRINT* aFootprint );
 
+    /// Call the listeners of the board changes.
+    void notifyBoardChange( BOARD_CHANGE aChange );
+
 protected:
     BOARD*                  m_pcb;
     PCB_DISPLAY_OPTIONS     m_displayOptions;
@@ -452,11 +451,13 @@ private:
     std::unique_ptr<NL_PCBNEW_PLUGIN>    m_spaceMouse;
 #endif
 
-    std::unique_ptr<wxFileSystemWatcher> m_watcher;
+    std::unique_ptr<FILE_WATCHER>        m_watcher;
     wxFileName                           m_watcherFileName;
     wxDateTime                           m_watcherLastModified;
-    wxTimer                              m_watcherDebounceTimer;
+    GUI_TIMER                            m_watcherDebounceTimer;
     bool                                 m_inFpChangeTimerEvent;
+
+    std::vector<std::pair<const void*, std::function<void( BOARD_CHANGE )>>> m_boardChangeListeners;
 };
 
 #endif  // PCB_BASE_FRAME_H

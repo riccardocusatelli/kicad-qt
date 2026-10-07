@@ -81,7 +81,7 @@ public:
     bool Show( bool show = true ) override;
 
 protected:
-    void OnBoardChanged( wxCommandEvent& event );
+    void OnBoardChanged();
     void OnCharHook( wxKeyEvent& aEvent ) override;
 
 private:

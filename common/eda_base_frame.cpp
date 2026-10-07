@@ -316,8 +316,14 @@ void EDA_BASE_FRAME::windowClosing( wxCloseEvent& event )
     }
 
 
-    if( event.GetId() == wxEVT_QUERY_END_SESSION
-        || event.GetId() == wxEVT_END_SESSION )
+    CLOSE_REQUEST::SOURCE source = CLOSE_REQUEST::SOURCE::USER;
+
+    if( event.GetEventType() == wxEVT_QUERY_END_SESSION )
+        source = CLOSE_REQUEST::SOURCE::SESSION_END_QUERY;
+    else if( event.GetEventType() == wxEVT_END_SESSION )
+        source = CLOSE_REQUEST::SOURCE::SESSION_END;
+
+    if( source != CLOSE_REQUEST::SOURCE::USER )
     {
         // End session means the OS is going to terminate us
         m_isNonUserClose = true;
@@ -325,7 +331,9 @@ void EDA_BASE_FRAME::windowClosing( wxCloseEvent& event )
 
     SCOPED_SET_RESET<bool> closeGuard( m_closeInProgress, true );
 
-    if( canCloseWindow( event ) )
+    CLOSE_REQUEST request( event.CanVeto(), source );
+
+    if( canCloseWindow( request ) && !request.IsVetoed() )
     {
         m_isClosing = true;
 
@@ -2050,7 +2058,7 @@ void EDA_BASE_FRAME::onSystemColorChange( wxSysColourChangedEvent& aEvent )
 void EDA_BASE_FRAME::onIconize( wxIconizeEvent& aEvent )
 {
     // Call the handler
-    handleIconizeEvent( aEvent );
+    handleIconizeEvent( aEvent.IsIconized() );
 
     // Skip the event.
     aEvent.Skip();

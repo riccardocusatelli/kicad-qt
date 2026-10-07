@@ -294,7 +294,7 @@ void DIALOG_GENERATORS::onUnitsChanged( wxCommandEvent& event )
 }
 
 
-void DIALOG_GENERATORS::onBoardChanged( wxCommandEvent& event )
+void DIALOG_GENERATORS::onBoardChanged()
 {
     m_currentBoard = m_frame->GetBoard();
 
@@ -302,8 +302,6 @@ void DIALOG_GENERATORS::onBoardChanged( wxCommandEvent& event )
         m_currentBoard->AddListener( this );
 
     RebuildModels();
-
-    event.Skip();
 }
 
 
@@ -365,7 +363,12 @@ DIALOG_GENERATORS::DIALOG_GENERATORS( PCB_EDIT_FRAME* aEditorFrame, wxWindow* aP
     RebuildModels();
 
     Bind( EDA_EVT_UNITS_CHANGED, &DIALOG_GENERATORS::onUnitsChanged, this );
-    Bind( EDA_EVT_BOARD_CHANGED, &DIALOG_GENERATORS::onBoardChanged, this );
+    m_frame->AddBoardChangeListener( this,
+                                     [this]( BOARD_CHANGE aChange )
+                                     {
+                                         if( aChange == BOARD_CHANGE::CHANGED )
+                                             onBoardChanged();
+                                     } );
 
     if( m_currentBoard != nullptr )
     {
@@ -376,6 +379,8 @@ DIALOG_GENERATORS::DIALOG_GENERATORS( PCB_EDIT_FRAME* aEditorFrame, wxWindow* aP
 
 DIALOG_GENERATORS::~DIALOG_GENERATORS()
 {
+    m_frame->RemoveBoardChangeListener( this );
+
     clearModels();
 
     if( m_currentBoard != nullptr )

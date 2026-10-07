@@ -211,7 +211,7 @@ public:
     void UpdateAfterSymbolProperties( wxString* aOldName = nullptr );
     void RebuildSymbolUnitAndBodyStyleLists();
 
-    bool canCloseWindow( wxCloseEvent& aCloseEvent ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
     void OnExitKiCad( wxCommandEvent& event );
 

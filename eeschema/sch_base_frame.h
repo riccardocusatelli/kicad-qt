@@ -303,9 +303,9 @@ public:
     void HighlightSelectionFilter( const SCH_SELECTION_FILTER_OPTIONS& aOptions );
 
 protected:
-    void handleActivateEvent( wxActivateEvent& aEvent ) override;
+    void handleActivateEvent( bool aActive ) override;
 
-    void handleIconizeEvent( wxIconizeEvent& aEvent ) override;
+    void handleIconizeEvent( bool aIconized ) override;
 
     void doCloseWindow() override;
 

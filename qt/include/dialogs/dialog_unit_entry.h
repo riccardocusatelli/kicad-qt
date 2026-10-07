@@ -22,32 +22,26 @@
  * The dialogs to enter a value (or a point) with units, of the Qt build: the layout of
  * dialog_unit_entry_base.fbp, with the widgets of Qt.
  */
-
 #pragma once
 
-#include <memory>
-
-#include <dialog_shim.h>
 #include <math/vector2d.h>
+#include <widgets/unit_binder.h>
 
-class QLabel;
-class QLineEdit;
-class QPushButton;
+#include <dialogs/dialog_unit_entry_base.h>
+
 class EDA_DRAW_FRAME;
-class UNIT_BINDER;
 
 
 /**
  * An extension of WX_TEXT_ENTRY_DIALOG that uses UNIT_BINDER to request a dimension
- * (e.g. grid spacing or line width) from the user according to the selected units.
+ * (e.g. mm, inches, etc) from the user according to the selected units (Qt version of
+ * include/dialogs/dialog_unit_entry.h).
  */
-class WX_UNIT_ENTRY_DIALOG : public DIALOG_SHIM
+class WX_UNIT_ENTRY_DIALOG : public WX_UNIT_ENTRY_DIALOG_BASE
 {
 public:
     WX_UNIT_ENTRY_DIALOG( EDA_DRAW_FRAME* aParent, const wxString& aCaption, const wxString& aLabel,
                           long long int aDefaultValue );
-
-    ~WX_UNIT_ENTRY_DIALOG();
 
     /**
      * Return the value in internal units.
@@ -55,41 +49,24 @@ public:
     int GetValue();
 
 private:
-    QLabel*    m_label;
-    QLineEdit* m_textCtrl;
-    QLabel*    m_unit_label;
-
-    std::unique_ptr<UNIT_BINDER> m_unit_binder;
+    UNIT_BINDER m_unit_binder;
 };
 
 
-/**
- * A dialog to request a point (x and y) from the user, with the units of the frame.
- */
-class WX_PT_ENTRY_DIALOG : public DIALOG_SHIM
+class WX_PT_ENTRY_DIALOG : public WX_PT_ENTRY_DIALOG_BASE
 {
 public:
     WX_PT_ENTRY_DIALOG( EDA_DRAW_FRAME* aParent, const wxString& aCaption, const wxString& aLabelX,
                         const wxString& aLabelY, const VECTOR2I& aDefaultValue, bool aShowResetButt );
-
-    ~WX_PT_ENTRY_DIALOG();
 
     /**
      * Return the value in internal units.
      */
     VECTOR2I GetValue();
 
-    void ResetValues();
+    void ResetValues( QWidget* aSource ) override;
 
 private:
-    QLabel*      m_labelX;
-    QLineEdit*   m_textCtrlX;
-    QLabel*      m_unitsX;
-    QLabel*      m_labelY;
-    QLineEdit*   m_textCtrlY;
-    QLabel*      m_unitsY;
-    QPushButton* m_ButtonReset;
-
-    std::unique_ptr<UNIT_BINDER> m_unit_binder_x;
-    std::unique_ptr<UNIT_BINDER> m_unit_binder_y;
+    UNIT_BINDER m_unit_binder_x;
+    UNIT_BINDER m_unit_binder_y;
 };

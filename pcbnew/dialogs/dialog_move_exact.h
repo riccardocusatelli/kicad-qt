@@ -29,19 +29,12 @@
 #include <geometry/eda_angle.h>
 #include <widgets/unit_binder.h>
 
+#include <rotation_anchor.h>
+
 #include <dialogs/dialog_move_exact_base.h>
 
 
 class PCB_BASE_FRAME;
-
-
-enum ROTATION_ANCHOR
-{
-    ROTATE_AROUND_ITEM_ANCHOR,
-    ROTATE_AROUND_SEL_CENTER,
-    ROTATE_AROUND_USER_ORIGIN,
-    ROTATE_AROUND_AUX_ORIGIN
-};
 
 
 class DIALOG_MOVE_EXACT : public DIALOG_MOVE_EXACT_BASE

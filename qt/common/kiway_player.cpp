@@ -34,9 +34,11 @@
 
 
 KIWAY_PLAYER::KIWAY_PLAYER( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType,
-                            const wxString& aTitle, const wxString& aFrameName,
+                            const wxString& aTitle, const wxPoint& aPos, const wxSize& aSize,
+                            long aStyle, const wxString& aFrameName,
                             const EDA_IU_SCALE& aIuScale ) :
-        EDA_BASE_FRAME( aParent, aFrameType, aTitle, aFrameName, aKiway, aIuScale ),
+        EDA_BASE_FRAME( aParent, aFrameType, aTitle, aPos, aSize, aStyle, aFrameName, aKiway,
+                        aIuScale ),
         m_modal( false ),
         m_modal_loop( nullptr ),
         m_modal_resultant_parent( nullptr ),

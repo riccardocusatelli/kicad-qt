@@ -96,7 +96,7 @@ public:
      */
     void OnExit( wxCommandEvent& aEvent );
 
-    bool canCloseWindow( wxCloseEvent& aCloseEvent ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
 
     // The Tool Framework initialization
@@ -256,8 +256,8 @@ protected:
     DECLARE_EVENT_TABLE();
 
 private:
-    void handleActivateEvent( wxActivateEvent& aEvent ) override;
-    void handleIconizeEvent( wxIconizeEvent& aEvent ) override;
+    void handleActivateEvent( bool aActive ) override;
+    void handleIconizeEvent( bool aIconized ) override;
 
 protected:
     /// The last filename chosen to be proposed to the user

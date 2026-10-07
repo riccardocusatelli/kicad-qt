@@ -632,18 +632,18 @@ COLOR4D SCH_BASE_FRAME::GetDrawBgColor() const
 }
 
 
-void SCH_BASE_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+void SCH_BASE_FRAME::handleActivateEvent( bool aActive )
 {
-    EDA_DRAW_FRAME::handleActivateEvent( aEvent );
+    EDA_DRAW_FRAME::handleActivateEvent( aActive );
 
     if( m_spaceMouse )
-        m_spaceMouse->SetFocus( aEvent.GetActive() );
+        m_spaceMouse->SetFocus( aActive );
 }
 
 
-void SCH_BASE_FRAME::handleIconizeEvent( wxIconizeEvent& aEvent )
+void SCH_BASE_FRAME::handleIconizeEvent( bool aIconized )
 {
-    EDA_DRAW_FRAME::handleIconizeEvent( aEvent );
+    EDA_DRAW_FRAME::handleIconizeEvent( aIconized );
 
     if( m_spaceMouse )
         m_spaceMouse->SetFocus( false );

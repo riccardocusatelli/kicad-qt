@@ -957,15 +957,15 @@ bool FOOTPRINT_EDIT_FRAME::CanCloseFPFromBoard( bool doClose )
 }
 
 
-bool FOOTPRINT_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool FOOTPRINT_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     if( IsContentModified() )
     {
         // Shutdown blocks must be determined and vetoed as early as possible
         if( KIPLATFORM::APP::SupportsShutdownBlockReason() &&
-            aEvent.GetId() == wxEVT_QUERY_END_SESSION )
+            aRequest.IsSessionEndQuery() )
         {
-            aEvent.Veto();
+            aRequest.Veto();
             return false;
         }
 
@@ -982,7 +982,7 @@ bool FOOTPRINT_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
                                        return SaveFootprint( GetBoard()->GetFirstFootprint() );
                                    } ) )
         {
-            aEvent.Veto();
+            aRequest.Veto();
             return false;
         }
     }
@@ -995,7 +995,7 @@ bool FOOTPRINT_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
     // Save footprint tree column widths
     m_adapter->SaveSettings();
 
-    return PCB_BASE_EDIT_FRAME::canCloseWindow( aEvent );
+    return PCB_BASE_EDIT_FRAME::canCloseWindow( aRequest );
 }
 
 

@@ -57,9 +57,11 @@
 #include <settings/settings_manager.h>
 #include <tool/action_manager.h>
 #include <tool/action_menu.h>
+#include <tool/action_toolbar.h>
 #include <tool/actions.h>
 #include <tool/tool_dispatcher.h>
 #include <tool/tool_manager.h>
+#include <tool/ui/toolbar_configuration.h>
 #include <toolkit/gui_services.h>
 #include <trace_helpers.h>
 #include <widgets/wx_infobar.h>
@@ -68,6 +70,7 @@
 #include <core/ki_assert.h>
 
 #include <qt_strings.h>
+#include <ui_hooks.h>
 
 
 // Minimum window size
@@ -107,8 +110,22 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
     m_autoSaveRequired  = false;
     m_autoSavePermissionError = false;
     m_mruPath           = PATHS::GetDefaultUserProjectsPath();
+    m_toolbarSettings   = nullptr;
+    m_tbTopMain         = nullptr;
+    m_tbTopAux          = nullptr;
+    m_tbRight           = nullptr;
+    m_tbLeft            = nullptr;
 
     m_autoSaveTimer.SetHandler( [this]() { onAutoSaveTimer(); } );
+
+    // The menu entries and the buttons of the toolbars follow the UI conditions of their
+    // actions after the events of the user, as with the update UI events of wxWidgets
+    KIQT::RegisterUpdateUI( this,
+                            [this]()
+                            {
+                                if( !m_isClosing )
+                                    UpdateUIConditions();
+                            } );
 
     m_settingsManager = &Pgm().GetSettingsManager();
 
@@ -124,6 +141,7 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
 
 
 EDA_BASE_FRAME::EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxString& aTitle,
+                                const wxPoint& aPos, const wxSize& aSize, long aStyle,
                                 const wxString& aFrameName, KIWAY* aKiway,
                                 const EDA_IU_SCALE& aIuScale ) :
         QMainWindow( aParent ),
@@ -134,6 +152,37 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxSt
 {
     setObjectName( ToQString( aFrameName ) );
     SetTitle( aTitle );
+
+    // A frame with a parent is a window of its own, on top of its parent
+    Qt::WindowFlags flags = Qt::Window;
+
+    if( aStyle & wxSTAY_ON_TOP )
+        flags |= Qt::WindowStaysOnTopHint;
+
+    if( aStyle & wxFRAME_TOOL_WINDOW )
+        flags |= Qt::Tool;
+
+    if( !( aStyle & wxMINIMIZE_BOX ) || !( aStyle & wxMAXIMIZE_BOX ) )
+    {
+        flags |= Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowSystemMenuHint;
+
+        if( aStyle & wxMINIMIZE_BOX )
+            flags |= Qt::WindowMinimizeButtonHint;
+
+        if( aStyle & wxMAXIMIZE_BOX )
+            flags |= Qt::WindowMaximizeButtonHint;
+
+        if( aStyle & wxCLOSE_BOX )
+            flags |= Qt::WindowCloseButtonHint;
+    }
+
+    setWindowFlags( flags );
+
+    if( aSize.x > 0 && aSize.y > 0 )
+        resize( aSize.x, aSize.y );
+
+    if( aPos != wxDefaultPosition )
+        move( aPos.x, aPos.y );
 
     commonInit( aFrameType );
 }
@@ -180,7 +229,8 @@ bool EDA_BASE_FRAME::Close( bool aForce )
         m_isNonUserClose = true;
         SCOPED_SET_RESET<bool> closeGuard( m_closeInProgress, true );
 
-        canCloseWindow( false );
+        CLOSE_REQUEST request( false );
+        canCloseWindow( request );
         m_isClosing = true;
 
         if( APP_SETTINGS_BASE* cfg = config() )
@@ -230,7 +280,9 @@ void EDA_BASE_FRAME::closeEvent( QCloseEvent* aEvent )
 
     SCOPED_SET_RESET<bool> closeGuard( m_closeInProgress, true );
 
-    if( canCloseWindow( true ) )
+    CLOSE_REQUEST request( true );
+
+    if( canCloseWindow( request ) && !request.IsVetoed() )
     {
         m_isClosing = true;
 
@@ -260,6 +312,8 @@ void EDA_BASE_FRAME::changeEvent( QEvent* aEvent )
 {
     if( aEvent->type() == QEvent::PaletteChange || aEvent->type() == QEvent::ThemeChange )
         HandleSystemColorChange();
+    else if( aEvent->type() == QEvent::WindowStateChange )
+        handleIconizeEvent( isMinimized() );
 
     QMainWindow::changeEvent( aEvent );
 }
@@ -412,13 +466,118 @@ void EDA_BASE_FRAME::UpdateUIConditions()
 
 void EDA_BASE_FRAME::SelectToolbarAction( const TOOL_ACTION& aAction )
 {
-    // The toolbars (ACTION_TOOLBAR) check the entry of the tool that runs
+    for( ACTION_TOOLBAR* toolbar : { m_tbLeft, m_tbTopMain, m_tbTopAux, m_tbRight } )
+    {
+        if( toolbar )
+            toolbar->SelectAction( aAction );
+    }
+
+    // The entries of the tool that runs are checked
     for( QAction* action : findChildren<QAction*>() )
     {
         bool ok = false;
 
         if( action->isCheckable() && action->data().toInt( &ok ) == aAction.GetUIId() && ok )
             action->setChecked( true );
+    }
+}
+
+
+void EDA_BASE_FRAME::RegisterCustomToolbarControlFactory(
+        const ACTION_TOOLBAR_CONTROL& aControlDesc,
+        const std::function<void( ACTION_TOOLBAR* )>& aControlFactory )
+{
+    m_toolbarControlFactories.emplace( aControlDesc.GetName(), aControlFactory );
+}
+
+
+std::function<void( ACTION_TOOLBAR* )>*
+EDA_BASE_FRAME::GetCustomToolbarControlFactory( const std::string& aName )
+{
+    auto it = m_toolbarControlFactories.find( aName );
+    return it == m_toolbarControlFactories.end() ? nullptr : &it->second;
+}
+
+
+void EDA_BASE_FRAME::configureToolbars()
+{
+}
+
+
+void EDA_BASE_FRAME::RecreateToolbars()
+{
+    KI_ASSERT( m_toolbarSettings );
+
+    if( !m_toolbarSettings )
+        return;
+
+    bool allowCustom = config() ? config()->m_CustomToolbars : false;
+
+    struct LOCATION
+    {
+        TOOLBAR_LOC      m_loc;
+        ACTION_TOOLBAR*& m_toolbar;
+        Qt::ToolBarArea  m_area;
+        bool             m_vertical;
+        const char*      m_name;
+    };
+
+    LOCATION locations[] = {
+        { TOOLBAR_LOC::TOP_MAIN, m_tbTopMain, Qt::TopToolBarArea,   false, "TopMainToolbar" },
+        { TOOLBAR_LOC::TOP_AUX,  m_tbTopAux,  Qt::TopToolBarArea,   false, "TopAuxToolbar" },
+        { TOOLBAR_LOC::LEFT,     m_tbLeft,    Qt::LeftToolBarArea,  true,  "LeftToolbar" },
+        { TOOLBAR_LOC::RIGHT,    m_tbRight,   Qt::RightToolBarArea, true,  "RightToolbar" }
+    };
+
+    for( LOCATION& location : locations )
+    {
+        if( location.m_toolbar )
+            location.m_toolbar->ClearToolbar();
+    }
+
+    for( LOCATION& location : locations )
+    {
+        std::optional<TOOLBAR_CONFIGURATION> tbConfig =
+                m_toolbarSettings->GetToolbarConfig( location.m_loc, allowCustom );
+
+        if( !tbConfig.has_value() )
+            continue;
+
+        if( !location.m_toolbar )
+        {
+            location.m_toolbar = new ACTION_TOOLBAR( this, location.m_vertical );
+            location.m_toolbar->setObjectName( QString::fromLatin1( location.m_name ) );
+
+            // The auxiliary toolbar is under the main one
+            if( location.m_loc == TOOLBAR_LOC::TOP_AUX )
+                addToolBarBreak( Qt::TopToolBarArea );
+
+            addToolBar( location.m_area, location.m_toolbar );
+        }
+
+        location.m_toolbar->ApplyConfiguration( tbConfig.value() );
+    }
+
+    UpdateUIConditions();
+}
+
+
+void EDA_BASE_FRAME::UpdateToolbarControlSizes()
+{
+    for( ACTION_TOOLBAR* toolbar : { m_tbTopMain, m_tbRight, m_tbLeft, m_tbTopAux } )
+    {
+        if( toolbar )
+            toolbar->UpdateControlWidths();
+    }
+}
+
+
+void EDA_BASE_FRAME::OnToolbarSizeChanged()
+{
+    for( ACTION_TOOLBAR* toolbar : { m_tbTopMain, m_tbRight, m_tbLeft, m_tbTopAux } )
+    {
+        if( toolbar )
+            toolbar->RefreshBitmaps();
     }
 }
 
@@ -467,6 +626,12 @@ void EDA_BASE_FRAME::CommonSettingsChanged( int aFlags )
 void EDA_BASE_FRAME::ThemeChanged()
 {
     ClearScaledBitmapCache();
+
+    for( ACTION_TOOLBAR* toolbar : { m_tbTopMain, m_tbRight, m_tbLeft, m_tbTopAux } )
+    {
+        if( toolbar )
+            toolbar->RefreshBitmaps();
+    }
 }
 
 

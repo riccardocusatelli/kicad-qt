@@ -1404,10 +1404,10 @@ void PCB_EDIT_FRAME::ResolveDRCExclusions( bool aCreateMarkers )
 }
 
 
-bool PCB_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool PCB_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Shutdown blocks must be determined and vetoed as early as possible
-    if( KIPLATFORM::APP::SupportsShutdownBlockReason() && aEvent.GetId() == wxEVT_QUERY_END_SESSION
+    if( KIPLATFORM::APP::SupportsShutdownBlockReason() && aRequest.IsSessionEndQuery()
             && IsContentModified() )
     {
         return false;
@@ -1482,7 +1482,7 @@ bool PCB_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
         }
     }
 
-    return PCB_BASE_EDIT_FRAME::canCloseWindow( aEvent );
+    return PCB_BASE_EDIT_FRAME::canCloseWindow( aRequest );
 }
 
 

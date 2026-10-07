@@ -23,6 +23,7 @@
 #include <wx/app.h>
 #include <wx/evtloop.h>
 #include <wx/utils.h>
+#include <wx/window.h>
 
 
 namespace TOOLKIT
@@ -57,6 +58,18 @@ bool IsYielding()
 {
     wxEventLoopBase* loop = wxEventLoopBase::GetActive();
     return loop && loop->IsYielding();
+}
+
+
+TOOLKIT_WINDOW* FindWindowByName( const wxString& aName, TOOLKIT_WINDOW* aParent )
+{
+    return wxWindow::FindWindowByName( aName, aParent );
+}
+
+
+TOOLKIT_WINDOW* FindFocus()
+{
+    return wxWindow::FindFocus();
 }
 
 } // namespace TOOLKIT

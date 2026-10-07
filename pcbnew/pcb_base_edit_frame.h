@@ -268,7 +268,7 @@ protected:
     wxString createNewLibrary( const wxString& aDialogTitle, const wxString& aLibName,
                                const wxString& aInitialPath, std::optional<LIBRARY_TABLE_SCOPE> aScope = std::nullopt );
 
-    void handleActivateEvent( wxActivateEvent& aEvent ) override;
+    void handleActivateEvent( bool aActive ) override;
 
     void saveCopyInUndoList( PICKED_ITEMS_LIST* commandToUndo, const PICKED_ITEMS_LIST& aItemsList,
                              UNDO_REDO aCommandType );

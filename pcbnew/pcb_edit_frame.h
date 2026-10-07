@@ -838,7 +838,7 @@ protected:
     bool saveSelectionToDesignBlock( const wxString& aNickname, PCB_SELECTION& aSelection, DESIGN_BLOCK& aBlock );
 
 
-    bool canCloseWindow( wxCloseEvent& aCloseEvent ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
 
     // protected so that PCB::IFACE::CreateWindow() is the only factory.

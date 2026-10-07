@@ -456,8 +456,8 @@ protected:
     void setupUIConditions() override;
     void doReCreateMenuBar() override;
 
-    void handleActivateEvent( wxActivateEvent& aEvent ) override;
-    void handleIconizeEvent( wxIconizeEvent& aEvent ) override;
+    void handleActivateEvent( bool aActive ) override;
+    void handleIconizeEvent( bool aIconized ) override;
 
 private:
     void updateComponentListSelectBox();

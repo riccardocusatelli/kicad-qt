@@ -27,9 +27,43 @@
 
 find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets )
 
+# The Qt base classes of the dialogs and panels, generated from their wxFormBuilder files
+# (qt/tools/fbp2qt.py) in this directory, with the directories of the sources: the derived
+# classes include them as the wxFormBuilder ones (<dialogs/dialog_move_exact_base.h>)
+set( KIQT_FBP_DIR ${CMAKE_CURRENT_BINARY_DIR}/fbp )
+
+# kiqt_generate_fbp( <variable> <.fbp files...> ): the generated sources of the files.
+function( kiqt_generate_fbp aOutVar )
+    set( _sources "" )
+
+    foreach( _fbp ${ARGN} )
+        get_filename_component( _abs ${_fbp} ABSOLUTE )
+        file( RELATIVE_PATH _rel ${PROJECT_SOURCE_DIR} ${_abs} )
+        get_filename_component( _reldir ${_rel} DIRECTORY )
+
+        # The name of the generated files: the "file" property of the project
+        file( STRINGS ${_abs} _fileProp REGEX "<property name=\"file\">" LIMIT_COUNT 1 )
+        string( REGEX REPLACE ".*<property name=\"file\">([^<]*)</property>.*" "\\1" _name "${_fileProp}" )
+
+        set( _outdir ${KIQT_FBP_DIR}/${_reldir} )
+
+        add_custom_command(
+            OUTPUT ${_outdir}/${_name}.h ${_outdir}/${_name}.cpp
+            COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_SOURCE_DIR}/qt/tools/fbp2qt.py ${_abs} ${_outdir}
+            DEPENDS ${_abs} ${PROJECT_SOURCE_DIR}/qt/tools/fbp2qt.py
+            COMMENT "Generating the Qt base of ${_rel}"
+            )
+
+        list( APPEND _sources ${_outdir}/${_name}.cpp )
+    endforeach()
+
+    set( ${aOutVar} ${_sources} PARENT_SCOPE )
+endfunction()
+
 # The headers of the Qt versions of the GUI classes of KiCad (frames, canvas, menus, dialogs...)
 # come before the ones of the wxWidgets build: the tools of KiCad include them unchanged
-include_directories( BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include )
+include_directories( BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include
+                             ${KIQT_FBP_DIR}/common )
 
 # Sources of the model the documents use, besides the ones kicad-cli links
 # (see cmake/WxFree.cmake)

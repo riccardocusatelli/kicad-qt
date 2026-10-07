@@ -1145,7 +1145,7 @@ void SCH_EDIT_FRAME::HardRedraw()
 }
 
 
-bool SCH_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool SCH_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Exit interactive editing
     // Note this this will commit *some* pending changes.  For instance, the SCH_POINT_EDITOR
@@ -1154,7 +1154,7 @@ bool SCH_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
         m_toolManager->RunAction( ACTIONS::cancelInteractive );
 
     // Shutdown blocks must be determined and vetoed as early as possible
-    if( KIPLATFORM::APP::SupportsShutdownBlockReason() && aEvent.GetId() == wxEVT_QUERY_END_SESSION
+    if( KIPLATFORM::APP::SupportsShutdownBlockReason() && aRequest.IsSessionEndQuery()
             && IsContentModified() )
     {
         return false;

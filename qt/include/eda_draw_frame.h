@@ -110,6 +110,7 @@ class EDA_DRAW_FRAME : public KIWAY_PLAYER
 {
 public:
     EDA_DRAW_FRAME( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType, const wxString& aTitle,
+                    const wxPoint& aPos, const wxSize& aSize, long aStyle,
                     const wxString& aFrameName, const EDA_IU_SCALE& aIuScale );
 
     ~EDA_DRAW_FRAME();
@@ -496,6 +497,12 @@ protected:
     void setupUnits( APP_SETTINGS_BASE* aCfg );
 
     /**
+     * The rectangles of the dialogs open over the frame, in the client coordinates of the
+     * canvas (the views avoid putting the items under them).
+     */
+    std::vector<BOX2D> findDialogScreenRects();
+
+    /**
      * Make the main area of the frame: the info bar above the canvas.  The frame must have
      * its canvas.
      */
@@ -522,9 +529,19 @@ protected:
      */
     bool saveCanvasTypeSetting( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType );
 
+    /**
+     * Handle a window activation event.
+     *
+     * @param aActive is true when the window is activated, false when it is deactivated.
+     */
+    virtual void handleActivateEvent( bool aActive );
+
     /// The keys pressed in the frame (outside its canvas) that its widgets don't use are
     /// hotkeys of the tools.
     void keyPressEvent( QKeyEvent* aEvent ) override;
+
+    /// The activation of the window.
+    void changeEvent( QEvent* aEvent ) override;
 
     std::unique_ptr<LOCKFILE> m_file_checker;
 

@@ -64,7 +64,8 @@
 #include <math/vector2d.h>
 #include <math/vector2wx.h>
 #include <widgets/msgpanel.h>
-#include <wx/fswatcher.h>
+#include <toolkit/file_watcher.h>
+#include <toolkit/gui_services.h>
 
 #include <settings/settings_manager.h>
 #include <settings/cvpcb_settings.h>
@@ -83,18 +84,15 @@
 using KIGFX::RENDER_SETTINGS;
 using KIGFX::PCB_RENDER_SETTINGS;
 
-wxDEFINE_EVENT( EDA_EVT_BOARD_CHANGING, wxCommandEvent );
-wxDEFINE_EVENT( EDA_EVT_BOARD_CHANGED, wxCommandEvent );
-
-PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrameType,
+PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent, FRAME_T aFrameType,
                                 const wxString& aTitle, const wxPoint& aPos, const wxSize& aSize,
                                 long aStyle, const wxString& aFrameName ) :
         EDA_DRAW_FRAME( aKiway, aParent, aFrameType, aTitle, aPos, aSize, aStyle, aFrameName, pcbIUScale ),
         m_pcb( nullptr ),
         m_originTransforms( *this ),
+        m_watcherDebounceTimer( [this]() { OnFpChangeDebounceTimer(); } ),
         m_inFpChangeTimerEvent( false )
 {
-    m_watcherDebounceTimer.Bind( wxEVT_TIMER, &PCB_BASE_FRAME::OnFpChangeDebounceTimer, this );
 }
 
 
@@ -112,11 +110,11 @@ PCB_BASE_FRAME::~PCB_BASE_FRAME()
 }
 
 
-bool PCB_BASE_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool PCB_BASE_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Close modeless dialogs.  They're trouble when they get destroyed after the frame and/or
     // board.
-    wxWindow* viewer3D = Get3DViewerFrame();
+    EDA_3D_VIEWER_FRAME* viewer3D = Get3DViewerFrame();
 
     if( viewer3D )
         viewer3D->Close( true );
@@ -129,27 +127,27 @@ bool PCB_BASE_FRAME::canCloseWindow( wxCloseEvent& aEvent )
 }
 
 
-void PCB_BASE_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+void PCB_BASE_FRAME::handleActivateEvent( bool aActive )
 {
-    EDA_DRAW_FRAME::handleActivateEvent( aEvent );
+    EDA_DRAW_FRAME::handleActivateEvent( aActive );
 
     if( m_spaceMouse )
-        m_spaceMouse->SetFocus( aEvent.GetActive() );
+        m_spaceMouse->SetFocus( aActive );
 }
 
 
-void PCB_BASE_FRAME::handleIconizeEvent( wxIconizeEvent& aEvent )
+void PCB_BASE_FRAME::handleIconizeEvent( bool aIconized )
 {
-    EDA_DRAW_FRAME::handleIconizeEvent( aEvent );
+    EDA_DRAW_FRAME::handleIconizeEvent( aIconized );
 
-    if( m_spaceMouse && aEvent.IsIconized() )
+    if( m_spaceMouse && aIconized )
         m_spaceMouse->SetFocus( false );
 }
 
 
 EDA_3D_VIEWER_FRAME* PCB_BASE_FRAME::Get3DViewerFrame()
 {
-    wxWindow* frame = FindWindowByName( QUALIFIED_VIEWER3D_FRAMENAME( this ) );
+    TOOLKIT_WINDOW* frame = TOOLKIT::FindWindowByName( QUALIFIED_VIEWER3D_FRAMENAME( this ) );
     return dynamic_cast<EDA_3D_VIEWER_FRAME*>( frame );
 }
 
@@ -193,9 +191,35 @@ void PCB_BASE_FRAME::SetBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter )
             }
         }
 
-        wxCommandEvent e( EDA_EVT_BOARD_CHANGED );
-        ProcessEventLocally( e );
+        notifyBoardChange( BOARD_CHANGE::CHANGED );
     }
+}
+
+
+void PCB_BASE_FRAME::AddBoardChangeListener( const void* aOwner,
+                                             std::function<void( BOARD_CHANGE )> aHandler )
+{
+    m_boardChangeListeners.emplace_back( aOwner, std::move( aHandler ) );
+}
+
+
+void PCB_BASE_FRAME::RemoveBoardChangeListener( const void* aOwner )
+{
+    std::erase_if( m_boardChangeListeners,
+                   [aOwner]( const auto& aListener )
+                   {
+                       return aListener.first == aOwner;
+                   } );
+}
+
+
+void PCB_BASE_FRAME::notifyBoardChange( BOARD_CHANGE aChange )
+{
+    // A listener can remove itself
+    auto listeners = m_boardChangeListeners;
+
+    for( const auto& [owner, handler] : listeners )
+        handler( aChange );
 }
 
 
@@ -277,11 +301,10 @@ void PCB_BASE_FRAME::FocusOnItems( std::vector<BOARD_ITEM*> aItems, PCB_LAYER_ID
     KIGFX::VIEW*   view = GetCanvas()->GetView();
     SHAPE_POLY_SET viewportPoly( view->GetViewport() );
 
-    for( wxWindow* dialog : findDialogs() )
+    for( const BOX2D& dialogRect : findDialogScreenRects() )
     {
-        wxPoint dialogPos = GetCanvas()->ScreenToClient( dialog->GetScreenPosition() );
-        SHAPE_POLY_SET dialogPoly( BOX2D( view->ToWorld( ToVECTOR2D( dialogPos ), true ),
-                                          view->ToWorld( ToVECTOR2D( dialog->GetSize() ), false ) ) );
+        SHAPE_POLY_SET dialogPoly( BOX2D( view->ToWorld( dialogRect.GetOrigin(), true ),
+                                          view->ToWorld( dialogRect.GetSize(), false ) ) );
 
         try
         {
@@ -694,14 +717,13 @@ EDA_3D_VIEWER_FRAME* PCB_BASE_FRAME::CreateAndShow3D_Frame()
     draw3DFrame->Show( true );
 
     // Raising the window does not set the focus on Linux.  This should work on any platform.
-    if( wxWindow::FindFocus() != draw3DFrame )
+    if( TOOLKIT::FindFocus() != draw3DFrame )
         draw3DFrame->SetFocus();
 
     // Allocate a slice of time to display the 3D frame
-    // a call to wxSafeYield() should be enough (and better), but on Linux we need
-    // to call wxYield()
-    // otherwise the activity messages are not displayed during the first board loading
-    wxYield();
+    // Let the event loop run, otherwise the activity messages are not displayed during the
+    // first board loading
+    TOOLKIT::YieldEvents();
 
     // Note, the caller is responsible to load/update the board 3D view.
     // after frame creation the board is not automatically created.
@@ -1103,13 +1125,9 @@ void PCB_BASE_FRAME::setFPWatcher( FOOTPRINT* aFootprint )
 {
     KI_LOG_TRACE( traceLibWatch, "setFPWatcher" );
 
-    Unbind( wxEVT_FSWATCHER, &PCB_BASE_FRAME::OnFPChange, this );
-
     if( m_watcher )
     {
-    KI_LOG_TRACE( traceLibWatch, "Remove watch" );
-        m_watcher->RemoveAll();
-        m_watcher->SetOwner( nullptr );
+        KI_LOG_TRACE( traceLibWatch, "Remove watch" );
         m_watcher.reset();
     }
 
@@ -1147,46 +1165,27 @@ void PCB_BASE_FRAME::setFPWatcher( FOOTPRINT* aFootprint )
 
     m_watcherLastModified = m_watcherFileName.GetModificationTime();
 
-    Bind( wxEVT_FSWATCHER, &PCB_BASE_FRAME::OnFPChange, this );
-    m_watcher = std::make_unique<wxFileSystemWatcher>();
-    m_watcher->SetOwner( this );
+    m_watcher = std::make_unique<FILE_WATCHER>(
+            [this]( const wxString& aPath )
+            {
+                OnFPChange();
+            } );
 
-    wxFileName fn;
-    fn.AssignDir( m_watcherFileName.GetPath() );
-    fn.DontFollowLink();
+    KI_LOG_TRACE( traceLibWatch, "Add watch: %s", m_watcherFileName.GetFullPath() );
 
-    KI_LOG_TRACE( traceLibWatch, "Add watch: %s", fn.GetPath() );
-
-    {
-        // Silence OS errors that come from the watcher
-        wxLogNull silence;
-        m_watcher->Add( fn );
-    }
+    m_watcher->WatchFile( m_watcherFileName.GetFullPath() );
 }
 
 
-void PCB_BASE_FRAME::OnFPChange( wxFileSystemWatcherEvent& aEvent )
+void PCB_BASE_FRAME::OnFPChange()
 {
-    if( aEvent.GetPath() != m_watcherFileName.GetFullPath() )
-        return;
-
     // Start the debounce timer (set to 1 second)
-    if( !m_watcherDebounceTimer.StartOnce( 1000 ) )
-    {
-    KI_LOG_TRACE( traceLibWatch, "Failed to start the debounce timer" );
-        return;
-    }
+    m_watcherDebounceTimer.StartOnce( 1000 );
 }
 
 
-void PCB_BASE_FRAME::OnFpChangeDebounceTimer( wxTimerEvent& aEvent )
+void PCB_BASE_FRAME::OnFpChangeDebounceTimer()
 {
-    if( aEvent.GetId() != m_watcherDebounceTimer.GetId() )
-    {
-        aEvent.Skip();
-        return;
-    }
-
     if( m_inFpChangeTimerEvent )
     {
         KI_LOG_TRACE( traceLibWatch, "Restarting debounce timer" );

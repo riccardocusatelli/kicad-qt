@@ -68,7 +68,10 @@
 #include <settings/color_settings.h>
 #include <settings/settings_manager.h>
 #include <title_block.h>
+#include <tool/action_toolbar.h>
 #include <tool/actions.h>
+#include <tool/editor_conditions.h>
+#include <tool/ui/toolbar_configuration.h>
 #include <tool/common_tools.h>
 #include <tool/selection.h>
 #include <tool/tool_dispatcher.h>
@@ -78,6 +81,7 @@
 #include <tool/zoom_tool.h>
 #include <view/view_controls.h>
 #include <widgets/wx_infobar.h>
+#include <ui_hooks.h>
 #include <zoom_defines.h>
 
 #include <qt_strings.h>
@@ -236,12 +240,52 @@ public:
 };
 
 
+/// The toolbars of the test frame: buttons, a toggle, a group (as the toolbars of the editors).
+class TEST_TOOLBAR_SETTINGS : public TOOLBAR_SETTINGS
+{
+public:
+    TEST_TOOLBAR_SETTINGS() :
+            TOOLBAR_SETTINGS( wxS( "qa_qt_toolbars" ) )
+    {}
+
+    std::optional<TOOLBAR_CONFIGURATION> DefaultToolbarConfig( TOOLBAR_LOC aToolbar ) override
+    {
+        TOOLBAR_CONFIGURATION config;
+
+        switch( aToolbar )
+        {
+        case TOOLBAR_LOC::TOP_MAIN:
+            config.AppendAction( ACTIONS::zoomInCenter )
+                  .AppendAction( ACTIONS::zoomOutCenter )
+                  .AppendAction( ACTIONS::zoomFitScreen );
+            config.AppendSeparator();
+            config.AppendAction( ACTIONS::zoomTool );
+            break;
+
+        case TOOLBAR_LOC::LEFT:
+            config.AppendAction( ACTIONS::toggleGrid );
+            config.AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Units" ) )
+                                .AddAction( ACTIONS::millimetersUnits )
+                                .AddAction( ACTIONS::inchesUnits )
+                                .AddAction( ACTIONS::milsUnits ) );
+            break;
+
+        default:
+            return std::nullopt;
+        }
+
+        return config;
+    }
+};
+
+
 /// A frame of the Qt build with the tools of KiCad, as the frames of the editors set them up.
 class TEST_FRAME : public EDA_DRAW_FRAME
 {
 public:
     TEST_FRAME( KIWAY* aKiway, BOARD* aBoard ) :
             EDA_DRAW_FRAME( aKiway, nullptr, FRAME_PCB_EDITOR, wxT( "QA tool framework" ),
+                            wxDefaultPosition, wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE,
                             wxT( "QaToolFrame" ), pcbIUScale ),
             m_board( aBoard )
     {
@@ -271,6 +315,10 @@ public:
 
         // The hotkeys of the actions
         m_toolManager->GetActionManager()->UpdateHotKeys( true );
+
+        // The toolbars
+        m_toolbarSettings = &m_toolbarConfig;
+        RecreateToolbars();
 
         CreateInfoBar();
         setupCentralArea();
@@ -311,6 +359,34 @@ public:
     TEST_TOOL* TestTool() const { return m_testTool; }
 
     QString StatusField( int aField ) const { return m_statusFields[aField]->text(); }
+
+    ACTION_TOOLBAR* LeftToolbar() const { return m_tbLeft; }
+
+    /// The button of a toolbar with a UI id (an action or a group).
+    QAction* ToolbarItem( int aId ) const
+    {
+        for( ACTION_TOOLBAR* toolbar : { m_tbTopMain, m_tbLeft } )
+        {
+            for( QAction* action : toolbar->actions() )
+            {
+                if( action->data().isValid() && action->data().toInt() == aId )
+                    return action;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void setupUIConditions() override
+    {
+        EDA_DRAW_FRAME::setupUIConditions();
+
+        EDITOR_CONDITIONS cond( this );
+        m_toolManager->GetActionManager()->SetConditions(
+                ACTIONS::toggleGrid, ACTION_CONDITIONS().Check( cond.GridVisible() ) );
+    }
+
+    TEST_TOOLBAR_SETTINGS m_toolbarConfig;
 
 private:
     BOARD*      m_board;
@@ -641,6 +717,14 @@ int main( int argc, char** argv )
                         edits[1]->setText( QStringLiteral( "2" ) );
                     }
 
+                    // The dialog (generated from its wxFormBuilder file) next to the screenshot
+                    if( argc > 2 )
+                    {
+                        QString path = QString::fromUtf8( argv[2] );
+                        path.replace( QStringLiteral( ".png" ), QStringLiteral( "-dialog.png" ) );
+                        aDialog->grab().save( path );
+                    }
+
                     for( QPushButton* button : aDialog->findChildren<QPushButton*>() )
                     {
                         if( button->text().remove( QLatin1Char( '&' ) ) == QStringLiteral( "OK" ) )
@@ -656,6 +740,48 @@ int main( int argc, char** argv )
         check( frame.GetGridOrigin() == VECTOR2I( pcbIUScale.mmToIU( 1.5 ),
                                                   pcbIUScale.mmToIU( 2 ) ),
                "the values entered (mm) set the grid origin" );
+
+        std::printf( "Toolbars (ACTION_TOOLBAR, TOOLBAR_SETTINGS, UI conditions)\n" );
+
+        QAction* zoomIn = frame.ToolbarItem( ACTIONS::zoomInCenter.GetUIId() );
+        QAction* gridButton = frame.ToolbarItem( ACTIONS::toggleGrid.GetUIId() );
+        QAction* unitsButton = nullptr;
+
+        for( QAction* action : frame.LeftToolbar()->actions() )
+        {
+            if( action->menu() )
+                unitsButton = action;
+        }
+
+        check( zoomIn && gridButton && unitsButton, "the toolbars have the buttons and the group" );
+
+        if( zoomIn && gridButton && unitsButton )
+        {
+            before = view->GetScale();
+            zoomIn->trigger();
+            settle();
+            check( view->GetScale() > before * 1.01, "a button runs its action (zoom in)" );
+
+            KIQT::UpdateUINow();
+            bool gridShown = frame.IsGridVisible();
+            check( gridButton->isCheckable() && gridButton->isChecked() == gridShown,
+                   "a toggle button shows the state of its UI condition" );
+
+            gridButton->trigger();
+            settle();
+            KIQT::UpdateUINow();
+            check( frame.IsGridVisible() != gridShown && gridButton->isChecked() == frame.IsGridVisible(),
+                   "the toggle button changes the state (grid)" );
+
+            EDA_UNITS unitsBefore = frame.GetUserUnits();
+            unitsButton->trigger();
+            settle();
+            check( frame.GetUserUnits() != unitsBefore, "a group button cycles its actions (units)" );
+
+            unitsButton->menu()->actions().at( 0 )->trigger();
+            settle();
+            check( frame.GetUserUnits() == EDA_UNITS::MM, "an action of the palette of a group" );
+        }
 
         std::printf( "Info bar (WX_INFOBAR)\n" );
 

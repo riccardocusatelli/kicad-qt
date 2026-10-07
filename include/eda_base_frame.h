@@ -55,6 +55,7 @@
 #include <units_provider.h>
 #include <origin_transforms.h>
 #include <ui_events.h>
+#include <toolkit/close_request.h>
 
 // Option for main frames
 #define KICAD_DEFAULT_DRAWFRAME_STYLE wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS
@@ -662,9 +663,9 @@ protected:
     /**
      * Handle a window iconize event.
      *
-     * @param aEvent is the data for the event.
+     * @param aIconized is true when the window is iconized, false when it is restored.
      */
-    virtual void handleIconizeEvent( wxIconizeEvent& aEvent ) {}
+    virtual void handleIconizeEvent( bool aIconized ) {}
     void         onIconize( wxIconizeEvent& aEvent );
 
     /**
@@ -713,7 +714,13 @@ protected:
      */
     void CheckForAutosaveFiles( const wxString& aProjectPath, const std::vector<wxString>& aExtensions );
 
-    virtual bool canCloseWindow( wxCloseEvent& aCloseEvent ) { return true; }
+    /**
+     * Ask the frame if it can close (for example after saving the changes).
+     *
+     * @param aRequest is the request; the frame can veto it or just return false.
+     * @return true if the frame can close.
+     */
+    virtual bool canCloseWindow( CLOSE_REQUEST& aRequest ) { return true; }
     virtual void doCloseWindow() { }
 
     void onSystemColorChange( wxSysColourChangedEvent& aEvent );

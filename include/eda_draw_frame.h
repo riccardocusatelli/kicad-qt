@@ -599,7 +599,11 @@ protected:
 
     void updateStatusBarWidths();
 
-    std::vector<wxWindow*> findDialogs();
+    /**
+     * The rectangles of the dialogs open over the frame, in the client coordinates of the
+     * canvas (the views avoid putting the items under them).
+     */
+    std::vector<BOX2D> findDialogScreenRects();
 
     /**
      * Determine the canvas type to load (with prompt if required) and initializes #m_canvasType.
@@ -621,8 +625,10 @@ protected:
 
     /**
      * Handle a window activation event.
+     *
+     * @param aActive is true when the window is activated, false when it is deactivated.
      */
-    virtual void handleActivateEvent( wxActivateEvent& aEvent );
+    virtual void handleActivateEvent( bool aActive );
     void onActivate( wxActivateEvent& aEvent );
 
     wxSocketServer*             m_socketServer;

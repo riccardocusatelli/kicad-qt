@@ -1192,17 +1192,20 @@ void EDA_DRAW_FRAME::Zoom_Automatique( bool aWarpPointer )
 }
 
 
-std::vector<wxWindow*> EDA_DRAW_FRAME::findDialogs()
+std::vector<BOX2D> EDA_DRAW_FRAME::findDialogScreenRects()
 {
-    std::vector<wxWindow*> dialogs;
+    std::vector<BOX2D> rects;
 
     for( wxWindow* window : GetChildren() )
     {
         if( dynamic_cast<DIALOG_SHIM*>( window ) )
-            dialogs.push_back( window );
+        {
+            rects.emplace_back( ToVECTOR2D( GetCanvas()->ScreenToClient( window->GetScreenPosition() ) ),
+                                ToVECTOR2D( window->GetSize() ) );
+        }
     }
 
-    return dialogs;
+    return rects;
 }
 
 
@@ -1221,11 +1224,7 @@ void EDA_DRAW_FRAME::FocusOnLocation( const VECTOR2I& aPos, bool aAllowScroll )
         if( !r.Contains( aPos ) )
             centerView = true;
 
-        for( wxWindow* dialog : findDialogs() )
-        {
-            dialogScreenRects.emplace_back( ToVECTOR2D( GetCanvas()->ScreenToClient( dialog->GetScreenPosition() ) ),
-                                            ToVECTOR2D( dialog->GetSize() ) );
-        }
+        dialogScreenRects = findDialogScreenRects();
 
         // Center if we're behind an obscuring dialog, or within 10% of its edge
         for( BOX2D rect : dialogScreenRects )
@@ -1498,7 +1497,7 @@ void EDA_DRAW_FRAME::resolveCanvasType()
 }
 
 
-void EDA_DRAW_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+void EDA_DRAW_FRAME::handleActivateEvent( bool aActive )
 {
     // Force a refresh of the message panel to ensure that the text is the right color
     // when the window activates
@@ -1509,7 +1508,7 @@ void EDA_DRAW_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
 
 void EDA_DRAW_FRAME::onActivate( wxActivateEvent& aEvent )
 {
-    handleActivateEvent( aEvent );
+    handleActivateEvent( aEvent.GetActive() );
 
     aEvent.Skip();
 }

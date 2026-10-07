@@ -1250,17 +1250,17 @@ void GERBVIEW_FRAME::ToggleLayerManager()
     m_auimgr.Update();
 }
 
-void GERBVIEW_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+void GERBVIEW_FRAME::handleActivateEvent( bool aActive )
 {
-    EDA_DRAW_FRAME::handleActivateEvent(aEvent);
+    EDA_DRAW_FRAME::handleActivateEvent( aActive );
 
     if( m_spaceMouse )
-        m_spaceMouse->SetFocus( aEvent.GetActive() );
+        m_spaceMouse->SetFocus( aActive );
 }
 
-void GERBVIEW_FRAME::handleIconizeEvent( wxIconizeEvent& aEvent )
+void GERBVIEW_FRAME::handleIconizeEvent( bool aIconized )
 {
-    EDA_DRAW_FRAME::handleIconizeEvent(aEvent);
+    EDA_DRAW_FRAME::handleIconizeEvent( aIconized );
 
     if( m_spaceMouse )
         m_spaceMouse->SetFocus( false );

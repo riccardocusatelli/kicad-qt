@@ -700,11 +700,11 @@ bool SYMBOL_EDIT_FRAME::CanCloseSymbolFromSchematic( bool doClose )
 }
 
 
-bool SYMBOL_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool SYMBOL_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Shutdown blocks must be determined and vetoed as early as possible
     if( KIPLATFORM::APP::SupportsShutdownBlockReason()
-            && aEvent.GetId() == wxEVT_QUERY_END_SESSION
+            && aRequest.IsSessionEndQuery()
             && IsContentModified() )
     {
         return false;

@@ -29,6 +29,9 @@
  * qt/common/toolkit/gui_services_qt.cpp).
  */
 #include <import_export.h>
+#include <toolkit/toolkit_types.h>
+
+class wxString;
 
 namespace TOOLKIT
 {
@@ -51,5 +54,17 @@ APIVISIBLE void ProcessPendingEvents();
 /// @return true while the event loop is handling events from YieldEvents() (no popup menu
 ///         may be opened then).
 APIVISIBLE bool IsYielding();
+
+/**
+ * Find a window by its name (the frame name of a frame).
+ *
+ * @param aParent is the window searched (with its children), or nullptr for all the windows.
+ * @return the window or nullptr.
+ */
+APIVISIBLE TOOLKIT_WINDOW* FindWindowByName( const wxString& aName,
+                                             TOOLKIT_WINDOW* aParent = nullptr );
+
+/// The window with the keyboard focus, or nullptr.
+APIVISIBLE TOOLKIT_WINDOW* FindFocus();
 
 } // namespace TOOLKIT

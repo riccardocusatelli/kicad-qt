@@ -52,6 +52,7 @@
 #include <core/ki_assert.h>
 
 #include <qt_strings.h>
+#include <ui_hooks.h>
 
 
 /// The key of a dialog in the settings: its title, without the part in parentheses.
@@ -210,10 +211,22 @@ void DIALOG_SHIM::restoreGeometry()
 }
 
 
+void DIALOG_SHIM::RegisterUpdateUI( std::function<void()> aUpdate )
+{
+    KIQT::RegisterUpdateUI( this, std::move( aUpdate ) );
+}
+
+
 void DIALOG_SHIM::showEvent( QShowEvent* aEvent )
 {
     if( !aEvent->spontaneous() )
     {
+        TransferDataToWindow();
+
+        // The order of the keyboard focus set by the dialog
+        for( size_t ii = 1; ii < m_tabOrder.size(); ++ii )
+            QWidget::setTabOrder( m_tabOrder[ii - 1], m_tabOrder[ii] );
+
         restoreGeometry();
 
         if( m_initialFocusTarget )
@@ -261,27 +274,25 @@ int DIALOG_SHIM::ShowModal()
 
 void DIALOG_SHIM::EndModal( int aRetCode )
 {
-    m_returnCode = aRetCode;
-
     if( IsQuasiModal() )
+    {
         EndQuasiModal( aRetCode );
-    else
-        QDialog::done( aRetCode == wxID_OK ? QDialog::Accepted : QDialog::Rejected );
+        return;
+    }
+
+    // The values are checked and kept before the dialog closes
+    if( aRetCode == wxID_OK && ( !Validate() || !TransferDataFromWindow() ) )
+        return;
+
+    m_returnCode = aRetCode;
+    QDialog::done( aRetCode == wxID_OK ? QDialog::Accepted : QDialog::Rejected );
 }
 
 
 void DIALOG_SHIM::done( int aResult )
 {
     // QDialog::accept() and reject() (the Enter and Escape keys) give the codes of KiCad
-    m_returnCode = aResult == QDialog::Accepted ? wxID_OK : wxID_CANCEL;
-
-    if( IsQuasiModal() )
-    {
-        EndQuasiModal( m_returnCode );
-        return;
-    }
-
-    QDialog::done( aResult );
+    EndModal( aResult == QDialog::Accepted ? wxID_OK : wxID_CANCEL );
 }
 
 
@@ -318,6 +329,10 @@ void DIALOG_SHIM::EndQuasiModal( int retCode )
     if( !IsQuasiModal() )
         return;
 
+    // The values are checked and kept before the dialog closes, as for a modal dialog
+    if( retCode == wxID_OK && ( !Validate() || !TransferDataFromWindow() ) )
+        return;
+
     m_returnCode = retCode;
 
     if( m_qmodal_parent )
@@ -328,6 +343,36 @@ void DIALOG_SHIM::EndQuasiModal( int retCode )
 
     m_qmodal_loop->exit();
     hide();
+}
+
+
+void DIALOG_SHIM::connectStandardButton( QPushButton* aButton, int aId )
+{
+    // The button is connected once (SetupStandardButtons() can be called after)
+    if( aButton->property( "kicadStandardButton" ).isValid() )
+        return;
+
+    aButton->setProperty( "kicadStandardButton", aId );
+
+    if( aId == wxID_APPLY )
+    {
+        QObject::connect( aButton, &QPushButton::clicked, this,
+                          [this]()
+                          {
+                              // Dialogs that provide Apply buttons should make sure data is
+                              // valid before allowing a transfer
+                              if( Validate() )
+                                  TransferDataFromWindow();
+                          } );
+    }
+    else if( aId != wxID_HELP && aId != wxID_CONTEXT_HELP )
+    {
+        QObject::connect( aButton, &QPushButton::clicked, this,
+                          [this, aId]()
+                          {
+                              EndModal( aId );
+                          } );
+    }
 }
 
 
@@ -348,16 +393,7 @@ void DIALOG_SHIM::SetupStandardButtons( std::map<int, wxString> aLabels )
                     else
                         button->setText( ToQString( aLabel ) );
 
-                    // The buttons end the dialog with their code (Apply and Help are handled
-                    // by the dialog)
-                    if( aId != wxID_APPLY && aId != wxID_HELP )
-                    {
-                        QObject::connect( button, &QPushButton::clicked, this,
-                                          [this, aId]()
-                                          {
-                                              EndModal( aId );
-                                          } );
-                    }
+                    connectStandardButton( button, aId );
                 };
 
         // The buttons are handled here, not by the roles of the box

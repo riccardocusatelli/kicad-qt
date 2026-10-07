@@ -23,11 +23,13 @@
 #include <set>
 
 #include <QApplication>
+#include <QWidget>
 #include <QKeyEvent>
 
 #include <wx/defs.h>        // WXK_ key codes
 
 #include "qt_keys.h"
+#include <qt_strings.h>
 
 
 namespace
@@ -146,6 +148,38 @@ void ProcessPendingEvents()
 bool IsYielding()
 {
     return g_yieldDepth > 0;
+}
+
+
+TOOLKIT_WINDOW* FindWindowByName( const wxString& aName, TOOLKIT_WINDOW* aParent )
+{
+    QString name = ToQString( aName );
+
+    auto search =
+            [&]( QWidget* aWindow ) -> QWidget*
+            {
+                if( aWindow->objectName() == name )
+                    return aWindow;
+
+                return aWindow->findChild<QWidget*>( name );
+            };
+
+    if( aParent )
+        return search( aParent );
+
+    for( QWidget* window : QApplication::topLevelWidgets() )
+    {
+        if( QWidget* found = search( window ) )
+            return found;
+    }
+
+    return nullptr;
+}
+
+
+TOOLKIT_WINDOW* FindFocus()
+{
+    return QApplication::focusWidget();
 }
 
 } // namespace TOOLKIT

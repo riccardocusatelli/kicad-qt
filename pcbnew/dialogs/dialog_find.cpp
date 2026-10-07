@@ -72,7 +72,12 @@ DIALOG_FIND::DIALOG_FIND( PCB_EDIT_FRAME *aFrame ) :
     if( m_board )
         m_board->AddListener( this );
 
-    m_frame->Bind( EDA_EVT_BOARD_CHANGED, &DIALOG_FIND::OnBoardChanged, this );
+    m_frame->AddBoardChangeListener( this,
+                                     [this]( BOARD_CHANGE aChange )
+                                     {
+                                         if( aChange == BOARD_CHANGE::CHANGED )
+                                             OnBoardChanged();
+                                     } );
 
     if( int hotkey = ACTIONS::showSearch.GetHotKey() )
     {
@@ -92,7 +97,7 @@ DIALOG_FIND::~DIALOG_FIND()
     if( m_board )
         m_board->RemoveListener( this );
 
-    m_frame->Unbind( EDA_EVT_BOARD_CHANGED, &DIALOG_FIND::OnBoardChanged, this );
+    m_frame->RemoveBoardChangeListener( this );
 }
 
 
@@ -416,7 +421,7 @@ bool DIALOG_FIND::Show( bool show )
 }
 
 
-void DIALOG_FIND::OnBoardChanged( wxCommandEvent& event )
+void DIALOG_FIND::OnBoardChanged()
 {
     m_board = m_frame->GetBoard();
 
@@ -424,6 +429,4 @@ void DIALOG_FIND::OnBoardChanged( wxCommandEvent& event )
         m_board->AddListener( this );
 
     m_upToDate = false;
-
-    event.Skip();
 }

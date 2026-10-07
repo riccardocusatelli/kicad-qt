@@ -417,11 +417,11 @@ void PL_EDITOR_FRAME::OnExit( wxCommandEvent& aEvent )
 }
 
 
-bool PL_EDITOR_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool PL_EDITOR_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Shutdown blocks must be determined and vetoed as early as possible
     if( KIPLATFORM::APP::SupportsShutdownBlockReason()
-            && aEvent.GetId() == wxEVT_QUERY_END_SESSION
+            && aRequest.IsSessionEndQuery()
             && IsContentModified() )
     {
         return false;
@@ -980,18 +980,18 @@ void PL_EDITOR_FRAME::UpdateMsgPanelInfo()
 }
 #endif
 
-void PL_EDITOR_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+void PL_EDITOR_FRAME::handleActivateEvent( bool aActive )
 {
-    EDA_DRAW_FRAME::handleActivateEvent(aEvent);
+    EDA_DRAW_FRAME::handleActivateEvent( aActive );
 
     if( m_spaceMouse )
-        m_spaceMouse->SetFocus( aEvent.GetActive() );
+        m_spaceMouse->SetFocus( aActive );
 }
 
 
-void PL_EDITOR_FRAME::handleIconizeEvent( wxIconizeEvent& aEvent )
+void PL_EDITOR_FRAME::handleIconizeEvent( bool aIconized )
 {
-    EDA_DRAW_FRAME::handleIconizeEvent(aEvent);
+    EDA_DRAW_FRAME::handleIconizeEvent( aIconized );
 
     if( m_spaceMouse )
         m_spaceMouse->SetFocus( false );

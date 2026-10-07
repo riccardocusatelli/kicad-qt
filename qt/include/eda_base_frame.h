@@ -45,6 +45,7 @@
 
 #include <wx/datetime.h>
 #include <wx/gdicmn.h>
+#include <wx/toplevel.h>         // the styles of the frames (kiwx)
 #include <layer_ids.h>
 #include <frame_type.h>
 #include <hotkeys_basic.h>
@@ -56,14 +57,20 @@
 #include <undo_redo_container.h>
 #include <units_provider.h>
 #include <origin_transforms.h>
+#include <toolkit/close_request.h>
 #include <toolkit/gui_timer.h>
 
 #define VIEWER3D_FRAMENAME wxT( "Viewer3DFrameName" )
 #define QUALIFIED_VIEWER3D_FRAMENAME( parent ) \
                     ( wxString( VIEWER3D_FRAMENAME ) + wxT( ":" ) + parent->GetName() )
+#define KICAD_DEFAULT_DRAWFRAME_STYLE wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS
+
 #define KICAD_MANAGER_FRAME_NAME   wxT( "KicadFrame" )
 
 class QCloseEvent;
+class ACTION_TOOLBAR;
+class ACTION_TOOLBAR_CONTROL;
+class TOOLBAR_SETTINGS;
 class QLabel;
 class wxFileName;
 class EDA_ITEM;
@@ -114,7 +121,14 @@ public:
         REDO_LIST
     };
 
+    /**
+     * @param aPos and @param aSize are the initial geometry of the frame (or wxDefaultPosition,
+     *        wxDefaultSize).
+     * @param aStyle are the wxWidgets styles of the frame (wxSTAY_ON_TOP,
+     *        wxFRAME_FLOAT_ON_PARENT, wxFRAME_NO_TASKBAR, the buttons of the title bar).
+     */
     EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxString& aTitle,
+                    const wxPoint& aPos, const wxSize& aSize, long aStyle,
                     const wxString& aFrameName, KIWAY* aKiway, const EDA_IU_SCALE& aIuScale );
 
     ~EDA_BASE_FRAME();
@@ -173,6 +187,45 @@ public:
      * Select the given tool in the toolbars of the frame.
      */
     void SelectToolbarAction( const TOOL_ACTION& aAction );
+
+    /**
+     * Create (or fill again) the toolbars of the frame from its toolbar settings: the main and
+     * auxiliary toolbars at the top, the options on the left and the drawing tools on the right.
+     */
+    virtual void RecreateToolbars();
+
+    /**
+     * Update toolbars if desired toolbar icon changed.
+     */
+    void OnToolbarSizeChanged();
+
+    /**
+     * Update the sizes of any controls in the toolbars of the frame.
+     */
+    virtual void UpdateToolbarControlSizes();
+
+    /**
+     * Register a creation factory for toolbar controls that are present in this frame.
+     *
+     * The factory function takes a single argument of type `ACTION_TOOLBAR*`, which is the
+     * toolbar to add the controls to.
+     *
+     * @param aControlDesc is the control descriptor
+     * @param aControlFactory A functor that creates the custom controls and then adds them to
+     *                        the toolbar
+     */
+    void RegisterCustomToolbarControlFactory( const ACTION_TOOLBAR_CONTROL& aControlDesc,
+                                              const std::function<void( ACTION_TOOLBAR* )>& aControlFactory );
+
+    /**
+     * The factory of a control of the toolbars, or nullptr.
+     */
+    std::function<void( ACTION_TOOLBAR* )>* GetCustomToolbarControlFactory( const std::string& aName );
+
+    /**
+     * A control of the toolbars (with the id @a aId) is deleted: the frame forgets it.
+     */
+    virtual void ClearToolbarControl( int aId ) { }
 
     /**
      * @return the auto save interval in seconds, or 0 if it is disabled.
@@ -503,6 +556,12 @@ protected:
     /// Fill the menu bar (the frames of the editors make their menus).
     virtual void doReCreateMenuBar() {}
 
+    /**
+     * Set up the toolbar settings and the control factories of the frame (before
+     * RecreateToolbars()).
+     */
+    virtual void configureToolbars();
+
     void onAutoSaveTimer();
 
     virtual bool isAutoSaveRequired() const { return m_autoSaveRequired; }
@@ -517,11 +576,19 @@ protected:
     virtual bool canRunAutoSave() const { return true; }
 
     /**
-     * Ask the frame if it can be closed (for instance, if its changes are saved).
+     * Ask the frame if it can close (for example after saving the changes).
      *
-     * @param aCanVeto is false if the frame is closed whatever it answers.
+     * @param aRequest is the request; the frame can veto it or just return false.
+     * @return true if the frame can close.
      */
-    virtual bool canCloseWindow( bool aCanVeto ) { return true; }
+    virtual bool canCloseWindow( CLOSE_REQUEST& aRequest ) { return true; }
+
+    /**
+     * Handle a window iconize event.
+     *
+     * @param aIconized is true when the window is iconized, false when it is restored.
+     */
+    virtual void handleIconizeEvent( bool aIconized ) {}
 
     /// The frame is being closed: release what it uses.
     virtual void doCloseWindow() { }
@@ -552,7 +619,7 @@ protected:
     /// The frame is asked to close (by the user or by Close()).
     void closeEvent( QCloseEvent* aEvent ) override;
 
-    /// The theme of the system changed.
+    /// The theme of the system or the state of the window (iconized) changed.
     void changeEvent( QEvent* aEvent ) override;
 
 private:
@@ -592,6 +659,17 @@ protected:
 
     ///< The UI conditions of the controls (menu entries, tool buttons) of an ID
     std::map<int, ACTION_CONDITIONS> m_uiConditions;
+
+    // Toolbar Settings - this is not owned by the frame
+    TOOLBAR_SETTINGS*    m_toolbarSettings;
+
+    // Toolbar UI elements
+    ACTION_TOOLBAR*      m_tbTopMain;
+    ACTION_TOOLBAR*      m_tbTopAux;  // Additional tools under main toolbar
+    ACTION_TOOLBAR*      m_tbRight;   // Drawing tools (typically on right edge of window)
+    ACTION_TOOLBAR*      m_tbLeft;    // Options (typically on left edge of window)
+
+    std::map<std::string, std::function<void( ACTION_TOOLBAR* )>> m_toolbarControlFactories;
 
     ///< The functions called when the user units change
     std::map<int, std::function<void( EDA_BASE_FRAME* )>> m_unitsChangedListeners;

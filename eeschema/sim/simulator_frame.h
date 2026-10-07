@@ -218,7 +218,7 @@ private:
     /// Free a tab's previous ngspice plot (and its noise companion) so reruns don't leak.
     void destroyTabPlot( SIM_TAB* aSimTab );
 
-    bool canCloseWindow( wxCloseEvent& aEvent ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
 
     void onUpdateSim( wxCommandEvent& aEvent );

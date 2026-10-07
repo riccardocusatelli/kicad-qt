@@ -717,7 +717,7 @@ void KICAD_MANAGER_FRAME::DoWithAcceptedFiles()
 }
 
 
-bool KICAD_MANAGER_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool KICAD_MANAGER_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     KICAD_SETTINGS* settings = kicadSettings();
     settings->m_OpenProjects = GetSettingsManager()->GetOpenProjects();
@@ -737,15 +737,13 @@ bool KICAD_MANAGER_FRAME::canCloseWindow( wxCloseEvent& aEvent )
     // If any of them cancel then we need to cancel closing the KICAD_MANAGER_FRAME.
     if( CloseProject( true ) )
     {
-        // Don't propagate event to frames which have already been closed
-        aEvent.StopPropagation();
 
         return true;
     }
     else
     {
-        if( aEvent.CanVeto() )
-            aEvent.Veto();
+        if( aRequest.CanVeto() )
+            aRequest.Veto();
 
         return false;
     }

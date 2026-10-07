@@ -410,11 +410,11 @@ bool EDA_3D_VIEWER_FRAME::TryBefore( wxEvent& aEvent )
 }
 
 
-void EDA_3D_VIEWER_FRAME::handleIconizeEvent( wxIconizeEvent& aEvent )
+void EDA_3D_VIEWER_FRAME::handleIconizeEvent( bool aIconized )
 {
-    KIWAY_PLAYER::handleIconizeEvent( aEvent );
+    KIWAY_PLAYER::handleIconizeEvent( aIconized );
 
-    if( m_spaceMouse && aEvent.IsIconized() )
+    if( m_spaceMouse && aIconized )
         m_spaceMouse->SetFocus( false );
 }
 

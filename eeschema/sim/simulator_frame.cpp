@@ -687,7 +687,7 @@ bool SIMULATOR_FRAME::EditAnalysis()
 }
 
 
-bool SIMULATOR_FRAME::canCloseWindow( wxCloseEvent& aEvent )
+bool SIMULATOR_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     if( m_workbookModified )
     {

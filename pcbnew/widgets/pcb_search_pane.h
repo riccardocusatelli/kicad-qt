@@ -45,8 +45,8 @@ public:
 
 private:
     void onUnitsChanged( wxCommandEvent& event );
-    void onBoardChanging( wxCommandEvent& event );
-    void onBoardChanged( wxCommandEvent& event );
+    void onBoardChanging();
+    void onBoardChanged();
 
 private:
     PCB_EDIT_FRAME* m_pcbFrame;

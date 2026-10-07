@@ -90,9 +90,11 @@ enum STATUS_FIELD
 
 
 EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType,
-                                const wxString& aTitle, const wxString& aFrameName,
-                                const EDA_IU_SCALE& aIuScale ) :
-        KIWAY_PLAYER( aKiway, aParent, aFrameType, aTitle, aFrameName, aIuScale ),
+                                const wxString& aTitle, const wxPoint& aPos,
+                                const wxSize& aSize, long aStyle,
+                                const wxString& aFrameName, const EDA_IU_SCALE& aIuScale ) :
+        KIWAY_PLAYER( aKiway, aParent, aFrameType, aTitle, aPos, aSize, aStyle, aFrameName,
+                      aIuScale ),
         m_lastToolbarIconSize( 0 )
 {
     m_undoRedoCountMax    = DEFAULT_MAX_UNDO_ITEMS;
@@ -219,6 +221,24 @@ void EDA_DRAW_FRAME::keyPressEvent( QKeyEvent* aEvent )
     }
 
     KIWAY_PLAYER::keyPressEvent( aEvent );
+}
+
+
+void EDA_DRAW_FRAME::handleActivateEvent( bool aActive )
+{
+    // Force a refresh of the message panel to ensure that the text is the right color
+    // when the window activates
+    if( !isMinimized() && m_messagePanel )
+        m_messagePanel->update();
+}
+
+
+void EDA_DRAW_FRAME::changeEvent( QEvent* aEvent )
+{
+    if( aEvent->type() == QEvent::ActivationChange )
+        handleActivateEvent( isActiveWindow() );
+
+    KIWAY_PLAYER::changeEvent( aEvent );
 }
 
 
@@ -838,6 +858,28 @@ void EDA_DRAW_FRAME::Zoom_Automatique( bool aWarpPointer )
 }
 
 
+std::vector<BOX2D> EDA_DRAW_FRAME::findDialogScreenRects()
+{
+    std::vector<BOX2D> rects;
+
+    // The dialogs of the frame (top level windows) that may hide items
+    for( QWidget* child : findChildren<QWidget*>( Qt::FindDirectChildrenOnly ) )
+    {
+        if( !child->isWindow() || !child->isVisible() || child->inherits( "QMenu" ) )
+            continue;
+
+        QPoint   topLeft = GetCanvas()->mapFromGlobal( child->frameGeometry().topLeft() );
+        VECTOR2D origin = GetCanvas()->ToDevice( topLeft );
+        VECTOR2D size = GetCanvas()->ToDevice( QPointF( child->frameGeometry().width(),
+                                                        child->frameGeometry().height() ) );
+
+        rects.emplace_back( origin, size );
+    }
+
+    return rects;
+}
+
+
 void EDA_DRAW_FRAME::FocusOnLocation( const VECTOR2I& aPos, bool aAllowScroll )
 {
     bool               centerView = false;
@@ -853,19 +895,7 @@ void EDA_DRAW_FRAME::FocusOnLocation( const VECTOR2I& aPos, bool aAllowScroll )
         if( !r.Contains( aPos ) )
             centerView = true;
 
-        // The dialogs of the frame (top level windows) that may hide the location
-        for( QWidget* child : findChildren<QWidget*>( Qt::FindDirectChildrenOnly ) )
-        {
-            if( !child->isWindow() || !child->isVisible() || child->inherits( "QMenu" ) )
-                continue;
-
-            QPoint   topLeft = GetCanvas()->mapFromGlobal( child->frameGeometry().topLeft() );
-            VECTOR2D origin = GetCanvas()->ToDevice( topLeft );
-            VECTOR2D size = GetCanvas()->ToDevice( QPointF( child->frameGeometry().width(),
-                                                            child->frameGeometry().height() ) );
-
-            dialogScreenRects.emplace_back( origin, size );
-        }
+        dialogScreenRects = findDialogScreenRects();
 
         // Center if we're behind an obscuring dialog, or within 10% of its edge
         for( BOX2D rect : dialogScreenRects )

@@ -154,7 +154,7 @@ protected:
 
     void setupUIConditions() override;
 
-    void handleIconizeEvent( wxIconizeEvent& aEvent ) override;
+    void handleIconizeEvent( bool aIconized ) override;
 
 private:
     /// Called when user press the File->Exit

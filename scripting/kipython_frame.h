@@ -52,7 +52,7 @@ public:
 private:
 
     void redirectStdio();
-    bool canCloseWindow( wxCloseEvent& aCloseEvent ) override { return true; }
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override { return true; }
     void doCloseWindow() override {}
 
 };

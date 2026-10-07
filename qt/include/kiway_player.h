@@ -54,6 +54,7 @@ class KIWAY_PLAYER : public EDA_BASE_FRAME
 {
 public:
     KIWAY_PLAYER( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType, const wxString& aTitle,
+                  const wxPoint& aPos, const wxSize& aSize, long aStyle,
                   const wxString& aFrameName, const EDA_IU_SCALE& aIuScale );
 
     ~KIWAY_PLAYER() throw();

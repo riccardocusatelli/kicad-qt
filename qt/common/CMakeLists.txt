@@ -7,10 +7,12 @@ add_library( kiqt SHARED
     property_panel.cpp
     qt_cairo_gal.cpp
     qt_document.cpp
+    ui_hooks.cpp
 
     bitmap_store.cpp
     confirm.cpp
     gal/cursors.cpp
+    toolkit/file_watcher_qt.cpp
     toolkit/gui_services_qt.cpp
     toolkit/gui_timer_qt.cpp
     toolkit/qt_keys.cpp
@@ -53,6 +55,7 @@ install( TARGETS kiqt
 
 set( KIQT_COMMON_TOOL_SRCS
     action_manager.cpp
+    action_toolbar_controls.cpp
     actions.cpp
     common_tools.cpp
     conditional_menu.cpp
@@ -79,8 +82,13 @@ set( KIQT_COMMON_TOOL_SRCS
 
 list( TRANSFORM KIQT_COMMON_TOOL_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/tool/ )
 
+kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_unit_entry_base.fbp
+    )
+
 add_library( kiqt_common STATIC
     ${KIQT_COMMON_TOOL_SRCS}
+    ${KIQT_COMMON_FBP_SRCS}
 
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling.cpp
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling_common.cpp
@@ -101,6 +109,7 @@ add_library( kiqt_common STATIC
     kiway.cpp
     kiway_player.cpp
     tool/action_menu.cpp
+    tool/action_toolbar.cpp
     tool/tool_dispatcher.cpp
     view/qt_view_controls.cpp
     widgets/unit_binder.cpp

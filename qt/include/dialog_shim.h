@@ -31,6 +31,7 @@
 #ifndef DIALOG_SHIM_
 #define DIALOG_SHIM_
 
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -43,8 +44,10 @@
 #include <eda_units.h>
 #include <kiway_holder.h>
 #include <wx/defs.h>        // wxID_ codes (kiwx)
+#include <wx/toplevel.h>    // the styles of the dialogs (kiwx)
 
 class QEventLoop;
+class QPushButton;
 class EDA_BASE_FRAME;
 class UNIT_BINDER;
 
@@ -84,7 +87,10 @@ public:
      */
     int ShowModal();
 
-    /// End the modal dialog with a return code.
+    /**
+     * End the modal dialog with a return code.  With wxID_OK, the values of the controls are
+     * validated and transferred first (the dialog stays open if they are not valid).
+     */
     void EndModal( int aRetCode );
 
     int ShowQuasiModal();      // disable only the parent window, otherwise modal.
@@ -124,6 +130,28 @@ public:
 
     void UnregisterUnitBinder( UNIT_BINDER* aUnitBinder );
 
+    /**
+     * Fill the controls of the dialog from its data: called each time the dialog is shown.
+     */
+    virtual bool TransferDataToWindow() { return true; }
+
+    /**
+     * Copy the values of the controls to the data of the dialog: called by OK and Apply.
+     *
+     * @return false to keep the dialog open (invalid values).
+     */
+    virtual bool TransferDataFromWindow() { return true; }
+
+    /// Check the values of the controls before TransferDataFromWindow().
+    virtual bool Validate() { return true; }
+
+    /**
+     * Register a function updating the state of controls (enabled, shown, label): it is
+     * called while the dialog is shown, when the user interacts with it, as the update UI
+     * events of wxWidgets.
+     */
+    void RegisterUpdateUI( std::function<void()> aUpdate );
+
 protected:
     /**
      * In all dialogs, we must call the same functions to fix minimal dlg size, the default
@@ -135,8 +163,16 @@ protected:
     void finishDialogSettings();
 
     void showEvent( QShowEvent* aEvent ) override;
+
     void hideEvent( QHideEvent* aEvent ) override;
     void done( int aResult ) override;
+
+    /**
+     * Make a standard button end the dialog with its code (OK, Cancel, Yes, No, Save); Apply
+     * keeps the values without closing; Help is left to the dialog.  The dialogs generated
+     * from wxFormBuilder files call it for the buttons without handler.
+     */
+    void connectStandardButton( QPushButton* aButton, int aId );
 
     /// The key of the dialog in the settings (the title, or m_hash_key).
     std::string dialogKey() const;
@@ -157,6 +193,12 @@ protected:
     EDA_BASE_FRAME*        m_parentFrame;
 
     int                    m_returnCode;
+
+    /**
+     * The order of the keyboard focus in the dialog, if set by the derived class (applied when
+     * the dialog is shown).
+     */
+    std::vector<QWidget*>             m_tabOrder;
 
     std::set<QWidget*>                m_optOut;
     std::map<QWidget*, UNIT_BINDER*>  m_unitBinders;

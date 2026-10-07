@@ -314,7 +314,7 @@ protected:
 
     void setupUIConditions() override;
 
-    bool canCloseWindow( wxCloseEvent& aCloseEvent ) override;
+    bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
 
     /**
