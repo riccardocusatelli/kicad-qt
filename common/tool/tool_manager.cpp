@@ -25,18 +25,15 @@
  */
 
 #include <core/kicad_algo.h>
+#include <chrono>
 #include <optional>
+#include <thread>
 #include <map>
 #include <stack>
 #include <trace_helpers.h>
 #include <kiplatform/ui.h>
 #include <app_monitor.h>
-
-#include <wx/event.h>
-#include <wx/evtloop.h>
-#include <wx/clipbrd.h>
-#include <wx/app.h>
-
+#include <toolkit/gui_services.h>
 #include <math/vector2wx.h>
 
 #include <view/view.h>
@@ -372,8 +369,9 @@ bool TOOL_MANAGER::doRunAction( const TOOL_ACTION& aAction, bool aNow, const ki:
 
             while( synchronousControl == STS_RUNNING )
             {
-                wxYield();          // Needed to honor mouse (and other) events during editing
-                wxMilliSleep( 1 );  // Needed to avoid 100% use of one cpu core.
+                TOOLKIT::YieldEvents();     // Needed to honor mouse (and other) events during editing
+                std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
+                                            // Needed to avoid 100% use of one cpu core.
                                     // The sleeping time must be must be small to avoid
                                     // noticeable lag in mouse and editing events
                                     // (1 to 5 ms is a good value)
@@ -923,11 +921,8 @@ void TOOL_MANAGER::DispatchContextMenu( const TOOL_EVENT& aEvent )
     // Don't open context menus if we're inside a yielding event loop such as a progress dialog.
     // Opening a popup menu during YieldFor creates a nested modal situation that can leave the
     // menu stuck and unresponsive, potentially locking up the entire UI on some platforms.
-    if( wxEventLoopBase* loop = wxEventLoopBase::GetActive() )
-    {
-        if( loop->IsYielding() )
-            return;
-    }
+    if( TOOLKIT::IsYielding() )
+        return;
 
     for( TOOL_ID toolId : m_activeTools )
     {
@@ -979,11 +974,7 @@ void TOOL_MANAGER::DispatchContextMenu( const TOOL_EVENT& aEvent )
         m_menuOwner = toolId;
         m_menuActive = true;
 
-        if( wxWindow* frame = dynamic_cast<wxWindow*>( m_frame ) )
-        {
-	    // By providing an explicit position, wx engages its screen clamp mechanism
-            frame->PopupMenu( menu.get(), frame->ScreenToClient( KIPLATFORM::UI::GetMousePosition() ) );
-        }
+        menu->PopupAtMouse( m_frame );
 
         // Warp the cursor if a menu item was selected
         if( menu->GetSelected() >= 0 )
@@ -1080,7 +1071,7 @@ bool TOOL_MANAGER::ProcessEvent( const TOOL_EVENT& aEvent )
     if( m_view && m_view->IsDirty() )
     {
 #if defined( __WXMAC__ )
-        wxTheApp->ProcessPendingEvents(); // required for updating brightening behind a popup menu
+        TOOLKIT::ProcessPendingEvents(); // required for updating brightening behind a popup menu
 #endif
     }
 

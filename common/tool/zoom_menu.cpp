@@ -43,10 +43,10 @@ ZOOM_MENU::ZOOM_MENU( EDA_DRAW_FRAME* aParent ) :
 }
 
 
-OPT_TOOL_EVENT ZOOM_MENU::eventHandler( const wxMenuEvent& aEvent )
+OPT_TOOL_EVENT ZOOM_MENU::eventHandler( int aId )
 {
     OPT_TOOL_EVENT event( ACTIONS::zoomPreset.MakeEvent() );
-    event->SetParameter<int>( aEvent.GetId() - ID_POPUP_ZOOM_LEVEL_START );
+    event->SetParameter<int>( aId - ID_POPUP_ZOOM_LEVEL_START );
     return event;
 }
 
@@ -64,7 +64,8 @@ void ZOOM_MENU::update()
     int ii = ID_POPUP_ZOOM_LEVEL_START + 1;  // 0 reserved for menus which support auto-zoom
 
     for( double factor : m_parent->config()->m_Window.zoom_factors )
-        Append( ii++, wxString::Format( _( "Zoom: %.2f" ), factor ), wxEmptyString, wxITEM_CHECK );
+        Add( wxString::Format( _( "Zoom: %.2f" ), factor ), wxEmptyString, ii++,
+             BITMAPS::INVALID_BITMAP, CHECK );
 
     double zoom = m_parent->GetCanvas()->GetGAL()->GetZoomFactor();
 

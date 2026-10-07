@@ -58,6 +58,7 @@
 #include <view/view_controls.h>
 #include <wx/filedlg.h>
 #include <wx/fswatcher.h>
+#include <wx/msgdlg.h>
 #include <kiway.h>
 
 

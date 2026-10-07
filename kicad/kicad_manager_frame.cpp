@@ -37,6 +37,7 @@
 #include <bitmaps.h>
 #include <build_version.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <dialogs/panel_kicad_launcher.h>
 #include <dialogs/panel_jobset.h>
 #include <dialogs/dialog_edit_cfg.h>

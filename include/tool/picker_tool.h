@@ -26,7 +26,7 @@
 #define PICKER_TOOL_H
 
 #include <optional>
-#include <gal/cursors.h>
+#include <gal/kicursor.h>
 #include <math/vector2d.h>
 #include <tool/tool_interactive.h>
 #include <core/ki_assert.h>

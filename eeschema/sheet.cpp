@@ -26,6 +26,7 @@
 #include <gr_basic.h>
 #include <common.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <kiface_base.h>
 #include <project.h>
 #include <math/vector2wx.h>

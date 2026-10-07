@@ -31,6 +31,7 @@
 #include <widgets/std_bitmap_button.h>
 #include <bitmaps.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 #include <design_block.h>
 

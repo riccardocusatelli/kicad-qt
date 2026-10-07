@@ -32,6 +32,8 @@
 #include <wx/app.h>
 #include <wx/init.h>
 
+#include <kiqt_app.h>
+
 #include <bin_mod.h>
 #include <kiface.h>
 #include <kiplatform/environment.h>
@@ -119,7 +121,9 @@ PROJECT& Prj()
 
 int main( int argc, char** argv )
 {
-    // The application object of the core (command line, names), then the program
+    // The application object of the core (command line, names; a program with a user
+    // interface for Pgm().IsGUI()), then the program
+    KIQT_APP      kiqtApp;
     wxInitializer wxBase( argc, argv );
 
     SetPgm( &program );

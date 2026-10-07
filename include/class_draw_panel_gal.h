@@ -293,6 +293,15 @@ protected:
 
     bool recoverFromGalError( const std::exception& aErr );
 
+    /// Create the view controls of the canvas, once its view is made.
+    void createViewControls();
+
+public:
+    /// The size the scroll bars take in the canvas.
+    VECTOR2I GetScrollbarSize() const;
+
+protected:
+
     wxWindow*                m_parent;           ///< Pointer to the parent window
     EDA_DRAW_FRAME*          m_edaFrame;         ///< Parent EDA_DRAW_FRAME (if available)
 

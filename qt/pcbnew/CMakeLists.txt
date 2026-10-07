@@ -9,8 +9,8 @@ add_headless_kiface( pcbnew_qt_kiface
                 board_document.cpp
                 board_tools.cpp
                 ${KIQT_KIFACE_SOURCES}
-    USAGE       kiqt
-    LIBRARIES   kiqt Qt6::Widgets
+    USAGE       kiqt_common
+    LIBRARIES   kiqt_common kiqt Qt6::Widgets
     )
 
 set_target_properties( pcbnew_qt_kiface_iface PROPERTIES AUTOMOC ON )

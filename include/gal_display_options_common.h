@@ -30,7 +30,7 @@
 class COMMON_SETTINGS;
 struct WINDOW_SETTINGS;
 class wxString;
-class wxWindow;
+#include <toolkit/toolkit_types.h>
 
 
 class GAL_DISPLAY_OPTIONS_IMPL : public KIGFX::GAL_DISPLAY_OPTIONS
@@ -51,7 +51,7 @@ public:
      * @param aCommonSettings the common config store.
      * @param aWindow         the wx parent window (used for DPI scaling).
      */
-    void ReadCommonConfig( COMMON_SETTINGS& aCommonSettings, wxWindow* aWindow );
+    void ReadCommonConfig( COMMON_SETTINGS& aCommonSettings, TOOLKIT_WINDOW* aWindow );
 
     /**
      * Read application and common configs.
@@ -62,7 +62,7 @@ public:
      * @param aWindow       the wx parent window (used for DPI scaling).
      */
     void ReadConfig( COMMON_SETTINGS& aCommonConfig, WINDOW_SETTINGS& aWindowConfig,
-                     wxWindow* aWindow );
+                     TOOLKIT_WINDOW* aWindow );
 
     void WriteConfig( WINDOW_SETTINGS& aCfg );
 

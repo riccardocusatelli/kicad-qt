@@ -83,8 +83,8 @@ static struct IFACE : public KIFACE_BASE
         end_common();
     }
 
-    wxWindow* CreateKiWindow( wxWindow* aParent, int aClassId, KIWAY* aKiway,
-                              int aCtlBits = 0 ) override
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway,
+                                    int aCtlBits = 0 ) override
     {
         return nullptr;
     }

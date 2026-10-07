@@ -43,10 +43,10 @@ GRID_MENU::GRID_MENU( EDA_DRAW_FRAME* aParent ) :
 }
 
 
-OPT_TOOL_EVENT GRID_MENU::eventHandler( const wxMenuEvent& aEvent )
+OPT_TOOL_EVENT GRID_MENU::eventHandler( int aId )
 {
     OPT_TOOL_EVENT event( ACTIONS::gridPreset.MakeEvent() );
-    event->SetParameter<int>( aEvent.GetId() - ID_POPUP_GRID_START );
+    event->SetParameter<int>( aId - ID_POPUP_GRID_START );
     return event;
 }
 
@@ -66,8 +66,7 @@ void GRID_MENU::update()
 
     GRID_MENU::BuildChoiceList( &gridsList, cfg, m_parent );
 
-    while( GetMenuItemCount() > 0 )
-        Delete( FindItemByPosition( 0 ) );
+    Clear();
 
     Add( ACTIONS::gridOrigin );
     AppendSeparator();
@@ -75,7 +74,8 @@ void GRID_MENU::update()
     for( const wxString& grid : gridsList )
     {
         int idx = i++;
-        Append( idx, grid, wxEmptyString, wxITEM_CHECK )->Check( idx == (int) current );
+        Add( grid, wxEmptyString, idx, BITMAPS::INVALID_BITMAP, CHECK );
+        Check( idx, idx == (int) current );
     }
 }
 

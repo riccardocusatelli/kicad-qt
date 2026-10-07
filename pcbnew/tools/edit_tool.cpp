@@ -503,9 +503,9 @@ protected:
     }
 
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override
+    OPT_TOOL_EVENT eventHandler( int aId ) override
     {
-        int id = aEvent.GetId();
+        int id = aId;
 
         if( id >= ID_POPUP_PCB_SWAP_UNIT_BASE && id <= ID_POPUP_PCB_SWAP_UNIT_LAST )
         {

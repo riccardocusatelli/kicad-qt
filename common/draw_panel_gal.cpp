@@ -194,6 +194,18 @@ void EDA_DRAW_PANEL_GAL::SetFocus()
 }
 
 
+VECTOR2I EDA_DRAW_PANEL_GAL::GetScrollbarSize() const
+{
+    return ToVECTOR2I( GetSize() - GetClientSize() );
+}
+
+
+void EDA_DRAW_PANEL_GAL::createViewControls()
+{
+    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
+}
+
+
 void EDA_DRAW_PANEL_GAL::onPaint( wxPaintEvent& WXUNUSED( aEvent ) )
 {
     DoRePaint( false );

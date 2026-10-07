@@ -40,7 +40,7 @@ MOCK_BASE_CLASS( MOCK_KIFACE_BASE, KIFACE_BASE )
 
     MOCK_METHOD( OnKifaceStart, 3, bool( PGM_BASE*, int, KIWAY_SERVICES* ) );
     MOCK_METHOD( OnKifaceEnd, 0, void() );
-    MOCK_METHOD( CreateKiWindow, 4, wxWindow*( wxWindow*, int, KIWAY*, int ) );
+    MOCK_METHOD( CreateKiWindow, 4, TOOLKIT_WINDOW*( TOOLKIT_WINDOW*, int, KIWAY*, int ) );
     MOCK_METHOD( IfaceOrAddress, 1, void*( int ) );
     MOCK_CONST_METHOD( GetActions, 1, void( std::vector<TOOL_ACTION*>& ) );
 };

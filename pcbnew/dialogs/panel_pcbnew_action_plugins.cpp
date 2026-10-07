@@ -44,6 +44,7 @@
 #include <widgets/std_bitmap_button.h>
 #include <widgets/wx_html_report_box.h>
 #include <wx/app.h>
+#include <wx/msgdlg.h>
 
 #include <algorithm>
 #include <core/ki_assert.h>

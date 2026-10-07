@@ -27,6 +27,7 @@
 #include <wx/hyperlink.h>
 #include <base_screen.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <core/kicad_algo.h>
 #include <core/throttle.h>
 #include <eeschema_id.h>

@@ -33,6 +33,7 @@
 #include <wx/dirdlg.h>
 
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <kidialog.h>
 #include <kiplatform/ui.h>
 #include <wildcards_and_files_ext.h>

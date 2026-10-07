@@ -27,7 +27,6 @@
 
 #include <settings/color_settings.h>
 #include <pcb_view.h>
-#include <view/wx_view_controls.h>
 #include <pcb_painter.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
 #include <connectivity/connectivity_data.h>
@@ -88,7 +87,7 @@ PCB_DRAW_PANEL_GAL::PCB_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWin
 
     // View controls is the first in the event handler chain, so the Tool Framework operates
     // on updated viewport data.
-    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
+    createViewControls();
 
     // Load display options (such as filled/outline display of items).
     // Can be made only if the parent window is an EDA_DRAW_FRAME (or a derived class)

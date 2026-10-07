@@ -22,7 +22,6 @@
 
 #include <view/view.h>
 #include <tool/tool_manager.h>
-#include <view/wx_view_controls.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
 #include <drawing_sheet/ds_data_item.h>
 #include <drawing_sheet/ds_data_model.h>
@@ -68,7 +67,7 @@ PL_DRAW_PANEL_GAL::PL_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWindo
     m_view->SetLayerVisible( LAYER_DRAWINGSHEET_PAGE1, true );
     m_view->SetLayerVisible( LAYER_DRAWINGSHEET_PAGEn, false );
 
-    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
+    createViewControls();
 }
 
 

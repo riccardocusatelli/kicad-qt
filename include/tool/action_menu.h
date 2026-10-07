@@ -36,6 +36,7 @@
 
 class KIFACE_BASE;
 class TOOL_INTERACTIVE;
+class TOOLS_HOLDER;
 class TOOL_MANAGER;
 
 enum class BITMAPS : unsigned int;
@@ -195,6 +196,13 @@ public:
      */
     ACTION_MENU* Clone() const;
 
+    /**
+     * Show the menu as a popup menu at the mouse cursor, and wait until it is closed.
+     *
+     * @param aHolder is the window (frame) that the menu belongs to.
+     */
+    void PopupAtMouse( TOOLS_HOLDER* aHolder );
+
     void OnMenuEvent( wxMenuEvent& aEvent );
     void OnIdle( wxIdleEvent& event );
 
@@ -223,10 +231,10 @@ protected:
     /**
      * Event handler stub.
      *
-     * It should be used if you want to generate a #TOOL_EVENT from a wxMenuEvent.  It will be
-     * called when a menu entry is clicked.
+     * It should be used if you want to generate a #TOOL_EVENT from a menu entry.  It will be
+     * called with the ID of the menu entry that is clicked.
      */
-    virtual OPT_TOOL_EVENT eventHandler( const wxMenuEvent& )
+    virtual OPT_TOOL_EVENT eventHandler( int aId )
     {
         return OPT_TOOL_EVENT();
     }

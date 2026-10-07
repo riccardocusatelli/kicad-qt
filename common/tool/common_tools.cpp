@@ -28,7 +28,6 @@
 #include <gal/painter.h>
 #include <bitmaps.h>
 #include <class_draw_panel_gal.h>
-#include <dialogs/dialog_configure_paths.h>
 #include <dialogs/dialog_unit_entry.h>
 #include <eda_draw_frame.h>
 #include <gal/graphics_abstraction_layer.h>
@@ -42,6 +41,7 @@
 #include <tool/tool_manager.h>
 #include <tool/selection_tool.h>
 #include <tool/grid_helper.h>
+#include <toolkit/gui_services.h>
 #include <view/view.h>
 #include <view/view_controls.h>
 #include "macros.h"
@@ -165,9 +165,9 @@ int COMMON_TOOLS::CursorControl( const TOOL_EVENT& aEvent )
         TOOL_MOUSE_BUTTONS button = BUT_LEFT;
         int                modifiers = 0;
 
-        modifiers |= wxGetKeyState( WXK_SHIFT ) ? MD_SHIFT : 0;
-        modifiers |= wxGetKeyState( WXK_CONTROL ) ? MD_CTRL : 0;
-        modifiers |= wxGetKeyState( WXK_ALT ) ? MD_ALT : 0;
+        modifiers |= TOOLKIT::IsKeyDown( WXK_SHIFT ) ? MD_SHIFT : 0;
+        modifiers |= TOOLKIT::IsKeyDown( WXK_CONTROL ) ? MD_CTRL : 0;
+        modifiers |= TOOLKIT::IsKeyDown( WXK_ALT ) ? MD_ALT : 0;
 
         if( type == ACTIONS::CURSOR_DBL_CLICK )
             action = TA_MOUSE_DBLCLICK;
@@ -332,7 +332,7 @@ int COMMON_TOOLS::doZoomFit( ZOOM_FIT_TYPE_T aFitType )
     view->SetScale( 1.0 );  // The best scale will be determined later, but this initial
                             // value ensures all view parameters are up to date (especially
                             // at init time)
-    VECTOR2D screenSize = view->ToWorld( ToVECTOR2I( canvas->GetClientSize() ), false );
+    VECTOR2D screenSize = view->ToWorld( view->GetScreenPixelSize(), false );
 
     // Currently "Zoom to Objects" is only supported in Eeschema & Pcbnew.  Support for other
     // programs in the suite can be added as needed.
@@ -383,7 +383,7 @@ int COMMON_TOOLS::doZoomFit( ZOOM_FIT_TYPE_T aFitType )
     // infobar.
     double margin_scale_factor = 1.04;
 
-    if( canvas->GetClientSize().y < 768 )
+    if( view->GetScreenPixelSize().y < 768 )
         margin_scale_factor = 1.10;
 
     if( aFitType == ZOOM_FIT_ALL )
@@ -449,7 +449,7 @@ int COMMON_TOOLS::doCenter( CENTER_TYPE aCenterType )
     getView()->SetCenter( bBox.Centre() );
 
     // Take scrollbars into account
-    VECTOR2D scrollbarSize = VECTOR2D( ToVECTOR2D( canvas->GetSize() - canvas->GetClientSize() ) );
+    VECTOR2D scrollbarSize = VECTOR2D( canvas->GetScrollbarSize() );
     VECTOR2D worldScrollbarSize = getView()->ToWorld( scrollbarSize, false );
     getView()->SetCenter( getView()->GetCenter() + worldScrollbarSize / 2.0 );
     canvas->Refresh();
@@ -549,8 +549,7 @@ int COMMON_TOOLS::OnGridChanged( bool aFromHotkey )
     currentGrid = std::max( 0, std::min( currentGrid, static_cast<int>( m_grids.size() ) - 1 ) );
 
     // Update the combobox (if any)
-    wxUpdateUIEvent dummy;
-    m_frame->OnUpdateSelectGrid( dummy );
+    m_frame->SyncGridSelectBox();
 
     // Update GAL canvas from screen
     getView()->GetGAL()->SetGridSize( m_grids[ currentGrid ] );

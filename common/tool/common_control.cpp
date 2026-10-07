@@ -49,6 +49,7 @@
 #include <gestfich.h>
 #include <tools/kicad_manager_actions.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <reporter.h>
 #include <gui_reporters.h>
 #include <widgets/kistatusbar.h>

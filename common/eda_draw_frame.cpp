@@ -478,6 +478,12 @@ void EDA_DRAW_FRAME::UpdateGridSelectBox()
 
 void EDA_DRAW_FRAME::OnUpdateSelectGrid( wxUpdateUIEvent& aEvent )
 {
+    SyncGridSelectBox();
+}
+
+
+void EDA_DRAW_FRAME::SyncGridSelectBox()
+{
     // No need to update the grid select box if it doesn't exist or the grid setting change
     // was made using the select box.
     if( m_gridSelectBox == nullptr )

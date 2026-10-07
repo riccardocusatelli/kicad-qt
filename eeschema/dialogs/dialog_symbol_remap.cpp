@@ -27,6 +27,7 @@
 #include <kiface_base.h>
 #include <project.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <reporter.h>
 #include <wildcards_and_files_ext.h>
 #include <wx_filename.h>

@@ -26,6 +26,9 @@ set( GAL_MODEL_SRCS
 
     3d/camera.cpp
 
+    # The images of the cursors of KiCad
+    cursor_defs.cpp
+
     # Cairo GAL drawing into a raster, without window (shown by the GUI toolkit)
     cairo/cairo_gal_base.cpp
     cairo/cairo_raster_gal.cpp

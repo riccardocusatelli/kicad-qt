@@ -26,13 +26,13 @@
 
 #include <kicommon.h>
 #include <core/ki_assert.h>
+#include <toolkit/toolkit_types.h>
 
 class KIWAY;
 class PROJECT;
-class wxWindow;
 
 /**
- * A mix in class which holds the location of a wxWindow's KIWAY.
+ * A mix in class which holds the location of a window's KIWAY.
  *
  * It allows calls to Kiway() and SetKiway().
  */
@@ -80,7 +80,7 @@ public:
      * @param aDest is the recipient of \a aKiway pointer.
      * @param aKiway is often from a parent window or from #KIFACE::CreateKiWindow().
      */
-    void SetKiway( wxWindow* aDest, KIWAY* aKiway );
+    void SetKiway( TOOLKIT_WINDOW* aDest, KIWAY* aKiway );
 
 private:
     // private, all setting is done through SetKiway().

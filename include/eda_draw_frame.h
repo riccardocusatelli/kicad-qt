@@ -281,6 +281,11 @@ public:
     void OnUpdateSelectGrid( wxUpdateUIEvent& aEvent );
 
     /**
+     * Select the current grid in the grid selection box of the tool bar.
+     */
+    void SyncGridSelectBox();
+
+    /**
      * Update the checked item in the zoom wxchoice.
      */
     void OnUpdateSelectZoom( wxUpdateUIEvent& aEvent );

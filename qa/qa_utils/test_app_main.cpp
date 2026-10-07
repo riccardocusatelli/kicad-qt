@@ -65,8 +65,8 @@ static struct IFACE : public KIFACE_GUI
 
     void OnKifaceEnd() override {}
 
-    wxWindow* CreateKiWindow( wxWindow* aParent, int aClassId, KIWAY* aKiway,
-                              int aCtlBits = 0 ) override
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway,
+                                    int aCtlBits = 0 ) override
     {
         assert( false );
         return nullptr;

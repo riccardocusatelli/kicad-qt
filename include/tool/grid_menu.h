@@ -26,6 +26,7 @@
 #pragma once
 
 #include <tool/action_menu.h>
+#include <wx/arrstr.h>
 
 class EDA_DRAW_FRAME;
 struct WINDOW_SETTINGS;
@@ -45,7 +46,7 @@ private:
         return new GRID_MENU( m_parent );
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override;
+    OPT_TOOL_EVENT eventHandler( int aId ) override;
     void update() override;
 
 private:

@@ -26,6 +26,7 @@
 #include <pgm_base.h>
 #include <clipboard.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <kidialog.h>
 #include <kiway.h>
 #include <widgets/wx_infobar.h>

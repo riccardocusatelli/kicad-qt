@@ -25,6 +25,7 @@
 #include <cctype>
 
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <widgets/widget_hotkey_list.h>
 #include <tool/tool_event.h>
 #include <dialog_shim.h>

@@ -40,6 +40,7 @@
 #include <confirm.h>
 #include <kidialog.h>
 #include <wx/filename.h>
+#include <wx/msgdlg.h>
 #include <wildcards_and_files_ext.h>
 #include <launch_ext.h> // To default when file manager setting is empty
 #include <gestfich.h> // To open with a text editor

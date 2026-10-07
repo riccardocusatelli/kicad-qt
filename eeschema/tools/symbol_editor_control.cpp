@@ -47,6 +47,7 @@
 #include <wildcards_and_files_ext.h>
 
 #include <wx/filedlg.h>
+#include <wx/msgdlg.h>
 #include <kiplatform/ui.h>
 #include <core/ki_assert.h>
 

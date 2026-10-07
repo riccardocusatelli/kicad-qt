@@ -30,7 +30,7 @@
 #include <kiplatform/ui.h>
 
 #include <wx/log.h>
-#include <wx/window.h>
+#include <wx/platinfo.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
@@ -85,7 +85,7 @@ static std::optional<double> getEnvironmentScale()
 }
 
 
-DPI_SCALING_COMMON::DPI_SCALING_COMMON( COMMON_SETTINGS* aConfig, const wxWindow* aWindow ) :
+DPI_SCALING_COMMON::DPI_SCALING_COMMON( COMMON_SETTINGS* aConfig, const TOOLKIT_WINDOW* aWindow ) :
         m_config( aConfig ),
         m_window( aWindow )
 {

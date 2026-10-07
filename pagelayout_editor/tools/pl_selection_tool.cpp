@@ -66,10 +66,6 @@ bool PL_SELECTION_TOOL::Init()
     menu.AddSeparator( 1000 );
     m_frame->AddStandardSubMenus( *m_menu.get() );
 
-    m_disambiguateTimer.SetOwner( this );
-    Connect( m_disambiguateTimer.GetId(), wxEVT_TIMER,
-             wxTimerEventHandler( PL_SELECTION_TOOL::onDisambiguationExpire ), nullptr, this );
-
     return true;
 }
 

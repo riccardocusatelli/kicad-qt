@@ -44,7 +44,6 @@
 #include <settings/settings_manager.h>
 #include <view/view.h>
 #include <view/view_controls.h>
-#include <view/wx_view_controls.h>
 
 #include <sch_base_frame.h>
 #include <sch_painter.h>
@@ -90,7 +89,7 @@ SCH_DRAW_PANEL::SCH_DRAW_PANEL( wxWindow* aParentWindow, wxWindowID aWindowId,
 
     // View controls is the first in the event handler chain, so the Tool Framework operates
     // on updated viewport data.
-    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
+    createViewControls();
 
     SetEvtHandlerEnabled( true );
     SetFocus();

@@ -46,6 +46,7 @@
 
 #include <wx/dirdlg.h>
 #include <wx/regex.h>
+#include <wx/msgdlg.h>
 
 
 enum TEXT_VAR_GRID_COLUMNS

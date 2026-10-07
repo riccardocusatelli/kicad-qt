@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include <wx/timer.h>
 
 #include <math/vector2d.h>
 #include <tool/tool_interactive.h>
 #include <eda_item.h>
+#include <toolkit/gui_timer.h>
 
 class COLLECTOR;
 class KIID;
@@ -42,7 +42,7 @@ enum class SELECTION_MODE
 };
 
 
-class SELECTION_TOOL : public TOOL_INTERACTIVE, public wxEvtHandler
+class SELECTION_TOOL : public TOOL_INTERACTIVE
 {
 public:
     SELECTION_TOOL( const std::string& aName );
@@ -99,7 +99,7 @@ protected:
      * for the minimum time.
      * @param aEvent
      */
-   void onDisambiguationExpire( wxTimerEvent& aEvent );
+   void onDisambiguationExpire();
 
     /**
      * Take necessary action mark an item as selected.
@@ -161,7 +161,7 @@ protected:
 
     bool            m_canceledMenu;      ///< Sets to true if the disambiguation menu was canceled.
 
-    wxTimer         m_disambiguateTimer; ///< Timer to show the disambiguate menu.
+    GUI_TIMER       m_disambiguateTimer; ///< Timer to show the disambiguate menu.
 
     VECTOR2I        m_originalCursor;    ///< Location of original cursor when starting click.
 };

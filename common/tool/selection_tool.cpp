@@ -42,7 +42,8 @@ SELECTION_TOOL::SELECTION_TOOL( const std::string& aName ) :
     m_highlight_modifier( false ),
     m_drag_additive( false ),
     m_drag_subtractive( false ),
-    m_canceledMenu( false )
+    m_canceledMenu( false ),
+    m_disambiguateTimer( [this]() { onDisambiguationExpire(); } )
 {
 }
 
@@ -229,7 +230,7 @@ void SELECTION_TOOL::UnbrightenItem( EDA_ITEM* aItem )
 }
 
 
-void SELECTION_TOOL::onDisambiguationExpire( wxTimerEvent& aEvent )
+void SELECTION_TOOL::onDisambiguationExpire()
 {
     // If there is a multiple selection then it's more likely that we're seeing a paused drag
     // than a long-click.

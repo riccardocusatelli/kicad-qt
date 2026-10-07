@@ -37,6 +37,7 @@
 #include <functional>
 #include <id.h>
 #include <kiface_base.h>
+#include <kiplatform/ui.h>
 #include <tool/actions.h>
 #include <tool/tool_event.h>
 #include <tool/tool_interactive.h>
@@ -338,6 +339,16 @@ ACTION_MENU* ACTION_MENU::Clone() const
 }
 
 
+void ACTION_MENU::PopupAtMouse( TOOLS_HOLDER* aHolder )
+{
+    if( wxWindow* frame = dynamic_cast<wxWindow*>( aHolder ) )
+    {
+        // By providing an explicit position, wx engages its screen clamp mechanism
+        frame->PopupMenu( this, frame->ScreenToClient( KIPLATFORM::UI::GetMousePosition() ) );
+    }
+}
+
+
 ACTION_MENU* ACTION_MENU::create() const
 {
     ACTION_MENU* menu = new ACTION_MENU( false );
@@ -538,7 +549,7 @@ void ACTION_MENU::OnMenuEvent( wxMenuEvent& aEvent )
                 if( menu )
                 {
                     ACTION_MENU* cxmenu = static_cast<ACTION_MENU*>( menu );
-                    evt = cxmenu->eventHandler( aEvent );
+                    evt = cxmenu->eventHandler( aEvent.GetId() );
                 }
             }
 #else
@@ -609,7 +620,7 @@ void ACTION_MENU::OnMenuEvent( wxMenuEvent& aEvent )
 
 void ACTION_MENU::runEventHandlers( const wxMenuEvent& aMenuEvent, OPT_TOOL_EVENT& aToolEvent )
 {
-    aToolEvent = eventHandler( aMenuEvent );
+    aToolEvent = eventHandler( aMenuEvent.GetId() );
 
     if( !aToolEvent )
         runOnSubmenus( std::bind( &ACTION_MENU::runEventHandlers, _1, aMenuEvent, aToolEvent ) );

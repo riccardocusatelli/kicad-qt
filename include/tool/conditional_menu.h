@@ -111,13 +111,21 @@ public:
     void Evaluate( const SELECTION& aSelection );
 
     /**
-     * Update the initial contents so that wxWidgets doesn't get its knickers tied in a knot
-     * over the menu being empty (mainly an issue on GTK, but also on OSX with the preferences
-     * and quit menu items).
+     * Update the initial contents so that the GUI toolkit doesn't get its knickers tied in a
+     * knot over the menu being empty (mainly an issue of wxWidgets on GTK, but also on OSX with
+     * the preferences and quit menu items).
      */
      void Resolve();
 
 private:
+    ///< A menu entry that is not a TOOL_ACTION: an ID with its (untranslated) texts.
+    struct ITEM
+    {
+        int      m_id;
+        wxString m_label;
+        wxString m_tooltip;
+    };
+
     ///< Helper class to organize menu entries.
     class ENTRY
     {
@@ -126,55 +134,55 @@ private:
                bool aCheckmark ) :
             m_type( ACTION ),
             m_icon( static_cast<BITMAPS>( 0 ) ),
+            m_action( aAction ),
+            m_menu( nullptr ),
             m_condition( std::move( aCondition ) ),
             m_order( aOrder ),
             m_isCheckmarkEntry( aCheckmark )
         {
-            m_data.action = aAction;
         }
 
         ENTRY( ACTION_MENU* aMenu, SELECTION_CONDITION aCondition, int aOrder ) :
             m_type( MENU ),
             m_icon( static_cast<BITMAPS>( 0 ) ),
+            m_action( nullptr ),
+            m_menu( aMenu ),
             m_condition( std::move( aCondition ) ),
             m_order( aOrder ),
             m_isCheckmarkEntry( false )
         {
-            m_data.menu = aMenu;
         }
 
-        ENTRY( const wxMenuItem& aItem, BITMAPS aBitmap,
-               SELECTION_CONDITION aCondition, int aOrder, bool aCheckmark ) :
-            m_type( WXITEM ),
+        ENTRY( const ITEM& aItem, BITMAPS aBitmap, SELECTION_CONDITION aCondition, int aOrder,
+               bool aCheckmark ) :
+            m_type( ITEM_ENTRY ),
             m_icon( aBitmap ),
+            m_action( nullptr ),
+            m_menu( nullptr ),
+            m_item( aItem ),
             m_condition( std::move( aCondition ) ),
             m_order( aOrder ),
             m_isCheckmarkEntry( aCheckmark )
         {
-            m_data.wxItem = new wxMenuItem( nullptr, aItem.GetId(), aItem.GetItemLabel(),
-                                            aItem.GetHelp(), aItem.GetKind() );
         }
 
         // Separator
         ENTRY( SELECTION_CONDITION aCondition, int aOrder ) :
             m_type( SEPARATOR ),
             m_icon( static_cast<BITMAPS>( 0 ) ),
-            m_data(),
+            m_action( nullptr ),
+            m_menu( nullptr ),
             m_condition( std::move( aCondition ) ),
             m_order( aOrder ),
             m_isCheckmarkEntry( false )
         {
         }
 
-        ENTRY( const ENTRY& aEntry );
-
-        ~ENTRY();
-
         ///< Possible entry types.
         enum ENTRY_TYPE {
             ACTION,
             MENU,
-            WXITEM,
+            ITEM_ENTRY,
             SEPARATOR
         };
 
@@ -191,19 +199,19 @@ private:
         inline const TOOL_ACTION* Action() const
         {
             assert( m_type == ACTION );
-            return m_data.action;
+            return m_action;
         }
 
         inline ACTION_MENU* Menu() const
         {
             assert( m_type == MENU );
-            return m_data.menu;
+            return m_menu;
         }
 
-        inline wxMenuItem* wxItem() const
+        inline const ITEM& Item() const
         {
-            assert( m_type == WXITEM );
-            return m_data.wxItem;
+            assert( m_type == ITEM_ENTRY );
+            return m_item;
         }
 
         inline bool IsCheckmarkEntry() const
@@ -230,13 +238,10 @@ private:
         ENTRY_TYPE m_type;
         BITMAPS m_icon;
 
-        // This class owns the wxItem object and needs to create, copy and delete it accordingly
-        // But it does not own the action nor menu item
-        union {
-            const TOOL_ACTION* action;
-            ACTION_MENU*       menu;
-            wxMenuItem*        wxItem;
-        } m_data;
+        // The entry does not own the action nor the menu
+        const TOOL_ACTION* m_action;
+        ACTION_MENU*       m_menu;
+        ITEM               m_item;
 
         ///< Condition to be fulfilled to show the entry in menu.
         SELECTION_CONDITION m_condition;

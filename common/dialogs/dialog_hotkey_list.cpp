@@ -94,3 +94,10 @@ bool DIALOG_LIST_HOTKEYS::TransferDataFromWindow()
 {
     return m_hk_list->TransferDataFromWindow();
 }
+
+
+void DisplayHotkeyList( EDA_BASE_FRAME* aParent )
+{
+    DIALOG_LIST_HOTKEYS dlg( aParent );
+    dlg.ShowModal();
+}

@@ -50,6 +50,7 @@
 #include <wx/tokenzr.h>
 #include <wx/wfstream.h>
 #include <wx/zipstrm.h>
+#include <wx/msgdlg.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 

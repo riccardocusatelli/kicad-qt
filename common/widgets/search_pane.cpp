@@ -60,10 +60,10 @@ public:
         updateZoomPanCheckboxes();
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override
+    OPT_TOOL_EVENT eventHandler( int aId ) override
     {
         APP_SETTINGS_BASE::SEARCH_PANE& settings = m_frame.config()->m_SearchPane;
-        const int                       id = aEvent.GetId();
+        const int                       id = aId;
         const wxMenuItem*               item = FindItem( id );
 
         switch( id )

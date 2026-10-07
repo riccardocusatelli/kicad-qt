@@ -33,6 +33,7 @@
 #include <set>
 #include <symbol_preview_widget.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 #include <wx/msgdlg.h>
 #include <wx/dcclient.h>

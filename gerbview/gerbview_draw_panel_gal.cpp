@@ -19,7 +19,6 @@
 
 #include "gerbview_draw_panel_gal.h"
 #include <view/view.h>
-#include <view/wx_view_controls.h>
 #include <gerbview_painter.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
 #include <zoom_defines.h>
@@ -54,7 +53,7 @@ EDA_DRAW_PANEL_GAL( aParentWindow, aWindowId, aPosition, aSize, aOptions, aGalTy
     // This fixes the zoom in and zoom out limits:
     m_view->SetScaleLimits( ZOOM_MAX_LIMIT_GERBVIEW, ZOOM_MIN_LIMIT_GERBVIEW );
 
-    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
+    createViewControls();
 
     setDefaultLayerDeps();
 

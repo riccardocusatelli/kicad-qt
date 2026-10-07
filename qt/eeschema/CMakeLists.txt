@@ -8,8 +8,8 @@ add_headless_kiface( eeschema_qt_kiface
                 schematic_document.cpp
                 schematic_tools.cpp
                 ${KIQT_KIFACE_SOURCES}
-    USAGE       kiqt
-    LIBRARIES   kiqt Qt6::Widgets
+    USAGE       kiqt_common
+    LIBRARIES   kiqt_common kiqt Qt6::Widgets
     )
 
 set_target_properties( eeschema_qt_kiface_iface PROPERTIES AUTOMOC ON )

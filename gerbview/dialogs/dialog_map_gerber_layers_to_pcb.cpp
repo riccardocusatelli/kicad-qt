@@ -32,6 +32,7 @@
 #include <layer_ids.h>
 #include <lset.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 #include <dialogs/dialog_map_gerber_layers_to_pcb.h>
 

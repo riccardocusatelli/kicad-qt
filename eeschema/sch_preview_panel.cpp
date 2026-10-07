@@ -22,7 +22,6 @@
  */
 
 
-#include <view/wx_view_controls.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
 
 #include <gal/graphics_abstraction_layer.h>
@@ -71,7 +70,7 @@ SCH_PREVIEW_PANEL::SCH_PREVIEW_PANEL( wxWindow* aParentWindow, wxWindowID aWindo
     view()->UpdateAllLayersOrder();
     // View controls is the first in the event handler chain, so the Tool Framework operates
     // on updated viewport data.
-    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
+    createViewControls();
 
     m_gal->SetGridColor( m_painter->GetSettings()->GetLayerColor( LAYER_SCHEMATIC_GRID ) );
     m_gal->SetCursorEnabled( false );

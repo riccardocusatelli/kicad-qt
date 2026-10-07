@@ -24,6 +24,7 @@
 
 #include <libraries/legacy_symbol_library.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <connection_graph.h>
 #include <invoke_sch_dialog.h>
 #include <symbol_viewer_frame.h>

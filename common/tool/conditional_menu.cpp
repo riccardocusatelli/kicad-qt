@@ -66,12 +66,7 @@ void CONDITIONAL_MENU::AddItem( int aId, const wxString& aText, const wxString& 
                                 BITMAPS aIcon, const SELECTION_CONDITION& aCondition,
                                 int aOrder )
 {
-    wxMenuItem item( nullptr, aId, aText, aTooltip, wxITEM_NORMAL );
-
-    if( !!aIcon )
-        KIUI::AddBitmapToMenuItem( &item, KiBitmap( aIcon ) );
-
-    addEntry( ENTRY( item, aIcon, aCondition, aOrder, false ) );
+    addEntry( ENTRY( ITEM{ aId, aText, aTooltip }, aIcon, aCondition, aOrder, false ) );
 }
 
 
@@ -79,12 +74,7 @@ void CONDITIONAL_MENU::AddCheckItem( int aId, const wxString& aText, const wxStr
                                      BITMAPS aIcon, const SELECTION_CONDITION& aCondition,
                                      int aOrder )
 {
-    wxMenuItem item( nullptr, aId, aText, aTooltip, wxITEM_CHECK );
-
-    if( !!aIcon )
-        KIUI::AddBitmapToMenuItem( &item, KiBitmap( aIcon ) );
-
-    addEntry( ENTRY( item, aIcon, aCondition, aOrder, true ) );
+    addEntry( ENTRY( ITEM{ aId, aText, aTooltip }, aIcon, aCondition, aOrder, true ) );
 }
 
 
@@ -137,7 +127,6 @@ void CONDITIONAL_MENU::Evaluate( const SELECTION& aSelection )
     {
         const SELECTION_CONDITION& cond = entry.Condition();
         bool                       result;
-        wxMenuItem*                menuItem = nullptr;
 
         try
         {
@@ -164,19 +153,10 @@ void CONDITIONAL_MENU::Evaluate( const SELECTION& aSelection )
             menu_count++;
             break;
 
-        case ENTRY::WXITEM:
-            menuItem = new wxMenuItem( this,
-                                       entry.wxItem()->GetId(),
-                                       wxGetTranslation( entry.wxItem()->GetItemLabel() ),
-                                       wxGetTranslation( entry.wxItem()->GetHelp() ),
-                                       entry.wxItem()->GetKind() );
-
-            if( !!entry.GetIcon() )
-                KIUI::AddBitmapToMenuItem( menuItem, KiBitmap( entry.GetIcon() ) );
-
-            // the wxMenuItem must be append only after the bitmap is set:
-            Append( menuItem );
-
+        case ENTRY::ITEM_ENTRY:
+            Add( wxGetTranslation( entry.Item().m_label ),
+                 wxGetTranslation( entry.Item().m_tooltip ),
+                 entry.Item().m_id, entry.GetIcon(), entry.IsCheckmarkEntry() );
             menu_count++;
             break;
 
@@ -220,45 +200,3 @@ void CONDITIONAL_MENU::addEntry( ENTRY aEntry )
 
     m_entries.insert( it, aEntry );
 }
-
-
-CONDITIONAL_MENU::ENTRY::ENTRY( const ENTRY& aEntry )
-{
-    m_type = aEntry.m_type;
-    m_icon = aEntry.m_icon;
-
-    switch( aEntry.m_type )
-    {
-    case ACTION:
-        m_data.action = aEntry.m_data.action;
-        break;
-
-    case MENU:
-        m_data.menu = aEntry.m_data.menu;
-        break;
-
-    case WXITEM:
-        // We own the wxItem, so we need to make a new one for the new object
-        m_data.wxItem = new wxMenuItem( nullptr,
-                                        aEntry.m_data.wxItem->GetId(),
-                                        aEntry.m_data.wxItem->GetItemLabel(),
-                                        aEntry.m_data.wxItem->GetHelp(),
-                                        aEntry.m_data.wxItem->GetKind() );
-        break;
-
-    case SEPARATOR:
-        break; //No data to copy
-    }
-
-    m_condition        = aEntry.m_condition;
-    m_order            = aEntry.m_order;
-    m_isCheckmarkEntry = aEntry.m_isCheckmarkEntry;
-}
-
-
-CONDITIONAL_MENU::ENTRY::~ENTRY()
-{
-    if( WXITEM == m_type )
-        delete m_data.wxItem;
-}
-

@@ -25,7 +25,6 @@
 #include <tool/zoom_tool.h>
 #include <view/view.h>
 #include <view/view_controls.h>
-#include <math/vector2wx.h>
 
 
 ZOOM_TOOL::ZOOM_TOOL() :
@@ -108,7 +107,6 @@ bool ZOOM_TOOL::selectRegion()
 {
     bool                cancelled = false;
     KIGFX::VIEW*        view = getView();
-    EDA_DRAW_PANEL_GAL* canvas = m_frame->GetCanvas();
 
     getViewControls()->SetAutoPan( true );
 
@@ -142,7 +140,7 @@ bool ZOOM_TOOL::selectRegion()
             }
             else
             {
-                VECTOR2D sSize = view->ToWorld( ToVECTOR2I( canvas->GetClientSize() ), false );
+                VECTOR2D sSize = view->ToWorld( view->GetScreenPixelSize(), false );
                 VECTOR2D vSize = selectionBox.GetSize();
                 double scale;
                 double ratio = std::max( fabs( vSize.x / sSize.x ), fabs( vSize.y / sSize.y ) );

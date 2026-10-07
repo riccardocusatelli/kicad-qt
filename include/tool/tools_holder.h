@@ -27,6 +27,7 @@
 #include <vector>
 #include <tool/selection.h>
 #include <mouse_drag_action.h>
+#include <toolkit/toolkit_types.h>
 
 struct ACTION_CONDITIONS;
 
@@ -162,7 +163,7 @@ public:
     /**
      * Canvas access.
      */
-    virtual wxWindow* GetToolCanvas() const = 0;
+    virtual TOOLKIT_WINDOW* GetToolCanvas() const = 0;
     virtual void RefreshCanvas() { }
 
     virtual wxString ConfigBaseName() { return wxEmptyString; }

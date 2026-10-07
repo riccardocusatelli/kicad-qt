@@ -676,6 +676,7 @@ set( COMMON_WIDGET_SRCS
     widgets/listbox_tricks.cpp
     widgets/mathplot.cpp
     widgets/msgpanel.cpp
+    widgets/msgpanel_item.cpp
     widgets/paged_dialog.cpp
     widgets/panel_design_block_chooser.cpp
     widgets/properties_panel.cpp
@@ -903,6 +904,9 @@ set( COMMON_SRCS
     tool/tool_menu.cpp
     tool/zoom_menu.cpp
     tool/zoom_tool.cpp
+
+    toolkit/gui_services_wx.cpp
+    toolkit/gui_timer_wx.cpp
 
     settings/cvpcb_settings.cpp
 

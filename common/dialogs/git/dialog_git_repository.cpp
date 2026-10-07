@@ -23,6 +23,7 @@
 
 #include "dialog_git_repository.h"
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 #include <git2.h>
 #include <git/kicad_git_memory.h>

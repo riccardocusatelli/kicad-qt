@@ -148,11 +148,11 @@ protected:
         }
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override
+    OPT_TOOL_EVENT eventHandler( int aId ) override
     {
         PCB_EDIT_FRAME*        frame = (PCB_EDIT_FRAME*) getToolManager()->GetToolHolder();
         BOARD_DESIGN_SETTINGS& bds = frame->GetBoard()->GetDesignSettings();
-        int                    id = aEvent.GetId();
+        int                    id = aId;
 
         // On Windows, this handler can be called with an event ID not existing in any
         // menuitem, so only set flags when we have an ID match.

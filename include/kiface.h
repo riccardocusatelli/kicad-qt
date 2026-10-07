@@ -39,6 +39,7 @@
 #include <wx/string.h>
 
 #include <import_export.h>
+#include <toolkit/toolkit_types.h>
 
 
 /// Identifiers of the KIFACE implementations.  KIWAY derives from this, so the historical
@@ -81,7 +82,6 @@ struct KIWAY_FACES
 #endif  // SWIG
 
 class wxConfigBase;
-class wxWindow;
 class PGM_BASE;
 class KIWAY;
 class KIWAY_SERVICES;
@@ -153,14 +153,14 @@ struct KIFACE
     virtual void Reset() = 0;
 
     /**
-     * Create a wxWindow for the current project.
+     * Create a window (a frame or a dialog of the GUI toolkit) for the current project.
      *
      * The caller must cast the return value into the known type.
      *
      * @param aParent may be NULL or is otherwise the parent to connect under.  If NULL
-     *                then caller may want to connect the returned wxWindow into some
+     *                then caller may want to connect the returned window into some
      *                hierarchy after this function returns.
-     * @param aClassId identifies which wxFrame or wxDialog to retrieve, using a value
+     * @param aClassId identifies which frame or dialog to retrieve, using a value
      *                 known to the implementing KIFACE.
      * @param aKIWAY tells the window which KIWAY (and PROJECT) it is a participant in.
      * @param aCtlBits consists of bit flags from the set of KFCTL_* \#defines above.
@@ -168,8 +168,8 @@ struct KIFACE
      *         and old school cast.  dynamic_cast is problematic since it needs typeinfo probably
      *         not contained in the caller's link image.
      */
-    virtual wxWindow* CreateKiWindow( wxWindow* aParent, int aClassId,
-                                      KIWAY* aKIWAY, int aCtlBits = 0 ) = 0;
+    virtual TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId,
+                                            KIWAY* aKIWAY, int aCtlBits = 0 ) = 0;
 
     /**
      * Saving a file under a different name is delegated to the various KIFACEs because
@@ -209,7 +209,7 @@ struct KIFACE
         return 0;
     }
 
-    virtual bool HandleJobConfig( JOB* aJob, wxWindow* aParent )
+    virtual bool HandleJobConfig( JOB* aJob, TOOLKIT_WINDOW* aParent )
     {
         return 0;
     }

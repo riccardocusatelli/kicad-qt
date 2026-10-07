@@ -33,8 +33,6 @@
 #include <paths.h>
 
 #include <tool/tool_manager.h>
-#include "dialogs/dialog_hotkey_list.h"
-#include <wx/apptrait.h>
 #include <wx/stdpaths.h>
 #include <wx/tokenzr.h>
 #include <wx/txtstrm.h>
@@ -360,13 +358,6 @@ int KeyCodeFromKeyName( const wxString& keyname )
     }
 
     return keycode;
-}
-
-
-void DisplayHotkeyList( EDA_BASE_FRAME* aParent )
-{
-    DIALOG_LIST_HOTKEYS dlg( aParent );
-    dlg.ShowModal();
 }
 
 

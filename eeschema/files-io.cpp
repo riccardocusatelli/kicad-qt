@@ -26,6 +26,7 @@
 
 
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <common.h>
 #include <connection_graph.h>
 #include <dialog_migrate_buses.h>

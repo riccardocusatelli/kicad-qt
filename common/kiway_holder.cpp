@@ -41,7 +41,7 @@ PROJECT& KIWAY_HOLDER::Prj() const
 
 
 // this is not speed critical, hide it out of line.
-void KIWAY_HOLDER::SetKiway( wxWindow* aDest, KIWAY* aKiway )
+void KIWAY_HOLDER::SetKiway( TOOLKIT_WINDOW* aDest, KIWAY* aKiway )
 {
 #if defined(DEBUG)
     // offer a trap point for debugging most any window

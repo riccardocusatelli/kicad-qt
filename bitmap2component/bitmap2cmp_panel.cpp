@@ -41,6 +41,7 @@
 #include <wx/log.h>
 #include <wx/string.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 #define DEFAULT_DPI 300     // the image DPI used in formats that do not define a DPI
 

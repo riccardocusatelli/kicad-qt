@@ -25,6 +25,7 @@
 #include <wx/log.h>
 #include <wx/msgdlg.h>
 #include <lib_id.h>
+#include <kicad_message_dialog.h>
 
 
 LIB_TABLE_GRID_TRICKS::LIB_TABLE_GRID_TRICKS( WX_GRID* aGrid ) :

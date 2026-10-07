@@ -48,8 +48,8 @@ public:
         end_common();
     }
 
-    virtual  wxWindow* CreateKiWindow( wxWindow* aParent, int aClassId, KIWAY* aKIWAY,
-                                       int aCtlBits = 0 ) override = 0;
+    virtual  TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKIWAY,
+                                             int aCtlBits = 0 ) override = 0;
 
     virtual void Reset() override{};
 

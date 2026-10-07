@@ -30,7 +30,6 @@
 #include <numeric>
 #include <utility>
 
-#include <wx/timer.h>
 #include <wx/debug.h>
 #include <wx/log.h>
 
@@ -38,6 +37,7 @@
 #include <math/util.h>
 #include <hash.h>
 #include <trace_helpers.h>
+#include <toolkit/gui_timer.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
@@ -61,9 +61,9 @@ public:
 
     ACTIVATION_HELPER( std::chrono::milliseconds aTimeout, ACTIVATION_CALLBACK aCallback ) :
             m_timeout( aTimeout ),
-            m_callback( std::move( aCallback ) )
+            m_callback( std::move( aCallback ) ),
+            m_timer( [this]() { onTimerExpiry(); } )
     {
-        m_timer.Bind( wxEVT_TIMER, &ACTIVATION_HELPER::onTimerExpiry, this );
     }
 
     ~ACTIVATION_HELPER()
@@ -72,7 +72,6 @@ public:
         // while state is being destroyed.
         std::unique_lock<std::mutex> lock( m_mutex );
         m_timer.Stop();
-        m_timer.Unbind( wxEVT_TIMER, &ACTIVATION_HELPER::onTimerExpiry, this );
 
         // Should be redundant to inhibiting timer callbacks, but make it explicit.
         m_pendingProposalTag.reset();
@@ -106,7 +105,7 @@ public:
         }
         else
         {
-            m_timer.Start( m_timeout.count(), wxTIMER_ONE_SHOT );
+            m_timer.StartOnce( m_timeout.count() );
         }
     }
 
@@ -121,7 +120,7 @@ private:
     /**
      * Timer expiry callback in the UI thread.
      */
-    void onTimerExpiry( wxTimerEvent& aEvent )
+    void onTimerExpiry()
     {
         acceptPendingProposal();
     }
@@ -162,7 +161,7 @@ private:
     /// Callback to call when the proposal is accepted.
     ACTIVATION_CALLBACK m_callback;
 
-    wxTimer m_timer;
+    GUI_TIMER m_timer;
 };
 
 

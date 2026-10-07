@@ -57,6 +57,7 @@
 #include <jobs/job_export_pcb_3d.h>
 
 #include <wx/filefn.h>
+#include <wx/msgdlg.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 

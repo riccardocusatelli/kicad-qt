@@ -23,6 +23,7 @@
  */
 
 #include <wx/grid.h>
+#include <wx/msgdlg.h>
 
 #include <pcbnew_settings.h>
 #include <pgm_base.h>

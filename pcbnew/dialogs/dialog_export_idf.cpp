@@ -30,6 +30,7 @@
 #include <tools/board_editor_control.h>
 #include <project/project_file.h> // LAST_PATH_TYPE
 #include <kidialog.h>
+#include <wx/msgdlg.h>
 
 
 DIALOG_EXPORT_IDF3::DIALOG_EXPORT_IDF3( PCB_EDIT_FRAME* aEditFrame ) :

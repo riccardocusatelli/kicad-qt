@@ -50,6 +50,7 @@
 #include <paths.h>
 #include <local_history.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <panel_packages_and_updates.h>
 #include <pgm_base.h>
 #include <pgm_gui.h>

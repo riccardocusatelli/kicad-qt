@@ -43,7 +43,7 @@ private:
         return new ZOOM_MENU( m_parent );
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override;
+    OPT_TOOL_EVENT eventHandler( int aId ) override;
     void update() override;
 
     EDA_DRAW_FRAME* m_parent;

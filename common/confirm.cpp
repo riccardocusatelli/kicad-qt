@@ -23,6 +23,7 @@
  */
 
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 #include <functional>
 #include <wx/app.h>

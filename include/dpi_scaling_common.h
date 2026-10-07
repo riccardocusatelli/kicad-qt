@@ -28,7 +28,7 @@
 #include <dpi_scaling.h>
 
 class COMMON_SETTINGS;
-class wxWindow;
+#include <toolkit/toolkit_types.h>
 
 /**
  * Class to handle configuration and automatic determination of the DPI
@@ -46,7 +46,7 @@ public:
      * @param aWindow a WX window to use for automatic DPI determination
      * @return the scaling factor (1.0 = no scaling)
      */
-    DPI_SCALING_COMMON( COMMON_SETTINGS* aConfig, const wxWindow* aWindow );
+    DPI_SCALING_COMMON( COMMON_SETTINGS* aConfig, const TOOLKIT_WINDOW* aWindow );
 
     /**
      * Get the DPI scale from all known sources in order:
@@ -90,7 +90,7 @@ private:
     /**
      * The WX window to use for WX's automatic DPI checking
      */
-    const wxWindow* m_window;
+    const TOOLKIT_WINDOW* m_window;
 };
 
 #endif // DPI_SCALING__H

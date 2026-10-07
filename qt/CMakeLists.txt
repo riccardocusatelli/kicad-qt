@@ -18,12 +18,18 @@
 #
 
 # The Qt shell of KiCad (KICAD_QT_SHELL, in the KICAD_WX_FREE build):
-#   common/   libkiqt: the canvas on the Cairo GAL, the documents, the property panel
+#   common/   libkiqt: the canvas on the Cairo GAL, the documents, the property panel, KIWAY;
+#             libkiqt_common: the tool framework of KiCad with the Qt frames, canvas and menus
+#   include/  the headers of the Qt versions of the GUI classes of KiCad
 #   pcbnew/   _pcbnew_qt.kiface: the headless pcbnew KIFACE with the board documents
 #   eeschema/ _eeschema_qt.kiface: the headless eeschema KIFACE with the schematic documents
 #   kicad/    kicad-qt: the main window, which loads the two KIFACEs
 
 find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets )
+
+# The headers of the Qt versions of the GUI classes of KiCad (frames, canvas, menus, dialogs...)
+# come before the ones of the wxWidgets build: the tools of KiCad include them unchanged
+include_directories( BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
 # Sources of the model the documents use, besides the ones kicad-cli links
 # (see cmake/WxFree.cmake)
@@ -42,6 +48,9 @@ set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_eeschema_kiface_objec
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_common
     common/tool/selection.cpp
     )
+set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_core
+    libs/core/wx_stl_compat.cpp
+    )
 
 # The sources compiled into each Qt KIFACE, with its model (PROPERTY_MANAGER, undo lists)
 set( KIQT_KIFACE_SOURCES
@@ -53,10 +62,12 @@ add_subdirectory( common )
 add_subdirectory( pcbnew )
 add_subdirectory( eeschema )
 add_subdirectory( kicad )
+add_subdirectory( qa )
 
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_KEPT_TARGETS
-    kiqt
+    kiqt kiqt_common libcontext
     pcbnew_qt_kiface pcbnew_qt_kiface_iface
     eeschema_qt_kiface eeschema_qt_kiface_iface
     kicad-qt
+    qa_qt_tool_framework qa_qt_tool_framework_objects
     )

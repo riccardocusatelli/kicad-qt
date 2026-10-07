@@ -105,7 +105,7 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
     void OnKifaceEnd() override;
 
-    wxWindow* CreateKiWindow( wxWindow* aParent, int aClassId, KIWAY* aKiway, int aCtlBits = 0 ) override
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway, int aCtlBits = 0 ) override
     {
         switch( aClassId )
         {
@@ -342,7 +342,7 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
     int HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgressReporter ) override;
 
-    bool HandleJobConfig( JOB* aJob, wxWindow* aParent ) override;
+    bool HandleJobConfig( JOB* aJob, TOOLKIT_WINDOW* aParent ) override;
 
     void PreloadLibraries( KIWAY* aKiway ) override;
     void CancelPreload( bool aBlock = true ) override;
@@ -741,7 +741,7 @@ int IFACE::HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgre
 }
 
 
-bool IFACE::HandleJobConfig( JOB* aJob, wxWindow* aParent )
+bool IFACE::HandleJobConfig( JOB* aJob, TOOLKIT_WINDOW* aParent )
 {
     return m_jobHandler->HandleJobConfig( aJob, aParent );
 }

@@ -20,6 +20,7 @@
 #include <wx/msgdlg.h>
 
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <dialogs/dialog_restore_local_history.h>
 #include <local_history.h>
 #include <local_history_ui.h>

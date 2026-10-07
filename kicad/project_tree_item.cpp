@@ -34,6 +34,7 @@
 #include <set>
 
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <mail_type.h>
 #include <gestfich.h>
 #include <kiplatform/environment.h>

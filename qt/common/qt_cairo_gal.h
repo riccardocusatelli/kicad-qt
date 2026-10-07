@@ -25,6 +25,8 @@
 
 #include "kiqt.h"
 
+class QPainter;
+
 namespace KIGFX
 {
 
@@ -37,6 +39,14 @@ class KIQT_API QT_CAIRO_GAL : public CAIRO_RASTER_GAL
 public:
     /// @param aPresent is called at the end of each drawing, while the raster is valid.
     QT_CAIRO_GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions, std::function<void()> aPresent );
+
+    /**
+     * Paint the cursor of the GAL (the crosshair) over the drawing, as CAIRO_GAL blits it.
+     *
+     * @param aPainter paints on the canvas, in logical pixels.
+     * @param aRatio is the ratio of the device pixels of the GAL to the logical pixels.
+     */
+    void PaintCursor( QPainter& aPainter, double aRatio ) const;
 
 protected:
     void present() override;

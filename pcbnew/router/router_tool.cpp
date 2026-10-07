@@ -362,10 +362,10 @@ protected:
         }
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override
+    OPT_TOOL_EVENT eventHandler( int aId ) override
     {
         BOARD_DESIGN_SETTINGS &bds = m_frame.GetBoard()->GetDesignSettings();
-        int id = aEvent.GetId();
+        int id = aId;
 
         // On Windows, this handler can be called with an event ID not existing in any
         // menuitem, so only set flags when we have an ID match.
@@ -488,10 +488,10 @@ protected:
         }
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override
+    OPT_TOOL_EVENT eventHandler( int aId ) override
     {
         BOARD_DESIGN_SETTINGS &bds = m_frame.GetBoard()->GetDesignSettings();
-        int id = aEvent.GetId();
+        int id = aId;
 
         // On Windows, this handler can be called with an event ID not existing in any
         // menuitem, so only set flags when we have an ID match.

@@ -79,7 +79,7 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadWindowSettings( WINDOW_SETTINGS& aCfg )
 }
 
 
-void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings, wxWindow* aWindow )
+void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings, TOOLKIT_WINDOW* aWindow )
 {
     KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading common config" ) );
 
@@ -94,7 +94,7 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings, wxW
 
 
 void GAL_DISPLAY_OPTIONS_IMPL::ReadConfig( COMMON_SETTINGS& aCommonConfig,
-                                           WINDOW_SETTINGS& aWindowConfig, wxWindow* aWindow )
+                                           WINDOW_SETTINGS& aWindowConfig, TOOLKIT_WINDOW* aWindow )
 {
     KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading common and app config" ) );
 

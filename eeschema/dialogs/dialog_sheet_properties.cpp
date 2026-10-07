@@ -30,6 +30,7 @@
 #include <wx/tooltip.h>
 #include <common.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <kidialog.h>
 #include <validators.h>
 #include <wx_filename.h>

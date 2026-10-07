@@ -43,6 +43,7 @@
 #include <tools/pcb_actions.h>
 #include <launch_ext.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 #ifdef KICAD_IPC_API
 #include <api/api_plugin_manager.h>

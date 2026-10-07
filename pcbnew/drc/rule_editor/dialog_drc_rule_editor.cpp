@@ -51,6 +51,7 @@
 #include <tool/tool_manager.h>
 #include <tool/actions.h>
 #include <wx/ffile.h>
+#include <wx/msgdlg.h>
 #include <functional>
 #include <memory>
 #include <set>

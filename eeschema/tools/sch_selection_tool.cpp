@@ -398,10 +398,6 @@ bool SCH_SELECTION_TOOL::Init()
     m_frame->AddStandardSubMenus( *m_menu.get() );
     // clang-format on
 
-    m_disambiguateTimer.SetOwner( this );
-    Connect( m_disambiguateTimer.GetId(), wxEVT_TIMER,
-             wxTimerEventHandler( SCH_SELECTION_TOOL::onDisambiguationExpire ), nullptr, this );
-
     return true;
 }
 

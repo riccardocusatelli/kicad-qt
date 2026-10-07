@@ -52,17 +52,6 @@ class CURSOR_STORE
 {
 public:
     /**
-     * Definition of a cursor
-     */
-    struct CURSOR_DEF
-    {
-        const char** m_xpm;
-
-        ///< The "hotspot" where the cursor "is" in the image
-        wxPoint m_hotspot;
-    };
-
-    /**
      * Get a cursor bundle (wx 3.3+) or appropriate cursor (older versions)
      * @param  aCursorType the cursor type to get
      * @param  aHiDPI whether to prefer HiDPI version for older wx versions

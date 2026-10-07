@@ -36,6 +36,7 @@
 #include <richio.h>
 #include <string_utils.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 
 PANEL_TEMPLATE_FIELDNAMES::PANEL_TEMPLATE_FIELDNAMES( wxWindow* aWindow,
                                                       TEMPLATES* aProjectTemplateMgr ) :

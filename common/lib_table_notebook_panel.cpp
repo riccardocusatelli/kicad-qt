@@ -19,6 +19,7 @@
 
 #include <wx/sizer.h>
 #include <wx/aui/auibook.h>
+#include <wx/msgdlg.h>
 #include <confirm.h>
 #include <lib_table_grid_data_model.h>
 #include <lib_table_notebook_panel.h>

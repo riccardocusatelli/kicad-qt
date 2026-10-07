@@ -42,6 +42,7 @@
 #include <erc/erc_report.h>
 #include <id.h>
 #include <confirm.h>
+#include <kicad_message_dialog.h>
 #include <widgets/wx_html_report_box.h>
 #include <widgets/std_bitmap_button.h>
 #include <dialogs/dialog_text_entry.h>
