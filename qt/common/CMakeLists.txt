@@ -2,6 +2,31 @@
 # build that are one for the program (the icons, the cursors, the message dialogs, the event
 # loop and the keyboard)
 
+# The sources of the OpenGL GAL of KiCad (common/gal/opengl), toolkit-independent
+set( KIQT_OPENGL_GAL_SRCS
+    opengl_gal.cpp
+    gl_resources.cpp
+    shader.cpp
+    vertex_item.cpp
+    vertex_container.cpp
+    cached_container.cpp
+    cached_container_gpu.cpp
+    cached_container_ram.cpp
+    noncached_container.cpp
+    vertex_manager.cpp
+    gpu_manager.cpp
+    antialiasing.cpp
+    opengl_compositor.cpp
+    utils.cpp
+    )
+
+list( TRANSFORM KIQT_OPENGL_GAL_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/gal/opengl/ )
+
+set( KIQT_VIEW_CONTROLS_SRCS
+    ${CMAKE_SOURCE_DIR}/common/view/view_controls.cpp
+    ${CMAKE_SOURCE_DIR}/common/view/zoom_controller.cpp
+    )
+
 add_library( kiqt SHARED
     gal_canvas.cpp
     property_panel.cpp
@@ -19,6 +44,15 @@ add_library( kiqt SHARED
     widgets/msgpanel.cpp
     widgets/wx_infobar.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
+
+    # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
+    # OpenGL canvas of Qt
+    ${KIQT_VIEW_CONTROLS_SRCS}
+    ${KIQT_OPENGL_GAL_SRCS}
+    gal/hidpi_gl_canvas.cpp
+    gal/opengl_gal_qt.cpp
+    kicad_gl/gl_context_mgr.cpp
+    kicad_gl/gl_utils.cpp
     )
 
 set_target_properties( kiqt PROPERTIES
@@ -26,12 +60,48 @@ set_target_properties( kiqt PROPERTIES
     OUTPUT_NAME kiqt
     )
 
+# The OpenGL GAL is part of the GAL library (GAL_API)
+set_source_files_properties( ${KIQT_OPENGL_GAL_SRCS} ${KIQT_VIEW_CONTROLS_SRCS}
+                             gal/hidpi_gl_canvas.cpp gal/opengl_gal_qt.cpp
+    PROPERTIES COMPILE_DEFINITIONS GAL_DLL=1 )
+
+# The shaders of the OpenGL GAL (as in common/gal/CMakeLists.txt, in the Qt directories)
+function( kiqt_add_shader inFile shaderName )
+    set( _cpp ${CMAKE_CURRENT_BINARY_DIR}/shaders/${shaderName}.cpp )
+    set( _hdir ${CMAKE_CURRENT_BINARY_DIR}/shaders/include/ )
+
+    add_custom_command(
+        OUTPUT ${_cpp} ${_hdir}/${shaderName}.h
+        COMMAND ${CMAKE_COMMAND}
+            -DSOURCE_FILE="${CMAKE_SOURCE_DIR}/common/gal/shaders/${inFile}"
+            -DOUT_CPP_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders/"
+            -DOUT_HEADER_DIR="${_hdir}"
+            -DOUT_CPP_FILENAME="${shaderName}.cpp"
+            -DOUT_HEADER_FILENAME="${shaderName}.h"
+            -DOUT_VAR_NAME="${shaderName}"
+            -P ${KICAD_CMAKE_MODULE_PATH}/BuildSteps/CreateShaderCpp.cmake
+        DEPENDS ${CMAKE_SOURCE_DIR}/common/gal/shaders/${inFile}
+                ${KICAD_CMAKE_MODULE_PATH}/BuildSteps/CreateShaderCpp.cmake
+        )
+
+    target_sources( kiqt PRIVATE ${_cpp} )
+    target_include_directories( kiqt PRIVATE ${_hdir} )
+endfunction()
+
+foreach( _shader kicad_frag kicad_vert smaa_base smaa_pass_1_frag_color smaa_pass_1_frag_luma
+                 smaa_pass_1_vert smaa_pass_2_frag smaa_pass_2_vert smaa_pass_3_frag
+                 smaa_pass_3_vert xor_diff_frag xor_diff_vert )
+    kiqt_add_shader( ${_shader}.glsl glsl_${_shader} )
+endforeach()
+
 target_include_directories( kiqt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
 
 target_link_libraries( kiqt
     PUBLIC
         Qt6::Widgets
         gal_model
+        glad
+        ${OPENGL_LIBRARIES}
         kicommon_model
         kiplatform_core
         kimath
@@ -97,8 +167,6 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/kiway_holder.cpp
     ${CMAKE_SOURCE_DIR}/common/preview_items/selection_area.cpp
     ${CMAKE_SOURCE_DIR}/common/preview_items/simple_overlay_item.cpp
-    ${CMAKE_SOURCE_DIR}/common/view/view_controls.cpp
-    ${CMAKE_SOURCE_DIR}/common/view/zoom_controller.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/msgpanel_item.cpp
 
     dialog_shim.cpp

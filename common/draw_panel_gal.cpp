@@ -570,7 +570,29 @@ bool EDA_DRAW_PANEL_GAL::GetScreenshot( wxImage& aDstImage )
 
     DoRePaint( false );
 
-    return static_cast<KIGFX::OPENGL_GAL*>( m_gal )->GetScreenshot( aDstImage );
+    std::vector<uint8_t> rgba;
+    VECTOR2I             size;
+
+    if( !static_cast<KIGFX::OPENGL_GAL*>( m_gal )->GetScreenshot( rgba, size ) )
+        return false;
+
+    // wxImage wants separate RGB and alpha buffers and takes ownership of them.
+    const size_t   count = (size_t) size.x * size.y;
+    unsigned char* rgb = (unsigned char*) malloc( count * 3 );
+    unsigned char* alpha = (unsigned char*) malloc( count );
+
+    for( size_t i = 0; i < count; ++i )
+    {
+        rgb[i * 3 + 0] = rgba[i * 4 + 0];
+        rgb[i * 3 + 1] = rgba[i * 4 + 1];
+        rgb[i * 3 + 2] = rgba[i * 4 + 2];
+        alpha[i] = rgba[i * 4 + 3];
+    }
+
+    aDstImage.SetData( rgb, size.x, size.y, false );
+    aDstImage.SetAlpha( alpha, false );
+
+    return true;
 }
 
 

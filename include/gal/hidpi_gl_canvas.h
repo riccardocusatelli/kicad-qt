@@ -32,12 +32,19 @@
 
 #include <view/view_controls.h>
 #include <gal/gal.h>
+#include <gal/cursors.h>
+#include <toolkit/toolkit_types.h>
+
+class wxGestureEvent;
+class wxSetCursorEvent;
 
 
 /**
  * wxGLCanvas wrapper for HiDPI/Retina support.
  *
- * This is a small wrapper class to enable HiDPI/Retina support for wxGLCanvas.
+ * This is a small wrapper class to enable HiDPI/Retina support for wxGLCanvas.  For the
+ * OpenGL GAL, it is also the window: it gives the mouse events to the panel of the GAL, asks
+ * it to draw, and shows the cursor.  The Qt build has its own HIDPI_GL_CANVAS.
  */
 class GAL_API HIDPI_GL_CANVAS : public wxGLCanvas
 {
@@ -48,6 +55,14 @@ public:
                      const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                      long aStyle = 0, const wxString& aName = wxGLCanvasName,
                      const wxPalette& aPalette = wxNullPalette );
+
+    /**
+     * The canvas of a GAL: RGBA, double buffered, with a depth buffer, as large as its parent.
+     *
+     * Its mouse events go to the mouse listener and its paint events to the paint listener.
+     */
+    HIDPI_GL_CANVAS( const KIGFX::VC_SETTINGS& aSettings, TOOLKIT_WINDOW* aParent,
+                     const wxString& aName );
 
     virtual wxSize GetNativePixelSize() const;
 
@@ -63,9 +78,54 @@ public:
 
     void SetVcSettings( const KIGFX::VC_SETTINGS& aVcSettings ) { m_settings = aVcSettings; }
 
+    /// The window that receives the mouse and gesture events of the canvas.
+    void SetMouseListener( TOOLKIT_WINDOW* aMouseListener ) { m_mouseListener = aMouseListener; }
+
+    /// The window asked to draw the canvas (by PostPaint()).
+    void SetPaintListener( TOOLKIT_WINDOW* aPaintListener ) { m_paintListener = aPaintListener; }
+
+    /// Ask the paint listener to draw the canvas.
+    void PostPaint();
+
+    /// Show a cursor of KiCad on the canvas.
+    void SetCanvasCursor( KICURSOR aCursor, bool aHiDPI );
+
+    /// Resize the canvas (in logical pixels).
+    void ResizeCanvas( int aWidth, int aHeight );
+
+    /// Show or hide the canvas; a shown canvas is raised.
+    bool ShowCanvas( bool aShow );
+
+    /// The canvas is shown on the screen, with a size.
+    bool IsCanvasVisible() const;
+
+    /**
+     * Use the adaptive vertical synchronization if available.
+     *
+     * @return the swap interval set (-1 adaptive, 0 none, 1 vertical synchronization).
+     */
+    int SetupSwapInterval();
+
 protected:
     ///< Current VIEW_CONTROLS settings.
     KIGFX::VC_SETTINGS m_settings;
+
+private:
+    void onPaint( wxPaintEvent& aEvent );
+
+    /// Give a mouse event to the mouse listener.
+    void skipMouseEvent( wxMouseEvent& aEvent );
+
+    /// Give a gesture event to the mouse listener.
+    void skipGestureEvent( wxGestureEvent& aEvent );
+
+    void onSetNativeCursor( wxSetCursorEvent& aEvent );
+
+    TOOLKIT_WINDOW* m_mouseListener = nullptr;
+    TOOLKIT_WINDOW* m_paintListener = nullptr;
+
+    /// wx cursor showing the current native cursor.
+    WX_CURSOR_TYPE  m_currentwxCursor;
 };
 
 #endif // HIDPI_GL_CANVAS_H

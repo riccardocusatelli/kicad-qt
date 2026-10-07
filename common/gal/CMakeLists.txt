@@ -46,6 +46,7 @@ set( GAL_SRCS
 
     # OpenGL GAL
     opengl/opengl_gal.cpp
+    opengl/opengl_gal_wx.cpp
     opengl/gl_resources.cpp
 
     opengl/shader.cpp

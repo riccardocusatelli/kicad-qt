@@ -31,6 +31,8 @@
  * drawn by the Cairo GAL of the Qt shell (QT_CAIRO_GAL).
  */
 
+#include <kicad_gl/kiglad.h> // Must be included first (OpenGL GAL)
+
 #include <class_draw_panel_gal.h>
 
 #include <QApplication>
@@ -72,6 +74,7 @@
 #include <core/ki_assert.h>
 
 #include <qt_cairo_gal.h>
+#include <gal/opengl/opengl_gal.h>
 
 
 /**
@@ -219,6 +222,10 @@ void EDA_DRAW_PANEL_GAL::PostRefreshMouse( int aModifiers )
 void EDA_DRAW_PANEL_GAL::paintEvent( QPaintEvent* aEvent )
 {
     DoRePaint( false );
+
+    // The OpenGL GAL draws in its own window, over the panel
+    if( m_backend == GAL_TYPE_OPENGL )
+        return;
 
     QPainter painter( this );
 
@@ -436,7 +443,10 @@ void EDA_DRAW_PANEL_GAL::ResizeGal( bool aForce )
         return;
 
     KIGFX::GAL_CONTEXT_LOCKER locker( m_gal );
-    VECTOR2I                  clientSize = GetClientSizeDevice();
+
+    // The OpenGL GAL has the logical size (it scales its buffers), the Cairo GAL the pixels
+    VECTOR2I clientSize = m_backend == GAL_TYPE_OPENGL ? VECTOR2I( width(), height() )
+                                                       : GetClientSizeDevice();
 
     if( !aForce && clientSize == m_gal->GetScreenPixelSize() )
         return;
@@ -492,7 +502,21 @@ bool EDA_DRAW_PANEL_GAL::GetScreenshot( QImage& aDstImage )
         return false;
 
     DoRePaint( false );
-    aDstImage = m_image;
+
+    if( m_backend == GAL_TYPE_OPENGL )
+    {
+        std::vector<uint8_t> rgba;
+        VECTOR2I             size;
+
+        if( !static_cast<KIGFX::OPENGL_GAL*>( m_gal )->GetScreenshot( rgba, size ) )
+            return false;
+
+        aDstImage = QImage( rgba.data(), size.x, size.y, QImage::Format_RGBA8888 ).copy();
+    }
+    else
+    {
+        aDstImage = m_image;
+    }
 
     return !aDstImage.isNull();
 }
@@ -542,9 +566,17 @@ void EDA_DRAW_PANEL_GAL::SetTopLayer( int aLayer )
 
 bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
 {
-    // The Qt build draws with Cairo (OpenGL comes with a QOpenGLWidget canvas)
+    // OpenGL needs its features (and a display that has OpenGL)
     if( aGalType == GAL_TYPE_OPENGL )
-        aGalType = GAL_FALLBACK;
+    {
+        wxString errormsg = KIGFX::OPENGL_GAL::CheckFeatures( m_options );
+
+        if( !errormsg.empty() )
+        {
+            KI_LOG_TRACE( traceDrawPanel, wxS( "OpenGL is not available: %s" ), errormsg );
+            aGalType = GAL_FALLBACK;
+        }
+    }
 
     // Do not do anything if the currently used GAL is correct
     if( aGalType == m_backend && m_gal != nullptr )
@@ -556,7 +588,29 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
     // Prevent refreshing canvas during backend switch
     StopDrawing();
 
-    KIGFX::GAL* new_gal = new KIGFX::QT_CAIRO_GAL( m_options, [this]() { present(); } );
+    KIGFX::GAL* new_gal = nullptr;
+
+    try
+    {
+        if( aGalType == GAL_TYPE_OPENGL )
+        {
+            KIGFX::OPENGL_GAL* glGal = new KIGFX::OPENGL_GAL( GetVcSettings(), m_options, this,
+                                                              this, this );
+            glGal->show();
+            new_gal = glGal;
+        }
+    }
+    catch( std::runtime_error& err )
+    {
+        KI_LOG_TRACE( traceDrawPanel, wxS( "OpenGL GAL: %s" ), err.what() );
+        aGalType = GAL_FALLBACK;
+    }
+
+    if( !new_gal )
+    {
+        new_gal = new KIGFX::QT_CAIRO_GAL( m_options, [this]() { present(); } );
+        aGalType = GAL_TYPE_CAIRO;
+    }
 
     // trigger update of the gal options in case they differ from the defaults
     m_options.NotifyChanged();
@@ -564,10 +618,15 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
     delete m_gal;
     m_gal = new_gal;
 
-    VECTOR2I clientSize = GetClientSizeDevice();
+    VECTOR2I clientSize = aGalType == GAL_TYPE_OPENGL ? VECTOR2I( width(), height() )
+                                                      : GetClientSizeDevice();
     clientSize.x = std::max( 10, clientSize.x );
     clientSize.y = std::max( 10, clientSize.y );
-    m_gal->ResizeScreen( clientSize.x, clientSize.y );
+
+    {
+        KIGFX::GAL_CONTEXT_LOCKER locker( m_gal );
+        m_gal->ResizeScreen( clientSize.x, clientSize.y );
+    }
 
     if( grid_size.x > 0 && grid_size.y > 0 )
         m_gal->SetGridSize( grid_size );

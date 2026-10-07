@@ -24,11 +24,18 @@
  */
 
 #include <kicad_gl/gl_context_mgr.h>
+#include <pgm_gui.h>
 #include <wx/debug.h>
 #include <core/ki_assert.h>
 
 
-wxGLContext* GL_CONTEXT_MANAGER::CreateCtx( wxGLCanvas* aCanvas, const wxGLContext* aOther )
+GL_CONTEXT_MANAGER* GL_CONTEXT_MANAGER::Get()
+{
+    return PgmGui().GetGLContextManager();
+}
+
+
+KIGL_CONTEXT* GL_CONTEXT_MANAGER::CreateCtx( KIGL_CANVAS* aCanvas, const KIGL_CONTEXT* aOther )
 {
     wxGLContext* context = new wxGLContext( aCanvas, aOther );
     KI_CHECK( context, nullptr );
@@ -45,7 +52,7 @@ wxGLContext* GL_CONTEXT_MANAGER::CreateCtx( wxGLCanvas* aCanvas, const wxGLConte
 }
 
 
-void GL_CONTEXT_MANAGER::DestroyCtx( wxGLContext* aContext )
+void GL_CONTEXT_MANAGER::DestroyCtx( KIGL_CONTEXT* aContext )
 {
     if( m_glContexts.count( aContext ) )
     {
@@ -76,7 +83,7 @@ void GL_CONTEXT_MANAGER::DeleteAll()
 }
 
 
-void GL_CONTEXT_MANAGER::LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas )
+void GL_CONTEXT_MANAGER::LockCtx( KIGL_CONTEXT* aContext, KIGL_CANVAS* aCanvas )
 {
     KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
 
@@ -95,7 +102,7 @@ void GL_CONTEXT_MANAGER::LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas )
 }
 
 
-void GL_CONTEXT_MANAGER::UnlockCtx( wxGLContext* aContext )
+void GL_CONTEXT_MANAGER::UnlockCtx( KIGL_CONTEXT* aContext )
 {
     KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
 

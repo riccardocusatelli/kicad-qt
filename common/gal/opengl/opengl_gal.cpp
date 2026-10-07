@@ -36,18 +36,13 @@
 #include <gal/definitions.h>
 #include <kicad_gl/gl_context_mgr.h>
 #include <geometry/shape_poly_set.h>
-#include <math/vector2wx.h>
 #include <bitmap_base.h>
-#include <raster_image_wx.h>
+#include <raster_image.h>
 #include <bezier_curves.h>
 #include <math/util.h> // for KiROUND
 #include <pgm_base.h>
-#include <pgm_gui.h>
 #include <trace_helpers.h>
-
-#include <wx/app.h>
-#include <wx/frame.h>
-#include <wx/image.h>
+#include <wx/log.h>
 
 #include <macros.h>
 #include <optional>
@@ -55,8 +50,8 @@
 #include <thread_pool.h>
 
 #include <core/profile.h>
-#include <trace_helpers.h>
 
+#include <chrono>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -81,15 +76,14 @@ static void InitTesselatorCallbacks( GLUtesselator* aTesselator );
 // Trace mask for XOR/difference mode debugging
 static const wxChar* const traceGalXorMode = wxT( "KICAD_GAL_XOR_MODE" );
 
-static wxGLAttributes getGLAttribs()
+/// A time in milliseconds, for the accesses to the bitmap cache.
+static long long cacheTimeMillis()
 {
-    wxGLAttributes attribs;
-    attribs.RGBA().DoubleBuffer().Depth( 8 ).EndList();
-
-    return attribs;
+    using namespace std::chrono;
+    return duration_cast<milliseconds>( steady_clock::now().time_since_epoch() ).count();
 }
 
-wxGLContext* OPENGL_GAL::m_glMainContext = nullptr;
+KIGL_CONTEXT* OPENGL_GAL::m_glMainContext = nullptr;
 int          OPENGL_GAL::m_instanceCounter = 0;
 GLuint       OPENGL_GAL::g_fontTexture = 0;
 bool         OPENGL_GAL::m_isBitmapFontLoaded = false;
@@ -147,7 +141,7 @@ GLuint GL_BITMAP_CACHE::RequestBitmap( const BITMAP_BASE* aBitmap )
         // A bitmap is found in cache bitmap. Ensure the associated texture is still valid.
         if( glIsTexture( it->second.id ) )
         {
-            it->second.accessTime = wxGetUTCTimeMillis().GetValue();
+            it->second.accessTime = cacheTimeMillis();
             return it->second.id;
         }
         else
@@ -183,7 +177,7 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
     if( !imgPtr )
         return std::numeric_limits< GLuint >::max();
 
-    wxImage imgData = ToWxImage( *imgPtr );
+    RASTER_IMAGE imgData = *imgPtr;
 
     // Check if the image exceeds the maximum texture size supported by the GPU
     GLint maxTextureSize;
@@ -203,14 +197,14 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
         int newWidth = std::clamp( KiROUND( imgWidth * scale ), 1, maxTextureSize );
         int newHeight = std::clamp( KiROUND( imgHeight * scale ), 1, maxTextureSize );
 
-        imgData = imgData.Scale( newWidth, newHeight, wxIMAGE_QUALITY_HIGH );
+        imgData = imgData.Rescale( newWidth, newHeight );
 
         if( !imgData.IsOk() )
             return std::numeric_limits< GLuint >::max();
     }
 
-    bmp.w = imgData.GetSize().x;
-    bmp.h = imgData.GetSize().y;
+    bmp.w = imgData.GetWidth();
+    bmp.h = imgData.GetHeight();
 
     GLuint textureID;
 
@@ -260,10 +254,11 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
             {
                 memcpy( dstP, srcP, 3 );
 
+                // Transparent or opaque
                 if( srcP[0] == maskRed && srcP[1] == maskGreen && srcP[2] == maskBlue )
-                    dstP[3] = wxALPHA_TRANSPARENT;
+                    dstP[3] = 0;
                 else
-                    dstP[3] = wxALPHA_OPAQUE;
+                    dstP[3] = 255;
 
                 srcP += 3;
                 dstP += 4;
@@ -287,7 +282,7 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 
-    long long currentTime = wxGetUTCTimeMillis().GetValue();
+    long long currentTime = cacheTimeMillis();
 
     bmp.id = textureID;
     bmp.accessTime = currentTime;
@@ -343,15 +338,11 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
 
 
 OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIONS& aDisplayOptions,
-                        wxWindow* aParent,
-                        wxEvtHandler* aMouseListener, wxEvtHandler* aPaintListener,
+                        TOOLKIT_WINDOW* aParent,
+                        TOOLKIT_WINDOW* aMouseListener, TOOLKIT_WINDOW* aPaintListener,
                         const wxString& aName ) :
         GAL( aDisplayOptions ),
-        HIDPI_GL_CANVAS( aVcSettings, aParent, getGLAttribs(), wxID_ANY, wxDefaultPosition,
-                         wxDefaultSize,
-                         wxEXPAND, aName ),
-        m_mouseListener( aMouseListener ),
-        m_paintListener( aPaintListener ),
+        HIDPI_GL_CANVAS( aVcSettings, aParent, aName ),
         m_currentManager( nullptr ),
         m_cachedManager( nullptr ),
         m_nonCachedManager( nullptr ),
@@ -365,7 +356,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
 {
     if( m_glMainContext == nullptr )
     {
-        m_glMainContext = PgmGui().GetGLContextManager()->CreateCtx( this );
+        m_glMainContext = GL_CONTEXT_MANAGER::Get()->CreateCtx( this );
 
         if( !m_glMainContext )
             throw std::runtime_error( "Could not create the main OpenGL context" );
@@ -374,7 +365,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
     }
     else
     {
-        m_glPrivContext = PgmGui().GetGLContextManager()->CreateCtx( this, m_glMainContext );
+        m_glPrivContext = GL_CONTEXT_MANAGER::Get()->CreateCtx( this, m_glMainContext );
 
         if( !m_glPrivContext )
             throw std::runtime_error( "Could not create a private OpenGL context" );
@@ -395,42 +386,12 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
     m_isGrouping = false;
     m_groupCounter = 0;
 
-    // Connect the native cursor handler
-    Connect( wxEVT_SET_CURSOR, wxSetCursorEventHandler( OPENGL_GAL::onSetNativeCursor ), nullptr,
-             this );
+    // The mouse events and the requests to draw go to the panel
+    SetMouseListener( aMouseListener );
+    SetPaintListener( aPaintListener );
 
-    // Connecting the event handlers
-    Connect( wxEVT_PAINT, wxPaintEventHandler( OPENGL_GAL::onPaint ) );
-
-    // Mouse events are skipped to the parent
-    Connect( wxEVT_MOTION, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_LEFT_DOWN, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_LEFT_UP, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_MIDDLE_DOWN, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_MIDDLE_UP, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_MIDDLE_DCLICK, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_RIGHT_UP, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_RIGHT_DCLICK, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_AUX1_DOWN, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_AUX1_UP, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_AUX1_DCLICK, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_AUX2_DOWN, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_AUX2_UP, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_AUX2_DCLICK, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_MOUSEWHEEL, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-    Connect( wxEVT_MAGNIFY, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-
-#if defined _WIN32 || defined _WIN64
-    Connect( wxEVT_ENTER_WINDOW, wxMouseEventHandler( OPENGL_GAL::skipMouseEvent ) );
-#endif
-
-    Bind( wxEVT_GESTURE_ZOOM, &OPENGL_GAL::skipGestureEvent, this );
-    Bind( wxEVT_GESTURE_PAN, &OPENGL_GAL::skipGestureEvent, this );
-
-    SetSize( aParent->GetClientSize() );
-    m_screenSize = ToVECTOR2I( GetNativePixelSize() );
+    wxSize nativeSize = GetNativePixelSize();
+    m_screenSize = VECTOR2I( nativeSize.x, nativeSize.y );
 
     // Grid color settings are different in Cairo and OpenGL
     SetGridColor( COLOR4D( 0.8, 0.8, 0.8, 0.1 ) );
@@ -458,7 +419,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
 
 OPENGL_GAL::~OPENGL_GAL()
 {
-    GL_CONTEXT_MANAGER* gl_mgr = PgmGui().GetGLContextManager();
+    GL_CONTEXT_MANAGER* gl_mgr = GL_CONTEXT_MANAGER::Get();
     KI_ASSERT( gl_mgr );
 
     if( gl_mgr )
@@ -506,60 +467,6 @@ OPENGL_GAL::~OPENGL_GAL()
             m_glMainContext = nullptr;
         }
     }
-}
-
-
-wxString OPENGL_GAL::CheckFeatures( GAL_DISPLAY_OPTIONS& aOptions )
-{
-    static std::optional<wxString> cached;
-
-    if( cached.has_value() )
-        return *cached;
-
-    wxString retVal = wxEmptyString;
-
-    wxFrame* testFrame = new wxFrame( nullptr, wxID_ANY, wxT( "" ), wxDefaultPosition,
-                                      wxSize( 1, 1 ), wxFRAME_TOOL_WINDOW | wxNO_BORDER );
-
-    KIGFX::OPENGL_GAL* opengl_gal = nullptr;
-
-    try
-    {
-        KIGFX::VC_SETTINGS dummy;
-        opengl_gal = new KIGFX::OPENGL_GAL( dummy, aOptions, testFrame );
-
-        testFrame->Raise();
-        testFrame->Show();
-
-#ifdef __WXGTK__
-        // On GTK, Show() only queues realization. The GDK drawing window
-        // needed by SetCurrent() may not exist yet. Yield to let the event
-        // loop process the realize signal before we try to lock the context.
-        wxYield();
-#endif
-
-        GAL_CONTEXT_LOCKER lock( opengl_gal );
-        opengl_gal->init();
-    }
-    catch( std::runtime_error& err )
-    {
-        //Test failed
-        retVal = wxString( err.what() );
-    }
-
-    delete opengl_gal;
-    delete testFrame;
-
-    cached = retVal;
-    return retVal;
-}
-
-
-void OPENGL_GAL::PostPaint( wxPaintEvent& aEvent )
-{
-    // posts an event to m_paint_listener to ask for redraw the canvas.
-    if( m_paintListener )
-        wxPostEvent( m_paintListener, aEvent );
 }
 
 
@@ -835,7 +742,7 @@ void OPENGL_GAL::EndDrawing()
 }
 
 
-bool OPENGL_GAL::GetScreenshot( wxImage& aDstImage )
+bool OPENGL_GAL::GetScreenshot( std::vector<uint8_t>& aRGBA, VECTOR2I& aSize )
 {
     if( !IsInitialized() || !m_compositor )
         return false;
@@ -857,29 +764,24 @@ bool OPENGL_GAL::GetScreenshot( wxImage& aDstImage )
 
     if( w > 0 && h > 0 )
     {
-        std::vector<unsigned char> rgba( (size_t) w * h * 4 );
+        std::vector<uint8_t> rgba( (size_t) w * h * 4 );
 
         glFinish();
         glPixelStorei( GL_PACK_ALIGNMENT, 1 );
         glReadBuffer( (GLenum) readBuffer );
         glReadPixels( 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data() );
 
-        // wxImage wants separate RGB and alpha buffers and takes ownership of them.
-        unsigned char* rgb = (unsigned char*) malloc( (size_t) w * h * 3 );
-        unsigned char* alpha = (unsigned char*) malloc( (size_t) w * h );
+        // OpenGL gives the rows from bottom to top
+        const size_t rowSize = (size_t) w * 4;
+        aRGBA.resize( rgba.size() );
 
-        for( int i = 0; i < w * h; ++i )
+        for( int row = 0; row < h; ++row )
         {
-            rgb[i * 3 + 0] = rgba[i * 4 + 0];
-            rgb[i * 3 + 1] = rgba[i * 4 + 1];
-            rgb[i * 3 + 2] = rgba[i * 4 + 2];
-            alpha[i] = rgba[i * 4 + 3];
+            std::copy_n( rgba.data() + (size_t) row * rowSize, rowSize,
+                         aRGBA.data() + (size_t) ( h - 1 - row ) * rowSize );
         }
 
-        aDstImage.SetData( rgb, w, h, false );
-        aDstImage.SetAlpha( alpha, false );
-
-        aDstImage = aDstImage.Mirror( false );
+        aSize = VECTOR2I( w, h );
         ok = true;
     }
 
@@ -895,7 +797,7 @@ void OPENGL_GAL::LockContext( int aClientCookie )
     m_isContextLocked = true;
     m_lockClientCookie = aClientCookie;
 
-    GL_CONTEXT_MANAGER* mgr = PgmGui().GetGLContextManager();
+    GL_CONTEXT_MANAGER* mgr = GL_CONTEXT_MANAGER::Get();
 
     if( !mgr )
         return;
@@ -915,7 +817,7 @@ void OPENGL_GAL::UnlockContext( int aClientCookie )
 
     m_isContextLocked = false;
 
-    GL_CONTEXT_MANAGER* mgr = PgmGui().GetGLContextManager();
+    GL_CONTEXT_MANAGER* mgr = GL_CONTEXT_MANAGER::Get();
 
     if( !mgr )
         return;
@@ -2060,18 +1962,13 @@ void OPENGL_GAL::ResizeScreen( int aWidth, int aHeight )
     m_compositor->Resize( aWidth * scaleFactor, aHeight * scaleFactor );
     m_isFramebufferInitialized = false;
 
-    wxGLCanvas::SetSize( aWidth, aHeight );
+    ResizeCanvas( aWidth, aHeight );
 }
 
 
 bool OPENGL_GAL::Show( bool aShow )
 {
-    bool s = wxGLCanvas::Show( aShow );
-
-    if( aShow )
-        wxGLCanvas::Raise();
-
-    return s;
+    return ShowCanvas( aShow );
 }
 
 
@@ -2338,29 +2235,13 @@ void OPENGL_GAL::EndDiffLayer()
 
 bool OPENGL_GAL::SetNativeCursorStyle( KICURSOR aCursor, bool aHiDPI )
 {
-    // Store the current cursor type and get the wx cursor for it
+    // Store the current cursor type and show it on the canvas
     if( !GAL::SetNativeCursorStyle( aCursor, aHiDPI ) )
         return false;
 
-    m_currentwxCursor = CURSOR_STORE::GetCursor( m_currentNativeCursor, aHiDPI );
-
-#if wxCHECK_VERSION( 3, 3, 0 )
-    wxWindow::SetCursorBundle( m_currentwxCursor );
-#else
-    wxWindow::SetCursor( m_currentwxCursor );
-#endif
+    SetCanvasCursor( m_currentNativeCursor, aHiDPI );
 
     return true;
-}
-
-
-void OPENGL_GAL::onSetNativeCursor( wxSetCursorEvent& aEvent )
-{
-#if wxCHECK_VERSION( 3, 3, 0 )
-    aEvent.SetCursor( m_currentwxCursor.GetCursorFor( this ) );
-#else
-    aEvent.SetCursor( m_currentwxCursor );
-#endif
 }
 
 
@@ -2802,28 +2683,6 @@ std::pair<VECTOR2D, float> OPENGL_GAL::computeBitmapTextSize( const UTF8& aText 
 }
 
 
-void OPENGL_GAL::onPaint( wxPaintEvent& aEvent )
-{
-    PostPaint( aEvent );
-}
-
-
-void OPENGL_GAL::skipMouseEvent( wxMouseEvent& aEvent )
-{
-    // Post the mouse event to the event listener registered in constructor, if any
-    if( m_mouseListener )
-        wxPostEvent( m_mouseListener, aEvent );
-}
-
-
-void OPENGL_GAL::skipGestureEvent( wxGestureEvent& aEvent )
-{
-    // Post the gesture event to the event listener registered in constructor, if any
-    if( m_mouseListener )
-        wxPostEvent( m_mouseListener, aEvent );
-}
-
-
 void OPENGL_GAL::blitCursor()
 {
     if( !IsCursorEnabled() )
@@ -3001,12 +2860,7 @@ void OPENGL_GAL::init()
         throw std::runtime_error( "Requested texture size is not supported" );
     }
 
-#if wxCHECK_VERSION( 3, 3, 3 )
-    wxGLCanvas::SetSwapInterval( -1 );
-    m_swapInterval = wxGLCanvas::GetSwapInterval();
-#else
-    m_swapInterval = GL_UTILS::SetSwapInterval( this, -1 );
-#endif
+    m_swapInterval = SetupSwapInterval();
 
     m_cachedManager = new VERTEX_MANAGER( true );
     m_nonCachedManager = new VERTEX_MANAGER( false );

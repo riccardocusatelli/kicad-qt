@@ -29,8 +29,11 @@
  * Usage: qa_qt_tool_framework <board.kicad_pcb> [screenshot.png]
  */
 
+#include <kicad_gl/kiglad.h> // Must be included first (OpenGL GAL)
+
 #include <cstdio>
 #include <functional>
+#include <string>
 #include <vector>
 
 #include <kiqt.h>     // Qt, without its METHOD macro
@@ -47,6 +50,7 @@
 #include <QPushButton>
 #include <QTimer>
 #include <QWheelEvent>
+#include <QWindow>
 
 #include <wx/init.h>
 
@@ -57,6 +61,7 @@
 #include <dialogs/dialog_unit_entry.h>
 #include <eda_draw_frame.h>
 #include <gal/graphics_abstraction_layer.h>
+#include <gal/opengl/opengl_gal.h>
 #include <kiface_base.h>
 #include <kiway.h>
 #include <page_info.h>
@@ -102,12 +107,16 @@ void check( bool aOk, const char* aWhat )
 }
 
 
+/// The GAL of the test canvas (--opengl: the OpenGL GAL).
+EDA_DRAW_PANEL_GAL::GAL_TYPE s_galType = EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO;
+
+
 /// The canvas of the test: a board in a PCB_VIEW, as the canvas of the PCB editor.
 class TEST_CANVAS : public EDA_DRAW_PANEL_GAL
 {
 public:
     TEST_CANVAS( QWidget* aParent, KIGFX::GAL_DISPLAY_OPTIONS& aOptions, BOARD* aBoard ) :
-            EDA_DRAW_PANEL_GAL( aParent, aOptions, GAL_TYPE_CAIRO )
+            EDA_DRAW_PANEL_GAL( aParent, aOptions, s_galType )
     {
         m_gal->SetWorldUnitLength( 1e-9 /* 1 nm */ / 0.0254 /* 1 inch in meters */ );
 
@@ -508,9 +517,21 @@ void onNextPopup( std::function<void( QWidget* )> aFunction, bool aDialog = fals
 
 int main( int argc, char** argv )
 {
+    // --opengl: the canvas draws with the OpenGL GAL (it needs a display with OpenGL)
+    if( argc > 1 && std::string( argv[1] ) == "--opengl" )
+    {
+        s_galType = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
+
+        for( int ii = 1; ii < argc - 1; ++ii )
+            argv[ii] = argv[ii + 1];
+
+        argc--;
+    }
+
     if( argc < 2 )
     {
-        std::fprintf( stderr, "usage: %s <board.kicad_pcb> [screenshot.png]\n", argv[0] );
+        std::fprintf( stderr, "usage: %s [--opengl] <board.kicad_pcb> [screenshot.png]\n",
+                      argv[0] );
         return 2;
     }
 
@@ -558,6 +579,61 @@ int main( int argc, char** argv )
         canvas->SetFocus();
         moveTo( canvas, center );
         settle();
+
+        if( s_galType == EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL )
+        {
+            std::printf( "OpenGL GAL (HIDPI_GL_CANVAS, GL_CONTEXT_MANAGER)\n" );
+            check( canvas->GetBackend() == EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL,
+                   "the canvas draws with OpenGL" );
+            check( canvas->GetGAL()->IsInitialized(), "the OpenGL GAL is initialized" );
+
+            // The first drawing, once the window of the canvas is shown (exposed)
+            QImage image;
+            bool   readBack = false;
+            bool   varied = false;
+
+            // The board fills the canvas, whatever the size it had when the frame was shown
+            toolMgr->RunAction( ACTIONS::zoomFitScreen );
+
+            for( int attempt = 0; attempt < 20 && !varied; ++attempt )
+            {
+                canvas->ForceRefresh();
+                settle( 100 );
+
+                readBack = canvas->GetScreenshot( image ) && image.width() > 100;
+
+                // The board is drawn: the image is not of one colour
+                for( int y = 0; readBack && y < image.height() && !varied; y += 7 )
+                {
+                    for( int x = 0; x < image.width() && !varied; x += 7 )
+                        varied = image.pixel( x, y ) != image.pixel( 0, 0 );
+                }
+            }
+
+            check( readBack, "the drawing is read back from OpenGL" );
+            check( varied, "the board is drawn" );
+
+            // The events of the OpenGL window go to the panel, and to the tools
+            QWindow* glWindow = static_cast<KIGFX::OPENGL_GAL*>( canvas->GetGAL() )->GetSurface();
+            int      clicks = tool->Count( TA_MOUSE_CLICK );
+            QPoint   at = center + QPoint( 20, 10 );
+
+            QMouseEvent move( QEvent::MouseMove, at, glWindow->mapToGlobal( at ), Qt::NoButton,
+                              Qt::NoButton, Qt::NoModifier );
+            QCoreApplication::sendEvent( glWindow, &move );
+
+            QMouseEvent press( QEvent::MouseButtonPress, at, glWindow->mapToGlobal( at ),
+                               Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
+            QCoreApplication::sendEvent( glWindow, &press );
+
+            QMouseEvent release( QEvent::MouseButtonRelease, at, glWindow->mapToGlobal( at ),
+                                 Qt::LeftButton, Qt::NoButton, Qt::NoModifier );
+            QCoreApplication::sendEvent( glWindow, &release );
+            settle();
+
+            check( tool->Count( TA_MOUSE_CLICK ) == clicks + 1,
+                   "a click on the OpenGL window reaches the tool" );
+        }
 
         std::printf( "Hotkeys (TOOL_DISPATCHER -> ACTION_MANAGER -> COMMON_TOOLS)\n" );
 
@@ -798,6 +874,16 @@ int main( int argc, char** argv )
             frame.SetMsgPanel( board.get() );
             settle( 200 );
             check( frame.grab().save( QString::fromUtf8( argv[2] ) ), "screenshot of the frame" );
+
+            // The OpenGL window is not in the grab of the frame: its own drawing
+            if( s_galType == EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL )
+            {
+                QImage  image;
+                QString path = QString::fromUtf8( argv[2] );
+                path.replace( QStringLiteral( ".png" ), QStringLiteral( "-opengl.png" ) );
+                check( canvas->GetScreenshot( image ) && image.save( path ),
+                       "screenshot of the OpenGL canvas" );
+            }
         }
 
         frame.Close( true );

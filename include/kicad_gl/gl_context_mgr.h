@@ -35,6 +35,11 @@
 #include <mutex>
 #include <map>
 
+/// The OpenGL context and canvas of the GUI toolkit (each GUI build has its own
+/// gl_context_mgr.h).
+using KIGL_CONTEXT = wxGLContext;
+using KIGL_CANVAS  = wxGLCanvas;
+
 class KICOMMON_API GL_CONTEXT_MANAGER
 {
 public:
@@ -42,14 +47,19 @@ public:
     GL_CONTEXT_MANAGER() : m_glCtx( nullptr ) {}
 
     /**
+     * The manager of the OpenGL contexts of the program.
+     */
+    static GL_CONTEXT_MANAGER* Get();
+
+    /**
      * Create a managed OpenGL context.
      *
-     * It is assured that the created context is freed upon exit.  See wxGLContext
-     * documentation for the parameters description.
+     * It is assured that the created context is freed upon exit.  See the documentation of the
+     * context of the toolkit for the parameters description.
      *
      * @return Created OpenGL context.
      */
-    wxGLContext* CreateCtx( wxGLCanvas* aCanvas, const wxGLContext* aOther = nullptr );
+    KIGL_CONTEXT* CreateCtx( KIGL_CANVAS* aCanvas, const KIGL_CONTEXT* aOther = nullptr );
 
     /**
      * Destroy a managed OpenGL context.
@@ -58,7 +68,7 @@ public:
      *
      * @param aContext is the OpenGL context to be destroyed. It will not be managed anymore.
      */
-    void DestroyCtx( wxGLContext* aContext );
+    void DestroyCtx( KIGL_CONTEXT* aContext );
 
     /**
      * Destroy all managed OpenGL contexts.
@@ -77,7 +87,7 @@ public:
      * @param aCanvas (optional) allows caller to bind the context to a non-parent canvas
      *                (e.g. when a few canvases share a single GL context).
      */
-    void LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas );
+    void LockCtx( KIGL_CONTEXT* aContext, KIGL_CANVAS* aCanvas );
 
     /**
      * Allow other canvases to bind an OpenGL context.
@@ -85,14 +95,14 @@ public:
      * @param aContext is the currently bound context. It is only a check to assure the right
      *                 canvas wants to unlock GL context.
      */
-    void UnlockCtx( wxGLContext* aContext );
+    void UnlockCtx( KIGL_CONTEXT* aContext );
 
     /**
      * Get the currently bound GL context.
      *
      * @return the currently bound GL context.
      */
-    wxGLContext* GetCurrentCtx() const
+    KIGL_CONTEXT* GetCurrentCtx() const
     {
         return m_glCtx;
     }
@@ -102,7 +112,7 @@ public:
      *
      * @return the currently bound GL canvas.
      */
-    wxGLCanvas* GetCurrentCanvas() const
+    KIGL_CANVAS* GetCurrentCanvas() const
     {
         auto it = m_glContexts.find( m_glCtx );
         return it != m_glContexts.end() ? it->second : nullptr;
@@ -116,8 +126,8 @@ public:
     template<typename Func, typename... Args>
     auto RunWithoutCtxLock( Func&& aFunction, Args&&... args )
     {
-        wxGLContext* currentCtx = GetCurrentCtx();
-        wxGLCanvas* currentCanvas = GetCurrentCanvas();
+        KIGL_CONTEXT* currentCtx = GetCurrentCtx();
+        KIGL_CANVAS* currentCanvas = GetCurrentCanvas();
         UnlockCtx( currentCtx );
 
         if constexpr (std::is_void_v<decltype(aFunction(std::forward<Args>(args)...))>)
@@ -136,10 +146,10 @@ public:
 
 private:
     ///< Map of GL contexts & their parent canvases.
-    std::map<wxGLContext*, wxGLCanvas*> m_glContexts;
+    std::map<KIGL_CONTEXT*, KIGL_CANVAS*> m_glContexts;
 
     ///< Currently bound GL context.
-    wxGLContext* m_glCtx;
+    KIGL_CONTEXT* m_glCtx;
 
     ///< Lock to prevent unexpected GL context switching.
     std::mutex m_glCtxMutex;

@@ -41,10 +41,12 @@
 #include <gal/opengl/noncached_container.h>
 #include <gal/opengl/opengl_compositor.h>
 #include <gal/hidpi_gl_canvas.h>
+#include <kicad_gl/gl_context_mgr.h>
+#include <toolkit/toolkit_types.h>
 
 #include <unordered_map>
 #include <memory>
-#include <wx/event.h>
+#include <vector>
 
 #ifndef CALLBACK
 #define CALLBACK
@@ -54,7 +56,6 @@
 #define SEG_PER_CIRCLE_COUNT  64
 
 class GLUtesselator;
-class wxImage;
 
 struct bitmap_glyph;
 
@@ -75,21 +76,19 @@ class GAL_API OPENGL_GAL : public GAL, public HIDPI_GL_CANVAS
 {
 public:
     /**
-     * @param aParent is the wxWidgets immediate wxWindow parent of this object.
+     * @param aParent is the immediate parent window of this object.
      *
-     * @param aMouseListener is the wxEvtHandler that should receive the mouse events,
-     *  this can be can be any wxWindow, but is often a wxFrame container.
+     * @param aMouseListener is the window that should receive the mouse events, often the
+     *  panel that holds the GAL.
      *
-     * @param aPaintListener is the wxEvtHandler that should receive the paint
-     *  event.  This can be any wxWindow, but is often a derived instance
-     *  of this class or a containing wxFrame.  The "paint event" here is
-     *  a wxCommandEvent holding EVT_GAL_REDRAW, as sent by PostPaint().
+     * @param aPaintListener is the window that should receive the paint events (asked to draw
+     *  the canvas, see HIDPI_GL_CANVAS::PostPaint()), often the panel that holds the GAL.
      *
-     * @param aName is the name of this window for use by wxWindow::FindWindowByName()
+     * @param aName is the name of this window for use by TOOLKIT::FindWindowByName()
      */
     OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIONS& aDisplayOptions,
-                wxWindow* aParent,
-                wxEvtHandler* aMouseListener = nullptr, wxEvtHandler* aPaintListener = nullptr,
+                TOOLKIT_WINDOW* aParent,
+                TOOLKIT_WINDOW* aMouseListener = nullptr, TOOLKIT_WINDOW* aPaintListener = nullptr,
                 const wxString& aName = wxT( "GLCanvas" ) );
 
     ~OPENGL_GAL();
@@ -108,13 +107,13 @@ public:
     bool IsInitialized() const override
     {
         // is*Initialized flags, but it is enough for OpenGL to show up
-        return IsShownOnScreen() && !GetClientRect().IsEmpty();
+        return IsCanvasVisible();
     }
 
     ///< @copydoc GAL::IsVisible()
     bool IsVisible() const override
     {
-        return IsShownOnScreen() && !GetClientRect().IsEmpty();
+        return IsCanvasVisible();
     }
 
     void SetMinLineWidth( float aLineWidth ) override;
@@ -291,24 +290,6 @@ public:
     /// @copydoc GAL::DrawCursor()
     void DrawCursor( const VECTOR2D& aCursorPosition ) override;
 
-    /**
-     * Post an event to #m_paint_listener.
-     *
-     * A post is used so that the actual drawing function can use a device context type that
-     * is not specific to the wxEVT_PAINT event, just by changing the PostPaint code.
-     */
-    void PostPaint( wxPaintEvent& aEvent );
-
-    void SetMouseListener( wxEvtHandler* aMouseListener )
-    {
-        m_mouseListener = aMouseListener;
-    }
-
-    void SetPaintListener( wxEvtHandler* aPaintListener )
-    {
-        m_paintListener = aPaintListener;
-    }
-
     void EnableDepthTest( bool aEnabled = false ) override;
 
     bool IsContextLocked() override
@@ -326,7 +307,15 @@ public:
     /// @copydoc GAL::EndDrawing()
     void EndDrawing() override;
 
-    bool GetScreenshot( wxImage& aDstImage );
+    /**
+     * Read the pixels of the main buffer.
+     *
+     * @param aRGBA receives the pixels, 4 bytes (red, green, blue, alpha) per pixel, the rows
+     *              from top to bottom.
+     * @param aSize receives the size of the image in pixels.
+     * @return false if the GAL is not initialized.
+     */
+    bool GetScreenshot( std::vector<uint8_t>& aRGBA, VECTOR2I& aSize );
 
     ///< Parameters passed to the GLU tesselator
     struct TessParams
@@ -342,12 +331,10 @@ private:
     /// Super class definition
     typedef GAL super;
 
-    static wxGLContext*     m_glMainContext;    ///< Parent OpenGL context
-    wxGLContext*            m_glPrivContext;    ///< Canvas-specific OpenGL context
+    static KIGL_CONTEXT*    m_glMainContext;    ///< Parent OpenGL context
+    KIGL_CONTEXT*           m_glPrivContext;    ///< Canvas-specific OpenGL context
     int                     m_swapInterval;     ///< Used to store swap interval information
     static int              m_instanceCounter;  ///< GL GAL instance counter
-    wxEvtHandler*           m_mouseListener;
-    wxEvtHandler*           m_paintListener;
 
     static GLuint           g_fontTexture;      ///< Bitmap font texture handle (shared)
 
@@ -392,9 +379,6 @@ private:
     GLint                   ufm_minLinePixelWidth;
     GLint                   ufm_fontTexture;
     GLint                   ufm_fontTextureWidth;
-
-    /// wx cursor showing the current native cursor.
-    WX_CURSOR_TYPE          m_currentwxCursor;
 
     std::unique_ptr<GL_BITMAP_CACHE>            m_bitmapCache;
 
@@ -548,34 +532,6 @@ private:
     std::pair<VECTOR2D, float> computeBitmapTextSize( const UTF8& aText ) const;
 
     // Event handling
-    /**
-     * This is the OnPaint event handler.
-     *
-     * @param aEvent is the OnPaint event.
-     */
-    void onPaint( wxPaintEvent& aEvent );
-
-    /**
-     * Skip the mouse event to the parent.
-     *
-     * @param aEvent is the mouse event.
-     */
-    void skipMouseEvent( wxMouseEvent& aEvent );
-
-    /**
-     * Skip the gesture event to the parent.
-     *
-     * @param aEvent is the gesture event.
-     */
-    void skipGestureEvent( wxGestureEvent& aEvent );
-
-    /**
-     * Give the correct cursor image when the native widget asks for it.
-     *
-     * @param aEvent is the cursor event to plac the cursor into.
-     */
-    void onSetNativeCursor( wxSetCursorEvent& aEvent );
-
     /**
      * Blit cursor into the current screen.
      */
