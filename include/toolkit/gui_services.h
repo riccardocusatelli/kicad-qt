@@ -31,7 +31,10 @@
 #include <import_export.h>
 #include <toolkit/toolkit_types.h>
 
+#include <memory>
+
 class wxString;
+class wxSize;
 
 namespace TOOLKIT
 {
@@ -66,5 +69,21 @@ APIVISIBLE TOOLKIT_WINDOW* FindWindowByName( const wxString& aName,
 
 /// The window with the keyboard focus, or nullptr.
 APIVISIBLE TOOLKIT_WINDOW* FindFocus();
+
+/// The parent of @a aWindow, or nullptr.
+APIVISIBLE TOOLKIT_WINDOW* GetParent( const TOOLKIT_WINDOW* aWindow );
+
+/// The top level window (frame, dialog) of @a aWindow, or nullptr.
+APIVISIBLE TOOLKIT_WINDOW* GetTopLevelParent( TOOLKIT_WINDOW* aWindow );
+
+/// @a aWindow and its parents are shown.
+APIVISIBLE bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow );
+
+/**
+ * A hidden top level window of @a aSize, child of @a aParent: the parent of a window drawn
+ * off screen (a canvas rendering an image).
+ */
+APIVISIBLE std::unique_ptr<TOOLKIT_WINDOW> CreateHiddenWindow( TOOLKIT_WINDOW* aParent,
+                                                               const wxSize& aSize );
 
 } // namespace TOOLKIT

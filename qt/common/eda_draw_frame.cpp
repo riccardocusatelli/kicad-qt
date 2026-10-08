@@ -204,13 +204,6 @@ void EDA_DRAW_FRAME::setupCentralArea()
 }
 
 
-void EDA_DRAW_FRAME::SetStatusText( const wxString& aText, int aField )
-{
-    if( aField >= 0 && aField < (int) m_statusFields.size() )
-        m_statusFields[aField]->setText( ToQString( aText ) );
-}
-
-
 void EDA_DRAW_FRAME::keyPressEvent( QKeyEvent* aEvent )
 {
     // The keys that the widgets of the frame didn't use are hotkeys of the tools
@@ -230,15 +223,6 @@ void EDA_DRAW_FRAME::handleActivateEvent( bool aActive )
     // when the window activates
     if( !isMinimized() && m_messagePanel )
         m_messagePanel->update();
-}
-
-
-void EDA_DRAW_FRAME::changeEvent( QEvent* aEvent )
-{
-    if( aEvent->type() == QEvent::ActivationChange )
-        handleActivateEvent( isActiveWindow() );
-
-    KIWAY_PLAYER::changeEvent( aEvent );
 }
 
 

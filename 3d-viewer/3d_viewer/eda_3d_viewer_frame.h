@@ -38,13 +38,15 @@
 #include "3d_rendering/track_ball.h"
 #include <kiway_player.h>
 #include <pcb_base_frame.h>
-#include <wx/colourdata.h>
-#include <dialogs/dialog_color_picker.h>  // for CUSTOM_COLORS_LIST definition
+#include <toolkit/gui_services.h>
+#include <wx/filename.h>
 
 
 #define KICAD_DEFAULT_3D_DRAWFRAME_STYLE    (wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
 
 // Forward declarations
+class RASTER_IMAGE;
+
 #if defined(__linux__) || defined(__FreeBSD__)
 class SPNAV_VIEWER_PLUGIN;
 #else
@@ -52,15 +54,6 @@ class NL_3D_VIEWER_PLUGIN;
 #endif
 class APPEARANCE_CONTROLS_3D;
 
-
-enum EDA_3D_VIEWER_STATUSBAR
-{
-    ACTIVITY = 0,
-    HOVERED_ITEM,
-    X_POS,
-    Y_POS,
-    ZOOM_LEVEL,
-};
 
 enum class EDA_3D_VIEWER_EXPORT_FORMAT
 {
@@ -72,6 +65,10 @@ enum class EDA_3D_VIEWER_EXPORT_FORMAT
 
 /**
  * Create and handle a window for the 3d viewer connected to a Kiway and a pcbboard
+ *
+ * The frame does not depend on the GUI toolkit; the parts of the window that do (the layout
+ * of its panes, the file dialog, the clipboard) are in eda_3d_viewer_frame_wx.cpp and in the
+ * Qt build.
  */
 class EDA_3D_VIEWER_FRAME : public KIWAY_PLAYER
 {
@@ -81,11 +78,14 @@ public:
 
     ~EDA_3D_VIEWER_FRAME();
 
-    PCB_BASE_FRAME* Parent() const { return (PCB_BASE_FRAME*)GetParent(); }
+    PCB_BASE_FRAME* Parent() const
+    {
+        return static_cast<PCB_BASE_FRAME*>( TOOLKIT::GetParent( this ) );
+    }
 
     BOARD* GetBoard() { return Parent()->GetBoard(); }
 
-    wxWindow* GetToolCanvas() const override { return m_canvas; }
+    TOOLKIT_WINDOW* GetToolCanvas() const override { return m_canvas; }
 
     /**
      * Request reloading the 3D view.
@@ -156,20 +156,24 @@ protected:
 
     void handleIconizeEvent( bool aIconized ) override;
 
+    void handleActivateEvent( bool aActive ) override;
+
+    bool handleViewSwitcherKey( int aSwitchKey ) override;
+
 private:
-    /// Called when user press the File->Exit
-    void Exit3DFrame( wxCommandEvent& event );
+    /**
+     * Create the parts of the window that depend on the GUI toolkit: the icon, the status
+     * bar, the infobar and the layout of the toolbar, the appearance panel and the canvas.
+     */
+    void setupWindow( EDA_3D_VIEWER_SETTINGS* aCfg );
 
-    void OnCloseWindow( wxCloseEvent& event );
+    /// Release the parts of the window that depend on the GUI toolkit (the layout).
+    void releaseWindow();
 
-    bool TryBefore( wxEvent& aEvent ) override;
+    /// Reset the settings of the viewer to their default values (menu Preferences).
+    void resetDefaults();
 
-    void Process_Special_Functions( wxCommandEvent& event );
-
-    void onDisableRayTracing( wxCommandEvent& aEvent );
-
-    void OnActivate( wxActivateEvent& event );
-    void OnSetFocus( wxFocusEvent& event );
+    void onDisableRayTracing();
 
     void doReCreateMenuBar() override;
 
@@ -179,8 +183,6 @@ private:
     void RenderEngineChanged();
 
     void refreshRender();
-
-    DECLARE_EVENT_TABLE()
 
     /**
      * Load configuration from common settings.
@@ -201,9 +203,9 @@ private:
     /**
      * Capture screenshot using appropriate rendering method
      * @param aSize - Size of the screenshot
-     * @return wxImage containing the screenshot
+     * @return the image containing the screenshot
      */
-    wxImage captureScreenshot( const wxSize& aSize );
+    RASTER_IMAGE captureScreenshot( const wxSize& aSize );
 
     /**
      * Setup rendering configuration for screenshot capture
@@ -214,35 +216,37 @@ private:
     /**
      * Capture screenshot of the current view using the configured renderer.
      * This function handles both ray tracing and OpenGL rendering methods.
-     * @return wxImage containing the screenshot of the current view.
+     * @return the image containing the screenshot of the current view.
      */
-    wxImage captureCurrentViewScreenshot();
+    RASTER_IMAGE captureCurrentViewScreenshot();
 
     /**
      * Capture screenshot using raytracing renderer
      * @param adapter - Configured board adapter
      * @param camera - Camera settings
      * @param aSize - Size of the screenshot
-     * @return wxImage containing the screenshot
+     * @return the image containing the screenshot
      */
-    wxImage captureRaytracingScreenshot( BOARD_ADAPTER& adapter, TRACK_BALL& camera, const wxSize& aSize );
+    RASTER_IMAGE captureRaytracingScreenshot( BOARD_ADAPTER& adapter, TRACK_BALL& camera,
+                                              const wxSize& aSize );
 
     /**
-     * Convert RGBA buffer to wxImage format
+     * Convert RGBA buffer (rows from the bottom to the top) to an image
      * @param rgbaBuffer - Source RGBA buffer
      * @param realSize - Size of the buffer
-     * @return wxImage with RGB data and alpha channel
+     * @return image with RGB data and alpha channel
      */
-    wxImage convertRGBAToImage( uint8_t* rgbaBuffer, const wxSize& realSize );
+    RASTER_IMAGE convertRGBAToImage( uint8_t* rgbaBuffer, const wxSize& realSize );
 
     /**
      * Capture screenshot using OpenGL renderer
      * @param adapter - Configured board adapter
      * @param camera - Camera settings
      * @param aSize - Size of the screenshot
-     * @return wxImage containing the screenshot
+     * @return the image containing the screenshot
      */
-    wxImage captureOpenGLScreenshot( BOARD_ADAPTER& adapter, TRACK_BALL& camera, const wxSize& aSize );
+    RASTER_IMAGE captureOpenGLScreenshot( BOARD_ADAPTER& adapter, TRACK_BALL& camera,
+                                          const wxSize& aSize );
 
     /**
      * Configure canvas settings for screenshot capture
@@ -257,13 +261,14 @@ private:
      * @param aFormat - Export format
      * @param fullFileName - Full path for file save (ignored for clipboard)
      */
-    void saveOrCopyImage( const wxImage& screenshotImage, EDA_3D_VIEWER_EXPORT_FORMAT aFormat, const wxString& fullFileName );
+    void saveOrCopyImage( const RASTER_IMAGE& screenshotImage, EDA_3D_VIEWER_EXPORT_FORMAT aFormat,
+                          const wxString& fullFileName );
 
     /**
      * Copy image to system clipboard
      * @param screenshotImage - Image to copy
      */
-    void copyImageToClipboard( const wxImage& screenshotImage );
+    void copyImageToClipboard( const RASTER_IMAGE& screenshotImage );
 
     /**
      * Save image to file
@@ -271,7 +276,8 @@ private:
      * @param aFormat - Export format (JPEG or PNG)
      * @param fullFileName - Full path of target file
      */
-    void saveImageToFile( const wxImage& screenshotImage, EDA_3D_VIEWER_EXPORT_FORMAT aFormat, const wxString& fullFileName );
+    void saveImageToFile( const RASTER_IMAGE& screenshotImage, EDA_3D_VIEWER_EXPORT_FORMAT aFormat,
+                          const wxString& fullFileName );
 
 private:
     wxFileName                     m_defaultSaveScreenshotFileName;

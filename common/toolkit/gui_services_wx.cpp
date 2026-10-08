@@ -22,6 +22,7 @@
 
 #include <wx/app.h>
 #include <wx/evtloop.h>
+#include <wx/frame.h>
 #include <wx/utils.h>
 #include <wx/window.h>
 
@@ -70,6 +71,33 @@ TOOLKIT_WINDOW* FindWindowByName( const wxString& aName, TOOLKIT_WINDOW* aParent
 TOOLKIT_WINDOW* FindFocus()
 {
     return wxWindow::FindFocus();
+}
+
+
+TOOLKIT_WINDOW* GetParent( const TOOLKIT_WINDOW* aWindow )
+{
+    return aWindow ? aWindow->GetParent() : nullptr;
+}
+
+
+TOOLKIT_WINDOW* GetTopLevelParent( TOOLKIT_WINDOW* aWindow )
+{
+    return aWindow ? wxGetTopLevelParent( aWindow ) : nullptr;
+}
+
+
+bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow )
+{
+    return aWindow && aWindow->IsShownOnScreen();
+}
+
+
+std::unique_ptr<TOOLKIT_WINDOW> CreateHiddenWindow( TOOLKIT_WINDOW* aParent, const wxSize& aSize )
+{
+    auto window = std::make_unique<wxFrame>( aParent, wxID_ANY, wxEmptyString, wxDefaultPosition,
+                                             aSize, wxFRAME_NO_TASKBAR );
+    window->Hide();
+    return window;
 }
 
 } // namespace TOOLKIT

@@ -28,15 +28,17 @@
 #include <class_draw_panel_gal.h>
 
 #include <wx/tokenzr.h>
+#include <wx/log.h>
 
 #include <fmt/format.h>
 
 #include "../common_ogl/ogl_utils.h"
 #include "eda_3d_canvas.h"
-#include <eda_3d_viewer_frame.h>
+#include <eda_3d_viewer_settings.h>
+#include <frame_type.h>
+#include <kiway_player.h>
 #include <3d_rendering/raytracing/render_3d_raytrace_gl.h>
 #include <3d_rendering/opengl/render_3d_opengl.h>
-#include <3d_viewer_id.h>
 #include <advanced_config.h>
 #include <build_version.h>
 #include <settings/color_settings.h>
@@ -46,7 +48,6 @@
 #include <pcb_field.h>
 #include <pcb_track.h>
 #include <reporter.h>
-#include <gui_reporters.h>
 #include <widgets/wx_infobar.h>
 #include <core/profile.h>        // To use GetRunningMicroSecs or another profiling utility
 #include <bitmaps.h>
@@ -55,7 +56,9 @@
 #include <macros.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
+#include <raster_image.h>
 #include <tool/tool_dispatcher.h>
+#include <toolkit/gui_services.h>
 #include <string_utils.h>
 #include <mail_type.h>
 #include <kiway_mail.h>
@@ -75,57 +78,53 @@
 const wxChar* EDA_3D_CANVAS::m_logTrace = wxT( "KI_TRACE_EDA_3D_CANVAS" );
 
 
-// A custom event, used to call DoRePaint during an idle time
-wxDEFINE_EVENT( wxEVT_REFRESH_CUSTOM_COMMAND, wxEvent );
+/**
+ * Report the messages of the renderers in a field of the status bar of the parent of the canvas.
+ */
+class STATUS_TEXT_REPORTER : public REPORTER
+{
+public:
+    STATUS_TEXT_REPORTER( EDA_3D_CANVAS::STATUS_TEXT_HANDLER aHandler, int aField ) :
+            m_handler( std::move( aHandler ) ),
+            m_field( aField )
+    {
+    }
+
+    REPORTER& Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override
+    {
+        REPORTER::Report( aText, aSeverity );
+
+        if( m_handler )
+            m_handler( aText, m_field );
+
+        return *this;
+    }
+
+private:
+    EDA_3D_CANVAS::STATUS_TEXT_HANDLER m_handler;
+    int                                m_field;
+};
 
 
-BEGIN_EVENT_TABLE( EDA_3D_CANVAS, HIDPI_GL_3D_CANVAS )
-    EVT_PAINT( EDA_3D_CANVAS::OnPaint )
+std::unique_ptr<REPORTER> EDA_3D_CANVAS::MakeStatusReporter( EDA_3D_VIEWER_STATUSBAR aField ) const
+{
+    if( !m_statusTextHandler )
+        return nullptr;
 
-    // mouse events
-    EVT_LEFT_DOWN( EDA_3D_CANVAS::OnLeftDown )
-    EVT_LEFT_UP( EDA_3D_CANVAS::OnLeftUp )
-    EVT_MIDDLE_UP( EDA_3D_CANVAS::OnMiddleUp )
-    EVT_MIDDLE_DOWN( EDA_3D_CANVAS::OnMiddleDown)
-    EVT_RIGHT_DOWN( EDA_3D_CANVAS::OnRightDown )
-    EVT_RIGHT_UP( EDA_3D_CANVAS::OnRightUp )
-    EVT_MOUSEWHEEL( EDA_3D_CANVAS::OnMouseWheel )
-    EVT_MOTION( EDA_3D_CANVAS::OnMouseMove )
-    EVT_MAGNIFY( EDA_3D_CANVAS::OnMagnify )
-
-    // touch gesture events
-    EVT_GESTURE_ZOOM( wxID_ANY, EDA_3D_CANVAS::OnZoomGesture )
-    EVT_GESTURE_PAN( wxID_ANY, EDA_3D_CANVAS::OnPanGesture )
-    EVT_GESTURE_ROTATE( wxID_ANY, EDA_3D_CANVAS::OnRotateGesture )
-
-    // other events
-    EVT_ERASE_BACKGROUND( EDA_3D_CANVAS::OnEraseBackground )
-    EVT_CUSTOM(wxEVT_REFRESH_CUSTOM_COMMAND, ID_CUSTOM_EVENT_1, EDA_3D_CANVAS::OnRefreshRequest )
-
-    EVT_CLOSE( EDA_3D_CANVAS::OnCloseWindow )
-    EVT_SIZE(  EDA_3D_CANVAS::OnResize )
-END_EVENT_TABLE()
+    return std::make_unique<STATUS_TEXT_REPORTER>( m_statusTextHandler, aField );
+}
 
 
-EDA_3D_CANVAS::EDA_3D_CANVAS( wxWindow* aParent, const wxGLAttributes& aGLAttribs,
+EDA_3D_CANVAS::EDA_3D_CANVAS( TOOLKIT_WINDOW* aParent, const KIGL_ATTRIBUTES& aGLAttribs,
                               BOARD_ADAPTER& aBoardAdapter, CAMERA& aCamera,
                               S3D_CACHE* a3DCachePointer ) :
-    HIDPI_GL_3D_CANVAS( EDA_DRAW_PANEL_GAL::GetVcSettings(), aCamera, aParent, aGLAttribs,
-                EDA_3D_CANVAS_ID, wxDefaultPosition,
-                wxDefaultSize, wxFULL_REPAINT_ON_RESIZE ),
-    m_editing_timeout_timer( this, wxID_HIGHEST + 1 ),
-    m_redraw_trigger_timer( this, wxID_HIGHEST + 2 ),
+    HIDPI_GL_3D_CANVAS( EDA_DRAW_PANEL_GAL::GetVcSettings(), aCamera, aParent, aGLAttribs ),
+    m_editing_timeout_timer( [this]() { onTimerTimeout_Editing(); } ),
+    m_redraw_trigger_timer( [this]() { onTimerTimeout_Redraw(); } ),
+    m_refresh_request_timer( [this]() { Refresh(); } ),
     m_boardAdapter( aBoardAdapter )
 {
     KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::EDA_3D_CANVAS" ) );
-
-    m_editing_timeout_timer.SetOwner( this );
-    Connect( m_editing_timeout_timer.GetId(), wxEVT_TIMER,
-             wxTimerEventHandler( EDA_3D_CANVAS::OnTimerTimeout_Editing ), nullptr, this );
-
-    m_redraw_trigger_timer.SetOwner( this );
-    Connect( m_redraw_trigger_timer.GetId(), wxEVT_TIMER,
-             wxTimerEventHandler( EDA_3D_CANVAS::OnTimerTimeout_Redraw ), nullptr, this );
 
     m_is_currently_painting.clear();
 
@@ -152,29 +151,6 @@ EDA_3D_CANVAS::EDA_3D_CANVAS( wxWindow* aParent, const wxGLAttributes& aGLAttrib
 
     KI_ASSERT( a3DCachePointer != nullptr );
     m_boardAdapter.Set3dCacheManager( a3DCachePointer );
-
-#if defined( __WXMSW__ )
-    EnableTouchEvents( wxTOUCH_ZOOM_GESTURE | wxTOUCH_ROTATE_GESTURE | wxTOUCH_PAN_GESTURES );
-#elif defined( __WXGTK__ )
-    EnableTouchEvents( wxTOUCH_ZOOM_GESTURE | wxTOUCH_ROTATE_GESTURE );
-#endif
-
-    const wxEventType events[] =
-    {
-        // Binding both EVT_CHAR and EVT_CHAR_HOOK ensures that all key events,
-        // especially special key like arrow keys, are handled by the GAL event dispatcher,
-        // and not sent to GUI without filtering, because they have a default action (scroll)
-        // that must not be called.
-        wxEVT_LEFT_UP, wxEVT_LEFT_DOWN, wxEVT_LEFT_DCLICK,
-        wxEVT_RIGHT_UP, wxEVT_RIGHT_DOWN, wxEVT_RIGHT_DCLICK,
-        wxEVT_MIDDLE_UP, wxEVT_MIDDLE_DOWN, wxEVT_MIDDLE_DCLICK,
-        wxEVT_MOTION, wxEVT_MOUSEWHEEL, wxEVT_CHAR, wxEVT_CHAR_HOOK,
-        wxEVT_MAGNIFY,
-        wxEVT_MENU_OPEN, wxEVT_MENU_CLOSE, wxEVT_MENU_HIGHLIGHT
-    };
-
-    for( wxEventType eventType : events )
-        Connect( eventType, wxEventHandler( EDA_3D_CANVAS::OnEvent ), nullptr, m_eventDispatcher );
 }
 
 
@@ -185,11 +161,11 @@ EDA_3D_CANVAS::~EDA_3D_CANVAS()
     delete m_accelerator3DShapes;
     m_accelerator3DShapes = nullptr;
 
-    releaseOpenGL();
+    ReleaseOpenGL();
 }
 
 
-void EDA_3D_CANVAS::releaseOpenGL()
+void EDA_3D_CANVAS::ReleaseOpenGL()
 {
     if( m_glRC )
     {
@@ -218,15 +194,13 @@ void EDA_3D_CANVAS::releaseOpenGL()
 }
 
 
-void EDA_3D_CANVAS::OnCloseWindow( wxCloseEvent& event )
+void EDA_3D_CANVAS::onClose()
 {
-    releaseOpenGL();
-
-    event.Skip();
+    ReleaseOpenGL();
 }
 
 
-void EDA_3D_CANVAS::OnResize( wxSizeEvent& event )
+void EDA_3D_CANVAS::onResize()
 {
     Request_refresh();
 }
@@ -258,7 +232,7 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
     wxString version = From_UTF8( (char *) glGetString( GL_VERSION ) );
 
     KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL version string %s." ),
-                __WXFUNCTION__, version );
+                __func__, version );
 
     // Extract OpenGL version from string.  This method is used because prior to OpenGL 2,
     // getting the OpenGL major and minor version as integers didn't exist.
@@ -284,13 +258,10 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
         if( major < 2 || ( ( major == 2 ) && ( minor < 1 ) ) )
         {
             KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL ray tracing not supported." ),
-                        __WXFUNCTION__ );
+                        __func__ );
 
-            if( GetParent() )
-            {
-                wxCommandEvent evt( wxEVT_MENU, ID_DISABLE_RAY_TRACING );
-                GetParent()->ProcessWindowEvent( evt );
-            }
+            if( m_raytracingUnsupportedHandler )
+                m_raytracingUnsupportedHandler();
 
             m_opengl_supports_raytracing = false;
         }
@@ -298,17 +269,13 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
         if( ( major == 1 ) && ( minor < 5 ) )
         {
             KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL not supported." ),
-                        __WXFUNCTION__ );
+                        __func__ );
 
             m_is_opengl_version_supported = false;
         }
     }
 
-#if wxCHECK_VERSION( 3, 3, 3 )
-    wxGLCanvas::SetSwapInterval( -1 );
-#else
-    GL_UTILS::SetSwapInterval( this, -1 );
-#endif
+    SetupSwapInterval();
 
     m_is_opengl_initialized = true;
 
@@ -316,9 +283,9 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
 }
 
 
-void EDA_3D_CANVAS::GetScreenshot( wxImage& aDstImage )
+RASTER_IMAGE EDA_3D_CANVAS::GetScreenshot()
 {
-    OglGetScreenshot( aDstImage );
+    return OglGetScreenshot();
 }
 
 
@@ -350,26 +317,32 @@ void EDA_3D_CANVAS::RenderRaytracingRequest()
 }
 
 
+void EDA_3D_CANVAS::setStatusText( const wxString& aText, int aField )
+{
+    if( m_statusTextHandler )
+        m_statusTextHandler( aText, aField );
+}
+
+
 void EDA_3D_CANVAS::DisplayStatus()
 {
-    if( m_parentStatusBar )
+    if( m_statusTextHandler )
     {
         wxString msg;
 
         msg.Printf( wxT( "dx %3.2f" ), m_camera.GetCameraPos().x );
-        m_parentStatusBar->SetStatusText( msg, static_cast<int>( EDA_3D_VIEWER_STATUSBAR::X_POS ) );
+        setStatusText( msg, static_cast<int>( EDA_3D_VIEWER_STATUSBAR::X_POS ) );
 
         msg.Printf( wxT( "dy %3.2f" ), m_camera.GetCameraPos().y );
-        m_parentStatusBar->SetStatusText( msg, static_cast<int>( EDA_3D_VIEWER_STATUSBAR::Y_POS ) );
+        setStatusText( msg, static_cast<int>( EDA_3D_VIEWER_STATUSBAR::Y_POS ) );
 
         msg.Printf( wxT( "zoom %3.2f" ), 1 / m_camera.GetZoom() );
-        m_parentStatusBar->SetStatusText( msg,
-                                          static_cast<int>( EDA_3D_VIEWER_STATUSBAR::ZOOM_LEVEL ) );
+        setStatusText( msg, static_cast<int>( EDA_3D_VIEWER_STATUSBAR::ZOOM_LEVEL ) );
     }
 }
 
 
-void EDA_3D_CANVAS::OnPaint( wxPaintEvent& aEvent )
+void EDA_3D_CANVAS::onPaint()
 {
     // Please have a look at: https://lists.launchpad.net/kicad-developers/msg25149.html
     DoRePaint();
@@ -395,12 +368,15 @@ void EDA_3D_CANVAS::DoRePaint()
     // therefore with invalid board.
     // This is dependent of the platform.
     // Especially on OSX, but also on Windows, it frequently happens
-    if( !GetParent()->GetParent()->IsShownOnScreen() )
+    if( !TOOLKIT::IsShownOnScreen( TOOLKIT::GetParent( GetParent() ) ) )
+    {
+        m_is_currently_painting.clear();
         return; // The parent board editor frame is no more alive
+    }
 
     wxString            err_messages;
     INFOBAR_REPORTER    warningReporter( m_parentInfoBar );
-    STATUSBAR_REPORTER  activityReporter( m_parentStatusBar, EDA_3D_VIEWER_STATUSBAR::ACTIVITY );
+    STATUS_TEXT_REPORTER activityReporter( m_statusTextHandler, EDA_3D_VIEWER_STATUSBAR::ACTIVITY );
     int64_t             start_time = GetRunningMicroSecs();
     GL_CONTEXT_MANAGER* gl_mgr = GL_CONTEXT_MANAGER::Get();
 
@@ -637,7 +613,7 @@ void EDA_3D_CANVAS::RenderToFrameBuffer( unsigned char* buffer, int width, int h
 
     // Because the board to draw is handled by the parent viewer frame,
     // ensure this parent is still alive
-    if( !GetParent() || !GetParent()->GetParent() || !GetParent()->GetParent()->IsShownOnScreen() )
+    if( !TOOLKIT::IsShownOnScreen( TOOLKIT::GetParent( GetParent() ) ) )
     {
         m_is_currently_painting.clear();
         return;
@@ -848,29 +824,27 @@ void EDA_3D_CANVAS::SetEventDispatcher( TOOL_DISPATCHER* aEventDispatcher )
 }
 
 
-void EDA_3D_CANVAS::OnEvent( wxEvent& aEvent )
+void EDA_3D_CANVAS::OnEvent( TOOLKIT_EVENT& aEvent )
 {
-    if( !m_eventDispatcher )
-        aEvent.Skip();
-    else
-        m_eventDispatcher->DispatchWxEvent( aEvent );
+    onInputEvent( aEvent );
+}
+
+
+bool EDA_3D_CANVAS::onInputEvent( TOOLKIT_EVENT& aEvent )
+{
+    bool used = m_eventDispatcher && m_eventDispatcher->DispatchEvent( aEvent );
 
     Refresh();
+
+    return used;
 }
 
 
-void EDA_3D_CANVAS::OnEraseBackground( wxEraseEvent& event )
+void EDA_3D_CANVAS::onMouseWheel( const MOUSE_STATE& aMouse )
 {
-    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::OnEraseBackground" ) );
-    // Do nothing, to avoid flashing.
-}
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::onMouseWheel" ) );
 
-
-void EDA_3D_CANVAS::OnMouseWheel( wxMouseEvent& event )
-{
-    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::OnMouseWheel" ) );
-
-    OnMouseWheelCamera( event, m_boardAdapter.m_MousewheelPanning );
+    OnMouseWheelCamera( aMouse, m_boardAdapter.m_MousewheelPanning );
 
     if( m_mouse_was_moved )
     {
@@ -881,7 +855,7 @@ void EDA_3D_CANVAS::OnMouseWheel( wxMouseEvent& event )
 }
 
 
-void EDA_3D_CANVAS::OnMagnify( wxMouseEvent& event )
+void EDA_3D_CANVAS::onMagnify( const MOUSE_STATE& aMouse )
 {
     SetFocus();
 
@@ -891,7 +865,7 @@ void EDA_3D_CANVAS::OnMagnify( wxMouseEvent& event )
     //m_is_moving_mouse = true;
     restart_editingTimeOut_Timer();
 
-    float magnification = ( event.GetMagnification() + 1.0f );
+    float magnification = ( aMouse.m_magnification + 1.0f );
 
     m_camera.Zoom( magnification );
 
@@ -900,14 +874,16 @@ void EDA_3D_CANVAS::OnMagnify( wxMouseEvent& event )
 }
 
 
-void EDA_3D_CANVAS::OnZoomGesture( wxZoomGestureEvent& aEvent )
+void EDA_3D_CANVAS::onZoomGesture( bool aStart, const VECTOR2I& aPosition, double aZoomFactor )
 {
     SetFocus();
 
-    if( aEvent.IsGestureStart() )
+    const wxPoint position( aPosition.x, aPosition.y );
+
+    if( aStart )
     {
         m_gestureLastZoomFactor = 1.0;
-        m_camera.SetCurMousePosition( aEvent.GetPosition() );
+        m_camera.SetCurMousePosition( position );
     }
 
     if( m_camera_is_moving )
@@ -915,44 +891,46 @@ void EDA_3D_CANVAS::OnZoomGesture( wxZoomGestureEvent& aEvent )
 
     restart_editingTimeOut_Timer();
 
-    m_camera.Pan( aEvent.GetPosition() );
-    m_camera.SetCurMousePosition( aEvent.GetPosition() );
+    m_camera.Pan( position );
+    m_camera.SetCurMousePosition( position );
 
-    m_camera.Zoom( static_cast<float>( aEvent.GetZoomFactor() / m_gestureLastZoomFactor ) );
+    m_camera.Zoom( static_cast<float>( aZoomFactor / m_gestureLastZoomFactor ) );
 
-    m_gestureLastZoomFactor = aEvent.GetZoomFactor();
+    m_gestureLastZoomFactor = aZoomFactor;
 
     DisplayStatus();
     Request_refresh();
 }
 
 
-void EDA_3D_CANVAS::OnPanGesture( wxPanGestureEvent& aEvent )
+void EDA_3D_CANVAS::onPanGesture( bool aStart, const VECTOR2I& aPosition )
 {
     SetFocus();
 
-    if( aEvent.IsGestureStart() )
-        m_camera.SetCurMousePosition( aEvent.GetPosition() );
+    const wxPoint position( aPosition.x, aPosition.y );
+
+    if( aStart )
+        m_camera.SetCurMousePosition( position );
 
     if( m_camera_is_moving )
         return;
 
-    m_camera.Pan( aEvent.GetPosition() );
-    m_camera.SetCurMousePosition( aEvent.GetPosition() );
+    m_camera.Pan( position );
+    m_camera.SetCurMousePosition( position );
 
     DisplayStatus();
     Request_refresh();
 }
 
 
-void EDA_3D_CANVAS::OnRotateGesture( wxRotateGestureEvent& aEvent )
+void EDA_3D_CANVAS::onRotateGesture( bool aStart, const VECTOR2I& aPosition, double aAngle )
 {
     SetFocus();
 
-    if( aEvent.IsGestureStart() )
+    if( aStart )
     {
         m_gestureLastAngle = 0;
-        m_camera.SetCurMousePosition( aEvent.GetPosition() );
+        m_camera.SetCurMousePosition( wxPoint( aPosition.x, aPosition.y ) );
 
         // We don't want to process the first angle
         return;
@@ -961,15 +939,15 @@ void EDA_3D_CANVAS::OnRotateGesture( wxRotateGestureEvent& aEvent )
     if( m_camera_is_moving )
         return;
 
-    m_camera.RotateScreen( static_cast<float>( m_gestureLastAngle - aEvent.GetRotationAngle() ) );
-    m_gestureLastAngle = aEvent.GetRotationAngle();
+    m_camera.RotateScreen( static_cast<float>( m_gestureLastAngle - aAngle ) );
+    m_gestureLastAngle = aAngle;
 
     DisplayStatus();
     Request_refresh();
 }
 
 
-void EDA_3D_CANVAS::OnMouseMove( wxMouseEvent& event )
+void EDA_3D_CANVAS::onMouseMove( const MOUSE_STATE& aMouse )
 {
     if( m_3d_render && m_3d_render->IsReloadRequestPending() )
         return; // Prevents using invalid m_3d_render_raytracing data
@@ -977,7 +955,7 @@ void EDA_3D_CANVAS::OnMouseMove( wxMouseEvent& event )
     if( m_camera_is_moving )
         return;
 
-    OnMouseMoveCamera( event );
+    OnMouseMoveCamera( aMouse );
 
     if( m_mouse_was_moved )
     {
@@ -987,9 +965,9 @@ void EDA_3D_CANVAS::OnMouseMove( wxMouseEvent& event )
         // OnMiddleUp() will do it at the end of mouse drag/move command
     }
 
-    if( !event.Dragging() && m_boardAdapter.m_Cfg->m_Render.engine == RENDER_ENGINE::OPENGL )
+    if( !aMouse.m_dragging && m_boardAdapter.m_Cfg->m_Render.engine == RENDER_ENGINE::OPENGL )
     {
-        STATUSBAR_REPORTER reporter( m_parentStatusBar, EDA_3D_VIEWER_STATUSBAR::HOVERED_ITEM );
+        STATUS_TEXT_REPORTER reporter( m_statusTextHandler, EDA_3D_VIEWER_STATUSBAR::HOVERED_ITEM );
         RAY                mouseRay = getRayAtCurrentMousePosition();
         BOARD_ITEM*        rollOverItem = m_3d_render_raytracing->IntersectBoardItem( mouseRay );
 
@@ -1084,7 +1062,7 @@ void EDA_3D_CANVAS::OnMouseMove( wxMouseEvent& event )
 }
 
 
-void EDA_3D_CANVAS::OnLeftDown( wxMouseEvent& event )
+void EDA_3D_CANVAS::onLeftDown( const MOUSE_STATE& aMouse )
 {
     SetFocus();
     stop_editingTimeOut_Timer();
@@ -1092,14 +1070,14 @@ void EDA_3D_CANVAS::OnLeftDown( wxMouseEvent& event )
     // Ensure m_camera.m_lastPosition (current mouse position) is up to date for
     // future drag events (can be not the case when left clicking after
     // opening a context menu)
-    OnMouseMoveCamera( event );
+    OnMouseMoveCamera( aMouse );
 
     // Selection/deselection is handled on button release in OnLeftUp, so a click-drag
     // used to rotate the view does not change the current selection
 }
 
 
-void EDA_3D_CANVAS::OnLeftUp( wxMouseEvent& event )
+void EDA_3D_CANVAS::onLeftUp( const MOUSE_STATE& aMouse )
 {
     if( m_camera_is_moving )
         return;
@@ -1122,8 +1100,8 @@ void EDA_3D_CANVAS::OnLeftUp( wxMouseEvent& event )
     float scaleX = static_cast<float>( static_cast<double>( gizmo_width ) / static_cast<double>( logicalW ) );
     float scaleY = static_cast<float>( static_cast<double>( gizmo_height ) / static_cast<double>( logicalH ) );
 
-    int scaledMouseX = static_cast<int>( static_cast<float>( event.GetX() ) * scaleX );
-    int scaledMouseY = static_cast<int>( static_cast<float>( logicalH - event.GetY() ) * scaleY );
+    int scaledMouseX = static_cast<int>( static_cast<float>( aMouse.m_position.x ) * scaleX );
+    int scaledMouseY = static_cast<int>( static_cast<float>( logicalH - aMouse.m_position.y ) * scaleY );
 
     m_3d_render_opengl->handleGizmoMouseInput( scaledMouseX, scaledMouseY );
     m_3d_render_opengl->updateGizmoSelection( m_camera.GetRotationMatrix() );
@@ -1156,7 +1134,9 @@ void EDA_3D_CANVAS::OnLeftUp( wxMouseEvent& event )
         // We send a message (by ExpressMail) to the board and schematic editor, but only
         // if the manager of this canvas is a EDA_3D_VIEWER_FRAME, because only this
         // kind of frame has ExpressMail stuff
-        if( EDA_3D_VIEWER_FRAME* frame = dynamic_cast<EDA_3D_VIEWER_FRAME*>( GetParent() ) )
+        KIWAY_PLAYER* frame = dynamic_cast<KIWAY_PLAYER*>( GetParent() );
+
+        if( frame && frame->GetFrameType() == FRAME_PCB_DISPLAY3D )
         {
             std::string command = "$SELECT: 0,";
 
@@ -1172,17 +1152,17 @@ void EDA_3D_CANVAS::OnLeftUp( wxMouseEvent& event )
 }
 
 
-void EDA_3D_CANVAS::OnRightDown( wxMouseEvent& event )
+void EDA_3D_CANVAS::onRightDown( const MOUSE_STATE& aMouse )
 {
     SetFocus();
     stop_editingTimeOut_Timer();
 
     // Ensure m_camera.m_lastPosition is up to date for future drag events.
-    OnMouseMoveCamera( event );
+    OnMouseMoveCamera( aMouse );
 }
 
 
-void EDA_3D_CANVAS::OnRightUp( wxMouseEvent& event )
+void EDA_3D_CANVAS::onRightUp( const MOUSE_STATE& aMouse )
 {
     if( m_camera_is_moving )
         return;
@@ -1195,14 +1175,14 @@ void EDA_3D_CANVAS::OnRightUp( wxMouseEvent& event )
 }
 
 
-void EDA_3D_CANVAS::OnMiddleDown( wxMouseEvent& event )
+void EDA_3D_CANVAS::onMiddleDown( const MOUSE_STATE& aMouse )
 {
     SetFocus();
     stop_editingTimeOut_Timer();
 }
 
 
-void EDA_3D_CANVAS::OnMiddleUp( wxMouseEvent& event )
+void EDA_3D_CANVAS::onMiddleUp( const MOUSE_STATE& aMouse )
 {
     if( m_camera_is_moving )
         return;
@@ -1219,14 +1199,8 @@ void EDA_3D_CANVAS::OnMiddleUp( wxMouseEvent& event )
 }
 
 
-void EDA_3D_CANVAS::OnTimerTimeout_Editing( wxTimerEvent& aEvent )
+void EDA_3D_CANVAS::onTimerTimeout_Editing()
 {
-    if( aEvent.GetId() != m_editing_timeout_timer.GetId() )
-    {
-        aEvent.Skip();
-        return;
-    }
-
     m_mouse_is_moving = false;
     m_mouse_was_moved = false;
 
@@ -1243,25 +1217,13 @@ void EDA_3D_CANVAS::stop_editingTimeOut_Timer()
 void EDA_3D_CANVAS::restart_editingTimeOut_Timer()
 {
     if( m_3d_render )
-        m_editing_timeout_timer.Start( m_3d_render->GetWaitForEditingTimeOut(), wxTIMER_ONE_SHOT );
+        m_editing_timeout_timer.StartOnce( m_3d_render->GetWaitForEditingTimeOut() );
 }
 
 
-void EDA_3D_CANVAS::OnTimerTimeout_Redraw( wxTimerEvent& aEvent )
+void EDA_3D_CANVAS::onTimerTimeout_Redraw()
 {
-    if( aEvent.GetId() != m_redraw_trigger_timer.GetId() )
-    {
-        aEvent.Skip();
-        return;
-    }
-
     Request_refresh( true );
-}
-
-
-void EDA_3D_CANVAS::OnRefreshRequest( wxEvent& aEvent )
-{
-    Refresh();
 }
 
 
@@ -1270,16 +1232,14 @@ void EDA_3D_CANVAS::Request_refresh( bool aRedrawImmediately )
     if( aRedrawImmediately )
     {
         // Just calling Refresh() does not work always
-        // Using an event to call DoRepaint ensure the repaint code will be executed,
-        // and PostEvent will take priority to other events like mouse movements, keys, etc.
-        // and is executed during the next idle time
-        wxCommandEvent redrawEvent( wxEVT_REFRESH_CUSTOM_COMMAND, ID_CUSTOM_EVENT_1 );
-        wxPostEvent( this, redrawEvent );
+        // Refreshing from the event loop ensures the repaint code will be executed, before
+        // the other events like mouse movements, keys, etc.
+        m_refresh_request_timer.StartOnce( 0 );
     }
     else
     {
         // Schedule a timed redraw
-        m_redraw_trigger_timer.Start( 10 , wxTIMER_ONE_SHOT );
+        m_redraw_trigger_timer.StartOnce( 10 );
     }
 }
 

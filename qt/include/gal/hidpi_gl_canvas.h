@@ -67,6 +67,12 @@ public:
     HIDPI_GL_CANVAS( const KIGFX::VC_SETTINGS& aSettings, TOOLKIT_WINDOW* aParent,
                      const wxString& aName );
 
+    /**
+     * A canvas with the format @a aFormat (the 3D canvases: antialiasing, alpha).
+     */
+    HIDPI_GL_CANVAS( const KIGFX::VC_SETTINGS& aSettings, TOOLKIT_WINDOW* aParent,
+                     const QSurfaceFormat& aFormat, const wxString& aName = wxEmptyString );
+
     ~HIDPI_GL_CANVAS() override;
 
     virtual wxSize GetNativePixelSize() const;
@@ -117,6 +123,18 @@ public:
     /// Draw the canvas again (from the event loop).
     void Refresh();
 
+    /// Give the keyboard focus to the canvas.
+    void SetFocus();
+
+    /// The size of the canvas, in logical pixels.
+    wxSize GetClientSize() const;
+
+    /// The canvas and its parents are shown.
+    bool IsShownOnScreen() const;
+
+    /// The parent window of the canvas.
+    TOOLKIT_WINDOW* GetParent() const;
+
     /// The OpenGL window of the canvas: the surface of its contexts.
     QWindow* GetSurface() const { return m_window; }
 
@@ -127,10 +145,16 @@ protected:
     /// The events of the OpenGL window go to the listeners.
     bool eventFilter( QObject* aWatched, QEvent* aEvent ) override;
 
+    /// The OpenGL window follows the size of the canvas.
+    void resizeEvent( QResizeEvent* aEvent ) override;
+
     ///< Current VIEW_CONTROLS settings.
     KIGFX::VC_SETTINGS m_settings;
 
 private:
+    /// Create the OpenGL window, with the format @a aFormat.
+    void createSurface( const QSurfaceFormat& aFormat );
+
     QWindow*          m_window;
     QWidget*          m_container;
     QPointer<QWidget> m_mouseListener;

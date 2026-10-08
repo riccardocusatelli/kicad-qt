@@ -28,8 +28,11 @@
 #include <pgm_base.h>
 #include <settings/common_settings.h>
 
+// The driver last: libspnav includes the headers of X11 (Status...)
+#include "common/spacenav/libspnav_driver.h"
+
 SPNAV_VIEWER_PLUGIN::SPNAV_VIEWER_PLUGIN( EDA_3D_CANVAS* aCanvas )
-    : m_timer( this ), m_canvas( aCanvas ), m_camera( nullptr ), m_focused( true )
+    : m_timer( [this]() { onPollTimer(); } ), m_canvas( aCanvas ), m_camera( nullptr ), m_focused( true )
 {
     m_camera = dynamic_cast<TRACK_BALL*>( aCanvas->GetCamera() );
     m_driver = std::make_unique<LIBSPNAV_DRIVER>();
@@ -37,7 +40,6 @@ SPNAV_VIEWER_PLUGIN::SPNAV_VIEWER_PLUGIN( EDA_3D_CANVAS* aCanvas )
     if( m_driver->Connect() )
     {
         m_driver->SetHandler( this );
-        Bind( wxEVT_TIMER, &SPNAV_VIEWER_PLUGIN::onPollTimer, this );
         m_timer.Start( 10 );
     }
 }
@@ -55,7 +57,7 @@ void SPNAV_VIEWER_PLUGIN::SetFocus( bool aFocus )
     m_focused = aFocus;
 }
 
-void SPNAV_VIEWER_PLUGIN::onPollTimer( wxTimerEvent& )
+void SPNAV_VIEWER_PLUGIN::onPollTimer()
 {
     if( m_driver && m_focused )
         m_driver->Poll();

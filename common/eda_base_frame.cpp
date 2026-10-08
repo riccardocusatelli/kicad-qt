@@ -35,6 +35,7 @@
 #include <bitmap_store.h>
 #include <dialog_shim.h>
 #include <dialogs/dialog_autosave_recovery.h>
+#include <dialogs/eda_view_switcher.h>
 #include <dialogs/git/panel_git_repos.h>
 #include <dialogs/panel_common_settings.h>
 #include <dialogs/panel_mouse_settings.h>
@@ -70,6 +71,7 @@
 #include <trace_helpers.h>
 #include <widgets/paged_dialog.h>
 #include <widgets/wx_busy_indicator.h>
+#include <widgets/wx_menubar.h>
 #include <widgets/wx_infobar.h>
 #include <widgets/aui_json_serializer.h>
 #include <widgets/wx_aui_art_providers.h>
@@ -141,6 +143,7 @@ BEGIN_EVENT_TABLE( EDA_BASE_FRAME, wxFrame )
 
     EVT_SYS_COLOUR_CHANGED( EDA_BASE_FRAME::onSystemColorChange )
     EVT_ICONIZE( EDA_BASE_FRAME::onIconize )
+    EVT_ACTIVATE( EDA_BASE_FRAME::onActivate )
 
     EVT_MENU_RANGE( ID_LANGUAGE_CHOICE, ID_LANGUAGE_CHOICE_END, EDA_BASE_FRAME::OnLanguageSelectionEvent )
     END_EVENT_TABLE()
@@ -937,6 +940,15 @@ void EDA_BASE_FRAME::AddStandardHelpMenu( wxMenuBar* aMenuBar )
     aMenuBar->Append( helpMenu, _( "&Help" ) );
 }
 
+
+
+void EDA_BASE_FRAME::InstallMenuBar( WX_MENUBAR* aMenuBar )
+{
+    wxMenuBar* oldMenuBar = GetMenuBar();
+
+    SetMenuBar( aMenuBar );
+    delete oldMenuBar;
+}
 
 
 wxString EDA_BASE_FRAME::GetRunMenuCommandDescription( const TOOL_ACTION& aAction )
@@ -2062,6 +2074,54 @@ void EDA_BASE_FRAME::onIconize( wxIconizeEvent& aEvent )
 
     // Skip the event.
     aEvent.Skip();
+}
+
+
+bool EDA_BASE_FRAME::TryBefore( wxEvent& aEvent )
+{
+    // wxWidgets generates no key events for the tab key when the ctrl key is held down.  One
+    // way around this is to look at all events and inspect the keyboard state of the tab key.
+    // However, this runs into issues on some linux VMs where querying the keyboard state is
+    // very slow.  Fortunately we only use ctrl-tab on Mac, so we implement this lovely hack:
+#ifdef __WXMAC__
+    if( wxGetKeyState( WXK_TAB ) )
+#else
+    if( ( aEvent.GetEventType() == wxEVT_CHAR || aEvent.GetEventType() == wxEVT_CHAR_HOOK )
+            && static_cast<wxKeyEvent&>( aEvent ).GetKeyCode() == WXK_TAB )
+#endif
+    {
+        if( wxGetKeyState( PRESET_SWITCH_KEY ) )
+        {
+            if( handleViewSwitcherKey( PRESET_SWITCH_KEY ) )
+                return true;
+        }
+        else if( wxGetKeyState( VIEWPORT_SWITCH_KEY ) )
+        {
+            if( handleViewSwitcherKey( VIEWPORT_SWITCH_KEY ) )
+                return true;
+        }
+    }
+
+    return wxFrame::TryBefore( aEvent );
+}
+
+
+void EDA_BASE_FRAME::onActivate( wxActivateEvent& aEvent )
+{
+    handleActivateEvent( aEvent.GetActive() );
+
+    aEvent.Skip();
+}
+
+
+void EDA_BASE_FRAME::BindMenuCommand( int aId, std::function<void()> aHandler )
+{
+    Bind( wxEVT_MENU,
+          [aHandler]( wxCommandEvent& aEvent )
+          {
+              aHandler();
+          },
+          aId );
 }
 
 

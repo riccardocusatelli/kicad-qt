@@ -27,6 +27,7 @@
 #include <QKeyEvent>
 
 #include <wx/defs.h>        // WXK_ key codes
+#include <wx/gdicmn.h>
 
 #include "qt_keys.h"
 #include <qt_strings.h>
@@ -180,6 +181,33 @@ TOOLKIT_WINDOW* FindWindowByName( const wxString& aName, TOOLKIT_WINDOW* aParent
 TOOLKIT_WINDOW* FindFocus()
 {
     return QApplication::focusWidget();
+}
+
+
+TOOLKIT_WINDOW* GetParent( const TOOLKIT_WINDOW* aWindow )
+{
+    return aWindow ? aWindow->parentWidget() : nullptr;
+}
+
+
+TOOLKIT_WINDOW* GetTopLevelParent( TOOLKIT_WINDOW* aWindow )
+{
+    return aWindow ? aWindow->window() : nullptr;
+}
+
+
+bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow )
+{
+    return aWindow && aWindow->isVisible();
+}
+
+
+std::unique_ptr<TOOLKIT_WINDOW> CreateHiddenWindow( TOOLKIT_WINDOW* aParent, const wxSize& aSize )
+{
+    auto window = std::make_unique<QWidget>( aParent, Qt::Tool );
+    window->resize( aSize.x, aSize.y );
+    window->hide();
+    return window;
 }
 
 } // namespace TOOLKIT

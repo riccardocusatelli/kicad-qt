@@ -171,7 +171,11 @@ private:
     void passOnFocus();
 
 private:
-    static const APPEARANCE_SETTING_3D s_layerSettings[];
+    static const std::vector<APPEARANCE_SETTING_3D> s_layerSettings;
+
+    /// The layers that can have colors coming from the board stackup, and cannot be modified if
+    /// use colors from stackup is activated
+    static const std::vector<int> s_inStackupColors;
 
     EDA_3D_VIEWER_FRAME*           m_frame;
     wxWindow*                      m_focusOwner;

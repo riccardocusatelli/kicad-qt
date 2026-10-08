@@ -80,6 +80,12 @@ public:
     void SetTitle( const wxString& aTitle );
     wxString GetTitle() const;
 
+    /// The data of the dialog was modified: its title starts with a '*'.
+    void OnModify();
+
+    /// The title of the dialog without the mark of the modification.
+    void ClearModify();
+
     /**
      * Show the dialog modally.
      *

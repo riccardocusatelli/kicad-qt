@@ -10,6 +10,7 @@ add_headless_kiface( pcbnew_qt_kiface
                 board_tools.cpp
                 ${KIQT_KIFACE_SOURCES}
     USAGE       kiqt_common
+    ARCHIVES    3d-viewer_qt kiqt_common
     LIBRARIES   kiqt_common kiqt Qt6::Widgets
     )
 

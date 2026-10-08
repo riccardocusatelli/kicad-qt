@@ -27,6 +27,7 @@
 #ifndef TOOL_DISPATCHER_H
 #define TOOL_DISPATCHER_H
 
+#include <toolkit/toolkit_types.h>
 #include <vector>
 #include <wx/event.h>
 #include <wx/longlong.h>
@@ -72,6 +73,13 @@ public:
      * @param aEvent is the wxWidgets event to be processed.
      */
     virtual void DispatchWxEvent( wxEvent& aEvent );
+
+    /**
+     * Process an event of the toolkit (the toolkit-independent code gives its events this way).
+     *
+     * @return true if the event was used by the tools.
+     */
+    bool DispatchEvent( TOOLKIT_EVENT& aEvent );
 
     /**
      * Map a wxWidgets key event to a TOOL_EVENT.

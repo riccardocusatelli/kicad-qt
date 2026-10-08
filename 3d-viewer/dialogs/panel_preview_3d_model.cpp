@@ -29,6 +29,7 @@
 #include <cmath>
 
 #include "panel_preview_3d_model.h"
+#include "panel_preview_3d_model_values.h"
 #include <dialogs/dialog_unit_entry.h>
 #include <libeval/numeric_evaluator.h>
 #include <3d_canvas/eda_3d_canvas.h>
@@ -60,56 +61,6 @@
 #else
 #include <3d_navlib/nl_footprint_properties_plugin.h>
 #endif
-
-static wxString evaluateTextCtrl( const wxString& aValue )
-{
-    // NUMERIC_EVALUATOR doesn't handle UTF-8 multi-byte characters properly,
-    // so skip evaluation if the string contains non-ASCII characters (e.g., degree symbols)
-    for( wxUniChar c : aValue )
-    {
-        if( !c.IsAscii() )
-            return aValue;
-    }
-
-    // Attempt to evaluate formula; if successful return result, otherwise return original
-    NUMERIC_EVALUATOR eval( EDA_UNITS::UNSCALED );
-
-    if( eval.Process( aValue ) )
-        return eval.Result();
-
-    return aValue;
-}
-
-
-/**
- * Normalize a rotation in degrees to the half-open range (-MAX_ROTATION, MAX_ROTATION].
- *
- * Matches the convention used by EDA_ANGLE::Normalize180(), so 198 maps to -162
- * and 540 maps to 180.
- */
-static double normalizeRotation( double aRotation )
-{
-    double normalized = std::fmod( aRotation, 2.0 * MAX_ROTATION );
-
-    if( normalized <= -MAX_ROTATION )
-        normalized += 2.0 * MAX_ROTATION;
-    else if( normalized > MAX_ROTATION )
-        normalized -= 2.0 * MAX_ROTATION;
-
-    if( normalized == -0.0 )
-        normalized = 0.0;
-
-    return normalized;
-}
-
-
-static double rotationFromString( const wxString& aValue )
-{
-    double rotation = EDA_UNIT_UTILS::UI::DoubleValueFromString( unityScale, EDA_UNITS::DEGREES, aValue );
-
-    return normalizeRotation( rotation );
-}
-
 
 PANEL_PREVIEW_3D_MODEL::PANEL_PREVIEW_3D_MODEL( wxWindow* aParent, PCB_BASE_FRAME* aFrame, FOOTPRINT* aFootprint,
                                                 std::vector<FP_3DMODEL>* aParentModelList ) :
@@ -175,7 +126,7 @@ PANEL_PREVIEW_3D_MODEL::PANEL_PREVIEW_3D_MODEL( wxWindow* aParent, PCB_BASE_FRAM
         rotCtrl->SetCustomEval(
                 [&]( TEXT_CTRL_EVAL* aCtrl )
                 {
-                    double value = rotationFromString( evaluateTextCtrl( aCtrl->GetValue() ) );
+                    double value = PreviewRotationFromString( PreviewEvaluateText( aCtrl->GetValue() ) );
                     aCtrl->SetValue( formatRotationValue( value ) );
                 } );
     }
@@ -186,7 +137,7 @@ PANEL_PREVIEW_3D_MODEL::PANEL_PREVIEW_3D_MODEL( wxWindow* aParent, PCB_BASE_FRAM
                 [&]( TEXT_CTRL_EVAL* aCtrl )
                 {
                     double value = EDA_UNIT_UTILS::UI::DoubleValueFromString( unityScale, EDA_UNITS::UNSCALED,
-                                                                              evaluateTextCtrl( aCtrl->GetValue() ) );
+                                                                              PreviewEvaluateText( aCtrl->GetValue() ) );
                     aCtrl->SetValue( formatScaleValue( value ) );
                 } );
     }
@@ -402,26 +353,26 @@ void PANEL_PREVIEW_3D_MODEL::updateOrientation( wxCommandEvent &event )
         FP_3DMODEL* modelInfo = &m_parentModelList->at( (unsigned) m_selected );
 
         modelInfo->m_Scale.x = EDA_UNIT_UTILS::UI::DoubleValueFromString( unityScale, EDA_UNITS::UNSCALED,
-                                                                          evaluateTextCtrl( xscale->GetValue() ) );
+                                                                          PreviewEvaluateText( xscale->GetValue() ) );
         modelInfo->m_Scale.y = EDA_UNIT_UTILS::UI::DoubleValueFromString( unityScale, EDA_UNITS::UNSCALED,
-                                                                          evaluateTextCtrl( yscale->GetValue() ) );
+                                                                          PreviewEvaluateText( yscale->GetValue() ) );
         modelInfo->m_Scale.z = EDA_UNIT_UTILS::UI::DoubleValueFromString( unityScale, EDA_UNITS::UNSCALED,
-                                                                          evaluateTextCtrl( zscale->GetValue() ) );
+                                                                          PreviewEvaluateText( zscale->GetValue() ) );
 
         // Rotation is stored in the file as positive-is-CW, but we use positive-is-CCW in the GUI
         // to match the rest of KiCad
-        modelInfo->m_Rotation.x = -rotationFromString( evaluateTextCtrl( xrot->GetValue() ) );
-        modelInfo->m_Rotation.y = -rotationFromString( evaluateTextCtrl( yrot->GetValue() ) );
-        modelInfo->m_Rotation.z = -rotationFromString( evaluateTextCtrl( zrot->GetValue() ) );
+        modelInfo->m_Rotation.x = -PreviewRotationFromString( PreviewEvaluateText( xrot->GetValue() ) );
+        modelInfo->m_Rotation.y = -PreviewRotationFromString( PreviewEvaluateText( yrot->GetValue() ) );
+        modelInfo->m_Rotation.z = -PreviewRotationFromString( PreviewEvaluateText( zrot->GetValue() ) );
 
         modelInfo->m_Offset.x = EDA_UNIT_UTILS::UI::DoubleValueFromString( pcbIUScale, m_userUnits,
-                                                                           evaluateTextCtrl( xoff->GetValue() ) )
+                                                                           PreviewEvaluateText( xoff->GetValue() ) )
                                 / pcbIUScale.IU_PER_MM;
         modelInfo->m_Offset.y = EDA_UNIT_UTILS::UI::DoubleValueFromString( pcbIUScale, m_userUnits,
-                                                                           evaluateTextCtrl( yoff->GetValue() ) )
+                                                                           PreviewEvaluateText( yoff->GetValue() ) )
                                 / pcbIUScale.IU_PER_MM;
         modelInfo->m_Offset.z = EDA_UNIT_UTILS::UI::DoubleValueFromString( pcbIUScale, m_userUnits,
-                                                                           evaluateTextCtrl( zoff->GetValue() ) )
+                                                                           PreviewEvaluateText( zoff->GetValue() ) )
                                 / pcbIUScale.IU_PER_MM;
 
         // Update the dummy footprint for the preview
@@ -532,9 +483,9 @@ void PANEL_PREVIEW_3D_MODEL::doIncrementRotation( wxSpinEvent& aEvent, double aS
     if( wxGetMouseState().ShiftDown( ) )
         step = ROTATION_INCREMENT_FINE;
 
-    double value = rotationFromString( textCtrl->GetValue() );
+    double value = PreviewRotationFromString( textCtrl->GetValue() );
 
-    value = normalizeRotation( value + step * aSign );
+    value = PreviewNormalizeRotation( value + step * aSign );
 
     textCtrl->SetValue( formatRotationValue( value ) );
 }
@@ -615,9 +566,9 @@ void PANEL_PREVIEW_3D_MODEL::onMouseWheelRot( wxMouseEvent& event )
     if( event.GetWheelRotation() >= 0 )
         step = -step;
 
-    double value = rotationFromString( textCtrl->GetValue() );
+    double value = PreviewRotationFromString( textCtrl->GetValue() );
 
-    value = normalizeRotation( value + step );
+    value = PreviewNormalizeRotation( value + step );
 
     textCtrl->SetValue( formatRotationValue( value ) );
 }

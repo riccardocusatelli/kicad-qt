@@ -27,6 +27,10 @@
  */
 
 class QWidget;
+class QEvent;
 
 /// A window (a widget) of the user interface.
 using TOOLKIT_WINDOW = QWidget;
+
+/// An event of the user interface (an input event, given to the tool dispatcher).
+using TOOLKIT_EVENT = QEvent;

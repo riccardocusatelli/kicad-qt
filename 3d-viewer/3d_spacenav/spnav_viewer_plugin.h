@@ -25,14 +25,13 @@
 #define SPNAV_VIEWER_PLUGIN_H
 
 #include <memory>
-#include <wx/timer.h>
+#include <toolkit/gui_timer.h>
 #include "common/spacenav/spacenav_driver.h"
-#include "common/spacenav/libspnav_driver.h"
 
 class EDA_3D_CANVAS;
 class TRACK_BALL;
 
-class SPNAV_VIEWER_PLUGIN : public wxEvtHandler, public SPACEMOUSE_HANDLER
+class SPNAV_VIEWER_PLUGIN : public SPACEMOUSE_HANDLER
 {
 public:
     explicit SPNAV_VIEWER_PLUGIN( EDA_3D_CANVAS* aCanvas );
@@ -45,10 +44,10 @@ public:
     void OnButton( int button, bool pressed ) override;
 
 private:
-    void onPollTimer( wxTimerEvent& evt );
+    void onPollTimer();
 
     std::unique_ptr<SPACENAV_DRIVER> m_driver;
-    wxTimer                          m_timer;
+    GUI_TIMER                        m_timer;
     EDA_3D_CANVAS*                   m_canvas;
     TRACK_BALL*                      m_camera;
     bool                             m_focused;

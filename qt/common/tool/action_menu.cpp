@@ -28,9 +28,11 @@
 #include <tool/action_menu.h>
 
 #include <QAction>
+#include <QApplication>
 #include <QCursor>
 
 #include <bitmaps.h>
+#include <eda_base_frame.h>
 #include <functional>
 #include <hotkeys_basic.h>
 #include <id.h>
@@ -554,6 +556,22 @@ void ACTION_MENU::onTriggered( QAction* aAction )
             evt = TOOL_EVENT( TC_COMMAND, TA_CHOICE_MENU_CHOICE, m_selected, AS_GLOBAL );
             evt->SetParameter( &menuText );
         }
+    }
+
+    // The other ids are commands of the frame (as the menu events of wxWidgets, which go to
+    // the frame)
+    if( !evt )
+    {
+        EDA_BASE_FRAME* frame = toolMgr ? dynamic_cast<EDA_BASE_FRAME*>( toolMgr->GetToolHolder() )
+                                        : nullptr;
+
+        if( !frame )
+            frame = dynamic_cast<EDA_BASE_FRAME*>( QApplication::activeWindow() );
+
+        if( frame )
+            frame->RunMenuCommand( m_selected );
+
+        return;
     }
 
     // forward the action/update event to the TOOL_MANAGER

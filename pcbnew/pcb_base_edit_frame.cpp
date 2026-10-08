@@ -114,77 +114,65 @@ void PCB_BASE_EDIT_FRAME::doCloseWindow()
 }
 
 
-bool PCB_BASE_EDIT_FRAME::TryBefore( wxEvent& aEvent )
+bool PCB_BASE_EDIT_FRAME::handleViewSwitcherKey( int aSwitchKey )
 {
     static bool s_presetSwitcherShown = false;
     static bool s_viewportSwitcherShown = false;
 
-    // wxWidgets generates no key events for the tab key when the ctrl key is held down.  One
-    // way around this is to look at all events and inspect the keyboard state of the tab key.
-    // However, this runs into issues on some linux VMs where querying the keyboard state is
-    // very slow.  Fortunately we only use ctrl-tab on Mac, so we implement this lovely hack:
-#ifdef __WXMAC__
-    if( wxGetKeyState( WXK_TAB ) )
-#else
-    if( ( aEvent.GetEventType() == wxEVT_CHAR || aEvent.GetEventType() == wxEVT_CHAR_HOOK )
-            && static_cast<wxKeyEvent&>( aEvent ).GetKeyCode() == WXK_TAB )
-#endif
+    if( aSwitchKey == PRESET_SWITCH_KEY && !s_presetSwitcherShown )
     {
-        if( !s_presetSwitcherShown && wxGetKeyState( PRESET_SWITCH_KEY ) )
+        if( m_appearancePanel && this->IsActive() )
         {
-            if( m_appearancePanel && this->IsActive() )
+            const wxArrayString& mru = m_appearancePanel->GetLayerPresetsMRU();
+
+            if( mru.size() > 0 )
             {
-                const wxArrayString& mru = m_appearancePanel->GetLayerPresetsMRU();
+                EDA_VIEW_SWITCHER switcher( this, mru, PRESET_SWITCH_KEY );
 
-                if( mru.size() > 0 )
+                s_presetSwitcherShown = true;
+                const int switcherDialogRet = switcher.ShowModal();
+                s_presetSwitcherShown = false;
+
+                if( switcherDialogRet == wxID_OK )
                 {
-                    EDA_VIEW_SWITCHER switcher( this, mru, PRESET_SWITCH_KEY );
+                    int idx = switcher.GetSelection();
 
-                    s_presetSwitcherShown = true;
-                    const int switcherDialogRet = switcher.ShowModal();
-                    s_presetSwitcherShown = false;
-
-                    if( switcherDialogRet == wxID_OK )
-                    {
-                        int idx = switcher.GetSelection();
-
-                        if( idx >= 0 && idx < (int) mru.size() )
-                            m_appearancePanel->ApplyLayerPreset( mru[idx] );
-                    }
-
-                    return true;
+                    if( idx >= 0 && idx < (int) mru.size() )
+                        m_appearancePanel->ApplyLayerPreset( mru[idx] );
                 }
+
+                return true;
             }
         }
-        else if( !s_viewportSwitcherShown && wxGetKeyState( VIEWPORT_SWITCH_KEY ) )
+    }
+    else if( aSwitchKey == VIEWPORT_SWITCH_KEY && !s_viewportSwitcherShown )
+    {
+        if( m_appearancePanel && this->IsActive() )
         {
-            if( m_appearancePanel && this->IsActive() )
+            const wxArrayString& mru = m_appearancePanel->GetViewportsMRU();
+
+            if( mru.size() > 0 )
             {
-                const wxArrayString& mru = m_appearancePanel->GetViewportsMRU();
+                EDA_VIEW_SWITCHER switcher( this, mru, VIEWPORT_SWITCH_KEY );
 
-                if( mru.size() > 0 )
+                s_viewportSwitcherShown = true;
+                const int switcherDialogRet = switcher.ShowModal();
+                s_viewportSwitcherShown = false;
+
+                if( switcherDialogRet == wxID_OK )
                 {
-                    EDA_VIEW_SWITCHER switcher( this, mru, VIEWPORT_SWITCH_KEY );
+                    int idx = switcher.GetSelection();
 
-                    s_viewportSwitcherShown = true;
-                    const int switcherDialogRet = switcher.ShowModal();
-                    s_viewportSwitcherShown = false;
-
-                    if( switcherDialogRet == wxID_OK )
-                    {
-                        int idx = switcher.GetSelection();
-
-                        if( idx >= 0 && idx < (int) mru.size() )
-                            m_appearancePanel->ApplyViewport( mru[idx] );
-                    }
-
-                    return true;
+                    if( idx >= 0 && idx < (int) mru.size() )
+                        m_appearancePanel->ApplyViewport( mru[idx] );
                 }
+
+                return true;
             }
         }
     }
 
-    return PCB_BASE_FRAME::TryBefore( aEvent );
+    return false;
 }
 
 

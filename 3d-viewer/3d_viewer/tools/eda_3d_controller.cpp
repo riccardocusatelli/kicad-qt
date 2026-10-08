@@ -38,6 +38,7 @@
 #include <dialogs/panel_preview_3d_model.h>
 #include <dialogs/appearance_controls_3D.h>
 #include <core/ki_assert.h>
+#include <toolkit/gui_services.h>
 
 
 bool EDA_3D_CONTROLLER::Init()
@@ -97,9 +98,9 @@ void EDA_3D_CONTROLLER::Reset( RESET_REASON aReason )
     TOOLS_HOLDER* holder = m_toolMgr->GetToolHolder();
 
     KI_CHECK( holder, /* void */ );
-    KI_CHECK( holder->GetToolCanvas()->GetId() == EDA_3D_CANVAS_ID, /* void */ );
+    m_canvas = dynamic_cast<EDA_3D_CANVAS*>( holder->GetToolCanvas() );
 
-    m_canvas = static_cast<EDA_3D_CANVAS*>( holder->GetToolCanvas() );
+    KI_CHECK( m_canvas, /* void */ );
 
     if( EDA_BASE_FRAME* frame = dynamic_cast<EDA_BASE_FRAME*>( holder ) )
     {
@@ -108,12 +109,10 @@ void EDA_3D_CONTROLLER::Reset( RESET_REASON aReason )
         m_boardAdapter = &static_cast<EDA_3D_VIEWER_FRAME*>( frame )->GetAdapter();
         m_camera = &static_cast<EDA_3D_VIEWER_FRAME*>( frame )->GetCurrentCamera();
     }
-    else if( wxWindow* previewWindow = dynamic_cast<wxWindow*>( holder ) )
+    else if( PANEL_PREVIEW_3D_MODEL* preview = dynamic_cast<PANEL_PREVIEW_3D_MODEL*>( holder ) )
     {
-        KI_CHECK( previewWindow->GetId() == PANEL_PREVIEW_3D_MODEL_ID, /* void */ );
-
-        m_boardAdapter = &static_cast<PANEL_PREVIEW_3D_MODEL*>( holder )->GetAdapter();
-        m_camera = &static_cast<PANEL_PREVIEW_3D_MODEL*>( holder )->GetCurrentCamera();
+        m_boardAdapter = &preview->GetAdapter();
+        m_camera = &preview->GetCurrentCamera();
     }
 }
 
@@ -141,8 +140,8 @@ int EDA_3D_CONTROLLER::Main( const TOOL_EVENT& aEvent )
     {
         if( evt->IsCancelInteractive() )
         {
-            wxWindow*     canvas = m_toolMgr->GetToolHolder()->GetToolCanvas();
-            KIWAY_HOLDER* parent = dynamic_cast<KIWAY_HOLDER*>( wxGetTopLevelParent( canvas ) );
+            TOOLKIT_WINDOW* canvas = m_toolMgr->GetToolHolder()->GetToolCanvas();
+            KIWAY_HOLDER*   parent = dynamic_cast<KIWAY_HOLDER*>( TOOLKIT::GetTopLevelParent( canvas ) );
 
             if( parent && parent->GetType() == KIWAY_HOLDER::DIALOG )
             {

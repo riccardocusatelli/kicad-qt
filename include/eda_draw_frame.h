@@ -623,13 +623,7 @@ protected:
      */
     bool saveCanvasTypeSetting( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType );
 
-    /**
-     * Handle a window activation event.
-     *
-     * @param aActive is true when the window is activated, false when it is deactivated.
-     */
-    virtual void handleActivateEvent( bool aActive );
-    void onActivate( wxActivateEvent& aEvent );
+    void handleActivateEvent( bool aActive ) override;
 
     wxSocketServer*             m_socketServer;
 

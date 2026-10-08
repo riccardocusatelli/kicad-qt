@@ -32,22 +32,33 @@
 #include "3d_rendering/render_3d_base.h"
 #include "3d_cache/3d_cache.h"
 #include <gal/hidpi_gl_3D_canvas.h>
-#include <wx/image.h>
-#include <wx/timer.h>
+#include <toolkit/gui_timer.h>
+
+#include <functional>
+#include <memory>
 
 
 class TOOL_DISPATCHER;
 class WX_INFOBAR;
-class wxStatusBar;
 class BOARD;
+class RASTER_IMAGE;
 class RENDER_3D_RAYTRACE_GL;
 class RENDER_3D_OPENGL;
 
 
-#define EDA_3D_CANVAS_ID (wxID_HIGHEST + 1321)
+/// The fields of the status bar of the 3D viewer.
+enum EDA_3D_VIEWER_STATUSBAR
+{
+    ACTIVITY = 0,
+    HOVERED_ITEM,
+    X_POS,
+    Y_POS,
+    ZOOM_LEVEL,
+};
+
 
 /**
- *  Implement a canvas based on a wxGLCanvas
+ *  Implement the 3D canvas of the board, on the OpenGL canvas of the GUI toolkit.
  */
 class EDA_3D_CANVAS : public HIDPI_GL_3D_CANVAS
 {
@@ -60,8 +71,8 @@ public:
      *  @param aBoard The board.
      *  @param aSettings the settings options to be used by this canvas.
      */
-    EDA_3D_CANVAS( wxWindow* aParent, const wxGLAttributes& aGLAttribs, BOARD_ADAPTER& aSettings,
-                   CAMERA& aCamera, S3D_CACHE* a3DCachePointer );
+    EDA_3D_CANVAS( TOOLKIT_WINDOW* aParent, const KIGL_ATTRIBUTES& aGLAttribs,
+                   BOARD_ADAPTER& aSettings, CAMERA& aCamera, S3D_CACHE* a3DCachePointer );
 
     ~EDA_3D_CANVAS() override;
 
@@ -75,9 +86,31 @@ public:
      */
     void SetEventDispatcher( TOOL_DISPATCHER* aEventDispatcher );
 
-    void SetStatusBar( wxStatusBar* aStatusBar )
+    /// Show a text in a field (EDA_3D_VIEWER_STATUSBAR) of the status bar of the parent.
+    using STATUS_TEXT_HANDLER = std::function<void( const wxString& aText, int aField )>;
+
+    /**
+     * Set the function showing the position, the activity and the hovered item in the status
+     * bar of the parent (no status bar if none).
+     */
+    void SetStatusTextHandler( STATUS_TEXT_HANDLER aHandler )
     {
-        m_parentStatusBar = aStatusBar;
+        m_statusTextHandler = std::move( aHandler );
+    }
+
+    /**
+     * A reporter showing its messages in a field of the status bar of the parent (with the
+     * status text handler), or nullptr if the parent has no status bar.
+     */
+    std::unique_ptr<REPORTER> MakeStatusReporter( EDA_3D_VIEWER_STATUSBAR aField ) const;
+
+    /**
+     * Set the function called when the OpenGL version does not support the ray tracing (the
+     * viewer disables it).
+     */
+    void SetRaytracingUnsupportedHandler( std::function<void()> aHandler )
+    {
+        m_raytracingUnsupportedHandler = std::move( aHandler );
     }
 
     void SetInfoBar( WX_INFOBAR* aInfoBar )
@@ -111,11 +144,11 @@ public:
     void RenderRaytracingRequest();
 
     /**
-     *  Request a screenshot and output it to the \a aDstImage.
+     *  Request a screenshot of the current OpenGL image.
      *
-     *  @param aDstImage - Screenshot destination image.
+     *  @return the image, with alpha.
      */
-    void GetScreenshot( wxImage& aDstImage );
+    RASTER_IMAGE GetScreenshot();
 
     /**
      * Select a specific 3D view or operation.
@@ -163,7 +196,7 @@ public:
     /**
      * Used to forward events to the canvas from popups, etc.
      */
-    void OnEvent( wxEvent& aEvent );
+    void OnEvent( TOOLKIT_EVENT& aEvent );
 
     /**
      * Get information used to display 3D board.
@@ -215,43 +248,44 @@ public:
     /**
      * The actual function to repaint the canvas.
      *
-     * It is usually called by OnPaint() but because it does not use a wxPaintDC it can be
-     * called outside a wxPaintEvent
+     * It is usually called by onPaint() but it can be called outside a paint event.
      */
     void DoRePaint();
 
     void RenderToFrameBuffer( unsigned char* aBuffer, int aWidth, int aHeight );
 
-    void OnCloseWindow( wxCloseEvent& event );
+    /**
+     * Free the renderers and the OpenGL context (before the canvas is destroyed with its
+     * parent).
+     */
+    void ReleaseOpenGL();
+
+protected:
+    void onPaint() override;
+    void onResize() override;
+    void onClose() override;
+    bool onInputEvent( TOOLKIT_EVENT& aEvent ) override;
+
+    void onMouseWheel( const MOUSE_STATE& aMouse ) override;
+    void onMagnify( const MOUSE_STATE& aMouse ) override;
+    void onMouseMove( const MOUSE_STATE& aMouse ) override;
+    void onLeftDown( const MOUSE_STATE& aMouse ) override;
+    void onLeftUp( const MOUSE_STATE& aMouse ) override;
+    void onMiddleUp( const MOUSE_STATE& aMouse ) override;
+    void onMiddleDown( const MOUSE_STATE& aMouse ) override;
+    void onRightUp( const MOUSE_STATE& aMouse ) override;
+    void onRightDown( const MOUSE_STATE& aMouse ) override;
+
+    void onZoomGesture( bool aStart, const VECTOR2I& aPosition, double aZoomFactor ) override;
+    void onPanGesture( bool aStart, const VECTOR2I& aPosition ) override;
+    void onRotateGesture( bool aStart, const VECTOR2I& aPosition, double aAngle ) override;
 
 private:
-    // The wxPaintEvent event. mainly calls DoRePaint()
-    void OnPaint( wxPaintEvent& aEvent );
+    void onTimerTimeout_Editing();
+    void onTimerTimeout_Redraw();
 
-    void OnEraseBackground( wxEraseEvent& event );
-
-    void OnRefreshRequest( wxEvent& aEvent );
-
-    void OnMouseWheel( wxMouseEvent& event );
-
-    void OnMagnify( wxMouseEvent& event );
-    void OnMouseMove( wxMouseEvent& event );
-    void OnLeftDown( wxMouseEvent& event );
-    void OnLeftUp( wxMouseEvent& event );
-    void OnMiddleUp( wxMouseEvent& event );
-    void OnMiddleDown( wxMouseEvent& event );
-    void OnRightUp( wxMouseEvent& event );
-    void OnRightDown( wxMouseEvent& event );
-
-    void OnTimerTimeout_Editing( wxTimerEvent& event );
-    void OnResize( wxSizeEvent& event );
-    void OnTimerTimeout_Redraw( wxTimerEvent& event );
-
-    void OnZoomGesture( wxZoomGestureEvent& event );
-    void OnPanGesture( wxPanGestureEvent& event );
-    void OnRotateGesture( wxRotateGestureEvent& event );
-
-    DECLARE_EVENT_TABLE()
+    /// Show a text in a field of the status bar of the parent.
+    void setStatusText( const wxString& aText, int aField );
 
     /**
      *Stop the editing time so it will not timeout.
@@ -296,25 +330,22 @@ private:
      */
     bool initializeOpenGL();
 
-    /**
-     * Free created targets and openGL context.
-     */
-    void releaseOpenGL();
-
     RAY getRayAtCurrentMousePosition();
 
 private:
     TOOL_DISPATCHER*       m_eventDispatcher = nullptr;
-    wxStatusBar*           m_parentStatusBar = nullptr;         // Parent statusbar to report progress
+    STATUS_TEXT_HANDLER    m_statusTextHandler;                 // Parent statusbar to report progress
+    std::function<void()>  m_raytracingUnsupportedHandler;
     WX_INFOBAR*            m_parentInfoBar = nullptr;
 
-    wxGLContext*           m_glRC = nullptr;                    // Current OpenGL context
+    KIGL_CONTEXT*          m_glRC = nullptr;                    // Current OpenGL context
     bool                   m_is_opengl_initialized = false;
     bool                   m_is_opengl_version_supported = true;
 
-    wxTimer                m_editing_timeout_timer;   // Expires after some time signaling that
+    GUI_TIMER              m_editing_timeout_timer;   // Expires after some time signaling that
                                                       // the mouse / keyboard movements are over
-    wxTimer                m_redraw_trigger_timer;    // Used to schedule a redraw event
+    GUI_TIMER              m_redraw_trigger_timer;    // Used to schedule a redraw event
+    GUI_TIMER              m_refresh_request_timer;   // Redraws from the event loop
     std::atomic_flag       m_is_currently_painting = ATOMIC_FLAG_INIT;   // Avoid drawing twice at the same time
 
     bool                   m_render_pivot = false;            // Render the pivot while camera moving

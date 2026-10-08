@@ -47,6 +47,12 @@ KIQT_API void OnEvent( QWidget* aWidget, QEvent::Type aType,
                        std::function<void( QEvent* aEvent )> aHandler );
 
 /**
+ * Give the events of @a aWidget to @a aFilter before the widget: the events for which it
+ * returns true are not processed by the widget.  The filter lives as long as the widget.
+ */
+KIQT_API void FilterEvents( QWidget* aWidget, std::function<bool( QEvent* aEvent )> aFilter );
+
+/**
  * Register a function updating the state of controls (enabled, shown, label...) from the data.
  *
  * The functions of the shown windows are called after the input events of the user and when a

@@ -41,7 +41,6 @@ void EDA_3D_VIEWER_FRAME::doReCreateMenuBar()
     KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_VIEWER_FRAME::CreateMenuBar" ) );
 
     COMMON_CONTROL* tool    = m_toolManager->GetTool<COMMON_CONTROL>();
-    wxMenuBar*      oldMenuBar = GetMenuBar();
     WX_MENUBAR*     menuBar = new WX_MENUBAR();
 
 
@@ -146,6 +145,5 @@ void EDA_3D_VIEWER_FRAME::doReCreateMenuBar()
     menuBar->Append( prefsMenu, _( "&Preferences" ) );
     AddStandardHelpMenu( menuBar );
 
-    SetMenuBar( menuBar );
-    delete oldMenuBar;
+    InstallMenuBar( menuBar );
 }

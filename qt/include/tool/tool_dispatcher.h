@@ -34,6 +34,7 @@
 #ifndef TOOL_DISPATCHER_H
 #define TOOL_DISPATCHER_H
 
+#include <toolkit/toolkit_types.h>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -83,6 +84,13 @@ public:
      * @return true if the event was used by the tools (it must not go to the GUI).
      */
     virtual bool DispatchQtEvent( QEvent* aEvent );
+
+    /**
+     * Process an event of the toolkit (the toolkit-independent code gives its events this way).
+     *
+     * @return true if the event was used by the tools.
+     */
+    bool DispatchEvent( TOOLKIT_EVENT& aEvent ) { return DispatchQtEvent( &aEvent ); }
 
     /**
      * Tell the tools that the position of the cursor in the world changed while the mouse did

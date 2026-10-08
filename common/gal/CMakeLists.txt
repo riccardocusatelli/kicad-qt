@@ -40,6 +40,7 @@ set( GAL_SRCS
     cursors.cpp
     hidpi_gl_canvas.cpp
     hidpi_gl_3D_canvas.cpp
+    hidpi_gl_3D_canvas_wx.cpp
 
     ../view/view_controls.cpp
     ../view/zoom_controller.cpp

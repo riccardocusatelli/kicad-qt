@@ -23,6 +23,7 @@
 #ifndef LIB_TREE_MODEL_ADAPTER_H
 #define LIB_TREE_MODEL_ADAPTER_H
 
+#include <lib_tree_pinning.h>
 #include <lib_id.h>
 #include <lib_tree_model.h>
 #include <settings/app_settings.h>
@@ -109,7 +110,7 @@ public:
      */
     static const wxString GetPinningSymbol()
     {
-        return wxString::FromUTF8( "☆ " );
+        return LibTreePinningSymbol();
     }
 
     /// Upper bound for a persisted column width; larger values are treated as corrupt settings.

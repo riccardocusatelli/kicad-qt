@@ -31,7 +31,7 @@
 #define _OGL_ATT_LIST_H
 
 #include <kicad_gl/kiglad.h> // Must be included first
-#include <wx/glcanvas.h>
+#include <kicad_gl/gl_context_mgr.h>
 
 #include "antialiasing_mode.h"
 
@@ -43,15 +43,17 @@ class OGL_ATT_LIST
 
 public:
     /**
-     *  Get a list of attributes to pass to wxGLCanvas.
+     *  Get the attributes of the OpenGL surface of a 3D canvas.
+     *
+     *  Each toolkit has its implementation (ogl_attr_list_wx.cpp, and the one of the Qt build).
      *
      *  @param aAntiAliasingMode = 0 - disabled; try to initialize (if is supported) the
      *  list with anti aliasing capabilities.
      *  @param aAlpha set to enable alpha channel.
-     *  @return wxGLAttributes to be passed in the creation of a EDA_3D_CANVAS class
+     *  @return the attributes to be passed in the creation of a EDA_3D_CANVAS class
      */
-    static const wxGLAttributes GetAttributesList( ANTIALIASING_MODE aAntiAliasingMode,
-                                                   bool              aAlpha = false );
+    static KIGL_ATTRIBUTES GetAttributesList( ANTIALIASING_MODE aAntiAliasingMode,
+                                              bool              aAlpha = false );
 };
 
 #endif // _OGL_ATT_LIST_H

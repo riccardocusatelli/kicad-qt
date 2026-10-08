@@ -34,6 +34,8 @@
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QKeyEvent>
+#include <QLabel>
 #include <QGuiApplication>
 #include <QMenu>
 #include <QMenuBar>
@@ -43,6 +45,7 @@
 
 #include <bitmaps.h>
 #include <bitmap_store.h>
+#include <dialogs/eda_view_switcher.h>
 #include <confirm.h>
 #include <kiface_base.h>
 #include <kiway.h>
@@ -65,6 +68,7 @@
 #include <toolkit/gui_services.h>
 #include <trace_helpers.h>
 #include <widgets/wx_infobar.h>
+#include <widgets/wx_menubar.h>
 #include <wx/filename.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
@@ -94,6 +98,56 @@ static QSize defaultSize( FRAME_T aFrameType )
 }
 
 
+namespace
+{
+
+/**
+ * Gives the switch keys held down with Tab (Ctrl+Tab) in a frame to handleViewSwitcherKey(),
+ * before the widgets of the frame (the Tab key of the focus navigation).
+ */
+class VIEW_SWITCHER_KEY_FILTER : public QObject
+{
+public:
+    VIEW_SWITCHER_KEY_FILTER( EDA_BASE_FRAME* aFrame, std::function<bool( int )> aHandler ) :
+            QObject( aFrame ),
+            m_frame( aFrame ),
+            m_handler( std::move( aHandler ) )
+    {
+        qApp->installEventFilter( this );
+    }
+
+protected:
+    bool eventFilter( QObject* aWatched, QEvent* aEvent ) override
+    {
+        if( aEvent->type() != QEvent::KeyPress )
+            return false;
+
+        QKeyEvent* event = static_cast<QKeyEvent*>( aEvent );
+
+        if( event->key() != Qt::Key_Tab && event->key() != Qt::Key_Backtab )
+            return false;
+
+        QWidget* widget = qobject_cast<QWidget*>( aWatched );
+
+        if( !widget || widget->window() != m_frame )
+            return false;
+
+        if( TOOLKIT::IsKeyDown( PRESET_SWITCH_KEY ) )
+            return m_handler( PRESET_SWITCH_KEY );
+        else if( TOOLKIT::IsKeyDown( VIEWPORT_SWITCH_KEY ) )
+            return m_handler( VIEWPORT_SWITCH_KEY );
+
+        return false;
+    }
+
+private:
+    EDA_BASE_FRAME*           m_frame;
+    std::function<bool( int )> m_handler;
+};
+
+} // namespace
+
+
 void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
 {
     m_ident             = aFrameType;
@@ -117,6 +171,25 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
     m_tbLeft            = nullptr;
 
     m_autoSaveTimer.SetHandler( [this]() { onAutoSaveTimer(); } );
+
+    new VIEW_SWITCHER_KEY_FILTER( this,
+                                  [this]( int aSwitchKey )
+                                  {
+                                      return handleViewSwitcherKey( aSwitchKey );
+                                  } );
+
+    // The entries of the language menu (AddMenuLanguageList()) tell all the KIWAY_PLAYERs
+    // about the language change
+    for( unsigned ii = 0; LanguagesList[ii].m_KI_Lang_Identifier != 0; ii++ )
+    {
+        int id = LanguagesList[ii].m_KI_Lang_Identifier;
+
+        BindMenuCommand( id,
+                         [this, id]()
+                         {
+                             Kiway().SetLanguage( id );
+                         } );
+    }
 
     // The menu entries and the buttons of the toolbars follow the UI conditions of their
     // actions after the events of the user, as with the update UI events of wxWidgets
@@ -216,7 +289,9 @@ wxString EDA_BASE_FRAME::GetTitle() const
 
 void EDA_BASE_FRAME::SetStatusText( const wxString& aText, int aField )
 {
-    if( aField == 0 )
+    if( aField >= 0 && aField < (int) m_statusFields.size() )
+        m_statusFields[aField]->setText( ToQString( aText ) );
+    else if( aField == 0 && m_statusFields.empty() )
         statusBar()->showMessage( ToQString( aText ) );
 }
 
@@ -314,8 +389,30 @@ void EDA_BASE_FRAME::changeEvent( QEvent* aEvent )
         HandleSystemColorChange();
     else if( aEvent->type() == QEvent::WindowStateChange )
         handleIconizeEvent( isMinimized() );
+    else if( aEvent->type() == QEvent::ActivationChange )
+        handleActivateEvent( isActiveWindow() );
 
     QMainWindow::changeEvent( aEvent );
+}
+
+
+void EDA_BASE_FRAME::BindMenuCommand( int aId, std::function<void()> aHandler )
+{
+    m_menuCommands[aId] = std::move( aHandler );
+}
+
+
+bool EDA_BASE_FRAME::RunMenuCommand( int aId )
+{
+    auto it = m_menuCommands.find( aId );
+
+    if( it == m_menuCommands.end() )
+        return false;
+
+    // A copy: the handler can bind the commands again (a menu bar created again)
+    std::function<void()> handler = it->second;
+    handler();
+    return true;
 }
 
 
@@ -584,6 +681,53 @@ void EDA_BASE_FRAME::OnToolbarSizeChanged()
 
 void EDA_BASE_FRAME::setupUIConditions()
 {
+    // Setup the conditions to check a language menu item
+    auto isCurrentLang =
+            [] ( const SELECTION& aSel, int aLangIdentifier )
+            {
+                return Pgm().GetSelectedLanguageIdentifier() == aLangIdentifier;
+            };
+
+    for( unsigned ii = 0;  LanguagesList[ii].m_KI_Lang_Identifier != 0; ii++ )
+    {
+        ACTION_CONDITIONS cond;
+        cond.Check( std::bind( isCurrentLang, std::placeholders::_1,
+                               LanguagesList[ii].m_WX_Lang_Identifier ) );
+        RegisterUIUpdateHandler( LanguagesList[ii].m_KI_Lang_Identifier, cond );
+    }
+}
+
+
+void EDA_BASE_FRAME::InstallMenuBar( WX_MENUBAR* aMenuBar )
+{
+    QMenuBar* oldMenuBar = menuWidget() ? qobject_cast<QMenuBar*>( menuWidget() ) : nullptr;
+
+    // The main window lets the previous menu bar go (deleted later), deleted now
+    setMenuBar( aMenuBar );
+    delete oldMenuBar;
+}
+
+
+void EDA_BASE_FRAME::AddMenuLanguageList( ACTION_MENU* aMasterMenu, TOOL_INTERACTIVE* aControlTool )
+{
+    ACTION_MENU* langsMenu = new ACTION_MENU( false, aControlTool );
+    langsMenu->SetTitle( _( "Set Language" ) );
+    langsMenu->SetIcon( BITMAPS::language );
+
+    for( unsigned ii = 0; LanguagesList[ii].m_KI_Lang_Identifier != 0; ii++ )
+    {
+        wxString label;
+
+        if( LanguagesList[ii].m_DoNotTranslate )
+            label = LanguagesList[ii].m_Lang_Label;
+        else
+            label = wxGetTranslation( LanguagesList[ii].m_Lang_Label );
+
+        langsMenu->Add( label, wxEmptyString, LanguagesList[ii].m_KI_Lang_Identifier,
+                        BITMAPS::INVALID_BITMAP, true );
+    }
+
+    aMasterMenu->Add( langsMenu );
 }
 
 

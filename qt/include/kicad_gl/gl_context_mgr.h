@@ -40,6 +40,7 @@
 #include <utility>
 
 #include <kiqt.h>
+#include <QSurfaceFormat>
 
 class QOpenGLContext;
 class HIDPI_GL_CANVAS;
@@ -48,6 +49,9 @@ class HIDPI_GL_CANVAS;
 /// gl_context_mgr.h).
 using KIGL_CONTEXT = QOpenGLContext;
 using KIGL_CANVAS  = HIDPI_GL_CANVAS;
+
+/// The attributes of an OpenGL surface (buffers, antialiasing) for the toolkit.
+using KIGL_ATTRIBUTES = QSurfaceFormat;
 
 
 class KIQT_API GL_CONTEXT_MANAGER

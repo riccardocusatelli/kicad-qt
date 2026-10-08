@@ -25,43 +25,33 @@
 
 #include <gal/hidpi_gl_3D_canvas.h>
 #include <settings/common_settings.h>
+#include <wx/defs.h>        // WXK_ key codes
 
 const float HIDPI_GL_3D_CANVAS::m_delta_move_step_factor = 0.7f;
 
-HIDPI_GL_3D_CANVAS::HIDPI_GL_3D_CANVAS( const KIGFX::VC_SETTINGS& aVcSettings, CAMERA& aCamera, wxWindow* aParent,
-                                        const wxGLAttributes& aGLAttribs, wxWindowID aId, const wxPoint& aPos,
-                                        const wxSize& aSize, long aStyle, const wxString& aName,
-                                        const wxPalette& aPalette ) :
-        HIDPI_GL_CANVAS( aVcSettings, aParent, aGLAttribs, aId, aPos, aSize, aStyle, aName, aPalette ),
-        m_mouse_is_moving( false ),
-        m_mouse_was_moved( false ),
-        m_camera_is_moving( false ),
-        m_camera( aCamera )
-{
-}
 
-
-void HIDPI_GL_3D_CANVAS::OnMouseMoveCamera( wxMouseEvent& event )
+void HIDPI_GL_3D_CANVAS::OnMouseMoveCamera( const MOUSE_STATE& aMouse )
 {
     if( m_camera_is_moving )
         return;
 
     const wxSize&  nativeWinSize = GetNativePixelSize();
-    const wxPoint& nativePosition = GetNativePosition( event.GetPosition() );
+    const wxPoint& nativePosition = GetNativePosition( wxPoint( aMouse.m_position.x,
+                                                                aMouse.m_position.y ) );
 
     m_camera.SetCurWindowSize( nativeWinSize );
 
-    if( event.Dragging() )
+    if( aMouse.m_dragging )
     {
         bool handled = false;
 
-        if( event.LeftIsDown() )
+        if( aMouse.m_leftDown )
         {
             m_camera.Drag( nativePosition );
             handled = true;
         }
-        else if( ( event.MiddleIsDown() && m_settings.m_dragMiddle == MOUSE_DRAG_ACTION::PAN )
-                 || ( event.RightIsDown() && m_settings.m_dragRight == MOUSE_DRAG_ACTION::PAN ) )
+        else if( ( aMouse.m_middleDown && m_settings.m_dragMiddle == MOUSE_DRAG_ACTION::PAN )
+                 || ( aMouse.m_rightDown && m_settings.m_dragRight == MOUSE_DRAG_ACTION::PAN ) )
         {
             m_camera.Pan( nativePosition );
             handled = true;
@@ -77,7 +67,7 @@ void HIDPI_GL_3D_CANVAS::OnMouseMoveCamera( wxMouseEvent& event )
     m_camera.SetCurMousePosition( nativePosition );
 }
 
-void HIDPI_GL_3D_CANVAS::OnMouseWheelCamera( wxMouseEvent& event, bool aPan )
+void HIDPI_GL_3D_CANVAS::OnMouseWheelCamera( const MOUSE_STATE& aMouse, bool aPan )
 {
     bool mouseActivity = false;
 
@@ -85,20 +75,20 @@ void HIDPI_GL_3D_CANVAS::OnMouseWheelCamera( wxMouseEvent& event, bool aPan )
         return;
 
     // Honor the "Pan left/right with horizontal movement" setting for native horizontal wheel
-    if( event.GetWheelAxis() == wxMOUSE_WHEEL_HORIZONTAL && !m_settings.m_horizontalPan )
+    if( aMouse.m_wheelHorizontal && !m_settings.m_horizontalPan )
         return;
 
     // Pick the modifier, if any.  Shift beats control beats alt, we don't support more than one.
     int modifiers =
-            event.ShiftDown() ? WXK_SHIFT : ( event.ControlDown() ? WXK_CONTROL : ( event.AltDown() ? WXK_ALT : 0 ) );
+            aMouse.m_shift ? WXK_SHIFT : ( aMouse.m_control ? WXK_CONTROL : ( aMouse.m_alt ? WXK_ALT : 0 ) );
 
     float delta_move = m_delta_move_step_factor * m_camera.GetZoom();
     float horizontalSign = m_settings.m_scrollReversePanH ? -1 : 1;
     float zoomSign = m_settings.m_scrollReverseZoom ? -1 : 1;
 
     if( aPan )
-        delta_move *= 0.01f * event.GetWheelRotation();
-    else if( event.GetWheelRotation() < 0 )
+        delta_move *= 0.01f * aMouse.m_wheelRotation;
+    else if( aMouse.m_wheelRotation < 0 )
         delta_move = -delta_move;
 
     // mousewheel_panning enabled:
@@ -112,7 +102,7 @@ void HIDPI_GL_3D_CANVAS::OnMouseWheelCamera( wxMouseEvent& event, bool aPan )
 
     if( aPan && modifiers != m_settings.m_scrollModifierZoom )
     {
-        if( event.GetWheelAxis() == wxMOUSE_WHEEL_HORIZONTAL || modifiers == m_settings.m_scrollModifierPanH )
+        if( aMouse.m_wheelHorizontal || modifiers == m_settings.m_scrollModifierPanH )
             m_camera.Pan( SFVEC3F( -delta_move, 0.0f, 0.0f ) );
         else
             m_camera.Pan( SFVEC3F( 0.0f, -delta_move, 0.0f ) );
@@ -131,7 +121,7 @@ void HIDPI_GL_3D_CANVAS::OnMouseWheelCamera( wxMouseEvent& event, bool aPan )
     }
     else
     {
-        mouseActivity = m_camera.Zoom( ( event.GetWheelRotation() * zoomSign ) > 0 ? 1.1f : 1 / 1.1f );
+        mouseActivity = m_camera.Zoom( ( aMouse.m_wheelRotation * zoomSign ) > 0 ? 1.1f : 1 / 1.1f );
     }
 
     // If it results on a camera movement
@@ -142,5 +132,6 @@ void HIDPI_GL_3D_CANVAS::OnMouseWheelCamera( wxMouseEvent& event, bool aPan )
     }
 
     // Update the cursor current mouse position on the camera
-    m_camera.SetCurMousePosition( GetNativePosition( event.GetPosition() ) );
+    m_camera.SetCurMousePosition( GetNativePosition( wxPoint( aMouse.m_position.x,
+                                                              aMouse.m_position.y ) ) );
 }

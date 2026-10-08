@@ -23,7 +23,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <gui_reporters.h>
 #include "render_3d_opengl.h"
 #include <board.h>
 #include <footprint.h>
@@ -36,7 +35,7 @@
 #include <project.h>
 #include <core/profile.h>        // To use GetRunningMicroSecs or another profiling utility
 #include <footprint_library_adapter.h>
-#include <eda_3d_viewer_frame.h>
+#include <eda_3d_canvas.h>
 #include <project_pcb.h>
 #include <core/ki_assert.h>
 
@@ -1602,16 +1601,10 @@ void RENDER_3D_OPENGL::Load3dModelsIfNeeded()
     if( m_3dModelMap.size() > 0 )
         return;
 
-    if( wxFrame* frame = dynamic_cast<wxFrame*>( m_canvas->GetParent() ) )
-    {
-        STATUSBAR_REPORTER activityReporter( frame->GetStatusBar(),
-                                             (int) EDA_3D_VIEWER_STATUSBAR::ACTIVITY );
-        load3dModels( &activityReporter );
-    }
-    else
-    {
-        load3dModels( nullptr );
-    }
+    std::unique_ptr<REPORTER> activityReporter =
+            m_canvas->MakeStatusReporter( EDA_3D_VIEWER_STATUSBAR::ACTIVITY );
+
+    load3dModels( activityReporter.get() );
 }
 
 

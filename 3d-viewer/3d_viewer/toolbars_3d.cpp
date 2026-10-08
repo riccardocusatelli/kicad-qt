@@ -25,8 +25,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <wx/wupdlock.h>
-#include <wx/choice.h>
 
 #include <bitmaps.h>
 #include <dialogs/eda_view_switcher.h>

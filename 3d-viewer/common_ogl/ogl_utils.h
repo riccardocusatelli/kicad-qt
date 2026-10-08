@@ -31,7 +31,7 @@
 #ifndef OGL_UTILS_H_
 #define OGL_UTILS_H_
 
-#include <wx/image.h>
+#include <raster_image.h>
 #include "3d_rendering/image.h"
 #include <plugins/3dapi/c3dmodel.h>
 
@@ -67,9 +67,9 @@ GLuint OglLoadTexture( const IMAGE& aImage );
 /**
  * Get the pixel data of current OpenGL image.
  *
- * @param aDstImage the output image. the image must be destroyed to free the data.
+ * @return the image (with alpha), rows from the top to the bottom.
  */
-void OglGetScreenshot( wxImage& aDstImage );
+RASTER_IMAGE OglGetScreenshot();
 
 void OglDrawBackground( const SFVEC4F& aTopColor, const SFVEC4F& aBotColor );
 

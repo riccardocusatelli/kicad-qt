@@ -25,3 +25,18 @@ add_headless_executable( qa_qt_tool_framework
     )
 
 set_target_properties( qa_qt_tool_framework_objects PROPERTIES AUTOMOC OFF )
+
+# The test of the 3D canvas on Qt: the OpenGL renderer and the ray tracer of the 3D viewer in a
+# window of Qt (it needs a display with OpenGL).
+add_headless_executable( qa_qt_3d_viewer
+    KIFACE  pcbnew_qt_kiface
+    SOURCES test_3d_viewer.cpp
+    )
+
+set_target_properties( qa_qt_3d_viewer_objects PROPERTIES AUTOMOC OFF )
+
+# The headers of the 3D viewer of the Qt build (its dialogs) first
+target_include_directories( qa_qt_3d_viewer_objects BEFORE PRIVATE
+    ${CMAKE_SOURCE_DIR}/qt/3d-viewer
+    ${KIQT_FBP_DIR}/3d-viewer
+    )

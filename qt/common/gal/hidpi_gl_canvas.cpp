@@ -36,6 +36,7 @@
 #include <QApplication>
 #include <QExposeEvent>
 #include <QOpenGLContext>
+#include <QResizeEvent>
 #include <QSurfaceFormat>
 #include <QWindow>
 
@@ -45,17 +46,33 @@
 
 HIDPI_GL_CANVAS::HIDPI_GL_CANVAS( const KIGFX::VC_SETTINGS& aSettings, TOOLKIT_WINDOW* aParent,
                                   const wxString& aName ) :
+        HIDPI_GL_CANVAS( aSettings, aParent, SurfaceFormat(), aName )
+{
+    if( aParent )
+        ResizeCanvas( aParent->width(), aParent->height() );
+}
+
+
+HIDPI_GL_CANVAS::HIDPI_GL_CANVAS( const KIGFX::VC_SETTINGS& aSettings, TOOLKIT_WINDOW* aParent,
+                                  const QSurfaceFormat& aFormat, const wxString& aName ) :
         QWidget( aParent ),
         m_settings( aSettings ),
         m_window( new QWindow() ),
         m_container( nullptr )
 {
-    setObjectName( ToQString( aName ) );
+    if( !aName.IsEmpty() )
+        setObjectName( ToQString( aName ) );
 
+    createSurface( aFormat );
+}
+
+
+void HIDPI_GL_CANVAS::createSurface( const QSurfaceFormat& aFormat )
+{
     // The native OpenGL surface, created now: the contexts can be bound to it before it is
     // shown (as a wxGLCanvas)
     m_window->setSurfaceType( QSurface::OpenGLSurface );
-    m_window->setFormat( SurfaceFormat() );
+    m_window->setFormat( aFormat );
     m_window->create();
     m_window->installEventFilter( this );
 
@@ -64,9 +81,14 @@ HIDPI_GL_CANVAS::HIDPI_GL_CANVAS( const KIGFX::VC_SETTINGS& aSettings, TOOLKIT_W
     m_container->setMouseTracking( true );
 
     setAttribute( Qt::WA_NativeWindow, false );
+}
 
-    if( aParent )
-        ResizeCanvas( aParent->width(), aParent->height() );
+
+void HIDPI_GL_CANVAS::resizeEvent( QResizeEvent* aEvent )
+{
+    // The OpenGL window covers the canvas
+    m_container->setGeometry( 0, 0, width(), height() );
+    QWidget::resizeEvent( aEvent );
 }
 
 
@@ -172,6 +194,30 @@ void HIDPI_GL_CANVAS::SwapBuffers()
 void HIDPI_GL_CANVAS::Refresh()
 {
     PostPaint();
+}
+
+
+void HIDPI_GL_CANVAS::SetFocus()
+{
+    setFocus( Qt::OtherFocusReason );
+}
+
+
+wxSize HIDPI_GL_CANVAS::GetClientSize() const
+{
+    return wxSize( width(), height() );
+}
+
+
+bool HIDPI_GL_CANVAS::IsShownOnScreen() const
+{
+    return isVisible();
+}
+
+
+TOOLKIT_WINDOW* HIDPI_GL_CANVAS::GetParent() const
+{
+    return parentWidget();
 }
 
 

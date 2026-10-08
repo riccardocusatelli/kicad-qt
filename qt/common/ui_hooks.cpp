@@ -60,6 +60,28 @@ private:
 };
 
 
+/// An event filter of a widget calling a function (a child of the widget).
+class EVENT_FILTER : public QObject
+{
+public:
+    EVENT_FILTER( QWidget* aWidget, std::function<bool( QEvent* )> aFilter ) :
+            QObject( aWidget ),
+            m_filter( std::move( aFilter ) )
+    {
+        aWidget->installEventFilter( this );
+    }
+
+protected:
+    bool eventFilter( QObject* aWatched, QEvent* aEvent ) override
+    {
+        return aWatched == parent() && m_filter( aEvent );
+    }
+
+private:
+    std::function<bool( QEvent* )> m_filter;
+};
+
+
 /**
  * The update UI functions, and the application event filter that runs them (once, from the
  * event loop) after the events of the user.
@@ -153,6 +175,12 @@ void KIQT::OnEvent( QWidget* aWidget, QEvent::Type aType,
                     std::function<void( QEvent* aEvent )> aHandler )
 {
     new EVENT_HOOK( aWidget, aType, std::move( aHandler ) );
+}
+
+
+void KIQT::FilterEvents( QWidget* aWidget, std::function<bool( QEvent* aEvent )> aFilter )
+{
+    new EVENT_FILTER( aWidget, std::move( aFilter ) );
 }
 
 

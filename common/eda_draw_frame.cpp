@@ -99,7 +99,6 @@ BEGIN_EVENT_TABLE( EDA_DRAW_FRAME, KIWAY_PLAYER )
     EVT_UPDATE_UI( ID_ON_GRID_SELECT, EDA_DRAW_FRAME::OnUpdateSelectGrid )
     EVT_UPDATE_UI( ID_ON_ZOOM_SELECT, EDA_DRAW_FRAME::OnUpdateSelectZoom )
 
-    EVT_ACTIVATE( EDA_DRAW_FRAME::onActivate )
 END_EVENT_TABLE()
 
 
@@ -1503,14 +1502,6 @@ void EDA_DRAW_FRAME::handleActivateEvent( bool aActive )
     // when the window activates
     if( !IsIconized() )
         m_messagePanel->Refresh();
-}
-
-
-void EDA_DRAW_FRAME::onActivate( wxActivateEvent& aEvent )
-{
-    handleActivateEvent( aEvent.GetActive() );
-
-    aEvent.Skip();
 }
 
 

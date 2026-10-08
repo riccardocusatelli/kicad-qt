@@ -154,6 +154,8 @@ EVENTS = {
     'OnSpinCtrl':           ( SOURCE, 'spin' ),
     'OnSpinCtrlDouble':     ( SOURCE, 'spin' ),
     'OnSpinCtrlText':       ( SOURCE, 'spintext' ),
+    'OnSpinUp':             ( SOURCE, 'spinup' ),
+    'OnSpinDown':           ( SOURCE, 'spindown' ),
     'OnSlider':             ( SOURCE, 'signal:QAbstractSlider::valueChanged' ),
     'OnScroll':             ( SOURCE, 'signal:QAbstractSlider::valueChanged' ),
     'OnCommandScrollChanged': ( SOURCE, 'signal:QAbstractSlider::valueChanged' ),
@@ -161,6 +163,9 @@ EVENTS = {
     'OnListBox':            ( SOURCE, 'signal:QListWidget::currentRowChanged' ),
     'OnListBoxDClick':      ( SOURCE, 'signal:QListWidget::itemDoubleClicked' ),
     'OnCheckListBoxToggled': ( SOURCE, 'signal:QListWidget::itemChanged' ),
+    'OnListItemActivated':  ( SOURCE, 'signal:QTreeWidget::itemActivated' ),
+    'OnListItemSelected':   ( SOURCE, 'signal:QTreeWidget::itemSelectionChanged' ),
+    'OnListItemDeselected': ( SOURCE, 'signal:QTreeWidget::itemSelectionChanged' ),
     'OnKillFocus':          ( SOURCE, 'filter:QEvent::FocusOut' ),
     'OnSetFocus':           ( SOURCE, 'filter:QEvent::FocusIn' ),
     'OnSize':               ( SOURCE, 'filter:QEvent::Resize' ),
@@ -185,6 +190,11 @@ EVENTS = {
     'OnSaveButtonClick':    ( SOURCE, 'stdbutton:Save' ),
     'OnYesButtonClick':     ( SOURCE, 'stdbutton:Yes' ),
     'OnNoButtonClick':      ( SOURCE, 'stdbutton:No' ),
+}
+
+# The classes of wxWidgets used as custom controls, and their Qt counterparts
+WX_CUSTOM_CLASSES = {
+    'wxScrolledCanvas': 'QScrollArea',
 }
 
 # The buttons of wxStdDialogButtonSizer: property, member suffix, Qt button, KiCad id
@@ -386,6 +396,11 @@ class FormClass:
                 signal = 'QSpinBox::valueChanged' if aQtClass == 'QSpinBox' else 'QDoubleSpinBox::valueChanged'
                 self.code.append( '    QObject::connect( %s, &%s, this, [this, src = %s]() { %s( src ); } );'
                                   % ( aVar, signal, src, handler ) )
+
+            elif kind in ( 'spinup', 'spindown' ):
+                setter = 'SetUpCallback' if kind == 'spinup' else 'SetDownCallback'
+                self.code.append( '    %s->%s( [this, src = %s]() { %s( src ); } );'
+                                  % ( aVar, setter, src, handler ) )
 
             elif kind == 'spintext':
                 self.code.append( '    QObject::connect( %s, &QAbstractSpinBox::editingFinished, this, [this, src = %s]() { %s( src ); } );'
@@ -623,6 +638,12 @@ class FormClass:
             self.code.append( '    %s->setSingleStep( %s );' % ( var, parse_float( p.get( 'inc' ), 1 ) ) )
             self.code.append( '    %s->setValue( %s );' % ( var, parse_float( p.get( 'initial' ), 0 ) ) )
 
+        elif cls == 'wxSpinButton':
+            # The arrows of a spin control, without text
+            qt = 'SPIN_BUTTON'
+            self.include( '<widgets/spin_button.h>' )
+            var = self.var( aObj, qt, 'new %s( %s )' % ( qt, aParent ) )
+
         elif cls == 'wxSlider':
             qt = 'QSlider'
             orient = 'Qt::Vertical' if 'wxSL_VERTICAL' in style else 'Qt::Horizontal'
@@ -670,6 +691,20 @@ class FormClass:
             if 'wxLB_MULTIPLE' in style or 'wxLB_EXTENDED' in style:
                 self.code.append( '    %s->setSelectionMode( QAbstractItemView::ExtendedSelection );' % var )
 
+        elif cls == 'wxListCtrl':
+            # The report view of a list (the columns are added by the code of the dialog)
+            qt = 'QTreeWidget'
+            var, t = make( qt )
+            self.code.append( '    %s->setRootIsDecorated( false );' % var )
+            self.code.append( '    %s->setUniformRowHeights( true );' % var )
+            self.code.append( '    %s->setColumnCount( 0 );' % var )
+
+            if 'wxLC_NO_HEADER' in style:
+                self.code.append( '    %s->setHeaderHidden( true );' % var )
+
+            if 'wxLC_SINGLE_SEL' not in style:
+                self.code.append( '    %s->setSelectionMode( QAbstractItemView::ExtendedSelection );' % var )
+
         elif cls == 'wxCheckListBox':
             qt = 'QListWidget'
             var, t = make( qt )
@@ -712,8 +747,17 @@ class FormClass:
                 if m and not m.group( 1 )[1:].startswith( 'wx/' ):
                     self.include( m.group( 1 ) )
 
-            var = self.var( aObj, klass, 'new %s( %s )' % ( klass, aParent ) )
-            qt = klass
+            if klass in WX_CUSTOM_CLASSES:
+                # A class of wxWidgets: its Qt counterpart
+                qt = WX_CUSTOM_CLASSES[klass]
+                var, t = make( qt )
+
+                if qt == 'QScrollArea':
+                    self.code.append( '    %s->setWidgetResizable( true );' % var )
+                    self.code.append( '    %s->setFrameShape( QFrame::NoFrame );' % var )
+            else:
+                var = self.var( aObj, klass, 'new %s( %s )' % ( klass, aParent ) )
+                qt = klass
 
         elif cls in ( 'wxPanel', 'wxScrolledWindow', 'wxNotebook', 'wxAuiNotebook', 'wxSimplebook',
                       'wxSplitterWindow' ):

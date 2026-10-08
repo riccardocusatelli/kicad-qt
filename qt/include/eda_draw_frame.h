@@ -325,7 +325,6 @@ public:
 
     /// Show a text in a field of the status bar (0: message; 1: zoom; 2: cursor; 3: delta;
     /// 4: grid; 5: units; 6: tool; 7: constraint).
-    void SetStatusText( const wxString& aText, int aField = 0 ) override;
 
     /**
      * Called when modifying the page settings.
@@ -529,19 +528,11 @@ protected:
      */
     bool saveCanvasTypeSetting( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType );
 
-    /**
-     * Handle a window activation event.
-     *
-     * @param aActive is true when the window is activated, false when it is deactivated.
-     */
-    virtual void handleActivateEvent( bool aActive );
+    void handleActivateEvent( bool aActive ) override;
 
     /// The keys pressed in the frame (outside its canvas) that its widgets don't use are
     /// hotkeys of the tools.
     void keyPressEvent( QKeyEvent* aEvent ) override;
-
-    /// The activation of the window.
-    void changeEvent( QEvent* aEvent ) override;
 
     std::unique_ptr<LOCKFILE> m_file_checker;
 
@@ -561,7 +552,6 @@ protected:
     wxArrayString        m_replaceStringHistoryList;
 
     EDA_MSG_PANEL*       m_messagePanel;
-    std::vector<QLabel*> m_statusFields;     // The fields of the status bar
     int                  m_lastToolbarIconSize;
 
     COLOR_SETTINGS*      m_colorSettings;

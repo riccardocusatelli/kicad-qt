@@ -28,12 +28,13 @@
  */
 
 #include <stdexcept>
+#include <vector>
 #include <kicad_gl/kiglad.h>    // Must be included first
 
 #include "ogl_utils.h"
 
 
-void OglGetScreenshot( wxImage& aDstImage )
+RASTER_IMAGE OglGetScreenshot()
 {
     struct viewport_params
     {
@@ -45,7 +46,7 @@ void OglGetScreenshot( wxImage& aDstImage )
 
     glGetIntegerv( GL_VIEWPORT, (GLint*) &viewport );
 
-    unsigned char* pixelbuffer = (unsigned char*) malloc( viewport.x * viewport.y * 4 );
+    std::vector<unsigned char> pixelbuffer( (size_t) viewport.x * viewport.y * 4 );
 
     // Call glFinish before screenshot to ensure everything is fully drawn.
     glFinish();
@@ -54,17 +55,19 @@ void OglGetScreenshot( wxImage& aDstImage )
     glReadBuffer( GL_BACK_LEFT );
 
     glReadPixels( viewport.originX, viewport.originY, viewport.x, viewport.y, GL_RGBA,
-                  GL_UNSIGNED_BYTE, pixelbuffer );
+                  GL_UNSIGNED_BYTE, pixelbuffer.data() );
 
-    unsigned char* rgbBuffer = (unsigned char*) malloc( viewport.x * viewport.y * 3 );
-    unsigned char* alphaBuffer = (unsigned char*) malloc( viewport.x * viewport.y );
+    RASTER_IMAGE image( viewport.x, viewport.y );
+    image.InitAlpha();
 
-    unsigned char* rgbaPtr = pixelbuffer;
-    unsigned char* rgbPtr = rgbBuffer;
-    unsigned char* alphaPtr = alphaBuffer;
+    unsigned char* rgbPtr = image.GetData();
+    unsigned char* alphaPtr = image.GetAlpha();
 
+    // The rows of OpenGL go from the bottom to the top: the image is mirrored top-bottom.
     for( int y = 0; y < viewport.y; y++ )
     {
+        const unsigned char* rgbaPtr = pixelbuffer.data() + (size_t) ( viewport.y - 1 - y ) * viewport.x * 4;
+
         for( int x = 0; x < viewport.x; x++ )
         {
             rgbPtr[0] = rgbaPtr[0];
@@ -78,17 +81,7 @@ void OglGetScreenshot( wxImage& aDstImage )
         }
     }
 
-    // "Sets the image data without performing checks.
-    //  The data given must have the size (width*height*3)
-    //  The data must have been allocated with malloc()
-    //  If static_data is false, after this call the pointer to the data is owned
-    //  by the wxImage object, that will be responsible for deleting it."
-    aDstImage.SetData( rgbBuffer, viewport.x, viewport.y, false );
-    aDstImage.SetAlpha( alphaBuffer, false );
-
-    free( pixelbuffer );
-
-    aDstImage = aDstImage.Mirror( false );
+    return image;
 }
 
 

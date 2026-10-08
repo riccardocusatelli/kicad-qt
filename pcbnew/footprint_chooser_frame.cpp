@@ -327,8 +327,7 @@ void FOOTPRINT_CHOOSER_FRAME::quiescePreview()
     {
         m_preview3DCanvas->Show();
 
-        wxCloseEvent dummy;
-        m_preview3DCanvas->OnCloseWindow( dummy );
+        m_preview3DCanvas->ReleaseOpenGL();
         m_preview3DCanvas->SetEvtHandlerEnabled( false );
     }
 

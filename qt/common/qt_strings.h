@@ -20,6 +20,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 #include <wx/string.h>
 
 /// wxString (kiwx) to QString.
@@ -32,4 +33,33 @@ inline QString ToQString( const wxString& aStr )
 inline wxString ToWxString( const QString& aStr )
 {
     return wxString( aStr.toStdWString() );
+}
+
+/**
+ * The filters of a Qt file dialog from a wildcard of wxWidgets ("Description (*.a; *.b)|*.a;*.b|...",
+ * the wildcards of wildcards_and_files_ext.h): "Description (*.a *.b)", one by filter.
+ */
+inline QStringList ToQtFileFilters( const wxString& aWildcard )
+{
+    QStringList parts = ToQString( aWildcard ).split( QLatin1Char( '|' ) );
+    QStringList filters;
+
+    for( int ii = 0; ii + 1 < parts.size(); ii += 2 )
+    {
+        QString description = parts[ii];
+        int     open = description.lastIndexOf( QLatin1Char( '(' ) );
+
+        if( open > 0 )
+            description = description.left( open ).trimmed();
+
+        QStringList patterns;
+
+        for( QString pattern : parts[ii + 1].split( QLatin1Char( ';' ), Qt::SkipEmptyParts ) )
+            patterns.append( pattern.trimmed() );
+
+        filters.append( description + QStringLiteral( " (" ) + patterns.join( QLatin1Char( ' ' ) )
+                        + QLatin1Char( ')' ) );
+    }
+
+    return filters;
 }

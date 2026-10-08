@@ -23,18 +23,19 @@
  */
 
 /**
- * @file ogl_attr_list.cpp
- * @brief Implements a attribute list support for openGL
+ * @file ogl_attr_list_wx.cpp
+ * @brief Implements a attribute list support for openGL (wxGLAttributes)
  */
 
 #include "ogl_attr_list.h"
+#include <wx/glcanvas.h>
 #include <wx/debug.h>
 #include <core/arraydim.h>
 #include <core/ki_assert.h>
 
 
-const wxGLAttributes OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasingMode,
-                                                      bool              aAlpha )
+KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasingMode,
+                                                bool              aAlpha )
 {
     KI_ASSERT( aAntiAliasingMode <= ANTIALIASING_MODE::AA_8X );
 

@@ -48,7 +48,8 @@ GL_CONTEXT_MANAGER* GL_CONTEXT_MANAGER::Get()
 KIGL_CONTEXT* GL_CONTEXT_MANAGER::CreateCtx( KIGL_CANVAS* aCanvas, const KIGL_CONTEXT* aOther )
 {
     QOpenGLContext* context = new QOpenGLContext();
-    context->setFormat( HIDPI_GL_CANVAS::SurfaceFormat() );
+    // The format of the surface of the canvas (antialiasing, alpha of the 3D canvases)
+    context->setFormat( aCanvas ? aCanvas->GetSurface()->format() : HIDPI_GL_CANVAS::SurfaceFormat() );
 
     if( aOther )
         context->setShareContext( const_cast<QOpenGLContext*>( aOther ) );

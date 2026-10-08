@@ -40,6 +40,9 @@
 using KIGL_CONTEXT = wxGLContext;
 using KIGL_CANVAS  = wxGLCanvas;
 
+/// The attributes of an OpenGL surface (buffers, antialiasing) for the toolkit.
+using KIGL_ATTRIBUTES = wxGLAttributes;
+
 class KICOMMON_API GL_CONTEXT_MANAGER
 {
 public:

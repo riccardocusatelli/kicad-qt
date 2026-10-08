@@ -35,14 +35,18 @@ add_library( kiqt SHARED
     ui_hooks.cpp
 
     bitmap_store.cpp
+    raster_image_qt.cpp
     confirm.cpp
     gal/cursors.cpp
     toolkit/file_watcher_qt.cpp
     toolkit/gui_services_qt.cpp
     toolkit/gui_timer_qt.cpp
     toolkit/qt_keys.cpp
+    widgets/bitmap_toggle.cpp
     widgets/msgpanel.cpp
+    widgets/spin_button.cpp
     widgets/wx_infobar.cpp
+    widgets/wx_panel.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
@@ -50,6 +54,8 @@ add_library( kiqt SHARED
     ${KIQT_VIEW_CONTROLS_SRCS}
     ${KIQT_OPENGL_GAL_SRCS}
     gal/hidpi_gl_canvas.cpp
+    gal/hidpi_gl_3D_canvas_qt.cpp
+    ${CMAKE_SOURCE_DIR}/common/gal/hidpi_gl_3D_canvas.cpp
     gal/opengl_gal_qt.cpp
     kicad_gl/gl_context_mgr.cpp
     kicad_gl/gl_utils.cpp
@@ -63,6 +69,8 @@ set_target_properties( kiqt PROPERTIES
 # The OpenGL GAL is part of the GAL library (GAL_API)
 set_source_files_properties( ${KIQT_OPENGL_GAL_SRCS} ${KIQT_VIEW_CONTROLS_SRCS}
                              gal/hidpi_gl_canvas.cpp gal/opengl_gal_qt.cpp
+                             gal/hidpi_gl_3D_canvas_qt.cpp
+                             ${CMAKE_SOURCE_DIR}/common/gal/hidpi_gl_3D_canvas.cpp
     PROPERTIES COMPILE_DEFINITIONS GAL_DLL=1 )
 
 # The shaders of the OpenGL GAL (as in common/gal/CMakeLists.txt, in the Qt directories)
@@ -154,6 +162,9 @@ list( TRANSFORM KIQT_COMMON_TOOL_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/tool/ )
 
 kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_unit_entry_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/eda_view_switcher_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_color_picker_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     )
 
 add_library( kiqt_common STATIC
@@ -170,9 +181,13 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/widgets/msgpanel_item.cpp
 
     dialog_shim.cpp
+    dialogs/dialog_color_picker.cpp
     dialogs/dialog_unit_entry.cpp
+    dialogs/eda_list_dialog.cpp
+    dialogs/eda_view_switcher.cpp
     draw_panel_gal.cpp
     eda_base_frame.cpp
+    eda_base_frame_help.cpp
     eda_draw_frame.cpp
     kiway.cpp
     kiway_player.cpp
@@ -180,7 +195,11 @@ add_library( kiqt_common STATIC
     tool/action_toolbar.cpp
     tool/tool_dispatcher.cpp
     view/qt_view_controls.cpp
+    widgets/color_swatch.cpp
+    widgets/std_bitmap_button.cpp
+    widgets/text_ctrl_eval.cpp
     widgets/unit_binder.cpp
+    widgets/wx_busy_indicator.cpp
     )
 
 set_target_properties( kiqt_common PROPERTIES POSITION_INDEPENDENT_CODE ON )

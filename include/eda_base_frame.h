@@ -93,6 +93,7 @@ class APPEARANCE_CONTROLS_3D;
 struct WINDOW_SETTINGS;
 struct WINDOW_STATE;
 class ACTION_MENU;
+class WX_MENUBAR;
 class ACTION_TOOLBAR;
 class ACTION_TOOLBAR_CONTROL;
 class TOOL_INTERACTIVE;
@@ -160,6 +161,12 @@ public:
      *          this or the auto save feature will be disabled.
      */
     bool ProcessEvent( wxEvent& aEvent ) override;
+
+    /**
+     * Give the switch keys held down with Tab (Ctrl+Tab) to handleViewSwitcherKey(), before
+     * the event is processed.
+     */
+    bool TryBefore( wxEvent& aEvent ) override;
 
     /**
      * Capture the key event before it is sent to the GUI.
@@ -482,6 +489,12 @@ public:
     ACTION_TOOLBAR_CONTROL_FACTORY* GetCustomToolbarControlFactory( const std::string& aName );
 
     /**
+     * Call @a aHandler when the menu item or the tool of id @a aId (an id, not an action) is
+     * chosen.
+     */
+    void BindMenuCommand( int aId, std::function<void()> aHandler );
+
+    /**
      * Recreate the menu bar.
      *
      * Needed when the language or icons are changed
@@ -492,6 +505,11 @@ public:
      * Add the standard KiCad help menu to the menubar.
      */
     void AddStandardHelpMenu( wxMenuBar* aMenuBar );
+
+    /**
+     * Show @a aMenuBar in the frame, and delete its previous menu bar.
+     */
+    void InstallMenuBar( WX_MENUBAR* aMenuBar );
 
     wxString GetRunMenuCommandDescription( const TOOL_ACTION& aAction );
 
@@ -667,6 +685,22 @@ protected:
      */
     virtual void handleIconizeEvent( bool aIconized ) {}
     void         onIconize( wxIconizeEvent& aEvent );
+
+    /**
+     * Handle a window activation event.
+     *
+     * @param aActive is true when the window is activated, false when it is deactivated.
+     */
+    virtual void handleActivateEvent( bool aActive ) {}
+    void         onActivate( wxActivateEvent& aEvent );
+
+    /**
+     * The key @a aSwitchKey (PRESET_SWITCH_KEY or VIEWPORT_SWITCH_KEY) is held down with Tab:
+     * show the switcher of the layer presets or of the viewports (EDA_VIEW_SWITCHER).
+     *
+     * @return true if the key was used.
+     */
+    virtual bool handleViewSwitcherKey( int aSwitchKey ) { return false; }
 
     /**
      * Return the auto save status of the application.

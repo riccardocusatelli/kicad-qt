@@ -132,6 +132,20 @@ wxString DIALOG_SHIM::GetTitle() const
 }
 
 
+void DIALOG_SHIM::OnModify()
+{
+    if( !GetTitle().StartsWith( wxS( "*" ) ) )
+        SetTitle( wxS( "*" ) + GetTitle() );
+}
+
+
+void DIALOG_SHIM::ClearModify()
+{
+    if( GetTitle().StartsWith( wxS( "*" ) ) )
+        SetTitle( GetTitle().AfterFirst( '*' ) );
+}
+
+
 void DIALOG_SHIM::finishDialogSettings()
 {
     // The layout gives the minimal size of the dialog

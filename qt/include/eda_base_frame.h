@@ -88,8 +88,10 @@ class APP_SETTINGS_BASE;
 struct WINDOW_SETTINGS;
 struct WINDOW_STATE;
 class ACTION_MENU;
+class WX_MENUBAR;
 class TOOL_INTERACTIVE;
 class WX_INFOBAR;
+class APPEARANCE_CONTROLS_3D;
 
 
 #define DEFAULT_MAX_UNDO_ITEMS 0
@@ -221,6 +223,19 @@ public:
      * The factory of a control of the toolbars, or nullptr.
      */
     std::function<void( ACTION_TOOLBAR* )>* GetCustomToolbarControlFactory( const std::string& aName );
+
+    /**
+     * Call @a aHandler when the menu item or the tool of id @a aId (an id, not an action) is
+     * chosen.
+     */
+    void BindMenuCommand( int aId, std::function<void()> aHandler );
+
+    /**
+     * Run the handler of the menu item or tool of id @a aId (BindMenuCommand()).
+     *
+     * @return true if the frame has a handler for the id.
+     */
+    bool RunMenuCommand( int aId );
 
     /**
      * A control of the toolbars (with the id @a aId) is deleted: the frame forgets it.
@@ -402,6 +417,27 @@ public:
      * Needed when the language or icons are changed
      */
     void ReCreateMenuBar();
+
+    /// The frame is the active window.
+    bool IsActive() const { return isActiveWindow(); }
+
+    /**
+     * Add the standard KiCad help menu to the menubar.
+     */
+    void AddStandardHelpMenu( WX_MENUBAR* aMenuBar );
+
+    /**
+     * Show @a aMenuBar in the frame, and delete its previous menu bar.
+     */
+    void InstallMenuBar( WX_MENUBAR* aMenuBar );
+
+    /**
+     * Create a menu list for language choice, and add it as submenu to \a MasterMenu.
+     *
+     * @param aMasterMenu is the main menu.
+     * @param aControlTool is the tool to associate with the menu.
+     */
+    void AddMenuLanguageList( ACTION_MENU* aMasterMenu, TOOL_INTERACTIVE* aControlTool );
 
     /**
      * Check if \a aFileName can be written.
@@ -590,6 +626,21 @@ protected:
      */
     virtual void handleIconizeEvent( bool aIconized ) {}
 
+    /**
+     * Handle a window activation event.
+     *
+     * @param aActive is true when the window is activated, false when it is deactivated.
+     */
+    virtual void handleActivateEvent( bool aActive ) {}
+
+    /**
+     * The key @a aSwitchKey (PRESET_SWITCH_KEY or VIEWPORT_SWITCH_KEY) is held down with Tab:
+     * show the switcher of the layer presets or of the viewports (EDA_VIEW_SWITCHER).
+     *
+     * @return true if the key was used.
+     */
+    virtual bool handleViewSwitcherKey( int aSwitchKey ) { return false; }
+
     /// The frame is being closed: release what it uses.
     virtual void doCloseWindow() { }
 
@@ -635,6 +686,8 @@ protected:
     wxString                m_aboutTitle;        // Name of program displayed in About.
 
     WX_INFOBAR*                m_infoBar;           // Infobar for the frame
+    std::vector<QLabel*>       m_statusFields;      // The fields of the status bar, if any
+    APPEARANCE_CONTROLS_3D*    m_appearancePanel = nullptr;
 
     wxString                m_configName;        // Prefix used to identify some params (frame
                                                  // size...) and to name some config files
@@ -670,6 +723,9 @@ protected:
     ACTION_TOOLBAR*      m_tbLeft;    // Options (typically on left edge of window)
 
     std::map<std::string, std::function<void( ACTION_TOOLBAR* )>> m_toolbarControlFactories;
+
+    /// The handlers of the menu items and tools that are not actions (BindMenuCommand()).
+    std::map<int, std::function<void()>> m_menuCommands;
 
     ///< The functions called when the user units change
     std::map<int, std::function<void( EDA_BASE_FRAME* )>> m_unitsChangedListeners;

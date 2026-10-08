@@ -24,30 +24,35 @@
 #ifndef COMMON_WIDGETS_WX_BUSY_INDICATOR__H
 #define COMMON_WIDGETS_WX_BUSY_INDICATOR__H
 
+#include <memory>
+
 #include <widgets/busy_indicator.h>
 
 
-class wxBusyCursor;
-
-
 /**
- * Simple wrapper around wxBusyCursor for used with the generic BUSY_INDICATOR interface.
+ * Simple wrapper around the busy cursor of the GUI toolkit (wxBusyCursor), for use with the
+ * generic BUSY_INDICATOR interface.
  *
- * Can be used to provide a WX busy cursor (spinner) to generic code that otherwise has no
- * concept of wx cursors.
+ * Can be used to provide a busy cursor (spinner) to generic code that otherwise has no
+ * concept of the cursors of the toolkit.  Each toolkit has its implementation
+ * (common/widgets/wx_busy_indicator.cpp, and the one of the Qt build).
  */
 class WX_BUSY_INDICATOR : public BUSY_INDICATOR
 {
 public:
     /**
-     * Construct a busy indicator represented by a wxBusyCursor, which will be
-     * active as long as this object exists (just like wxBustCursor itself).
+     * Construct a busy indicator represented by a busy cursor, which will be
+     * active as long as this object exists (just like wxBusyCursor itself).
      */
     WX_BUSY_INDICATOR();
 
+    ~WX_BUSY_INDICATOR() override;
+
 private:
-    /// This is the actual WX cursor that is the indicator.
-    std::unique_ptr<wxBusyCursor> m_cursor;
+    /// The busy cursor of the toolkit, which is the indicator.
+    class CURSOR;
+
+    std::unique_ptr<CURSOR> m_cursor;
 };
 
 #endif // COMMON_WIDGETS_WX_BUSY_INDICATOR__H

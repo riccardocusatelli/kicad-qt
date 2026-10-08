@@ -529,6 +529,15 @@ bool TOOL_DISPATCHER::isStaleAutoRepeat( const wxKeyEvent& aKeyEvent )
 }
 
 
+bool TOOL_DISPATCHER::DispatchEvent( TOOLKIT_EVENT& aEvent )
+{
+    DispatchWxEvent( aEvent );
+
+    // The events the tools don't use are skipped
+    return !aEvent.GetSkipped();
+}
+
+
 void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 {
     bool            motion = false;

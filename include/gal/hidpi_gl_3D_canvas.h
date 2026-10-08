@@ -29,24 +29,25 @@
 #include <atomic>
 #include <gal/3d/camera.h>
 #include <gal/hidpi_gl_canvas.h>
-#include <wx/image.h>
-#include <wx/timer.h>
+#include <kicad_gl/gl_context_mgr.h>
+#include <toolkit/mouse_state.h>
+#include <toolkit/toolkit_types.h>
 
 /**
  *  Provides basic 3D controls ( zoom, rotate, translate, ... )
  *
+ *  The canvas gives its events to the virtual functions on*(), with the state of the mouse
+ *  (MOUSE_STATE): the 3D canvases (EDA_3D_CANVAS) don't depend on the GUI toolkit.  The Qt build
+ *  has its own HIDPI_GL_3D_CANVAS, with the same interface.
  */
 class GAL_API HIDPI_GL_3D_CANVAS : public HIDPI_GL_CANVAS
 {
 public:
-    // wxGLCanvas constructor
-
-    HIDPI_GL_3D_CANVAS( const KIGFX::VC_SETTINGS& aVcSettings, CAMERA& aCamera, wxWindow* parent,
-                        const wxGLAttributes& aGLAttribs, wxWindowID id = wxID_ANY,
-                        const wxPoint& pos = wxDefaultPosition,
-                        const wxSize& size = wxDefaultSize, long style = 0,
-                        const wxString&  name = wxGLCanvasName,
-                        const wxPalette& palette = wxNullPalette );
+    /**
+     * @param aGLAttribs are the attributes of the OpenGL surface (OGL_ATT_LIST).
+     */
+    HIDPI_GL_3D_CANVAS( const KIGFX::VC_SETTINGS& aVcSettings, CAMERA& aCamera,
+                        TOOLKIT_WINDOW* aParent, const KIGL_ATTRIBUTES& aGLAttribs );
 
     bool m_mouse_is_moving; // Mouse activity is in progress
     bool m_mouse_was_moved;
@@ -61,8 +62,46 @@ public:
      */
     CAMERA* GetCamera() { return &m_camera; }
 
-    void OnMouseMoveCamera( wxMouseEvent& event );
-    void OnMouseWheelCamera( wxMouseEvent& event, bool aPan );
+    void OnMouseMoveCamera( const MOUSE_STATE& aMouse );
+    void OnMouseWheelCamera( const MOUSE_STATE& aMouse, bool aPan );
+
+protected:
+    /// The canvas must be drawn.
+    virtual void onPaint() {}
+
+    /// The size of the canvas changed.
+    virtual void onResize() {}
+
+    /// The canvas is closed (with its window).
+    virtual void onClose() {}
+
+    /**
+     * An input event (mouse, keyboard), before the functions of the mouse events: for the
+     * tools.
+     *
+     * @return true if the event was used (it does not go to the functions of the mouse events).
+     */
+    virtual bool onInputEvent( TOOLKIT_EVENT& aEvent ) { return false; }
+
+    virtual void onMouseMove( const MOUSE_STATE& aMouse ) {}
+    virtual void onMouseWheel( const MOUSE_STATE& aMouse ) {}
+    virtual void onMagnify( const MOUSE_STATE& aMouse ) {}
+    virtual void onLeftDown( const MOUSE_STATE& aMouse ) {}
+    virtual void onLeftUp( const MOUSE_STATE& aMouse ) {}
+    virtual void onMiddleDown( const MOUSE_STATE& aMouse ) {}
+    virtual void onMiddleUp( const MOUSE_STATE& aMouse ) {}
+    virtual void onRightDown( const MOUSE_STATE& aMouse ) {}
+    virtual void onRightUp( const MOUSE_STATE& aMouse ) {}
+
+    /**
+     * Touch gestures.
+     *
+     * @param aStart is true for the first event of the gesture.
+     * @param aPosition is the position of the gesture, in client coordinates.
+     */
+    virtual void onZoomGesture( bool aStart, const VECTOR2I& aPosition, double aZoomFactor ) {}
+    virtual void onPanGesture( bool aStart, const VECTOR2I& aPosition ) {}
+    virtual void onRotateGesture( bool aStart, const VECTOR2I& aPosition, double aAngle ) {}
 };
 
 

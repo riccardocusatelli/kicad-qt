@@ -88,12 +88,14 @@ set(3D-VIEWER_SRCS
     3d_viewer/tools/eda_3d_conditions.cpp
     3d_viewer/tools/eda_3d_controller.cpp
     3d_viewer/eda_3d_viewer_frame.cpp
+    3d_viewer/eda_3d_viewer_frame_wx.cpp
     3d_viewer/eda_3d_viewer_settings.cpp
-    common_ogl/ogl_attr_list.cpp
+    common_ogl/ogl_attr_list_wx.cpp
     common_ogl/ogl_utils.cpp
     3d_fastmath.cpp
     3d_math.cpp
     dialogs/appearance_controls_3D.cpp
+    dialogs/appearance_controls_3D_wx.cpp
     dialogs/appearance_controls_3D_base.cpp
     dialogs/dialog_select_3d_model_base.cpp
     dialogs/dialog_select_3d_model.cpp

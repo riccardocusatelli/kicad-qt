@@ -55,8 +55,6 @@ public:
 
     virtual ~PCB_BASE_EDIT_FRAME();
 
-    bool TryBefore( wxEvent& aEvent ) override;
-
     void doCloseWindow() override;
 
     /**
@@ -261,6 +259,8 @@ public:
 
 protected:
     void configureToolbars() override;
+
+    bool handleViewSwitcherKey( int aSwitchKey ) override;
 
     /**
      * Create a new library in the given table.  (The user will be consulted if the table is null.)

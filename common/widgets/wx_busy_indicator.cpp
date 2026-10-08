@@ -26,7 +26,17 @@
 #include <wx/cursor.h>
 
 
+/// The wxWidgets busy cursor.
+class WX_BUSY_INDICATOR::CURSOR
+{
+    wxBusyCursor m_cursor;
+};
+
+
 WX_BUSY_INDICATOR::WX_BUSY_INDICATOR() :
-        m_cursor( std::make_unique<wxBusyCursor>() )
+        m_cursor( std::make_unique<CURSOR>() )
 {
 }
+
+
+WX_BUSY_INDICATOR::~WX_BUSY_INDICATOR() = default;
