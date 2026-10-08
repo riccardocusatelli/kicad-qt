@@ -31,7 +31,12 @@ PCB_SEARCH_PANE::PCB_SEARCH_PANE( PCB_EDIT_FRAME* aFrame ) :
     if( m_brd != nullptr )
         m_brd->AddListener( this );
 
-    m_pcbFrame->Bind( EDA_EVT_UNITS_CHANGED, &PCB_SEARCH_PANE::onUnitsChanged, this );
+    m_unitsListener = m_pcbFrame->AddUnitsChangedListener(
+            [this]( EDA_BASE_FRAME* aFrame )
+            {
+                onUnitsChanged();
+            } );
+
     m_pcbFrame->AddBoardChangeListener( this,
                                         [this]( BOARD_CHANGE aChange )
                                         {
@@ -40,10 +45,6 @@ PCB_SEARCH_PANE::PCB_SEARCH_PANE( PCB_EDIT_FRAME* aFrame ) :
                                             else
                                                 onBoardChanged();
                                         } );
-
-    wxFont infoFont = KIUI::GetDockedPaneFont( this );
-    SetFont( infoFont );
-    m_notebook->SetFont( infoFont );
 
     AddSearcher( std::make_shared<FOOTPRINT_SEARCH_HANDLER>( aFrame ) );
     AddSearcher( std::make_shared<ZONE_SEARCH_HANDLER>( aFrame ) );
@@ -57,16 +58,15 @@ PCB_SEARCH_PANE::PCB_SEARCH_PANE( PCB_EDIT_FRAME* aFrame ) :
 
 PCB_SEARCH_PANE::~PCB_SEARCH_PANE()
 {
-    m_pcbFrame->Unbind( EDA_EVT_UNITS_CHANGED, &PCB_SEARCH_PANE::onUnitsChanged, this );
+    m_pcbFrame->RemoveUnitsChangedListener( m_unitsListener );
     m_pcbFrame->RemoveBoardChangeListener( this );
 }
 
 
-void PCB_SEARCH_PANE::onUnitsChanged( wxCommandEvent& event )
+void PCB_SEARCH_PANE::onUnitsChanged()
 {
     ClearAllResults();
     RefreshSearch();
-    event.Skip();
 }
 
 

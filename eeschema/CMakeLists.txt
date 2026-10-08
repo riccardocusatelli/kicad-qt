@@ -307,6 +307,7 @@ set( EESCHEMA_WIDGETS
     widgets/sch_design_block_pane.cpp
     widgets/sch_design_block_preview_widget.cpp
     widgets/sch_properties_panel.cpp
+    widgets/sch_properties_panel_wx.cpp
     widgets/sch_search_pane.cpp
     widgets/search_handlers.cpp
     widgets/symbol_filter_combobox.cpp

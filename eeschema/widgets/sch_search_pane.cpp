@@ -35,10 +35,6 @@ SCH_SEARCH_PANE::SCH_SEARCH_PANE( SCH_EDIT_FRAME* aFrame ) :
     m_schFrame->Bind( EDA_EVT_SCHEMATIC_CHANGING, &SCH_SEARCH_PANE::onSchChanging, this );
     m_schFrame->Bind( EDA_EVT_SCHEMATIC_CHANGED, &SCH_SEARCH_PANE::onSchChanged, this );
 
-    wxFont infoFont = KIUI::GetDockedPaneFont( this );
-    SetFont( infoFont );
-    m_notebook->SetFont( infoFont );
-
     AddSearcher( std::make_shared<SYMBOL_SEARCH_HANDLER>( aFrame ) );
     AddSearcher( std::make_shared<POWER_SEARCH_HANDLER>( aFrame ) );
     AddSearcher( std::make_shared<TEXT_SEARCH_HANDLER>( aFrame ) );

@@ -25,6 +25,8 @@
 #include "zones.h"
 #include <mail_type.h>
 #include <settings/app_settings.h>
+#include <toolkit/gui_timer.h>
+#include <toolkit/toolkit_types.h>
 #include <variant>
 
 class ACTION_PLUGIN;
@@ -62,6 +64,7 @@ class TOOL_ACTION;
 class DIALOG_BOARD_SETUP;
 class PCB_DESIGN_BLOCK_PANE;
 class WX_INFOBAR;
+struct PLUGIN_ACTION;
 
 #ifdef KICAD_IPC_API
 class KICAD_API_SERVER;
@@ -93,7 +96,8 @@ public:
      */
     void LoadFootprints( NETLIST& aNetlist, REPORTER& aReporter );
 
-    void OnQuit( wxCommandEvent& event );
+    /// Close the frame (@a aCommandId wxID_CLOSE) or quit KiCad (wxID_EXIT).
+    void OnQuit( int aCommandId );
 
     /**
      * Get if the current board has been modified but not saved.
@@ -161,12 +165,14 @@ public:
     bool PropertiesShown();
     bool NetInspectorShown();
 
-    void OnUpdateSelectViaSize( wxUpdateUIEvent& aEvent );
-    void OnUpdateSelectTrackWidth( wxUpdateUIEvent& aEvent );
+    /// Show the current track width and via size in the choice boxes of the toolbar.
+    void OnUpdateSelectViaSize();
+    void OnUpdateSelectTrackWidth();
 
-    void UpdateTrackWidthSelectBox( wxChoice* aTrackWidthSelectBox, bool aShowNetclass,
+    void UpdateTrackWidthSelectBox( TOOLKIT_CHOICE* aTrackWidthSelectBox, bool aShowNetclass,
                                     bool aShowEdit );
-    void UpdateViaSizeSelectBox( wxChoice* aViaSizeSelectBox, bool aShowNetclass, bool aShowEdit );
+    void UpdateViaSizeSelectBox( TOOLKIT_CHOICE* aViaSizeSelectBox, bool aShowNetclass,
+                                 bool aShowEdit );
 
     /**
      * Update the variant selection dropdown with the current board's variant names.
@@ -185,7 +191,7 @@ public:
     /**
      * Event handler for variant selection changes in the toolbar.
      */
-    void onVariantSelected( wxCommandEvent& aEvent );
+    void onVariantSelected();
 
     /**
      * Return the angle used for rotate operations.
@@ -259,8 +265,11 @@ public:
      */
     void ResolveDRCExclusions( bool aCreateMarkers );
 
-    void Process_Special_Functions( wxCommandEvent& event );
-    void Tracks_and_Vias_Size_Event( wxCommandEvent& event );
+    void Process_Special_Functions( int aCommandId );
+
+    /// Select a track width or via size (the command @a aCommandId of a menu or of a choice
+    /// box of the toolbar).
+    void Tracks_and_Vias_Size_Event( int aCommandId );
 
 
 
@@ -331,7 +340,7 @@ public:
 
     void ToggleSearch();
 
-    bool IsSearchPaneShown() { return m_auimgr.GetPane( SearchPaneName() ).IsShown(); }
+    bool IsSearchPaneShown() { return IsPaneShown( SearchPaneName() ); }
     void FocusSearch();
 
     void ToggleLibraryTree() override;
@@ -359,8 +368,9 @@ public:
                                      bool aBottomSide, bool aFormatCSV, bool aUseAuxOrigin,
                                      bool aNegateBottomX );
 
-    void OnFileHistory( wxCommandEvent& event );
-    void OnClearFileHistory( wxCommandEvent& aEvent );
+    /// Open the file of the file history menu item @a aCommandId.
+    void OnFileHistory( int aCommandId );
+    void OnClearFileHistory();
 
     bool SaveBoard( bool aSaveAs = false, bool aSaveCopy = false );
 
@@ -712,8 +722,6 @@ public:
 
     void ClearToolbarControl( int aId ) override;
 
-    DECLARE_EVENT_TABLE()
-
 protected:
     /**
      * Store the previous layer toolbar icon state information
@@ -773,16 +781,16 @@ protected:
     /**
      * Launched by the menu when an action is called.
      *
-     * @param aEvent sent by wx
+     * @param aId is the id of the menu item.
      */
-    void OnActionPluginMenu( wxCommandEvent& aEvent);
+    void OnActionPluginMenu( int aId );
 
     /**
      * Launched by the button when an action is called.
      *
-     * @param aEvent sent by wx
+     * @param aId is the id of the button.
      */
-    void OnActionPluginButton( wxCommandEvent& aEvent );
+    void OnActionPluginButton( int aId );
 
     PLUGIN_ACTION_SCOPE PluginActionScope() const override { return PLUGIN_ACTION_SCOPE::PCB; }
 
@@ -842,9 +850,10 @@ protected:
     void doCloseWindow() override;
 
     // protected so that PCB::IFACE::CreateWindow() is the only factory.
-    PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    PCB_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
-    void onSize( wxSizeEvent& aEvent );
+    /// Zoom to fit the board once the frame has its final size (shown on screen).
+    void onSize();
 
     int inferLegacyEdgeClearance( BOARD* aBoard, bool aShowUserMsg = true );
 
@@ -852,16 +861,47 @@ protected:
 
     void saveProjectSettings() override;
 
-    void onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent );
+    /**
+     * A modeless report dialog was closed (with the button @a aId).
+     *
+     * @param aDialogName is the name of the dialog.
+     */
+    void onCloseModelessBookReporterDialogs( const wxString& aDialogName, int aId );
 
 #ifdef KICAD_IPC_API
-    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+    void onPluginAvailabilityChanged();
 #endif
 
+private:
+    /// Dock the panels of the frame around the canvas (shown as in the settings).
+    void setupLayout();
+
+    /// Bind the events of the GUI toolkit (menu commands, choice boxes, size, idle).
+    void setupToolkitEvents();
+    void releaseToolkitEvents();
+
+    /// Show the event counters of the canvas every second (an advanced option).
+    void showEventCounters();
+
+    /// The state of the frame with the GUI toolkit (its event handlers), defined with the
+    /// toolkit parts of the frame.
+    struct TOOLKIT_STATE;
+
+    struct TOOLKIT_STATE_DELETER
+    {
+        void operator()( TOOLKIT_STATE* aState ) const;
+    };
+
+    std::unique_ptr<TOOLKIT_STATE, TOOLKIT_STATE_DELETER> m_toolkitState;
+
+    /// A track width or via size was chosen in the choice box of the toolbar.
+    void onTrackWidthChoice();
+    void onViaSizeChoice();
+
 public:
-    wxChoice* m_SelTrackWidthBox;        // a choice box to display and select current track width
-    wxChoice* m_SelViaSizeBox;           // a choice box to display and select current via diameter
-    wxChoice* m_CurrentVariantCtrl;      // a choice box to display and select current variant
+    TOOLKIT_CHOICE* m_SelTrackWidthBox;    // a choice box to display and select current track width
+    TOOLKIT_CHOICE* m_SelViaSizeBox;       // a choice box to display and select current via diameter
+    TOOLKIT_CHOICE* m_CurrentVariantCtrl;  // a choice box to display and select current variant
 
     bool      m_ShowLayerManagerTools;
     bool      m_ShowSearch;
@@ -872,7 +912,7 @@ public:
     bool      m_ProbingSchToPcb;         // Recursion guard when synchronizing selection from schematic
 
     void StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItems );
-    void OnCrossProbeFlashTimer( wxTimerEvent& aEvent );
+    void OnCrossProbeFlashTimer();
 
 private:
     friend struct PCB::IFACE;
@@ -910,10 +950,10 @@ private:
      */
     BOX2D             m_lastNetnamesViewport;
 
-    wxTimer*          m_eventCounterTimer;
+    std::unique_ptr<GUI_TIMER> m_eventCounterTimer;
 
     // Cross-probe flashing support
-    wxTimer           m_crossProbeFlashTimer;          ///< Timer to toggle selection visibility for flash
+    GUI_TIMER         m_crossProbeFlashTimer;          ///< Timer to toggle selection visibility for flash
     int               m_crossProbeFlashPhase = 0;      ///< Phase counter
     std::vector<KIID> m_crossProbeFlashItems;          ///< Items to flash (by UUID)
     bool              m_crossProbeFlashing = false;    ///< Currently flashing guard
@@ -921,6 +961,9 @@ private:
 #ifdef KICAD_IPC_API
     std::unique_ptr<API_HANDLER_PCB>    m_apiHandler;
     std::unique_ptr<API_HANDLER_COMMON> m_apiHandlerCommon;
+
+    /// The id of the listener of the plugin availability (-1 for none)
+    int m_pluginAvailabilityListener = -1;
 #endif
 };
 

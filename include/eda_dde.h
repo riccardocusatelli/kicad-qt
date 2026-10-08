@@ -31,7 +31,6 @@
 #define EDA_DDE_H_
 
 #include <string>
-#include <wx/socket.h>
 
 
 // TCP/IP ports used by Pcbnew and Eeschema respectively.

@@ -17,12 +17,6 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <wx/filedlg.h>
-#include <wx/msgdlg.h>
-#include <wx/propgrid/propgrid.h>
-#include <wx/snglinst.h>
-#include <wx/splash.h>
-#include <wx/tooltip.h>
 #include <wx/utils.h>
 
 #include <advanced_config.h>
@@ -37,13 +31,11 @@
 #include <notifications_manager.h>
 #include <paths.h>
 #include <pgm_gui.h>
-#include <raster_image_wx.h>
 #include <project.h>
 #include <python_scripting.h>
 #include <settings/common_settings.h>
 #include <thread_pool.h>
 #include <trace_helpers.h>
-#include <ui_theme.h>
 #include <widgets/kistatusbar.h>
 
 #ifdef KICAD_IPC_API
@@ -92,54 +84,22 @@ void PGM_GUI::reportInitError( const wxString& aMessage )
 }
 
 
-bool PGM_GUI::ConfirmAction( const wxString& aTitle, const wxString& aMessage )
-{
-    return wxMessageBox( aMessage, aTitle, wxYES_NO | wxICON_QUESTION ) == wxYES;
-}
-
-
-void PGM_GUI::SafeYield()
-{
-    wxSafeYield();
-}
-
-
 bool PGM_GUI::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
 {
-    wxInitAllImageHandlers();
-    RegisterWxImageDecoder();
-
-    // Register the bundled UI fonts before any window (and any wxFont) is created.
-    UI_THEME::LoadUiFonts();
-
-#if !wxCHECK_VERSION( 3, 3, 0 )
-    // Without this the wxPropertyGridManager segfaults on Windows.
-    if( !wxPGGlobalVars )
-        wxPGInitResourceModule();
-#endif
+    initGuiToolkit();
 
     m_glContextManager = new GL_CONTEXT_MANAGER();
     m_background_jobs_monitor = std::make_unique<BACKGROUND_JOBS_MONITOR>();
     m_notifications_manager = std::make_unique<NOTIFICATIONS_MANAGER>();
 
 #ifdef KICAD_IPC_API
-    m_plugin_manager = std::make_unique<API_PLUGIN_MANAGER>( &App() );
+    m_plugin_manager = std::make_unique<API_PLUGIN_MANAGER>();
 #endif
 
     if( !PGM_BASE::InitPgm( aHeadless, aSkipPyInit, aIsUnitTest ) )
         return false;
 
     wxString pgm_name = programName();
-
-#ifdef __WXGTK__
-    switch( wxGetDisplayInfo().type )
-    {
-    case wxDisplayX11:     SetDisplayServerInfo( wxS( "X11" ) );     break;
-    case wxDisplayWayland: SetDisplayServerInfo( wxS( "Wayland" ) ); break;
-    case wxDisplayNone:    SetDisplayServerInfo( wxS( "None" ) );    break;
-    default:               SetDisplayServerInfo( wxS( "Unknown" ) );
-    }
-#endif
 
     // Ensure the instance checker directory exists
     // It should be globally writable because it is shared between all users on Linux, and so on a
@@ -155,33 +115,8 @@ bool PGM_GUI::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
     wxString instanceCheckerName = wxString::Format( wxS( "%s-%s" ), pgm_name,
                                                      GetMajorMinorVersion() );
 
-    m_pgm_checker = std::make_unique<wxSingleInstanceChecker>();
+    m_pgm_checker = std::make_unique<SINGLE_INSTANCE_CHECKER>();
     m_pgm_checker->Create( instanceCheckerName, instanceCheckerDir );
-
-#if wxCHECK_VERSION( 3, 3, 1 ) && defined( __WXGTK__ ) && defined( KICAD_DESKTOP_APP_NAME )
-    // wxGTK feeds the class name to gdk_wayland_window_set_application_id(), so setting it
-    // to the installed desktop file basename lets Wayland compositors resolve the correct
-    // window icon and launch feedback. The prefix varies by build (regular, Flatpak, Nightly)
-    // and is supplied by CMake. The main manager keeps the bare app name; the other GUI apps
-    // are prefixed. Executables without a desktop file (pl_editor, kicad-cli) are left alone.
-    wxString desktopId;
-
-    if( pgm_name == wxT( "kicad" ) )
-    {
-        desktopId = wxT( KICAD_DESKTOP_APP_NAME );
-    }
-    else if( pgm_name == wxT( "eeschema" ) || pgm_name == wxT( "pcbnew" )
-             || pgm_name == wxT( "gerbview" ) || pgm_name == wxT( "bitmap2component" )
-             || pgm_name == wxT( "pcb_calculator" ) )
-    {
-        // pcb_calculator installs as pcbcalculator to satisfy freedesktop naming rules.
-        wxString appName = pgm_name == wxT( "pcb_calculator" ) ? wxT( "pcbcalculator" ) : pgm_name;
-        desktopId = wxString( wxT( KICAD_DESKTOP_APP_PREFIX ) ) + wxT( "." ) + appName;
-    }
-
-    if( !desktopId.IsEmpty() )
-        App().SetClassName( desktopId );
-#endif
 
     COMMON_SETTINGS* commonSettings = GetCommonSettings();
 
@@ -206,29 +141,13 @@ bool PGM_GUI::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
         m_plugin_manager->ReloadPlugins();
 #endif
 
-    // This sets the maximum tooltip display duration to 10s (up from 5) but only affects
-    // Windows as other platforms display tooltips while the mouse is not moving
-    if( !aHeadless )
-    {
-        wxToolTip::Enable( true );
-        wxToolTip::SetAutoPop( 10000 );
-    }
-
-    if( ADVANCED_CFG::GetCfg().m_UpdateUIEventInterval != 0 )
-        wxUpdateUIEvent::SetUpdateInterval( ADVANCED_CFG::GetCfg().m_UpdateUIEventInterval );
+    configureGuiToolkit( aHeadless );
 
     // Now the application can safely start, show the splash screen
     if( !aHeadless )
         ShowSplash();
 
     return true;
-}
-
-
-wxApp& PGM_GUI::App()
-{
-    KI_ASSERT( wxTheApp );
-    return *wxTheApp;
 }
 
 
@@ -265,57 +184,6 @@ const wxString& PGM_GUI::GetTextEditor( bool aCanShowFileChooser )
     // m_text_editor already has the same value that editorname, or empty if no editor was
     // found/chosen.
     return m_text_editor;
-}
-
-
-const wxString PGM_GUI::AskUserForPreferredEditor( const wxString& aDefaultEditor )
-{
-    // Create a mask representing the executable files in the current platform
-#ifdef __WINDOWS__
-    wxString mask( _( "Executable file" ) + wxT( " (*.exe)|*.exe" ) );
-#else
-    wxString mask( _( "Executable file" ) + wxT( " (*)|*" ) );
-#endif
-
-    // Extract the path, name and extension from the default editor (even if the editor's
-    // name was empty, this method will succeed and return empty strings).
-    wxString path, name, ext;
-    wxFileName::SplitPath( aDefaultEditor, &path, &name, &ext );
-
-    // Show the modal editor and return the file chosen (may be empty if the user cancels
-    // the dialog).
-    return wxFileSelector( _( "Select Preferred Editor" ), path, name, wxT( "." ) + ext,
-                           mask, wxFD_OPEN | wxFD_FILE_MUST_EXIST, nullptr );
-}
-
-
-void PGM_GUI::ShowSplash()
-{
-    // Disabling until we change to load each DSO at startup rather than lazy-load when needed.
-    // Note that once the splash screen is re-enabled, there are some remaining bugs to fix:
-    // Any wxWidgets error dialogs that appear during startup are hidden by the splash screen,
-    // so we either need to prevent these from happening (probably not feasible) or else change
-    // the error-handling path to make sure errors go on top of the splash.
-#if 0
-    if( m_splash )
-        return;
-
-    m_splash = new WX_SPLASH( KiBitmap( BITMAPS::splash ), wxSPLASH_CENTRE_ON_SCREEN, 0,
-                              NULL, -1, wxDefaultPosition, wxDefaultSize,
-                              wxBORDER_NONE | wxSTAY_ON_TOP );
-    wxYield();
-#endif
-}
-
-
-void PGM_GUI::HideSplash()
-{
-    if( !m_splash )
-        return;
-
-    m_splash->Close( true );
-    m_splash->Destroy();
-    m_splash = nullptr;
 }
 
 

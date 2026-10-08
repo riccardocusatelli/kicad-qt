@@ -55,6 +55,9 @@ public:
 
     int GetPageCount() const;
 
+    /// Show the Apply button (hidden by default), with the label @a aLabel.
+    void ShowApplyButton( const wxString& aLabel );
+
     KIID GetUserItemID() const { return m_userItemID; }
     void SetUserItemID( const KIID& aID ) { m_userItemID = aID; }
 

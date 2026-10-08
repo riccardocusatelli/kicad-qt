@@ -23,44 +23,14 @@
 #include <memory>
 #include <vector>
 
+#include <widgets/search_handler.h>
 #include <widgets/search_pane_base.h>
-#include <wx/listbase.h>
 
 
 class wxAuiManagerEvent;
 class ACTION_MENU;
 class EDA_DRAW_FRAME;
 class SEARCH_PANE_TAB;
-
-class SEARCH_HANDLER
-{
-public:
-    SEARCH_HANDLER( const wxString& aName ) :
-            m_name( aName )
-    {}
-
-    virtual ~SEARCH_HANDLER()
-    {}
-
-    wxString GetName() const { return m_name; }
-
-    std::vector<std::tuple<wxString, int, wxListColumnFormat>> GetColumns() const
-    {
-        return m_columns;
-    }
-
-    virtual int Search( const wxString& string ) = 0;
-    virtual wxString GetResultCell( int row, int col ) = 0;
-    virtual void Sort( int aCol, bool aAscending, std::vector<long>* aSelection ) = 0;
-
-    virtual void SelectItems( std::vector<long>& aItemRows ) {}
-    virtual void ActivateItem( long aItemRow ) {}
-
-protected:
-    wxString                                                   m_name;
-    std::vector<std::tuple<wxString, int, wxListColumnFormat>> m_columns;
-};
-
 
 class SEARCH_PANE : public SEARCH_PANE_BASE
 {

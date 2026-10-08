@@ -90,7 +90,7 @@ public:
     /// Show a cross at a point (in world units: the cursor on the grid of a tool), or none.
     void SetCrosshair( const std::optional<VECTOR2D>& aPoint );
 
-signals:
+Q_SIGNALS:
     /// The cursor moved, at a point in world units.
     void cursorMoved( double aX, double aY );
 

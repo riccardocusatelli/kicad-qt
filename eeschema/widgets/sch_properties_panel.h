@@ -22,7 +22,10 @@
 #pragma once
 
 #include <widgets/properties_panel.h>
+#include <toolkit/toolkit_types.h>
+#include <memory>
 #include <set>
+#include <string>
 
 class SELECTION;
 class SCHEMATIC;
@@ -31,16 +34,11 @@ class SCH_COMMIT;
 class SCH_EDIT_FRAME;
 class SCH_SHEET;
 class PROPERTY_MANAGER;
-class PG_UNIT_EDITOR;
-class PG_CHECKBOX_EDITOR;
-class PG_COLOR_EDITOR;
-class PG_FPID_EDITOR;
-class PG_URL_EDITOR;
 
 class SCH_PROPERTIES_PANEL : public PROPERTIES_PANEL
 {
 public:
-    SCH_PROPERTIES_PANEL( wxWindow* aParent, SCH_BASE_FRAME* aFrame );
+    SCH_PROPERTIES_PANEL( TOOLKIT_WINDOW* aParent, SCH_BASE_FRAME* aFrame );
 
     virtual ~SCH_PROPERTIES_PANEL();
 
@@ -50,18 +48,17 @@ public:
 
 protected:
     void rebuildProperties( const SELECTION& aSelection ) override;
-    wxPGProperty* createPGProperty( const PROPERTY_BASE* aProperty ) const override;
+    TOOLKIT_PG_PROPERTY* createPGProperty( const PROPERTY_BASE* aProperty ) const override;
     bool getItemValue( EDA_ITEM* aItem, PROPERTY_BASE* aProperty, wxVariant& aValue ) override;
 
-    PROPERTY_BASE* getPropertyFromEvent( const wxPropertyGridEvent& aEvent ) const;
+    /// @return the property @a aName of the front item of the selection.
+    PROPERTY_BASE* getPropertyByName( const wxString& aName ) const;
 
-    void valueChanging( wxPropertyGridEvent& aEvent ) override;
-    void valueChanged( wxPropertyGridEvent& aEvent ) override;
+    bool valueChanging( const wxString& aName, const wxVariant& aValue ) override;
+    void valueChanged( const wxString& aName, const wxVariant& aValue ) override;
 
     bool handleSheetFilenameChange( SCH_EDIT_FRAME* aFrame, SCH_SHEET* aSheet,
                                     SCH_COMMIT& aChanges, const wxString& aNewFilename );
-
-    void OnLanguageChanged( wxCommandEvent& aEvent ) override;
 
     /**
      * Get the current selection from the selection tool.
@@ -80,14 +77,30 @@ protected:
      */
     EDA_ITEM* getFrontItem();
 
+    /**
+     * The netlist of the selected symbols for the footprint chooser (their pins and their
+     * footprint filters), or an empty string if they aren't the same library symbol.
+     */
+    std::string symbolNetlist() const;
+
+private:
+    /// Register the custom editors of the properties with the grid of the GUI toolkit
+    /// (sch_properties_panel_wx.cpp).
+    void registerEditors();
+
+    /// The editors of the grid of the GUI toolkit, defined with the toolkit parts.
+    struct TOOLKIT_STATE;
+
+    struct TOOLKIT_STATE_DELETER
+    {
+        void operator()( TOOLKIT_STATE* aState ) const;
+    };
+
+    std::unique_ptr<TOOLKIT_STATE, TOOLKIT_STATE_DELETER> m_toolkitState;
+
 protected:
     SCH_BASE_FRAME*     m_frame;
     PROPERTY_MANAGER&   m_propMgr;
-    PG_UNIT_EDITOR*     m_unitEditorInstance;
-    PG_CHECKBOX_EDITOR* m_checkboxEditorInstance;
-    PG_COLOR_EDITOR*    m_colorEditorInstance;
-    PG_FPID_EDITOR*     m_fpEditorInstance;
-    PG_URL_EDITOR*      m_urlEditorInstance;
 
     static std::set<wxString> m_currentSymbolFieldNames;
     static std::set<wxString> m_currentSheetFieldNames;

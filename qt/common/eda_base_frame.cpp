@@ -34,7 +34,15 @@
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QUrl>
+#include <QDockWidget>
+#include <widgets/kistatusbar.h>
+#include <QIcon>
 #include <QKeyEvent>
+#include <QLayout>
 #include <QLabel>
 #include <QGuiApplication>
 #include <QMenu>
@@ -44,6 +52,7 @@
 #include <QTimer>
 
 #include <bitmaps.h>
+#include <wildcards_and_files_ext.h>
 #include <bitmap_store.h>
 #include <dialogs/eda_view_switcher.h>
 #include <confirm.h>
@@ -289,10 +298,237 @@ wxString EDA_BASE_FRAME::GetTitle() const
 
 void EDA_BASE_FRAME::SetStatusText( const wxString& aText, int aField )
 {
-    if( aField >= 0 && aField < (int) m_statusFields.size() )
-        m_statusFields[aField]->setText( ToQString( aText ) );
-    else if( aField == 0 && m_statusFields.empty() )
+    if( m_statusBar )
+        m_statusBar->SetStatusText( aText, aField );
+    else if( aField == 0 )
         statusBar()->showMessage( ToQString( aText ) );
+}
+
+
+void EDA_BASE_FRAME::Iconize( bool aIconize )
+{
+    if( aIconize )
+        showMinimized();
+    else
+        setWindowState( windowState() & ~Qt::WindowMinimized );
+}
+
+
+void EDA_BASE_FRAME::Raise()
+{
+    raise();
+    activateWindow();
+}
+
+
+bool EDA_BASE_FRAME::Show( bool aShow )
+{
+    if( isVisible() == aShow )
+        return false;
+
+    setVisible( aShow );
+    return true;
+}
+
+
+void EDA_BASE_FRAME::UpdatePanes()
+{
+    if( QLayout* frameLayout = layout() )
+        frameLayout->activate();
+
+    update();
+}
+
+
+namespace
+{
+const char* FLOATING_SIZE = "kicadFloatingSize";
+
+
+Qt::DockWidgetArea toDockArea( PANE_DOCK aDock )
+{
+    switch( aDock )
+    {
+    case PANE_DOCK::TOP:    return Qt::TopDockWidgetArea;
+    case PANE_DOCK::BOTTOM: return Qt::BottomDockWidgetArea;
+    case PANE_DOCK::LEFT:   return Qt::LeftDockWidgetArea;
+    default:                return Qt::RightDockWidgetArea;
+    }
+}
+
+
+PANE_DOCK fromDockArea( Qt::DockWidgetArea aArea )
+{
+    switch( aArea )
+    {
+    case Qt::TopDockWidgetArea:    return PANE_DOCK::TOP;
+    case Qt::BottomDockWidgetArea: return PANE_DOCK::BOTTOM;
+    case Qt::LeftDockWidgetArea:   return PANE_DOCK::LEFT;
+    case Qt::RightDockWidgetArea:  return PANE_DOCK::RIGHT;
+    default:                       return PANE_DOCK::NONE;
+    }
+}
+}
+
+
+QDockWidget* EDA_BASE_FRAME::addPane( QWidget* aPanel, const wxString& aName,
+                                      const wxString& aCaption, PANE_DOCK aDock, bool aShow )
+{
+    QDockWidget* dock = new QDockWidget( ToQString( aCaption ), this );
+
+    dock->setObjectName( ToQString( aName ) );
+    dock->setWidget( aPanel );
+    addDockWidget( toDockArea( aDock ), dock );
+    dock->setVisible( aShow );
+
+    return dock;
+}
+
+
+QDockWidget* EDA_BASE_FRAME::findPane( const wxString& aName ) const
+{
+    return findChild<QDockWidget*>( ToQString( aName ), Qt::FindDirectChildrenOnly );
+}
+
+
+bool EDA_BASE_FRAME::IsPaneShown( const wxString& aName ) const
+{
+    QDockWidget* dock = findPane( aName );
+    return dock && !dock->isHidden();
+}
+
+
+void EDA_BASE_FRAME::ShowPane( const wxString& aName, bool aShow )
+{
+    if( QDockWidget* dock = findPane( aName ) )
+        dock->setVisible( aShow );
+}
+
+
+bool EDA_BASE_FRAME::IsPaneFloating( const wxString& aName ) const
+{
+    QDockWidget* dock = findPane( aName );
+    return dock && dock->isFloating();
+}
+
+
+void EDA_BASE_FRAME::SetPaneCaption( const wxString& aName, const wxString& aCaption )
+{
+    if( QDockWidget* dock = findPane( aName ) )
+        dock->setWindowTitle( ToQString( aCaption ) );
+}
+
+
+int EDA_BASE_FRAME::GetPaneDockDirection( const wxString& aName ) const
+{
+    QDockWidget* dock = findPane( aName );
+
+    if( !dock )
+        return static_cast<int>( PANE_DOCK::NONE );
+
+    return static_cast<int>( fromDockArea( dockWidgetArea( dock ) ) );
+}
+
+
+void EDA_BASE_FRAME::SetPaneDockDirection( const wxString& aName, int aDirection )
+{
+    QDockWidget*            dock = findPane( aName );
+    PANE_DOCK               side = static_cast<PANE_DOCK>( aDirection );
+
+    if( !dock || side == PANE_DOCK::NONE || side == PANE_DOCK::CENTER )
+        return;
+
+    if( dockWidgetArea( dock ) != toDockArea( side ) )
+        addDockWidget( toDockArea( side ), dock );
+}
+
+
+wxSize EDA_BASE_FRAME::GetPaneFloatingSize( const wxString& aName ) const
+{
+    QDockWidget* dock = findPane( aName );
+
+    if( !dock )
+        return wxDefaultSize;
+
+    if( dock->isFloating() )
+        return wxSize( dock->width(), dock->height() );
+
+    QSize size = dock->property( FLOATING_SIZE ).toSize();
+    return size.isValid() ? wxSize( size.width(), size.height() ) : wxDefaultSize;
+}
+
+
+void EDA_BASE_FRAME::SetPaneFloatingSize( const wxString& aName, const wxSize& aSize )
+{
+    QDockWidget* dock = findPane( aName );
+
+    if( !dock )
+        return;
+
+    dock->setProperty( FLOATING_SIZE, QSize( aSize.x, aSize.y ) );
+
+    if( dock->isFloating() && aSize.x > 0 && aSize.y > 0 )
+        dock->resize( aSize.x, aSize.y );
+}
+
+
+void EDA_BASE_FRAME::SetPaneSize( const wxString& aName, int aWidth, int aHeight )
+{
+    QDockWidget* dock = findPane( aName );
+
+    if( !dock )
+        return;
+
+    if( aWidth > 0 )
+        resizeDocks( { dock }, { aWidth }, Qt::Horizontal );
+
+    if( aHeight > 0 )
+        resizeDocks( { dock }, { aHeight }, Qt::Vertical );
+
+    UpdatePanes();
+}
+
+
+wxSize EDA_BASE_FRAME::GetPaneSize( const wxString& aName ) const
+{
+    QDockWidget* dock = findPane( aName );
+
+    if( !dock || !dock->widget() )
+        return wxDefaultSize;
+
+    return wxSize( dock->widget()->width(), dock->widget()->height() );
+}
+
+
+void EDA_BASE_FRAME::SetFrameIcons( const std::vector<std::pair<BITMAPS, int>>& aIcons )
+{
+    QIcon icon;
+
+    for( const auto& [bitmap, heightTag] : aIcons )
+        icon.addPixmap( KiBitmap( bitmap, heightTag ) );
+
+    setWindowIcon( icon );
+}
+
+
+KISTATUSBAR* EDA_BASE_FRAME::CreateStatusBar( int aNumber )
+{
+    m_statusBar = OnCreateStatusBar( aNumber );
+    setStatusBar( m_statusBar );
+    return m_statusBar;
+}
+
+
+KISTATUSBAR* EDA_BASE_FRAME::OnCreateStatusBar( int aNumber )
+{
+    return new KISTATUSBAR( aNumber, this, wxID_ANY, KISTATUSBAR::NONE_STYLE );
+}
+
+
+void EDA_BASE_FRAME::SetStatusWidths( int aSize, const int* aWidths )
+{
+    if( m_statusBar )
+        m_statusBar->SetStatusWidths( aSize, aWidths );
 }
 
 
@@ -749,6 +985,42 @@ void EDA_BASE_FRAME::ShowChangedLanguage()
     TOOLS_HOLDER::ShowChangedLanguage();
 
     ReCreateMenuBar();
+
+    // A listener may remove others (deleting their owner)
+    std::vector<QObject*> owners;
+
+    for( const auto& [owner, listener] : m_languageChangedListeners )
+    {
+        if( owners.empty() || owners.back() != owner )
+            owners.push_back( owner );
+    }
+
+    for( QObject* owner : owners )
+    {
+        auto [first, last] = m_languageChangedListeners.equal_range( owner );
+        std::vector<std::function<void()>> listeners;
+
+        for( auto it = first; it != last; ++it )
+            listeners.push_back( it->second );
+
+        for( const std::function<void()>& listener : listeners )
+            listener();
+    }
+}
+
+
+void EDA_BASE_FRAME::AddLanguageChangedListener( QObject* aOwner, std::function<void()> aListener )
+{
+    if( m_languageChangedListeners.find( aOwner ) == m_languageChangedListeners.end() )
+    {
+        QObject::connect( aOwner, &QObject::destroyed, this,
+                          [this, aOwner]()
+                          {
+                              m_languageChangedListeners.erase( aOwner );
+                          } );
+    }
+
+    m_languageChangedListeners.emplace( aOwner, std::move( aListener ) );
 }
 
 
@@ -1196,4 +1468,58 @@ void EDA_BASE_FRAME::RemoveUnitsChangedListener( int aId )
 wxSize EDA_BASE_FRAME::GetWindowSize()
 {
     return wxSize( width(), height() );
+}
+
+
+void EDA_BASE_FRAME::dragEnterEvent( QDragEnterEvent* aEvent )
+{
+    if( aEvent->mimeData()->hasUrls() )
+        aEvent->acceptProposedAction();
+}
+
+
+void EDA_BASE_FRAME::dropEvent( QDropEvent* aEvent )
+{
+    std::vector<wxString> files;
+
+    for( const QUrl& url : aEvent->mimeData()->urls() )
+    {
+        if( url.isLocalFile() )
+            files.push_back( ToWxString( url.toLocalFile() ) );
+    }
+
+    aEvent->acceptProposedAction();
+    handleDroppedFiles( files );
+}
+
+
+void EDA_BASE_FRAME::handleDroppedFiles( const std::vector<wxString>& aFiles )
+{
+    Raise();
+
+    for( const wxString& file : aFiles )
+    {
+        const wxFileName fn = wxFileName( file );
+        wxString         ext = fn.GetExt();
+
+        // Alias all gerber files as GerberFileExtension
+        if( FILEEXT::IsGerberFileExtension( ext ) )
+            ext = FILEEXT::GerberFileExtension;
+
+        if( m_acceptedExts.find( ext.ToStdString() ) != m_acceptedExts.end() )
+            m_AcceptedFiles.emplace_back( fn );
+    }
+
+    DoWithAcceptedFiles();
+    m_AcceptedFiles.clear();
+}
+
+
+void EDA_BASE_FRAME::DoWithAcceptedFiles()
+{
+    for( const wxFileName& file : m_AcceptedFiles )
+    {
+        wxString fn = file.GetFullPath();
+        m_toolManager->RunAction<wxString*>( *m_acceptedExts.at( file.GetExt() ), &fn );
+    }
 }

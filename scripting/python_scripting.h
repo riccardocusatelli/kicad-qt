@@ -41,11 +41,11 @@
 #include <Python.h>
 #undef HAVE_CLOCK_GETTIME
 
-#include <wx/window.h>
 #include <wx/string.h>
 #include <wx/arrstr.h>
 
 #include <kicommon.h>
+#include <toolkit/toolkit_types.h>
 
 class KICOMMON_API SCRIPTING
 {
@@ -87,7 +87,8 @@ private:
 KICOMMON_API void UpdatePythonEnvVar( const wxString& aVar, const wxString& aValue );
 
 KICOMMON_API void RedirectStdio();
-KICOMMON_API wxWindow* CreatePythonShellWindow( wxWindow* parent, const wxString& aFramenameId );
+KICOMMON_API TOOLKIT_WINDOW* CreatePythonShellWindow( TOOLKIT_WINDOW* parent,
+                                                     const wxString& aFramenameId );
 KICOMMON_API bool       InitPythonScripting( const char* aStockScriptingPath,
                                             const char* aUserScriptingPath );
 KICOMMON_API bool       IsWxPythonLoaded();

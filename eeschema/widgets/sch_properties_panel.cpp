@@ -26,8 +26,7 @@
 #include <common.h>
 #include <confirm.h>
 #include <connection_graph.h>
-#include <properties/pg_editors.h>
-#include <properties/pg_properties.h>
+#include <properties/pg_factory.h>
 #include <properties/property_mgr.h>
 #include <properties/property.h>
 #include <sch_commit.h>
@@ -217,138 +216,63 @@ private:
 std::set<wxString> SCH_PROPERTIES_PANEL::m_currentSymbolFieldNames;
 std::set<wxString> SCH_PROPERTIES_PANEL::m_currentSheetFieldNames;
 
-SCH_PROPERTIES_PANEL::SCH_PROPERTIES_PANEL( wxWindow* aParent, SCH_BASE_FRAME* aFrame ) :
+SCH_PROPERTIES_PANEL::SCH_PROPERTIES_PANEL( TOOLKIT_WINDOW* aParent, SCH_BASE_FRAME* aFrame ) :
         PROPERTIES_PANEL( aParent, aFrame ),
         m_frame( aFrame ),
-        m_propMgr( PROPERTY_MANAGER::Instance() ),
-        m_unitEditorInstance( nullptr ),
-        m_checkboxEditorInstance( nullptr ),
-        m_colorEditorInstance( nullptr ),
-        m_fpEditorInstance( nullptr ),
-        m_urlEditorInstance( nullptr )
+        m_propMgr( PROPERTY_MANAGER::Instance() )
 {
     m_propMgr.Rebuild();
-    bool found = false;
 
-    KI_ASSERT( wxPGGlobalVars );
-
-    wxString editorKey = PG_UNIT_EDITOR::BuildEditorName( m_frame );
-
-    auto it = wxPGGlobalVars->m_mapEditorClasses.find( editorKey );
-
-    if( it != wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        m_unitEditorInstance = static_cast<PG_UNIT_EDITOR*>( it->second );
-        m_unitEditorInstance->UpdateFrame( m_frame );
-        found = true;
-    }
-
-    if( !found )
-    {
-        PG_UNIT_EDITOR* new_editor = new PG_UNIT_EDITOR( m_frame );
-        m_unitEditorInstance = static_cast<PG_UNIT_EDITOR*>( wxPropertyGrid::RegisterEditorClass( new_editor ) );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_CHECKBOX_EDITOR::EDITOR_NAME );
-
-    if( it == wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        PG_CHECKBOX_EDITOR* cbEditor = new PG_CHECKBOX_EDITOR();
-        m_checkboxEditorInstance = static_cast<PG_CHECKBOX_EDITOR*>( wxPropertyGrid::RegisterEditorClass( cbEditor ) );
-    }
-    else
-    {
-        m_checkboxEditorInstance = static_cast<PG_CHECKBOX_EDITOR*>( it->second );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_COLOR_EDITOR::EDITOR_NAME );
-
-    if( it == wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        PG_COLOR_EDITOR* colorEditor = new PG_COLOR_EDITOR();
-        m_colorEditorInstance = static_cast<PG_COLOR_EDITOR*>( wxPropertyGrid::RegisterEditorClass( colorEditor ) );
-    }
-    else
-    {
-        m_colorEditorInstance = static_cast<PG_COLOR_EDITOR*>( it->second );
-    }
-
-    auto netlistCallback = [this]()
-    {
-        SCH_SELECTION& sel = m_frame->GetToolManager()->GetTool<SCH_SELECTION_TOOL>()->GetSelection();
-        LIB_SYMBOL*    libSymbol = nullptr;
-
-        for( EDA_ITEM* item : sel )
-        {
-            if( item->Type() == SCH_SYMBOL_T )
-            {
-                SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
-
-                if( !libSymbol )
-                    libSymbol = symbol->GetLibSymbolRef().get();
-                else if( libSymbol != symbol->GetLibSymbolRef().get() )
-                    return std::string( "" );
-            }
-        }
-
-        if( !libSymbol )
-            return std::string( "" );
-
-        wxString      symbolNetlist;
-        wxArrayString pins;
-
-        for( SCH_PIN* pin : libSymbol->GetGraphicalPins( 0 /* all units */, 1 /* single bodyStyle */ ) )
-            pins.push_back( pin->GetNumber() + ' ' + pin->GetShownName() );
-
-        if( !pins.IsEmpty() )
-            symbolNetlist << EscapeString( wxJoin( pins, '\t' ), CTX_LINE );
-
-        symbolNetlist << wxS( "\r" );
-
-        wxArrayString fpFilters = libSymbol->GetFPFilters();
-
-        if( !fpFilters.IsEmpty() )
-            symbolNetlist << EscapeString( wxJoin( fpFilters, ' ' ), CTX_LINE );
-
-        symbolNetlist << wxS( "\r" );
-
-        return symbolNetlist.ToStdString();
-    };
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_FPID_EDITOR::BuildEditorName( m_frame ) );
-
-    if( it != wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        m_fpEditorInstance = static_cast<PG_FPID_EDITOR*>( it->second );
-        m_fpEditorInstance->UpdateFrame( m_frame );
-        m_fpEditorInstance->UpdateCallback( netlistCallback );
-    }
-    else
-    {
-        PG_FPID_EDITOR* fpEditor = new PG_FPID_EDITOR( m_frame, netlistCallback );
-        m_fpEditorInstance = static_cast<PG_FPID_EDITOR*>( wxPropertyGrid::RegisterEditorClass( fpEditor ) );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_URL_EDITOR::BuildEditorName( m_frame ) );
-
-    if( it != wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        m_urlEditorInstance = static_cast<PG_URL_EDITOR*>( it->second );
-        m_urlEditorInstance->UpdateFrame( m_frame );
-    }
-    else
-    {
-        PG_URL_EDITOR* urlEditor = new PG_URL_EDITOR( m_frame );
-        m_urlEditorInstance = static_cast<PG_URL_EDITOR*>( wxPropertyGrid::RegisterEditorClass( urlEditor ) );
-    }
+    registerEditors();
 }
 
 
 SCH_PROPERTIES_PANEL::~SCH_PROPERTIES_PANEL()
 {
-    m_unitEditorInstance->UpdateFrame( nullptr );
-    m_fpEditorInstance->UpdateFrame( nullptr );
-    m_urlEditorInstance->UpdateFrame( nullptr );
+    // The toolkit state releases the editors of the grid (the shared editors forget the frame)
+}
+
+
+std::string SCH_PROPERTIES_PANEL::symbolNetlist() const
+{
+    SCH_SELECTION& sel = m_frame->GetToolManager()->GetTool<SCH_SELECTION_TOOL>()->GetSelection();
+    LIB_SYMBOL*    libSymbol = nullptr;
+
+    for( EDA_ITEM* item : sel )
+    {
+        if( item->Type() == SCH_SYMBOL_T )
+        {
+            SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+
+            if( !libSymbol )
+                libSymbol = symbol->GetLibSymbolRef().get();
+            else if( libSymbol != symbol->GetLibSymbolRef().get() )
+                return std::string( "" );
+        }
+    }
+
+    if( !libSymbol )
+        return std::string( "" );
+
+    wxString      symbolNetlist;
+    wxArrayString pins;
+
+    for( SCH_PIN* pin : libSymbol->GetGraphicalPins( 0 /* all units */, 1 /* single bodyStyle */ ) )
+        pins.push_back( pin->GetNumber() + ' ' + pin->GetShownName() );
+
+    if( !pins.IsEmpty() )
+        symbolNetlist << EscapeString( wxJoin( pins, '\t' ), CTX_LINE );
+
+    symbolNetlist << wxS( "\r" );
+
+    wxArrayString fpFilters = libSymbol->GetFPFilters();
+
+    if( !fpFilters.IsEmpty() )
+        symbolNetlist << EscapeString( wxJoin( fpFilters, ' ' ), CTX_LINE );
+
+    symbolNetlist << wxS( "\r" );
+
+    return symbolNetlist.ToStdString();
 }
 
 
@@ -466,26 +390,23 @@ void SCH_PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 }
 
 
-wxPGProperty* SCH_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProperty ) const
+TOOLKIT_PG_PROPERTY* SCH_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProperty ) const
 {
-    wxPGProperty* prop = PGPropertyFactory( aProperty, m_frame );
+    TOOLKIT_PG_PROPERTY* prop = PGPropertyFactory( aProperty, m_frame );
 
-    if( auto colorProp = dynamic_cast<PGPROPERTY_COLOR4D*>( prop ) )
-    {
-        COLOR4D bg = m_frame->GetColorSettings()->GetColor( LAYER_SCHEMATIC_BACKGROUND );
-        colorProp->SetBackgroundColor( bg );
-    }
+    COLOR4D bg = m_frame->GetColorSettings()->GetColor( LAYER_SCHEMATIC_BACKGROUND );
+    PGSetColorBackground( prop, bg );
 
     if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::FOOTPRINT ) )
-        prop->SetEditor( PG_FPID_EDITOR::BuildEditorName( m_frame ) );
+        PGSetEditor( prop, PG_EDITOR::FPID, m_frame );
     else if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::DATASHEET ) )
-        prop->SetEditor( PG_URL_EDITOR::BuildEditorName( m_frame ) );
+        PGSetEditor( prop, PG_EDITOR::URL, m_frame );
 
     return prop;
 }
 
 
-PROPERTY_BASE* SCH_PROPERTIES_PANEL::getPropertyFromEvent( const wxPropertyGridEvent& aEvent ) const
+PROPERTY_BASE* SCH_PROPERTIES_PANEL::getPropertyByName( const wxString& aName ) const
 {
     EDA_ITEM* item = const_cast<SCH_PROPERTIES_PANEL*>( this )->getFrontItem();
 
@@ -494,44 +415,43 @@ PROPERTY_BASE* SCH_PROPERTIES_PANEL::getPropertyFromEvent( const wxPropertyGridE
 
     SCH_ITEM* firstItem = static_cast<SCH_ITEM*>( item );
 
-    KI_CHECK_MSG( firstItem, nullptr, wxT( "getPropertyFromEvent for a property with nothing selected!") );
+    KI_CHECK_MSG( firstItem, nullptr, wxT( "getPropertyByName for a property with nothing selected!") );
 
-    PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *firstItem ), aEvent.GetPropertyName() );
-    KI_CHECK_MSG( property, nullptr, wxT( "getPropertyFromEvent for a property not found on the selected item!" ) );
+    PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *firstItem ), aName );
+    KI_CHECK_MSG( property, nullptr, wxT( "getPropertyByName for a property not found on the selected item!" ) );
 
     return property;
 }
 
 
-void SCH_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEvent )
+bool SCH_PROPERTIES_PANEL::valueChanging( const wxString& aName, const wxVariant& aValue )
 {
     if( m_SuppressGridChangeEvents )
-        return;
+        return true;
 
     EDA_ITEM* frontItem = getFrontItem();
 
     if( !frontItem )
-        return;
+        return true;
 
-    if( PROPERTY_BASE* property = getPropertyFromEvent( aEvent ) )
+    if( PROPERTY_BASE* property = getPropertyByName( aName ) )
     {
-        wxVariant newValue = aEvent.GetPropertyValue();
+        wxVariant newValue = aValue;
 
         if( VALIDATOR_RESULT validationFailure = property->Validate( newValue.GetAny(), frontItem ) )
         {
             wxString errorMsg = wxString::Format( wxS( "%s: %s" ), wxGetTranslation( property->Name() ),
                                                   validationFailure->get()->Format( m_frame ) );
             m_frame->ShowInfoBarError( errorMsg );
-            aEvent.Veto();
-            return;
+            return false;
         }
-
-        aEvent.Skip();
     }
+
+    return true;
 }
 
 
-void SCH_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
+void SCH_PROPERTIES_PANEL::valueChanged( const wxString& aName, const wxVariant& aValue )
 {
     if( m_SuppressGridChangeEvents )
         return;
@@ -539,9 +459,9 @@ void SCH_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
     SELECTION fallbackSelection;
     const SELECTION& selection = getSelection( fallbackSelection );
 
-    KI_CHECK( getPropertyFromEvent( aEvent ), /* void */ );
+    KI_CHECK( getPropertyByName( aName ), /* void */ );
 
-    wxVariant   newValue = aEvent.GetPropertyValue();
+    wxVariant   newValue = aValue;
     SCH_COMMIT  changes( m_frame );
     SCH_SCREEN* screen = m_frame->GetScreen();
 
@@ -553,7 +473,7 @@ void SCH_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
             continue;
 
         SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
-        PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *item ), aEvent.GetPropertyName() );
+        PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *item ), aName );
         KI_CHECK2( property, continue );
 
         // Editing reference text in the schematic must go through the parent symbol in order to handle
@@ -639,8 +559,6 @@ void SCH_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
 
     // Perform grid updates as necessary based on value change
     AfterCommit();
-
-    aEvent.Skip();
 }
 
 
@@ -673,14 +591,6 @@ bool SCH_PROPERTIES_PANEL::handleSheetFilenameChange( SCH_EDIT_FRAME* aFrame, SC
     aSheet->SetFileName( newFilename );
 
     return true;
-}
-
-
-void SCH_PROPERTIES_PANEL::OnLanguageChanged( wxCommandEvent& aEvent )
-{
-    PROPERTIES_PANEL::OnLanguageChanged( aEvent );
-
-    aEvent.Skip();
 }
 
 

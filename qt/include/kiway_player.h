@@ -34,6 +34,7 @@
 #include <kictl_flags.h>
 
 class QEventLoop;
+class QTcpServer;
 class KIWAY;
 class PROJECT;
 struct KIFACE;
@@ -121,6 +122,13 @@ public:
      */
     virtual void ExecuteRemoteCommand( const char* cmdline ){}
 
+    /**
+     * Listen on the TCP port @a service for the remote commands (ExecuteRemoteCommand()).
+     *
+     * @param local is true to accept only the connections of the local host.
+     */
+    void CreateServer( int service, bool local = true );
+
 protected:
     bool            m_modal;        // true if frame is intended to be modal, not modeless
 
@@ -129,6 +137,8 @@ protected:
     QWidget*        m_modal_resultant_parent; // the window caller in modal mode
     wxString        m_modal_string;
     bool            m_modal_ret_val;    // true if a selection was made
+
+    QTcpServer*     m_socketServer;     // the server of the remote commands, or nullptr
 };
 
 #endif // KIWAY_PLAYER_H_

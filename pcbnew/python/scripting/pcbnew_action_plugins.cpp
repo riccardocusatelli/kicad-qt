@@ -261,18 +261,18 @@ void PYTHON_ACTION_PLUGINS::deregister_action( PyObject* aPyAction )
 }
 
 
-void PCB_EDIT_FRAME::OnActionPluginMenu( wxCommandEvent& aEvent )
+void PCB_EDIT_FRAME::OnActionPluginMenu( int aId )
 {
-    ACTION_PLUGIN* actionPlugin = ACTION_PLUGINS::GetActionByMenu( aEvent.GetId() );
+    ACTION_PLUGIN* actionPlugin = ACTION_PLUGINS::GetActionByMenu( aId );
 
 	if( actionPlugin )
         RunActionPlugin( actionPlugin );
 }
 
 
-void PCB_EDIT_FRAME::OnActionPluginButton( wxCommandEvent& aEvent )
+void PCB_EDIT_FRAME::OnActionPluginButton( int aId )
 {
-	ACTION_PLUGIN* actionPlugin = ACTION_PLUGINS::GetActionByButton( aEvent.GetId() );
+	ACTION_PLUGIN* actionPlugin = ACTION_PLUGINS::GetActionByButton( aId );
 
 	if( actionPlugin )
         RunActionPlugin( actionPlugin );
@@ -474,8 +474,12 @@ void PCB_EDIT_FRAME::buildActionPluginMenus( ACTION_MENU* actionMenu )
 
         item = KIUI::AddMenuItem( actionMenu, wxID_ANY, ap->GetName(), ap->GetDescription(), bundle );
 
-        Connect( item->GetId(), wxEVT_COMMAND_MENU_SELECTED,
-                 wxCommandEventHandler( PCB_EDIT_FRAME::OnActionPluginMenu ) );
+        Bind( wxEVT_COMMAND_MENU_SELECTED,
+              [this]( wxCommandEvent& aEvent )
+              {
+                  OnActionPluginMenu( aEvent.GetId() );
+              },
+              item->GetId() );
 
         ACTION_PLUGINS::SetActionMenu( ii, item->GetId() );
     }
@@ -530,8 +534,12 @@ void PCB_EDIT_FRAME::addActionPluginTools( ACTION_TOOLBAR* aToolbar )
 
             wxAuiToolBarItem* button = aToolbar->AddTool( wxID_ANY, wxEmptyString, bundle, ap->GetName() );
 
-            Connect( button->GetId(), wxEVT_COMMAND_MENU_SELECTED,
-                     wxCommandEventHandler( PCB_EDIT_FRAME::OnActionPluginButton ) );
+            Bind( wxEVT_COMMAND_MENU_SELECTED,
+                  [this]( wxCommandEvent& aEvent )
+                  {
+                      OnActionPluginButton( aEvent.GetId() );
+                  },
+                  button->GetId() );
 
             // Link action plugin to button
             ACTION_PLUGINS::SetActionButton( ap, button->GetId() );

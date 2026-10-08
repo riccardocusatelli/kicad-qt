@@ -26,6 +26,7 @@
 
 #include <wx/panel.h>
 #include <wx/propgrid/propgrid.h>
+#include <properties/pg_factory.h>
 #include <properties/property_choices.h>
 
 #include <vector>
@@ -37,6 +38,14 @@ class SELECTION;
 class PROPERTY_BASE;
 class wxStaticText;
 
+/**
+ * The panel of the properties of the selected items: a property grid, with a row for each
+ * property common to the items.
+ *
+ * The logic of the panel (properties_panel.cpp) is toolkit-independent; the grid is the one of
+ * the GUI toolkit (properties_panel_wx.cpp here, the Qt build has its own version of this
+ * header).
+ */
 class PROPERTIES_PANEL : public wxPanel
 {
 public:
@@ -76,14 +85,20 @@ protected:
      */
     virtual void rebuildProperties( const SELECTION& aSelection );
 
-    virtual wxPGProperty* createPGProperty( const PROPERTY_BASE* aProperty ) const = 0;
+    virtual TOOLKIT_PG_PROPERTY* createPGProperty( const PROPERTY_BASE* aProperty ) const = 0;
 
-    // Event handlers
-    virtual void valueChanging( wxPropertyGridEvent& aEvent ) { aEvent.Skip(); }
-    virtual void valueChanged( wxPropertyGridEvent& aEvent ) { aEvent.Skip(); }
+    /**
+     * The user is changing the property @a aName to @a aValue.
+     *
+     * @return false to refuse the value.
+     */
+    virtual bool valueChanging( const wxString& aName, const wxVariant& aValue ) { return true; }
+
+    /// The user changed the property @a aName to @a aValue.
+    virtual void valueChanged( const wxString& aName, const wxVariant& aValue ) {}
+
     void onCharHook( wxKeyEvent& aEvent );
     void onShow( wxShowEvent& aEvent );
-
     virtual void OnLanguageChanged( wxCommandEvent& aEvent );
 
     /**
@@ -105,6 +120,14 @@ protected:
     bool extractValueAndWritability( const SELECTION& aSelection, const wxString& aPropName,
                                      wxVariant& aValue, bool& aWritable, PROPERTY_CHOICES& aChoices );
 
+private:
+    /// The grid of the GUI toolkit, for the toolkit-independent logic of the panel
+    void                              setCaption( const wxString& aCaption );
+    void                              gridReset();
+    std::vector<TOOLKIT_PG_PROPERTY*> gridProperties() const;
+    void                              gridAppendCategory( const wxString& aCaption );
+    void                              gridAppend( TOOLKIT_PG_PROPERTY* aProperty );
+
 public:
     int                         m_SuppressGridChangeEvents;
 
@@ -117,5 +140,6 @@ protected:
     /// Proportion of the grid column splitter that is used for the key column (0.0 - 1.0)
     float m_splitter_key_proportion;
 };
+
 
 #endif /* PROPERTIES_PANEL_H */

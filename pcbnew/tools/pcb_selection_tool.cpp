@@ -61,6 +61,7 @@ using namespace std::placeholders;
 #include <tools/board_inspection_tool.h>
 #include <ratsnest/ratsnest_data.h>
 #include <geometry/geometry_utils.h>
+#include <toolkit/gui_services.h>
 #include <wx/event.h>
 #include <wx/timer.h>
 #include <wx/log.h>
@@ -265,13 +266,12 @@ void PCB_SELECTION_TOOL::Reset( RESET_REASON aReason )
 }
 
 
-void PCB_SELECTION_TOOL::OnIdle( wxIdleEvent& aEvent )
+void PCB_SELECTION_TOOL::OnIdle()
 {
     if( m_frame->ToolStackIsEmpty() && !m_multiple )
     {
-        wxMouseState keyboardState = wxGetMouseState();
-
-        setModifiersState( keyboardState.ShiftDown(), keyboardState.ControlDown(), keyboardState.AltDown() );
+        setModifiersState( TOOLKIT::IsKeyDown( WXK_SHIFT ), TOOLKIT::IsKeyDown( WXK_CONTROL ),
+                           TOOLKIT::IsKeyDown( WXK_ALT ) );
 
         if( m_additive )
             m_frame->GetCanvas()->SetCurrentCursor( KICURSOR::ADD );

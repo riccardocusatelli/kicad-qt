@@ -26,6 +26,7 @@
 #define BACKGROUND_JOBS_MONITOR_H
 
 #include <kicommon.h>
+#include <toolkit/toolkit_types.h>
 #include <widgets/progress_reporter_base.h>
 #include <wx/gdicmn.h>
 #include <atomic>
@@ -41,8 +42,6 @@ struct BACKGROUND_JOB;
 class BACKGROUND_JOB_REPORTER;
 class BACKGROUND_JOB_LIST;
 class BACKGROUND_JOBS_MONITOR;
-class wxWindow;
-class wxCloseEvent;
 
 class KICOMMON_API BACKGROUND_JOB_REPORTER : public PROGRESS_REPORTER_BASE
 {
@@ -107,9 +106,10 @@ public:
     void Remove( std::shared_ptr<BACKGROUND_JOB> job );
 
     /**
-     * Shows the background job list
+     * Shows the background job list (a window of the GUI toolkit, background_jobs_list_wx.cpp
+     * with wxWidgets), with its bottom right corner at @a aPos.
      */
-    void ShowList( wxWindow* aParent, wxPoint aPos );
+    void ShowList( TOOLKIT_WINDOW* aParent, wxPoint aPos );
 
     /**
      * Add a status bar for handling
@@ -123,9 +123,16 @@ public:
 
 private:
     /**
-     * Handles removing the shown list window from our list of shown windows
+     * Handles removing the shown list window from our list of shown windows (called by the
+     * list window when it closes)
      */
-    void onListWindowClosed( wxCloseEvent& aEvent );
+    void listClosed( BACKGROUND_JOB_LIST* aList );
+
+    /// @return true if the status bar is registered (it was not deleted).
+    bool isRegistered( KISTATUSBAR* aStatusBar ) const;
+
+    /// @return true if the list window is shown (it was not closed).
+    bool isShown( BACKGROUND_JOB_LIST* aList ) const;
 
     /**
      * Handles job status updates, intended to be called by BACKGROUND_JOB_REPORTER only

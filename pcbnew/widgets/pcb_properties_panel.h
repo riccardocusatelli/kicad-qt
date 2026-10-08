@@ -24,23 +24,19 @@
 #define PCB_PROPERTIES_PANEL_H
 
 #include <widgets/properties_panel.h>
+#include <toolkit/toolkit_types.h>
+#include <memory>
 #include <set>
 
 class SELECTION;
 class BOARD;
 class PCB_BASE_EDIT_FRAME;
 class PROPERTY_MANAGER;
-class PG_UNIT_EDITOR;
-class PG_CHECKBOX_EDITOR;
-class PG_RATIO_EDITOR;
-class PG_NET_SELECTOR_EDITOR;
-class PG_FPID_EDITOR;
-class PG_URL_EDITOR;
 
 class PCB_PROPERTIES_PANEL : public PROPERTIES_PANEL
 {
 public:
-    PCB_PROPERTIES_PANEL( wxWindow* aParent, PCB_BASE_EDIT_FRAME* aFrame );
+    PCB_PROPERTIES_PANEL( TOOLKIT_WINDOW* aParent, PCB_BASE_EDIT_FRAME* aFrame );
 
     virtual ~PCB_PROPERTIES_PANEL();
 
@@ -52,13 +48,14 @@ public:
 
 protected:
     void rebuildProperties( const SELECTION& aSelection ) override;
-    wxPGProperty* createPGProperty( const PROPERTY_BASE* aProperty ) const override;
+    TOOLKIT_PG_PROPERTY* createPGProperty( const PROPERTY_BASE* aProperty ) const override;
     bool getItemValue( EDA_ITEM* aItem, PROPERTY_BASE* aProperty, wxVariant& aValue ) override;
 
-    PROPERTY_BASE* getPropertyFromEvent( const wxPropertyGridEvent& aEvent ) const;
+    /// @return the property @a aName of the front item of the selection.
+    PROPERTY_BASE* getPropertyByName( const wxString& aName ) const;
 
-    void valueChanging( wxPropertyGridEvent& aEvent ) override;
-    void valueChanged( wxPropertyGridEvent& aEvent ) override;
+    bool valueChanging( const wxString& aName, const wxVariant& aValue ) override;
+    void valueChanged( const wxString& aName, const wxVariant& aValue ) override;
 
     ///< Regenerates caches storing layer and net names
     void updateLists( const BOARD* aBoard );
@@ -81,15 +78,24 @@ protected:
      */
     EDA_ITEM* getFrontItem();
 
+private:
+    /// Register the custom editors of the properties with the grid of the GUI toolkit
+    /// (pcb_properties_panel_wx.cpp, qt/pcbnew/widgets/pcb_properties_panel_qt.cpp).
+    void registerEditors();
+
+    /// The editors of the grid of the GUI toolkit, defined with the toolkit parts.
+    struct TOOLKIT_STATE;
+
+    struct TOOLKIT_STATE_DELETER
+    {
+        void operator()( TOOLKIT_STATE* aState ) const;
+    };
+
+    std::unique_ptr<TOOLKIT_STATE, TOOLKIT_STATE_DELETER> m_toolkitState;
+
 protected:
     PCB_BASE_EDIT_FRAME* m_frame;
     PROPERTY_MANAGER&    m_propMgr;
-    PG_UNIT_EDITOR*      m_unitEditorInstance;
-    PG_CHECKBOX_EDITOR*  m_checkboxEditorInstance;
-    PG_RATIO_EDITOR*     m_ratioEditorInstance;
-    PG_NET_SELECTOR_EDITOR* m_netSelectorEditorInstance;
-    PG_FPID_EDITOR*      m_fpEditorInstance;
-    PG_URL_EDITOR*       m_urlEditorInstance;
 
     static std::set<wxString> m_currentFieldNames;
 };

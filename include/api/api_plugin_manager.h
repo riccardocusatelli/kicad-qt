@@ -19,32 +19,26 @@
  */
 
 #include <deque>
+#include <functional>
+#include <map>
 #include <memory>
+#include <optional>
 #include <set>
-
-#include <wx/event.h>
 
 #include <api/api_plugin.h>
 #include <json_schema_validator.h>
 #include <kicommon.h>
 
 class REPORTER;
-class wxTimer;
-
-/// Internal event used for handling async tasks
-wxDECLARE_EVENT( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, wxCommandEvent );
-
-/// Notifies other parts of KiCad when plugin availability changes
-extern const KICOMMON_API wxEventTypeTag<wxCommandEvent> EDA_EVT_PLUGIN_AVAILABILITY_CHANGED;
 
 /**
  * Responsible for loading plugin definitions for API-based plugins (ones that do not run inside
  * KiCad itself, but instead are launched as external processes by KiCad)
  */
-class KICOMMON_API API_PLUGIN_MANAGER : public wxEvtHandler
+class KICOMMON_API API_PLUGIN_MANAGER
 {
 public:
-    API_PLUGIN_MANAGER( wxEvtHandler* aParent );
+    API_PLUGIN_MANAGER();
 
     /**
      * Clears the loaded plugins and actions and re-scans the filesystem to register new ones.
@@ -69,12 +63,27 @@ public:
 
     std::shared_ptr<REPORTER> GetReporter() { return m_reloadReporter; }
 
+    /**
+     * Call a function each time the available plugins change (from the event loop), to notify
+     * other parts of KiCad.
+     *
+     * @return the identifier of the function, to remove it.
+     */
+    int AddAvailabilityChangedListener( std::function<void()> aListener );
+
+    void RemoveAvailabilityChangedListener( int aId );
+
 private:
     void processPluginDependencies();
 
-    void processNextJob( wxCommandEvent& aEvent );
+    /// Process the next job of the queue (from the event loop).
+    void processNextJob();
 
-    wxEvtHandler* m_parent;
+    /// Process the next job of the queue once the current event is handled.
+    void queueNextJob();
+
+    /// Call the availability listeners once the current event is handled.
+    void notifyAvailabilityChanged();
 
     std::set<std::unique_ptr<API_PLUGIN>, CompareApiPluginIdentifiers> m_plugins;
 
@@ -117,5 +126,7 @@ private:
     std::shared_ptr<REPORTER> m_reloadReporter;
 
     [[maybe_unused]] long     m_lastPid;
-    [[maybe_unused]] wxTimer* m_raiseTimer;
+
+    std::map<int, std::function<void()>> m_availabilityListeners;
+    int                                  m_nextAvailabilityListener;
 };

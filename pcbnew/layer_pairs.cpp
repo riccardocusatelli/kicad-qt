@@ -25,8 +25,6 @@
 
 #include <wx/translation.h>
 
-wxDEFINE_EVENT( PCB_LAYER_PAIR_PRESETS_CHANGED, wxCommandEvent );
-wxDEFINE_EVENT( PCB_CURRENT_LAYER_PAIR_CHANGED, wxCommandEvent );
 
 
 static bool IsAnEnabledPreset( const LAYER_PAIR& aPair, const LAYER_PAIR_SETTINGS& aSettings )
@@ -79,8 +77,7 @@ bool LAYER_PAIR_SETTINGS::AddLayerPair( LAYER_PAIR_INFO aPair )
 {
     bool ret = addLayerPairInternal( std::move( aPair ) );
 
-    wxCommandEvent* evt = new wxCommandEvent( PCB_LAYER_PAIR_PRESETS_CHANGED, wxID_ANY );
-    QueueEvent( evt );
+    notifyPresetsChanged();
     return ret;
 }
 
@@ -108,8 +105,7 @@ bool LAYER_PAIR_SETTINGS::RemoveLayerPair( const LAYER_PAIR& aPair )
 {
     bool ret = removeLayerPairInternal( aPair );
 
-    wxCommandEvent* evt = new wxCommandEvent( PCB_LAYER_PAIR_PRESETS_CHANGED, wxID_ANY );
-    QueueEvent( evt );
+    notifyPresetsChanged();
     return ret;
 }
 
@@ -170,10 +166,7 @@ void LAYER_PAIR_SETTINGS::SetLayerPairs( std::span<const LAYER_PAIR_INFO> aPairs
         addLayerPairInternal( pair );
     }
 
-    {
-        wxCommandEvent* evt = new wxCommandEvent( PCB_LAYER_PAIR_PRESETS_CHANGED, wxID_ANY );
-        QueueEvent( evt );
-    }
+    notifyPresetsChanged();
 }
 
 void LAYER_PAIR_SETTINGS::SetCurrentLayerPair( const LAYER_PAIR& aPair )
@@ -185,6 +178,31 @@ void LAYER_PAIR_SETTINGS::SetCurrentLayerPair( const LAYER_PAIR& aPair )
         m_lastManualPair = aPair;
     }
 
-    wxCommandEvent* evt = new wxCommandEvent( PCB_CURRENT_LAYER_PAIR_CHANGED, wxID_ANY );
-    QueueEvent( evt );
+    notifyCurrentPairChanged();
+}
+
+
+void LAYER_PAIR_SETTINGS::AddPresetsChangedListener( std::function<void()> aListener )
+{
+    m_presetsChangedListeners.push_back( std::move( aListener ) );
+}
+
+
+void LAYER_PAIR_SETTINGS::AddCurrentPairChangedListener( std::function<void()> aListener )
+{
+    m_currentPairChangedListeners.push_back( std::move( aListener ) );
+}
+
+
+void LAYER_PAIR_SETTINGS::notifyPresetsChanged()
+{
+    for( const std::function<void()>& listener : m_presetsChangedListeners )
+        listener();
+}
+
+
+void LAYER_PAIR_SETTINGS::notifyCurrentPairChanged()
+{
+    for( const std::function<void()>& listener : m_currentPairChangedListeners )
+        listener();
 }

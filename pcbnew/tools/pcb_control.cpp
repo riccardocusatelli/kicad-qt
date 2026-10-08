@@ -2313,10 +2313,9 @@ int PCB_CONTROL::AppendBoard( PCB_IO& pi, const wxString& fileName, DESIGN_BLOCK
 int PCB_CONTROL::Undo( const TOOL_EVENT& aEvent )
 {
     PCB_BASE_EDIT_FRAME* editFrame = dynamic_cast<PCB_BASE_EDIT_FRAME*>( m_frame );
-    wxCommandEvent       dummy;
 
     if( editFrame )
-        editFrame->RestoreCopyFromUndoList( dummy );
+        editFrame->RestoreCopyFromUndoList();
 
     return 0;
 }
@@ -2325,10 +2324,9 @@ int PCB_CONTROL::Undo( const TOOL_EVENT& aEvent )
 int PCB_CONTROL::Redo( const TOOL_EVENT& aEvent )
 {
     PCB_BASE_EDIT_FRAME* editFrame = dynamic_cast<PCB_BASE_EDIT_FRAME*>( m_frame );
-    wxCommandEvent       dummy;
 
     if( editFrame )
-        editFrame->RestoreCopyFromRedoList( dummy );
+        editFrame->RestoreCopyFromRedoList();
 
     return 0;
 }

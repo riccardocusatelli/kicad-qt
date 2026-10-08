@@ -104,12 +104,12 @@ public:
         if( escapedNetName.IsEmpty() || escapedNetName == m_indeterminateLabel )
         {
             m_selectedNetcode = -1;
-            GetComboCtrl()->SetValue( m_indeterminateLabel );
+            setComboValue( m_indeterminateLabel );
         }
         else if( escapedNetName == NO_NET )
         {
             m_selectedNetcode = 0;
-            GetComboCtrl()->SetValue( NO_NET );
+            setComboValue( NO_NET );
         }
         else if( m_netinfoList && escapedNetName.StartsWith( CREATE_NET, &remainingName ) && !remainingName.IsEmpty() )
         {
@@ -126,7 +126,7 @@ public:
                 if( newnet->GetNetCode() > 0 )
                 {
                     m_selectedNetcode = newnet->GetNetCode();
-                    GetComboCtrl()->SetValue( UnescapeString( remainingName ) );
+                    setComboValue( UnescapeString( remainingName ) );
                 }
                 else
                 {
@@ -144,17 +144,16 @@ public:
             if( netInfo == nullptr || netInfo->GetNetCode() == 0 )
             {
                 m_selectedNetcode = 0;
-                GetComboCtrl()->SetValue( NO_NET );
+                setComboValue( NO_NET );
             }
             else
             {
                 m_selectedNetcode = netInfo->GetNetCode();
-                GetComboCtrl()->SetValue( UnescapeString( escapedNetName ) );
+                setComboValue( UnescapeString( escapedNetName ) );
             }
         }
 
-        wxCommandEvent changeEvent( FILTERED_ITEM_SELECTED );
-        wxPostEvent( GetComboCtrl(), changeEvent );
+        notifySelected();
     }
 
 protected:
@@ -214,7 +213,7 @@ protected:
 };
 
 
-NET_SELECTOR::NET_SELECTOR( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
+NET_SELECTOR::NET_SELECTOR( TOOLKIT_WINDOW* parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
                             long style ) :
         FILTER_COMBOBOX( parent, id, pos, size, style|wxCB_READONLY )
 {

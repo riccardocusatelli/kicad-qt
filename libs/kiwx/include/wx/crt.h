@@ -103,6 +103,11 @@ inline wxString wxGetenv( const wxString& aVar )
     return v ? wxString( v ) : wxString();
 }
 
+/// @return true if a string is null or empty.
+inline bool wxIsEmpty( const char* aStr ) { return !aStr || !*aStr; }
+inline bool wxIsEmpty( const wchar_t* aStr ) { return !aStr || !*aStr; }
+inline bool wxIsEmpty( const wxString& aStr ) { return aStr.IsEmpty(); }
+
 inline int wxSystem( const wxString& aCmd )
 {
     return std::system( aCmd.utf8_string().c_str() );

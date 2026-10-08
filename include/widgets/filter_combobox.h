@@ -82,6 +82,12 @@ protected:
      */
     void rebuildList();
 
+    /// Set the text shown by the combo box.
+    void setComboValue( const wxString& aValue );
+
+    /// Tell the combo box that an item was selected (FILTERED_ITEM_SELECTED, after the event).
+    void notifySelected();
+
 private:
     wxSize updateSize();
 

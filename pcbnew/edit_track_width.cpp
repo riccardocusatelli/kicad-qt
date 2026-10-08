@@ -28,7 +28,7 @@
 #include <pcb_track.h>
 #include <tools/pcb_actions.h>
 #include <tool/tool_manager.h>
-#include <wx/choice.h>
+#include <toolkit/choice.h>
 #include <pcb_edit_frame.h>
 
 void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* aItemsListPicker,
@@ -92,10 +92,10 @@ void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* 
 }
 
 
-void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( wxCommandEvent& event )
+void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( int aCommandId )
 {
     int ii;
-    int id = event.GetId();
+    int id = aCommandId;
 
     switch( id )
     {
@@ -151,75 +151,84 @@ void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( wxCommandEvent& event )
         GetDesignSettings().SetViaSizeIndex( ii );
         break;
 
-    case ID_AUX_TOOLBAR_PCB_TRACK_WIDTH:
-        ii = m_SelTrackWidthBox->GetSelection();
-
-        if( ii == int( m_SelTrackWidthBox->GetCount() - 2 ) )
-        {
-            // this is the separator
-            m_SelTrackWidthBox->SetSelection( GetDesignSettings().GetTrackWidthIndex() );
-        }
-        else if( ii == int( m_SelTrackWidthBox->GetCount() - 1 ) )
-        {
-            m_SelTrackWidthBox->SetSelection( GetDesignSettings().GetTrackWidthIndex() );
-
-            // Best-guess fix for issue #23708 (crash on dialog OK reported on
-            // Flatpak/FreeBSD, not reproduced locally). Suspected cause is that
-            // ReCreateAuxiliaryToolbar(), run on dialog OK, destroys this very
-            // wxChoice while its EVT_CHOICE handler is still on the GTK signal
-            // stack. Defer the dialog so the handler unwinds first.
-            CallAfter( [this]()
-                       {
-                           ShowBoardSetupDialog( _( "Pre-defined Sizes" ) );
-                       } );
-        }
-        else
-        {
-            GetDesignSettings().SetTrackWidthIndex( ii );
-            GetDesignSettings().m_TempOverrideTrackWidth = true;
-        }
-
-        // Needed on Windows because the canvas loses focus after clicking on m_SelTrackWidthBox:
-        GetCanvas()->SetFocus();
-
-        break;
-
-    case ID_AUX_TOOLBAR_PCB_VIA_SIZE:
-        ii = m_SelViaSizeBox->GetSelection();
-
-        if( ii == int( m_SelViaSizeBox->GetCount() - 2 ) )
-        {
-            // this is the separator
-            m_SelViaSizeBox->SetSelection( GetDesignSettings().GetViaSizeIndex() );
-        }
-        else if( ii == int( m_SelViaSizeBox->GetCount() - 1 ) )
-        {
-            m_SelViaSizeBox->SetSelection( GetDesignSettings().GetViaSizeIndex() );
-
-            // See the matching comment in the track-width case above.
-            CallAfter( [this]()
-                       {
-                           ShowBoardSetupDialog( _( "Pre-defined Sizes" ) );
-                       } );
-        }
-        else
-        {
-            GetDesignSettings().SetViaSizeIndex( ii );
-        }
-
-        // Needed on Windows because the canvas loses focus after clicking on m_SelViaSizeBox:
-        GetCanvas()->SetFocus();
-
-        break;
-
     default:
         break;
     }
+
+    // trackViaSizeChanged triggers ReCreateAuxiliaryToolbar(), which destroys m_SelTrackWidthBox /
+    // m_SelViaSizeBox (see onTrackWidthChoice()).
+    CallAfter( [this]() { m_toolManager->RunAction( PCB_ACTIONS::trackViaSizeChanged ); } );
+}
+
+
+void PCB_EDIT_FRAME::onTrackWidthChoice()
+{
+    int ii = TOOLKIT::ChoiceGetSelection( m_SelTrackWidthBox );
+
+    if( ii == TOOLKIT::ChoiceGetCount( m_SelTrackWidthBox ) - 2 )
+    {
+        // this is the separator
+        TOOLKIT::ChoiceSetSelection( m_SelTrackWidthBox, GetDesignSettings().GetTrackWidthIndex() );
+    }
+    else if( ii == TOOLKIT::ChoiceGetCount( m_SelTrackWidthBox ) - 1 )
+    {
+        TOOLKIT::ChoiceSetSelection( m_SelTrackWidthBox, GetDesignSettings().GetTrackWidthIndex() );
+
+        // Best-guess fix for issue #23708 (crash on dialog OK reported on
+        // Flatpak/FreeBSD, not reproduced locally). Suspected cause is that
+        // ReCreateAuxiliaryToolbar(), run on dialog OK, destroys this very
+        // wxChoice while its EVT_CHOICE handler is still on the GTK signal
+        // stack. Defer the dialog so the handler unwinds first.
+        CallAfter( [this]()
+                   {
+                       ShowBoardSetupDialog( _( "Pre-defined Sizes" ) );
+                   } );
+    }
+    else
+    {
+        GetDesignSettings().SetTrackWidthIndex( ii );
+        GetDesignSettings().m_TempOverrideTrackWidth = true;
+    }
+
+    // Needed on Windows because the canvas loses focus after clicking on m_SelTrackWidthBox:
+    GetCanvas()->SetFocus();
 
     // trackViaSizeChanged triggers ReCreateAuxiliaryToolbar(), which destroys m_SelTrackWidthBox /
     // m_SelViaSizeBox.  When this handler runs from the wxChoice EVT_CHOICE it is still on the GTK
     // gtk_combo_box_set_active_iter signal stack for that very combo, so rebuilding the toolbar
     // synchronously frees the combo mid-signal and crashes on the trailing g_object_notify (#23970).
     // Defer the action so the GTK signal unwinds first, matching the deferred dialog above.
+    CallAfter( [this]() { m_toolManager->RunAction( PCB_ACTIONS::trackViaSizeChanged ); } );
+}
+
+
+void PCB_EDIT_FRAME::onViaSizeChoice()
+{
+    int ii = TOOLKIT::ChoiceGetSelection( m_SelViaSizeBox );
+
+    if( ii == TOOLKIT::ChoiceGetCount( m_SelViaSizeBox ) - 2 )
+    {
+        // this is the separator
+        TOOLKIT::ChoiceSetSelection( m_SelViaSizeBox, GetDesignSettings().GetViaSizeIndex() );
+    }
+    else if( ii == TOOLKIT::ChoiceGetCount( m_SelViaSizeBox ) - 1 )
+    {
+        TOOLKIT::ChoiceSetSelection( m_SelViaSizeBox, GetDesignSettings().GetViaSizeIndex() );
+
+        // See the matching comment in onTrackWidthChoice().
+        CallAfter( [this]()
+                   {
+                       ShowBoardSetupDialog( _( "Pre-defined Sizes" ) );
+                   } );
+    }
+    else
+    {
+        GetDesignSettings().SetViaSizeIndex( ii );
+    }
+
+    // Needed on Windows because the canvas loses focus after clicking on m_SelViaSizeBox:
+    GetCanvas()->SetFocus();
+
+    // See onTrackWidthChoice().
     CallAfter( [this]() { m_toolManager->RunAction( PCB_ACTIONS::trackViaSizeChanged ); } );
 }

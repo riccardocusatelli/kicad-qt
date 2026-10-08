@@ -26,16 +26,19 @@
 #include <gal/graphics_abstraction_layer.h>
 #include <class_draw_panel_gal.h>
 #include <view/view.h>
-#include <view/wx_view_controls.h>
+#include <view/view_controls.h>
+#include <tool/tool_event.h>
 
-#include <wx/log.h>
 #include <pgm_base.h>
 #include <settings/common_settings.h>
 #include <core/ki_log.h>
 
+// The driver last: libspnav includes the headers of X11 (Status...)
+#include <spacenav/libspnav_driver.h>
+
 
 SPNAV_2D_PLUGIN::SPNAV_2D_PLUGIN( EDA_DRAW_PANEL_GAL* aCanvas )
-    : m_timer( this ), m_canvas( aCanvas ), m_focused( true )
+    : m_timer( [this]() { onPollTimer(); } ), m_canvas( aCanvas ), m_focused( true )
 {
     m_driver = std::make_unique<LIBSPNAV_DRIVER>();
     m_view = aCanvas->GetView();
@@ -44,7 +47,6 @@ SPNAV_2D_PLUGIN::SPNAV_2D_PLUGIN( EDA_DRAW_PANEL_GAL* aCanvas )
     if( m_driver->Connect() )
     {
         m_driver->SetHandler( this );
-        Bind( wxEVT_TIMER, &SPNAV_2D_PLUGIN::onPollTimer, this );
         m_timer.Start( 10 );
     }
 }
@@ -68,7 +70,7 @@ void SPNAV_2D_PLUGIN::SetCanvas( EDA_DRAW_PANEL_GAL* aCanvas )
     m_view = aCanvas->GetView();
 }
 
-void SPNAV_2D_PLUGIN::onPollTimer( wxTimerEvent& )
+void SPNAV_2D_PLUGIN::onPollTimer()
 {
     if( m_driver && m_focused )
         m_driver->Poll();
@@ -117,13 +119,8 @@ void SPNAV_2D_PLUGIN::OnPan( double x, double y, double z )
 
         m_view->SetScale( new_scale, viewPos );
 
-        wxMouseEvent moveEvent(  KIGFX::WX_VIEW_CONTROLS::EVT_REFRESH_MOUSE );
-        VECTOR2D msp = m_canvas->GetViewControls()->GetMousePosition( false );
-        moveEvent.SetX( msp.x );
-        moveEvent.SetY( msp.y );
-
         m_canvas->RequestRefresh();
-        wxPostEvent( m_canvas, moveEvent );
+        m_canvas->PostRefreshMouse( 0 );
     }
 
 }

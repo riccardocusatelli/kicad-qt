@@ -373,6 +373,20 @@ void WX_INFOBAR::AddButton( wxHyperlinkCtrl* aHypertextButton )
 }
 
 
+void WX_INFOBAR::AddButton( const wxString& aLabel, std::function<void()> aCallback )
+{
+    wxHyperlinkCtrl* link = new wxHyperlinkCtrl( this, wxID_ANY, aLabel, wxEmptyString );
+
+    link->Bind( wxEVT_COMMAND_HYPERLINK, std::function<void( wxHyperlinkEvent& )>(
+            [aCallback]( wxHyperlinkEvent& )
+            {
+                aCallback();
+            } ) );
+
+    AddButton( link );
+}
+
+
 void WX_INFOBAR::AddCloseButton( const wxString& aTooltip )
 {
     wxBitmapButton* button = wxBitmapButton::NewCloseButton( this, ID_CLOSE_INFOBAR );

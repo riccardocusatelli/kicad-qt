@@ -138,13 +138,13 @@ void PCB_SEARCH_HANDLER::SelectItems( std::vector<long>& aItemRows )
 FOOTPRINT_SEARCH_HANDLER::FOOTPRINT_SEARCH_HANDLER( PCB_EDIT_FRAME* aFrame ) :
         PCB_SEARCH_HANDLER( _HKI( "Footprints" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Reference" ),            2, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Value" ),                6, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Layer" ),                2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back(  wxT( "X" ),                    3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back(  wxT( "Y" ),                    3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Library Link" ),         8, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Library Description" ), 10, wxLIST_FORMAT_LEFT );
+    m_columns.emplace_back( _HKI( "Reference" ),            2, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Value" ),                6, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Layer" ),                2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back(  wxT( "X" ),                    3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back(  wxT( "Y" ),                    3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Library Link" ),         8, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Library Description" ), 10, SEARCH_COLUMN_ALIGN::LEFT );
 }
 
 
@@ -224,13 +224,13 @@ wxString FOOTPRINT_SEARCH_HANDLER::getResultCell( BOARD_ITEM* aItem, int aCol )
 ZONE_SEARCH_HANDLER::ZONE_SEARCH_HANDLER( PCB_EDIT_FRAME* aFrame ) :
         PCB_SEARCH_HANDLER( _HKI( "Zones" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Name" ),     6, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Net" ),      6, wxLIST_FORMAT_LEFT);
-    m_columns.emplace_back( _HKI( "Layer" ),    3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Priority" ), 2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "X" ),         3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "Y" ),         3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Area" ),     3, wxLIST_FORMAT_RIGHT );
+    m_columns.emplace_back( _HKI( "Name" ),     6, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Net" ),      6, SEARCH_COLUMN_ALIGN::LEFT);
+    m_columns.emplace_back( _HKI( "Layer" ),    3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Priority" ), 2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "X" ),         3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "Y" ),         3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Area" ),     3, SEARCH_COLUMN_ALIGN::RIGHT );
 }
 
 
@@ -312,11 +312,11 @@ wxString ZONE_SEARCH_HANDLER::getResultCell( BOARD_ITEM* aItem, int aCol )
 TEXT_SEARCH_HANDLER::TEXT_SEARCH_HANDLER( PCB_EDIT_FRAME* aFrame ) :
         PCB_SEARCH_HANDLER( _HKI( "Text" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Type" ),  2,  wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Text" ),  12, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Layer" ), 3,  wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "X" ),      3,  wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "Y" ),      3,  wxLIST_FORMAT_CENTER );
+    m_columns.emplace_back( _HKI( "Type" ),  2,  SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Text" ),  12, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Layer" ), 3,  SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "X" ),      3,  SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "Y" ),      3,  SEARCH_COLUMN_ALIGN::CENTER );
 }
 
 
@@ -388,10 +388,10 @@ wxString TEXT_SEARCH_HANDLER::getResultCell( BOARD_ITEM* aItem, int aCol )
 GROUP_SEARCH_HANDLER::GROUP_SEARCH_HANDLER( PCB_EDIT_FRAME* aFrame ) :
         PCB_SEARCH_HANDLER( _HKI( "Groups" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Type" ),  2,  wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Name" ),  6,  wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( wxT( "X" ),      3,  wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "Y" ),      3,  wxLIST_FORMAT_CENTER );
+    m_columns.emplace_back( _HKI( "Type" ),  2,  SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Name" ),  6,  SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( wxT( "X" ),      3,  SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "Y" ),      3,  SEARCH_COLUMN_ALIGN::CENTER );
 }
 
 
@@ -450,8 +450,8 @@ wxString GROUP_SEARCH_HANDLER::getResultCell( BOARD_ITEM* aItem, int aCol )
 NETS_SEARCH_HANDLER::NETS_SEARCH_HANDLER( PCB_EDIT_FRAME* aFrame ) :
         PCB_SEARCH_HANDLER( _HKI( "Nets" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Name" ),  6, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Class" ), 6, wxLIST_FORMAT_LEFT );
+    m_columns.emplace_back( _HKI( "Name" ),  6, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Class" ), 6, SEARCH_COLUMN_ALIGN::LEFT );
 }
 
 
@@ -536,8 +536,8 @@ void NETS_SEARCH_HANDLER::ActivateItem( long aItemRow )
 RATSNEST_SEARCH_HANDLER::RATSNEST_SEARCH_HANDLER( PCB_EDIT_FRAME* aFrame ) :
         PCB_SEARCH_HANDLER( _HKI( "Ratsnest" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Name" ),  6, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Class" ), 6, wxLIST_FORMAT_LEFT );
+    m_columns.emplace_back( _HKI( "Name" ),  6, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Class" ), 6, SEARCH_COLUMN_ALIGN::LEFT );
 }
 
 
@@ -628,14 +628,14 @@ DRILL_SEARCH_HANDLER::DRILL_SEARCH_HANDLER( PCB_EDIT_FRAME* aFrame ) :
         PCB_SEARCH_HANDLER( _HKI( "Drills" ), aFrame ),
         m_frame( aFrame )
 {
-    m_columns.emplace_back( _HKI( "Count" ),       2, wxLIST_FORMAT_RIGHT );
-    m_columns.emplace_back( _HKI( "Shape" ),       3, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "X Size" ),      3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Y Size" ),      3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Plated" ),      2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Via/Pad" ),     2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Start Layer" ), 4, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Stop Layer" ),  4, wxLIST_FORMAT_CENTER );
+    m_columns.emplace_back( _HKI( "Count" ),       2, SEARCH_COLUMN_ALIGN::RIGHT );
+    m_columns.emplace_back( _HKI( "Shape" ),       3, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "X Size" ),      3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Y Size" ),      3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Plated" ),      2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Via/Pad" ),     2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Start Layer" ), 4, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Stop Layer" ),  4, SEARCH_COLUMN_ALIGN::CENTER );
 }
 
 

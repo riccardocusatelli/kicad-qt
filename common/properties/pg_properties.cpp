@@ -30,6 +30,7 @@
 #include <properties/std_optional_variants.h>
 #include <properties/eda_angle_variant.h>
 #include <properties/pg_properties.h>
+#include <properties/pg_value_text.h>
 #include <properties/pg_editors.h>
 #include <properties/property_mgr.h>
 #include <properties/property.h>
@@ -38,170 +39,8 @@
 #include <core/ki_assert.h>
 
 
-class wxAnyToSTD_OPTIONAL_INT_VARIANTRegistrationImpl : public wxAnyToVariantRegistration
-{
-public:
-    wxAnyToSTD_OPTIONAL_INT_VARIANTRegistrationImpl( wxVariantDataFactory factory )
-        : wxAnyToVariantRegistration( factory )
-    {
-    }
-
-public:
-    static bool IsSameClass(const wxAnyValueType* otherType)
-    {
-        return AreSameClasses( *s_instance.get(), *otherType );
-    }
-
-    static wxAnyValueType* GetInstance()
-    {
-        return s_instance.get();
-    }
-
-    virtual wxAnyValueType* GetAssociatedType() override
-    {
-        return wxAnyToSTD_OPTIONAL_INT_VARIANTRegistrationImpl::GetInstance();
-    }
-private:
-    static bool AreSameClasses(const wxAnyValueType& a, const wxAnyValueType& b)
-    {
-        return wxTypeId(a) == wxTypeId(b);
-    }
-
-    static wxAnyValueTypeScopedPtr s_instance;
-};
-
-
-wxAnyValueTypeScopedPtr wxAnyToSTD_OPTIONAL_INT_VARIANTRegistrationImpl::s_instance(
-        new wxAnyValueTypeImpl<std::optional<int>>() );
-
-
-static wxAnyToSTD_OPTIONAL_INT_VARIANTRegistrationImpl
-        s_wxAnyToSTD_OPTIONAL_INT_VARIANTRegistration(
-                &STD_OPTIONAL_INT_VARIANT_DATA::VariantDataFactory );
-
-
-class wxAnyToSTD_OPTIONAL_DOUBLE_VARIANTRegistrationImpl : public wxAnyToVariantRegistration
-{
-public:
-    wxAnyToSTD_OPTIONAL_DOUBLE_VARIANTRegistrationImpl( wxVariantDataFactory factory )
-        : wxAnyToVariantRegistration( factory )
-    {
-    }
-
-public:
-    static bool IsSameClass(const wxAnyValueType* otherType)
-    {
-        return AreSameClasses( *s_instance.get(), *otherType );
-    }
-
-    static wxAnyValueType* GetInstance()
-    {
-        return s_instance.get();
-    }
-
-    virtual wxAnyValueType* GetAssociatedType() override
-    {
-        return wxAnyToSTD_OPTIONAL_DOUBLE_VARIANTRegistrationImpl::GetInstance();
-    }
-private:
-    static bool AreSameClasses(const wxAnyValueType& a, const wxAnyValueType& b)
-    {
-        return wxTypeId(a) == wxTypeId(b);
-    }
-
-    static wxAnyValueTypeScopedPtr s_instance;
-};
-
-
-wxAnyValueTypeScopedPtr wxAnyToSTD_OPTIONAL_DOUBLE_VARIANTRegistrationImpl::s_instance(
-        new wxAnyValueTypeImpl<std::optional<double>>() );
-
-
-static wxAnyToSTD_OPTIONAL_DOUBLE_VARIANTRegistrationImpl
-        s_wxAnyToSTD_OPTIONAL_DOUBLE_VARIANTRegistration(
-                &STD_OPTIONAL_DOUBLE_VARIANT_DATA::VariantDataFactory );
-
-
-class wxAnyToEDA_ANGLE_VARIANTRegistrationImpl : public wxAnyToVariantRegistration
-{
-public:
-    wxAnyToEDA_ANGLE_VARIANTRegistrationImpl( wxVariantDataFactory factory )
-        : wxAnyToVariantRegistration( factory )
-    {
-    }
-
-public:
-    static bool IsSameClass(const wxAnyValueType* otherType)
-    {
-        return AreSameClasses( *s_instance.get(), *otherType );
-    }
-
-    static wxAnyValueType* GetInstance()
-    {
-        return s_instance.get();
-    }
-
-    virtual wxAnyValueType* GetAssociatedType() override
-    {
-        return wxAnyToEDA_ANGLE_VARIANTRegistrationImpl::GetInstance();
-    }
-private:
-    static bool AreSameClasses(const wxAnyValueType& a, const wxAnyValueType& b)
-    {
-        return wxTypeId(a) == wxTypeId(b);
-    }
-
-    static wxAnyValueTypeScopedPtr s_instance;
-};
-
-
-wxAnyValueTypeScopedPtr
-        wxAnyToEDA_ANGLE_VARIANTRegistrationImpl::s_instance( new wxAnyValueTypeImpl<EDA_ANGLE>() );
-
-
-static wxAnyToEDA_ANGLE_VARIANTRegistrationImpl
-        s_wxAnyToEDA_ANGLE_VARIANTRegistration( &EDA_ANGLE_VARIANT_DATA::VariantDataFactory );
-
-
-class wxAnyToCOLOR4D_VARIANTRegistrationImpl : public wxAnyToVariantRegistration
-{
-public:
-    wxAnyToCOLOR4D_VARIANTRegistrationImpl( wxVariantDataFactory factory )
-            : wxAnyToVariantRegistration( factory )
-    {
-    }
-
-public:
-    static bool IsSameClass(const wxAnyValueType* otherType)
-    {
-        return AreSameClasses( *s_instance.get(), *otherType );
-    }
-
-    static wxAnyValueType* GetInstance()
-    {
-        return s_instance.get();
-    }
-
-    virtual wxAnyValueType* GetAssociatedType() override
-    {
-        return wxAnyToCOLOR4D_VARIANTRegistrationImpl::GetInstance();
-    }
-private:
-    static bool AreSameClasses(const wxAnyValueType& a, const wxAnyValueType& b)
-    {
-        return wxTypeId(a) == wxTypeId(b);
-    }
-
-    static wxAnyValueTypeScopedPtr s_instance;
-};
-
-
-wxAnyValueTypeScopedPtr wxAnyToCOLOR4D_VARIANTRegistrationImpl::s_instance(
-        new wxAnyValueTypeImpl<KIGFX::COLOR4D>() );
-
-
-static wxAnyToCOLOR4D_VARIANTRegistrationImpl
-        s_wxAnyToCOLOR4D_VARIANTRegistration( &COLOR4D_VARIANT_DATA::VariantDataFactory );
+// The conversions of the values of the properties (wxAny) to the values of the grid are
+// registered in pg_value_text.cpp
 
 
 wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME* aFrame )
@@ -317,6 +156,82 @@ wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME*
 }
 
 
+TOOLKIT_PG_PROPERTY* PGColorEnumPropertyFactory( const PROPERTY_BASE* aProperty,
+                                                 const std::vector<std::pair<wxString, int>>& aChoices,
+                                                 std::function<KIGFX::COLOR4D( int aValue )> aColorFunc )
+{
+    wxArrayString names;
+    wxArrayInt    values;
+
+    for( const auto& [name, value] : aChoices )
+    {
+        names.push_back( name );
+        values.push_back( value );
+    }
+
+    auto ret = new PGPROPERTY_COLORENUM( new wxPGChoices( names, values ) );
+
+    ret->SetColorFunc(
+            [aColorFunc]( int aValue ) -> wxColour
+            {
+                return aColorFunc( aValue ).ToColour();
+            } );
+
+    ret->SetLabel( wxGetTranslation( aProperty->Name() ) );
+    ret->SetName( aProperty->Name() );
+    ret->SetHelpString( wxGetTranslation( aProperty->Name() ) );
+    ret->SetClientData( const_cast<PROPERTY_BASE*>( aProperty ) );
+
+    return ret;
+}
+
+
+void PGSetEditor( TOOLKIT_PG_PROPERTY* aProperty, PG_EDITOR aEditor, EDA_DRAW_FRAME* aFrame )
+{
+    switch( aEditor )
+    {
+    case PG_EDITOR::FPID: aProperty->SetEditor( PG_FPID_EDITOR::BuildEditorName( aFrame ) ); break;
+    case PG_EDITOR::URL:  aProperty->SetEditor( PG_URL_EDITOR::BuildEditorName( aFrame ) );  break;
+    }
+}
+
+
+bool PGSetColorBackground( TOOLKIT_PG_PROPERTY* aProperty, const KIGFX::COLOR4D& aBackground )
+{
+    PGPROPERTY_COLOR4D* colorProp = dynamic_cast<PGPROPERTY_COLOR4D*>( aProperty );
+
+    if( !colorProp )
+        return false;
+
+    colorProp->SetBackgroundColor( aBackground );
+    return true;
+}
+
+
+wxString PGGetName( const TOOLKIT_PG_PROPERTY* aProperty )
+{
+    return aProperty->GetName();
+}
+
+
+void PGSetChoices( TOOLKIT_PG_PROPERTY* aProperty, const PROPERTY_CHOICES& aChoices )
+{
+    aProperty->SetChoices( ToWxPGChoices( aChoices ) );
+}
+
+
+void PGSetValue( TOOLKIT_PG_PROPERTY* aProperty, const wxVariant& aValue )
+{
+    aProperty->SetValue( aValue );
+}
+
+
+void PGSetReadOnly( TOOLKIT_PG_PROPERTY* aProperty, bool aReadOnly )
+{
+    aProperty->ChangeFlag( wxPG_PROP_READONLY, aReadOnly );
+}
+
+
 PGPROPERTY_DISTANCE::PGPROPERTY_DISTANCE( EDA_DRAW_FRAME* aParentFrame,
                                           ORIGIN_TRANSFORMS::COORD_TYPES_T aCoordType ) :
         m_parentFrame( aParentFrame ),
@@ -349,44 +264,7 @@ wxString PGPROPERTY_DISTANCE::DistanceToString( wxVariant& aVariant,
 wxString PGPROPERTY_DISTANCE::DistanceToString( wxVariant& aVariant, int aFlags ) const
 #endif
 {
-    if( aVariant.GetType() == wxPG_VARIANT_TYPE_DOUBLE )
-    {
-        double distanceIU = aVariant.GetDouble();
-        ORIGIN_TRANSFORMS& transforms = m_parentFrame->GetOriginTransforms();
-        distanceIU = transforms.ToDisplay( distanceIU, m_coordType );
-        return m_parentFrame->StringFromValue( distanceIU, true, EDA_DATA_TYPE::DISTANCE );
-    }
-
-    long distanceIU;
-
-    if( aVariant.GetType() == wxT( "std::optional<int>" ) )
-    {
-        auto* variantData = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( aVariant.GetData() );
-
-        if( !variantData->Value().has_value() )
-            return wxEmptyString;
-
-        distanceIU = variantData->Value().value();
-    }
-    else if( aVariant.GetType() == wxPG_VARIANT_TYPE_LONG )
-    {
-        distanceIU = aVariant.GetLong();
-    }
-    else if( aVariant.GetType() == wxPG_VARIANT_TYPE_ULONGLONG )
-    {
-        distanceIU = static_cast<long>( aVariant.GetULongLong().GetValue() );
-    }
-    else
-    {
-        KI_FAIL_MSG( wxT( "Expected int (or std::optional<int>) value type" ) );
-        return wxEmptyString;
-    }
-
-    ORIGIN_TRANSFORMS& transforms = m_parentFrame->GetOriginTransforms();
-
-    distanceIU = transforms.ToDisplay( static_cast<long long int>( distanceIU ), m_coordType );
-
-    return m_parentFrame->StringFromValue( distanceIU, true, EDA_DATA_TYPE::DISTANCE );
+    return PGDistanceToString( m_parentFrame, aVariant, m_coordType );
 }
 
 
@@ -414,24 +292,7 @@ wxString PGPROPERTY_AREA::ValueToString( wxVariant& aVariant, wxPGPropValFormatF
 wxString PGPROPERTY_AREA::ValueToString( wxVariant& aVariant, int aArgFlags ) const
 #endif
 {
-    wxLongLongNative areaIU;
-
-    if( aVariant.GetType() == wxPG_VARIANT_TYPE_LONGLONG )
-    {
-        areaIU = aVariant.GetLongLong();
-    }
-    else if( aVariant.GetType() == wxPG_VARIANT_TYPE_LONG )
-    {
-        areaIU = wxLongLongNative( aVariant.GetLong() );
-    }
-    else
-    {
-        KI_FAIL_MSG( wxString::Format( wxS( "Unexpected variant type in PGPROPERTY_AREA: %s" ),
-                                      aVariant.GetType() ) );
-        return wxEmptyString;
-    }
-
-    return m_parentFrame->StringFromValue( areaIU.ToDouble(), true, EDA_DATA_TYPE::AREA );
+    return PGAreaToString( m_parentFrame, aVariant );
 }
 
 
@@ -516,28 +377,7 @@ wxString PGPROPERTY_RATIO::ValueToString( wxVariant& aVariant, wxPGPropValFormat
 wxString PGPROPERTY_RATIO::ValueToString( wxVariant& aVariant, int aArgFlags ) const
 #endif
 {
-    double value;
-
-    if( aVariant.GetType() == wxT( "std::optional<double>" ) )
-    {
-        auto* variantData = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( aVariant.GetData() );
-
-        if( !variantData->Value().has_value() )
-            return wxEmptyString;
-
-        value = variantData->Value().value();
-    }
-    else if( aVariant.GetType() == wxPG_VARIANT_TYPE_DOUBLE )
-    {
-        value = aVariant.GetDouble();
-    }
-    else
-    {
-        KI_FAIL_MSG( wxT( "Expected double (or std::optional<double>) value type" ) );
-        return wxEmptyString;
-    }
-
-    return wxString::Format( wxS( "%g" ), value );
+    return PGRatioToString( aVariant );
 }
 
 
@@ -571,23 +411,7 @@ bool PGPROPERTY_ANGLE::StringToValue( wxVariant& aVariant, const wxString& aText
 bool PGPROPERTY_ANGLE::StringToValue( wxVariant& aVariant, const wxString& aText, int aArgFlags ) const
 #endif
 {
-    double value = 0.0;
-
-    if( !aText.ToDouble( &value ) )
-    {
-        aVariant.MakeNull();
-        return true;
-    }
-
-    value *= m_scale;
-
-    if( aVariant.IsNull() || aVariant.GetDouble() != value )
-    {
-        aVariant = value;
-        return true;
-    }
-
-    return false;
+    return PGAngleFromString( aVariant, aText, m_scale );
 }
 
 
@@ -597,33 +421,7 @@ wxString PGPROPERTY_ANGLE::ValueToString( wxVariant& aVariant, wxPGPropValFormat
 wxString PGPROPERTY_ANGLE::ValueToString( wxVariant& aVariant, int aArgFlags ) const
 #endif
 {
-    if( aVariant.GetType() == wxT( "std::optional<double>" ) )
-    {
-        auto* variantData = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( aVariant.GetData() );
-
-        if( variantData->Value().has_value() )
-            return wxString::Format( wxS( "%g\u00B0" ), variantData->Value().value() / m_scale );
-        else
-            return wxEmptyString;
-    }
-    else if( aVariant.GetType() == wxPG_VARIANT_TYPE_DOUBLE )
-    {
-        return wxString::Format( wxS( "%g\u00B0" ), aVariant.GetDouble() / m_scale );
-    }
-    else if( aVariant.GetType() == wxS( "EDA_ANGLE" ) )
-    {
-        wxString ret;
-        static_cast<EDA_ANGLE_VARIANT_DATA*>( aVariant.GetData() )->Write( ret );
-        return ret;
-    }
-    else if( aVariant.GetType() == wxPG_VARIANT_TYPE_LONG )
-    {
-        return wxString::Format( wxS( "%g\u00B0" ), (double) aVariant.GetLong() / m_scale );
-    }
-    else
-    {
-        KI_CHECK_MSG( false, wxEmptyString, wxS( "Unexpected variant type in PGPROPERTY_ANGLE" ) );
-    }
+    return PGAngleToString( aVariant, m_scale );
 }
 
 
@@ -675,10 +473,7 @@ wxString PGPROPERTY_STRING::ValueToString( wxVariant& aValue, wxPGPropValFormatF
 wxString PGPROPERTY_STRING::ValueToString( wxVariant& aValue, int aFlags ) const
 #endif
 {
-    if( aValue.GetType() != wxPG_VARIANT_TYPE_STRING )
-        return wxEmptyString;
-
-    return UnescapeString( aValue.GetString() );
+    return PGStringToString( aValue );
 }
 
 
@@ -689,7 +484,7 @@ bool PGPROPERTY_STRING::StringToValue( wxVariant& aVariant, const wxString& aStr
 bool PGPROPERTY_STRING::StringToValue( wxVariant& aVariant, const wxString& aString, int aFlags ) const
 #endif
 {
-    aVariant = EscapeString( aString, CTX_QUOTED_STR );
+    aVariant = PGStringFromString( aString );
     return true;
 }
 
@@ -732,7 +527,7 @@ bool PGPROPERTY_COLOR4D::StringToValue( wxVariant& aVariant, const wxString& aSt
 bool PGPROPERTY_COLOR4D::StringToValue( wxVariant& aVariant, const wxString& aString, int aFlags ) const
 #endif
 {
-    aVariant.SetData( new COLOR4D_VARIANT_DATA( aString ) );
+    aVariant = PGColorFromString( aString );
     return true;
 }
 
@@ -778,28 +573,7 @@ wxString PGPROPERTY_TIME::ValueToString( wxVariant& aVariant, wxPGPropValFormatF
 wxString PGPROPERTY_TIME::ValueToString( wxVariant& aVariant, int aArgFlags ) const
 #endif
 {
-    int value;
-
-    if( aVariant.GetType() == wxT( "std::optional<int>" ) )
-    {
-        auto* variantData = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( aVariant.GetData() );
-
-        if( !variantData->Value().has_value() )
-            return wxEmptyString;
-
-        value = variantData->Value().value();
-    }
-    else if( aVariant.GetType() == wxPG_VARIANT_TYPE_LONG )
-    {
-        value = static_cast<int>( aVariant.GetInteger() );
-    }
-    else
-    {
-        KI_FAIL_MSG( wxT( "Expected int (or std::optional<int>) value type" ) );
-        return wxEmptyString;
-    }
-
-    return m_parentFrame->StringFromValue( value, true, EDA_DATA_TYPE::TIME );
+    return PGTimeToString( m_parentFrame, aVariant );
 }
 
 

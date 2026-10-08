@@ -237,6 +237,6 @@ void PROPERTY_PANEL::onItemChanged( QTreeWidgetItem* aItem, int aColumn )
     // The change shows the properties again: not while the tree is notifying its item
     const void* key = row.m_Key;
 
-    QMetaObject::invokeMethod( this, [this, key, value]() { emit valueEdited( key, value ); },
+    QMetaObject::invokeMethod( this, [this, key, value]() { Q_EMIT valueEdited( key, value ); },
                                Qt::QueuedConnection );
 }

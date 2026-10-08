@@ -159,6 +159,14 @@ public:
     void RequestRefresh();
 
     /**
+     * Post a refresh of the mouse position to the tools (the cursor did not move, the view
+     * did), from the event loop.
+     *
+     * @param aModifiers are the modifiers (MD_SHIFT...) of the motion.
+     */
+    void PostRefreshMouse( int aModifiers );
+
+    /**
      * Resize the GAL to the current client size of this panel.
      *
      * This must be used in preference to calling GAL::ResizeScreen() directly: it holds the

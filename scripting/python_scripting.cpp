@@ -52,6 +52,8 @@
 #include <kiplatform/environment.h>
 
 #include <wx/app.h>
+#include <wx/crt.h>
+#include <wx/log.h>
 #include <wx/regex.h>
 #include <wx/utils.h>
 

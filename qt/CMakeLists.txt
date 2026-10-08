@@ -25,7 +25,7 @@
 #   eeschema/ _eeschema_qt.kiface: the headless eeschema KIFACE with the schematic documents
 #   kicad/    kicad-qt: the main window, which loads the two KIFACEs
 
-find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets )
+find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets Network )
 
 # The Qt base classes of the dialogs and panels, generated from their wxFormBuilder files
 # (qt/tools/fbp2qt.py) in this directory, with the directories of the sources: the derived
@@ -104,7 +104,7 @@ add_subdirectory( kicad )
 add_subdirectory( qa )
 
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_KEPT_TARGETS
-    kiqt kiqt_common libcontext 3d-viewer_qt
+    kiqt kiqt_common libcontext 3d-viewer_qt pcbnew_gui_qt kinng
     pcbnew_qt_kiface pcbnew_qt_kiface_iface
     eeschema_qt_kiface eeschema_qt_kiface_iface
     kicad-qt

@@ -119,7 +119,7 @@ public:
     /// The tools of the document (the actions that start them, with the selection first).
     const QList<QAction*>& ToolActions() const { return m_toolActions; }
 
-signals:
+Q_SIGNALS:
     /// The cursor moved (the text shows its position, in the units of the document).
     void cursorPositionChanged( const QString& aText );
 

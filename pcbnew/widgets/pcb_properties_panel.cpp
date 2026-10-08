@@ -30,11 +30,10 @@
 #include <tools/pcb_actions.h>
 #include <tools/pcb_selection_tool.h>
 #include <properties/property_mgr.h>
-#include <properties/pg_editors.h>
 #include <board_commit.h>
 #include <board_connected_item.h>
 #include <board.h>
-#include <properties/pg_properties.h>
+#include <properties/pg_factory.h>
 #include <properties/property.h>
 #include <pcb_shape.h>
 #include <pcb_text.h>
@@ -47,8 +46,6 @@
 #include <template_fieldnames.h>
 #include <settings/color_settings.h>
 #include <string_utils.h>
-#include <widgets/net_selector.h>
-#include <widgets/ui_common.h>
 #include <core/ki_assert.h>
 
 static const wxString MISSING_FIELD_SENTINEL = wxS( "\uE000" );
@@ -144,191 +141,20 @@ private:
 std::set<wxString> PCB_PROPERTIES_PANEL::m_currentFieldNames;
 
 
-class PG_NET_SELECTOR_EDITOR : public wxPGEditor
-{
-public:
-    static const wxString EDITOR_NAME;
-
-    PG_NET_SELECTOR_EDITOR() = default;
-
-    wxString GetName() const override { return EDITOR_NAME; }
-
-    wxPGWindowList CreateControls( wxPropertyGrid* aGrid, wxPGProperty* aProperty, const wxPoint& aPos,
-                                   const wxSize& aSize ) const override
-    {
-        NET_SELECTOR* editor = new NET_SELECTOR( aGrid->GetPanel(), wxID_ANY, aPos, aSize, 0 );
-
-        // wxPropertyGrid registers editors globally and the same PG_NET_SELECTOR_EDITOR
-        // instance is reused by every PCB_PROPERTIES_PANEL (board editor, footprint editor).
-        // Resolve the owning panel -- and therefore the live frame and board -- from the
-        // grid at use time instead of caching frame state on the editor.  This avoids
-        // cross-frame state corruption and nullptr derefs when one panel is destroyed while
-        // another is still live.
-        if( PCB_PROPERTIES_PANEL* panel = dynamic_cast<PCB_PROPERTIES_PANEL*>( aGrid->GetParent() ) )
-        {
-            if( PCB_BASE_EDIT_FRAME* frame = panel->GetFrame() )
-            {
-                if( BOARD* board = frame->GetBoard() )
-                    editor->SetNetInfo( &board->GetNetInfo() );
-            }
-        }
-
-        editor->SetIndeterminateString( INDETERMINATE_STATE );
-        UpdateControl( aProperty, editor );
-
-        editor->Bind( FILTERED_ITEM_SELECTED,
-                      [=]( wxCommandEvent& aEvt )
-                      {
-                          auto& choices = const_cast<wxPGChoices&>( aProperty->GetChoices() );
-                          wxString netname = editor->GetSelectedNetname();
-
-                          if( choices.Index( netname ) == wxNOT_FOUND )
-                              choices.Add( netname, editor->GetSelectedNetcode() );
-
-                          wxVariant val( editor->GetSelectedNetcode() );
-                          aGrid->ChangePropertyValue( aProperty, val );
-                      } );
-
-        return editor;
-    }
-
-    void UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) const override
-    {
-        if( NET_SELECTOR* editor = dynamic_cast<NET_SELECTOR*>( aCtrl ) )
-        {
-            if( aProperty->IsValueUnspecified() )
-                editor->SetIndeterminate();
-            else
-                editor->SetSelectedNetcode( (int) aProperty->GetValue().GetLong() );
-        }
-    }
-
-    bool GetValueFromControl( wxVariant& aVariant, wxPGProperty* aProperty, wxWindow* aCtrl ) const override
-    {
-        NET_SELECTOR* editor = dynamic_cast<NET_SELECTOR*>( aCtrl );
-
-        if( !editor )
-            return false;
-
-        aVariant = static_cast<long>( editor->GetSelectedNetcode() );
-        return true;
-    }
-
-    bool OnEvent( wxPropertyGrid* aGrid, wxPGProperty* aProperty, wxWindow* aWindow, wxEvent& aEvent ) const override
-    {
-        return false;
-    }
-};
-
-
-const wxString PG_NET_SELECTOR_EDITOR::EDITOR_NAME = wxS( "PG_NET_SELECTOR_EDITOR" );
-
-
-
-PCB_PROPERTIES_PANEL::PCB_PROPERTIES_PANEL( wxWindow* aParent, PCB_BASE_EDIT_FRAME* aFrame ) :
+PCB_PROPERTIES_PANEL::PCB_PROPERTIES_PANEL( TOOLKIT_WINDOW* aParent, PCB_BASE_EDIT_FRAME* aFrame ) :
         PROPERTIES_PANEL( aParent, aFrame ),
         m_frame( aFrame ),
         m_propMgr( PROPERTY_MANAGER::Instance() )
 {
     m_propMgr.Rebuild();
-    bool found = false;
 
-    KI_ASSERT( wxPGGlobalVars );
-
-    wxString editorKey = PG_UNIT_EDITOR::BuildEditorName( m_frame );
-
-    auto it = wxPGGlobalVars->m_mapEditorClasses.find( editorKey );
-
-    if( it != wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        m_unitEditorInstance = static_cast<PG_UNIT_EDITOR*>( it->second );
-        m_unitEditorInstance->UpdateFrame( m_frame );
-        found = true;
-    }
-
-    if( !found )
-    {
-        PG_UNIT_EDITOR* new_editor = new PG_UNIT_EDITOR( m_frame );
-        m_unitEditorInstance = static_cast<PG_UNIT_EDITOR*>( wxPropertyGrid::RegisterEditorClass( new_editor ) );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_CHECKBOX_EDITOR::EDITOR_NAME );
-
-    if( it == wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        PG_CHECKBOX_EDITOR* cbEditor = new PG_CHECKBOX_EDITOR();
-        m_checkboxEditorInstance = static_cast<PG_CHECKBOX_EDITOR*>( wxPropertyGrid::RegisterEditorClass( cbEditor ) );
-    }
-    else
-    {
-        m_checkboxEditorInstance = static_cast<PG_CHECKBOX_EDITOR*>( it->second );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_RATIO_EDITOR::EDITOR_NAME );
-
-    if( it == wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        PG_RATIO_EDITOR* ratioEditor = new PG_RATIO_EDITOR();
-        m_ratioEditorInstance = static_cast<PG_RATIO_EDITOR*>( wxPropertyGrid::RegisterEditorClass( ratioEditor ) );
-    }
-    else
-    {
-        m_ratioEditorInstance = static_cast<PG_RATIO_EDITOR*>( it->second );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_NET_SELECTOR_EDITOR::EDITOR_NAME );
-
-    if( it == wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        PG_NET_SELECTOR_EDITOR* netEditor = new PG_NET_SELECTOR_EDITOR();
-        m_netSelectorEditorInstance = static_cast<PG_NET_SELECTOR_EDITOR*>( wxPropertyGrid::RegisterEditorClass( netEditor ) );
-    }
-    else
-    {
-        m_netSelectorEditorInstance = static_cast<PG_NET_SELECTOR_EDITOR*>( it->second );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_FPID_EDITOR::BuildEditorName( m_frame ) );
-
-    if( it != wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        m_fpEditorInstance = static_cast<PG_FPID_EDITOR*>( it->second );
-        m_fpEditorInstance->UpdateFrame( m_frame );
-    }
-    else
-    {
-        PG_FPID_EDITOR* fpEditor = new PG_FPID_EDITOR( m_frame,
-                                                       []()
-                                                       {
-                                                           return "";
-                                                       });
-        m_fpEditorInstance = static_cast<PG_FPID_EDITOR*>( wxPropertyGrid::RegisterEditorClass( fpEditor ) );
-    }
-
-    it = wxPGGlobalVars->m_mapEditorClasses.find( PG_URL_EDITOR::BuildEditorName( m_frame ) );
-
-    if( it != wxPGGlobalVars->m_mapEditorClasses.end() )
-    {
-        m_urlEditorInstance = static_cast<PG_URL_EDITOR*>( it->second );
-        m_urlEditorInstance->UpdateFrame( m_frame );
-    }
-    else
-    {
-        PG_URL_EDITOR* urlEditor = new PG_URL_EDITOR( m_frame );
-        m_urlEditorInstance = static_cast<PG_URL_EDITOR*>( wxPropertyGrid::RegisterEditorClass( urlEditor ) );
-    }
+    registerEditors();
 }
 
 
 PCB_PROPERTIES_PANEL::~PCB_PROPERTIES_PANEL()
 {
-    m_unitEditorInstance->UpdateFrame( nullptr );
-    m_fpEditorInstance->UpdateFrame( nullptr );
-    m_urlEditorInstance->UpdateFrame( nullptr );
-
-    // Note: the shared PG_NET_SELECTOR_EDITOR does not cache frame state; it resolves the
-    // owning panel from the property grid on each CreateControls call, so no teardown is
-    // needed here.
+    // The toolkit state releases the editors of the grid (the shared editors forget the frame)
 }
 
 
@@ -435,52 +261,45 @@ void PCB_PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 }
 
 
-wxPGProperty* PCB_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProperty ) const
+TOOLKIT_PG_PROPERTY* PCB_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProperty ) const
 {
     if( aProperty->TypeHash() == TYPE_HASH( PCB_LAYER_ID ) )
     {
         KI_ASSERT( aProperty->HasChoices() );
 
-        const PROPERTY_CHOICES& canonicalLayers = aProperty->Choices();
-        wxArrayString      boardLayerNames;
-        wxArrayInt         boardLayerIDs;
+        const PROPERTY_CHOICES&               canonicalLayers = aProperty->Choices();
+        std::vector<std::pair<wxString, int>> boardLayers;
 
         for( int ii = 0; ii < (int) aProperty->Choices().GetCount(); ++ii )
         {
             int layer = canonicalLayers.GetValue( ii );
 
-            boardLayerNames.push_back( m_frame->GetBoard()->GetLayerName( ToLAYER_ID( layer ) ) );
-            boardLayerIDs.push_back( canonicalLayers.GetValue( ii ) );
+            boardLayers.emplace_back( m_frame->GetBoard()->GetLayerName( ToLAYER_ID( layer ) ),
+                                      canonicalLayers.GetValue( ii ) );
         }
 
-        auto ret = new PGPROPERTY_COLORENUM( new wxPGChoices( boardLayerNames, boardLayerIDs ) );
+        PCB_BASE_EDIT_FRAME* frame = m_frame;
 
-        ret->SetColorFunc(
-                [&]( int aValue ) -> wxColour
-                {
-                    return m_frame->GetColorSettings()->GetColor( ToLAYER_ID( aValue ) ).ToColour();
-                } );
-
-        ret->SetLabel( wxGetTranslation( aProperty->Name() ) );
-        ret->SetName( aProperty->Name() );
-        ret->SetHelpString( wxGetTranslation( aProperty->Name() ) );
-        ret->SetClientData( const_cast<PROPERTY_BASE*>( aProperty ) );
-
-        return ret;
+        return PGColorEnumPropertyFactory( aProperty, boardLayers,
+                                           [frame]( int aValue )
+                                           {
+                                               return frame->GetColorSettings()->GetColor(
+                                                       ToLAYER_ID( aValue ) );
+                                           } );
     }
 
-    wxPGProperty* prop = PGPropertyFactory( aProperty, m_frame );
+    TOOLKIT_PG_PROPERTY* prop = PGPropertyFactory( aProperty, m_frame );
 
     if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::FOOTPRINT ) )
-        prop->SetEditor( PG_FPID_EDITOR::BuildEditorName( m_frame ) );
+        PGSetEditor( prop, PG_EDITOR::FPID, m_frame );
     else if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::DATASHEET ) )
-        prop->SetEditor( PG_URL_EDITOR::BuildEditorName( m_frame ) );
+        PGSetEditor( prop, PG_EDITOR::URL, m_frame );
 
     return prop;
 }
 
 
-PROPERTY_BASE* PCB_PROPERTIES_PANEL::getPropertyFromEvent( const wxPropertyGridEvent& aEvent ) const
+PROPERTY_BASE* PCB_PROPERTIES_PANEL::getPropertyByName( const wxString& aName ) const
 {
     EDA_ITEM* item = const_cast<PCB_PROPERTIES_PANEL*>( this )->getFrontItem();
 
@@ -489,42 +308,41 @@ PROPERTY_BASE* PCB_PROPERTIES_PANEL::getPropertyFromEvent( const wxPropertyGridE
 
     BOARD_ITEM* firstItem = static_cast<BOARD_ITEM*>( item );
 
-    KI_CHECK_MSG( firstItem, nullptr, wxT( "getPropertyFromEvent for a property with nothing selected!") );
+    KI_CHECK_MSG( firstItem, nullptr, wxT( "getPropertyByName for a property with nothing selected!") );
 
-    PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *firstItem ), aEvent.GetPropertyName() );
-    KI_CHECK_MSG( property, nullptr, wxT( "getPropertyFromEvent for a property not found on the selected item!" ) );
+    PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *firstItem ), aName );
+    KI_CHECK_MSG( property, nullptr, wxT( "getPropertyByName for a property not found on the selected item!" ) );
 
     return property;
 }
 
 
-void PCB_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEvent )
+bool PCB_PROPERTIES_PANEL::valueChanging( const wxString& aName, const wxVariant& aValue )
 {
     if( m_SuppressGridChangeEvents > 0 )
-        return;
+        return true;
 
     EDA_ITEM* item = getFrontItem();
 
-    PROPERTY_BASE* property = getPropertyFromEvent( aEvent );
-    KI_CHECK( property, /* void */ );
-    KI_CHECK( item, /* void */ );
+    PROPERTY_BASE* property = getPropertyByName( aName );
+    KI_CHECK( property, true );
+    KI_CHECK( item, true );
 
-    wxVariant newValue = aEvent.GetPropertyValue();
+    wxVariant newValue = aValue;
 
     if( VALIDATOR_RESULT validationFailure = property->Validate( newValue.GetAny(), item ) )
     {
         wxString errorMsg = wxString::Format( wxS( "%s: %s" ), wxGetTranslation( property->Name() ),
                                               validationFailure->get()->Format( m_frame ) );
         m_frame->ShowInfoBarError( errorMsg );
-        aEvent.Veto();
-        return;
+        return false;
     }
 
-    aEvent.Skip();
+    return true;
 }
 
 
-void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
+void PCB_PROPERTIES_PANEL::valueChanged( const wxString& aName, const wxVariant& aValue )
 {
     if( m_SuppressGridChangeEvents > 0 )
         return;
@@ -532,9 +350,9 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
     SELECTION fallbackSelection;
     const SELECTION& selection = getSelection( fallbackSelection );
 
-    KI_CHECK( getPropertyFromEvent( aEvent ), /* void */ );
+    KI_CHECK( getPropertyByName( aName ), /* void */ );
 
-    wxVariant newValue = aEvent.GetPropertyValue();
+    wxVariant newValue = aValue;
     BOARD_COMMIT changes( m_frame );
 
     PROPERTY_COMMIT_HANDLER handler( &changes );
@@ -545,7 +363,7 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
             continue;
 
         BOARD_ITEM* item = static_cast<BOARD_ITEM*>( edaItem );
-        PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *item ), aEvent.GetPropertyName() );
+        PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *item ), aName );
         KI_CHECK( property, /* void */ );
 
         if( item->Type() == PCB_TABLECELL_T )
@@ -559,8 +377,8 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
         if( item->Type() == PCB_PAD_T && m_frame
                 && m_frame->IsType( FRAME_PCB_EDITOR )
                 && !m_frame->GetPcbNewSettings()->m_AllowFreePads
-                && ( aEvent.GetPropertyName() == _HKI( "Position X" )
-                     || aEvent.GetPropertyName() == _HKI( "Position Y" ) ) )
+                && ( aName == _HKI( "Position X" )
+                     || aName == _HKI( "Position Y" ) ) )
         {
             PAD* pad = static_cast<PAD*>( item );
             FOOTPRINT* fp = pad->GetParentFootprint();
@@ -570,7 +388,7 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
                 VECTOR2I oldPos = pad->GetPosition();
                 VECTOR2I newPos = oldPos;
 
-                if( aEvent.GetPropertyName() == _HKI( "Position X" ) )
+                if( aName == _HKI( "Position X" ) )
                     newPos.x = (int) newValue.GetLong();
                 else
                     newPos.y = (int) newValue.GetLong();
@@ -598,7 +416,7 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
 
             if( !variantName.IsEmpty() )
             {
-                wxString propName = aEvent.GetPropertyName();
+                wxString propName = aName;
 
                 if( propName == _HKI( "Do not Populate" )
                     || propName == _HKI( "Exclude From Bill of Materials" )
@@ -637,10 +455,8 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
     AfterCommit();
 
     // PointEditor may need to update if locked/unlocked
-    if( aEvent.GetPropertyName() == _HKI( "Locked" ) )
+    if( aName == _HKI( "Locked" ) )
         m_frame->GetToolManager()->ProcessEvent( EVENTS::SelectedEvent );
-
-    aEvent.Skip();
 }
 
 

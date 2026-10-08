@@ -30,10 +30,10 @@
 #include <mutex>
 
 #include <pgm_base.h>
+#include <toolkit/single_instance.h>
+#include <toolkit/toolkit_types.h>
 
-class wxApp;
-class wxSingleInstanceChecker;
-class wxSplashScreen;
+class SINGLE_INSTANCE_CHECKER;
 
 class BACKGROUND_JOBS_MONITOR;
 class GL_CONTEXT_MANAGER;
@@ -51,7 +51,8 @@ class KICAD_API_SERVER;
 
 
 /**
- * The program services of the graphical KiCad applications: PGM_BASE plus the wxApp, the
+ * The program services of the graphical KiCad applications: PGM_BASE plus the application of
+ * the GUI toolkit, the
  * splash screen, the single instance checker, background job and notification UI, the
  * IPC API plugins, Python scripting and the GL context manager.
  *
@@ -112,11 +113,10 @@ public:
             const wxString& aDefaultEditor = wxEmptyString );
 
     /**
-     * Return a bare naked wxApp which may come from wxPython, SINGLE_TOP, or kicad.exe.
-     *
-     * This should return what wxGetApp() returns.
+     * Return the application of the GUI toolkit (the wxApp, which may come from wxPython,
+     * SINGLE_TOP, or kicad.exe, as wxGetApp() returns it; the QApplication of the Qt build).
      */
-    virtual wxApp& App();
+    virtual TOOLKIT_APP& App();
 
     bool InitPgm( bool aHeadless = false, bool aSkipPyInit = false,
                   bool aIsUnitTest = false ) override;
@@ -131,9 +131,9 @@ public:
     void HideSplash();
 
     /**
-     * Allow access to the wxSingleInstanceChecker to test for other running KiCads.
+     * Allow access to the single instance checker to test for other running KiCads.
      */
-    std::unique_ptr<wxSingleInstanceChecker>& SingleInstance()
+    std::unique_ptr<SINGLE_INSTANCE_CHECKER>& SingleInstance()
     {
         return m_pgm_checker;
     }
@@ -179,6 +179,19 @@ public:
 protected:
     void reportInitError( const wxString& aMessage ) override;
 
+private:
+    /**
+     * Prepare the GUI toolkit before the program is initialized: the image handlers, the fonts
+     * (with the toolkit: pgm_gui_wx.cpp, qt/common/pgm_gui_qt.cpp).
+     */
+    void initGuiToolkit();
+
+    /**
+     * Configure the GUI toolkit once the program is initialized: the display server, the
+     * application id, the tooltips, the update UI interval.
+     */
+    void configureGuiToolkit( bool aHeadless );
+
 protected:
     std::unique_ptr<BACKGROUND_JOBS_MONITOR> m_background_jobs_monitor;
     std::unique_ptr<NOTIFICATIONS_MANAGER> m_notifications_manager;
@@ -186,7 +199,7 @@ protected:
     std::unique_ptr<SCRIPTING> m_python_scripting;
 
     /// Check if there is another copy of Kicad running at the same time.
-    std::unique_ptr<wxSingleInstanceChecker> m_pgm_checker;
+    std::unique_ptr<SINGLE_INSTANCE_CHECKER> m_pgm_checker;
 
 #ifdef KICAD_IPC_API
     std::unique_ptr<API_PLUGIN_MANAGER> m_plugin_manager;
@@ -195,7 +208,7 @@ protected:
 
     GL_CONTEXT_MANAGER* m_glContextManager;
 
-    wxSplashScreen* m_splash;
+    TOOLKIT_WINDOW* m_splash;
 
     std::shared_ptr<BACKGROUND_JOB> m_libraryPreloadBackgroundJob;
     std::future<void>               m_libraryPreloadReturn;

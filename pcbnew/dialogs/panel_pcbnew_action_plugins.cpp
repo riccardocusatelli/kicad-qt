@@ -141,8 +141,11 @@ PANEL_PCBNEW_ACTION_PLUGINS::PANEL_PCBNEW_ACTION_PLUGINS( wxWindow* aParent ) :
     m_allowErrorDialog = false;
 
 #ifdef KICAD_IPC_API
-    wxTheApp->Bind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
-          &PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged, this );
+    m_pluginAvailabilityListener = PgmGui().GetPluginManager().AddAvailabilityChangedListener(
+            [this]()
+            {
+                onPluginAvailabilityChanged();
+            } );
 #endif
 }
 
@@ -151,15 +154,14 @@ PANEL_PCBNEW_ACTION_PLUGINS::~PANEL_PCBNEW_ACTION_PLUGINS()
 {
     delete m_errorDialog;
 #ifdef KICAD_IPC_API
-    wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
-            &PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged, this );
+    PgmGui().GetPluginManager().RemoveAvailabilityChangedListener( m_pluginAvailabilityListener );
 #endif
     m_grid->PopEventHandler( true );
 }
 
 
 #ifdef KICAD_IPC_API
-void PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
+void PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged()
 {
     m_grid->Enable();
     TransferDataToWindow();
@@ -170,8 +172,6 @@ void PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged( wxCommandEvent& a
         m_allowErrorDialog = false;
         m_errorDialog->ShowModal();
     }
-
-    aEvt.Skip();
 }
 #endif
 

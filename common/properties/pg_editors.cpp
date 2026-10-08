@@ -22,6 +22,7 @@
 #include <properties/eda_angle_variant.h>
 #include <properties/pg_editors.h>
 #include <properties/pg_properties.h>
+#include <properties/pg_value_text.h>
 #include <widgets/color_swatch.h>
 #include <widgets/unit_binder.h>
 #include <bitmaps.h>
@@ -46,6 +47,30 @@ const wxString PG_COLOR_EDITOR::EDITOR_NAME = wxS( "KiCadColorEditor" );
 const wxString PG_RATIO_EDITOR::EDITOR_NAME = wxS( "KiCadRatioEditor" );
 const wxString PG_FPID_EDITOR::EDITOR_NAME = wxS( "KiCadFpidEditor" );
 const wxString PG_URL_EDITOR::EDITOR_NAME = wxS( "KiCadUrlEditor" );
+
+
+/// The quantity edited by the unit editor for a property.
+static PG_UNIT_KIND unitKind( wxPGProperty* aProperty, double* aAngleScale )
+{
+    *aAngleScale = 1.0;
+
+    if( PGPROPERTY_ANGLE* angleProp = dynamic_cast<PGPROPERTY_ANGLE*>( aProperty ) )
+    {
+        *aAngleScale = angleProp->GetScale();
+        return PG_UNIT_KIND::ANGLE;
+    }
+
+    if( dynamic_cast<PGPROPERTY_AREA*>( aProperty ) )
+        return PG_UNIT_KIND::AREA;
+
+    if( dynamic_cast<PGPROPERTY_DISTANCE*>( aProperty ) )
+        return PG_UNIT_KIND::DISTANCE;
+
+    if( dynamic_cast<PGPROPERTY_TIME*>( aProperty ) )
+        return PG_UNIT_KIND::TIME;
+
+    return PG_UNIT_KIND::OTHER;
+}
 
 
 PG_UNIT_EDITOR::PG_UNIT_EDITOR( EDA_DRAW_FRAME* aFrame ) :
@@ -133,52 +158,11 @@ wxPGWindowList PG_UNIT_EDITOR::CreateControls( wxPropertyGrid* aPropGrid, wxPGPr
 
 void PG_UNIT_EDITOR::UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) const
 {
-    wxVariant var = aProperty->GetValue();
+    double       angleScale;
+    PG_UNIT_KIND kind = unitKind( aProperty, &angleScale );
 
-    if( PGPROPERTY_ANGLE* angleProp = dynamic_cast<PGPROPERTY_ANGLE*>( aProperty ) )
-    {
-        if( var.GetType() == wxT( "EDA_ANGLE" ) )
-        {
-            EDA_ANGLE_VARIANT_DATA* angleData =
-                    static_cast<EDA_ANGLE_VARIANT_DATA*>( var.GetData() );
-            m_unitBinder->ChangeAngleValue( angleData->Angle() );
-        }
-        else if( !aProperty->IsValueUnspecified() )
-        {
-            double scale = angleProp->GetScale();
-            m_unitBinder->ChangeDoubleValue( var.GetDouble() / scale );
-        }
-    }
-    else if( var.GetType() == wxT( "std::optional<int>" ) )
-    {
-        auto* variantData = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( var.GetData() );
-
-        if( variantData->Value().has_value() )
-            m_unitBinder->ChangeValue( variantData->Value().value() );
-        else
-            m_unitBinder->ChangeValue( wxEmptyString );
-    }
-    else if( var.GetType() == wxPG_VARIANT_TYPE_LONG )
-    {
-        m_unitBinder->ChangeValue( var.GetLong() );
-    }
-    else if( var.GetType() == wxPG_VARIANT_TYPE_LONGLONG )
-    {
-        m_unitBinder->ChangeDoubleValue( var.GetLongLong().ToDouble() );
-    }
-    else if( var.GetType() == wxPG_VARIANT_TYPE_DOUBLE )
-    {
-        m_unitBinder->ChangeValue( var.GetDouble() );
-    }
-    else if( var.GetType() == wxT( "EDA_ANGLE" ) )
-    {
-        EDA_ANGLE_VARIANT_DATA* angleData = static_cast<EDA_ANGLE_VARIANT_DATA*>( var.GetData() );
-        m_unitBinder->ChangeAngleValue( angleData->Angle() );
-    }
-    else if( !aProperty->IsValueUnspecified() )
-    {
-        KI_FAIL_MSG( wxT( "PG_UNIT_EDITOR should only be used with numeric properties!" ) );
-    }
+    PGUnitBinderShowValue( *m_unitBinder, aProperty->GetValue(), kind, angleScale,
+                           aProperty->IsValueUnspecified() );
 }
 
 
@@ -209,101 +193,11 @@ bool PG_UNIT_EDITOR::GetValueFromControl( wxVariant& aVariant, wxPGProperty* aPr
 
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( aCtrl );
     KI_CHECK_MSG( textCtrl, false, "PG_UNIT_EDITOR requires a text control!" );
-    wxString textVal = textCtrl->GetValue();
 
-    if( textVal == wxT( "<...>" ) )
-    {
-        aVariant.MakeNull();
-        return true;
-    }
+    double       angleScale;
+    PG_UNIT_KIND kind = unitKind( aProperty, &angleScale );
 
-    bool changed;
-
-    if( dynamic_cast<PGPROPERTY_ANGLE*>( aProperty ) != nullptr )
-    {
-        EDA_ANGLE angle = m_unitBinder->GetAngleValue();
-
-        if( aVariant.GetType() == wxT( "EDA_ANGLE" ) )
-        {
-            EDA_ANGLE_VARIANT_DATA* ad = static_cast<EDA_ANGLE_VARIANT_DATA*>( aVariant.GetData() );
-            changed = ( aVariant.IsNull() || angle != ad->Angle() );
-
-            if( changed )
-            {
-                ad->SetAngle( angle );
-                m_unitBinder->SetAngleValue( angle );
-            }
-        }
-        else
-        {
-            PGPROPERTY_ANGLE* angleProp = static_cast<PGPROPERTY_ANGLE*>( aProperty );
-            double             scaledValue = angle.AsDegrees() * angleProp->GetScale();
-
-            changed = ( aVariant.IsNull() || scaledValue != aVariant.GetDouble() );
-
-            if( changed )
-            {
-                aVariant = scaledValue;
-                m_unitBinder->SetValue( angle.AsDegrees() );
-            }
-        }
-    }
-    else if( dynamic_cast<PGPROPERTY_AREA*>( aProperty ) != nullptr )
-    {
-        wxLongLongNative result = m_unitBinder->GetValue();
-        changed = ( aVariant.IsNull() || result != aVariant.GetLongLong() );
-
-        if( changed )
-        {
-            aVariant = result;
-            m_unitBinder->SetDoubleValue( result.ToDouble() );
-        }
-    }
-    else if( aVariant.GetType() == wxT( "std::optional<int>" ) )
-    {
-        auto* variantData = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( aVariant.GetData() );
-        std::optional<int> result;
-
-        if( m_unitBinder->IsNull() )
-        {
-            changed = ( aVariant.IsNull() || variantData->Value().has_value() );
-
-            if( changed )
-            {
-                aVariant = wxVariant( std::optional<int>() );
-                m_unitBinder->SetValue( wxEmptyString );
-            }
-        }
-        else
-        {
-            result = std::optional<int>( m_unitBinder->GetValue() );
-            changed = ( aVariant.IsNull() || result != variantData->Value() );
-
-            if( changed )
-            {
-                aVariant = wxVariant( result );
-                m_unitBinder->SetValue( result.value() );
-            }
-        }
-    }
-    else
-    {
-        long result = m_unitBinder->GetValue();
-        changed = ( aVariant.IsNull() || result != aVariant.GetLong() );
-
-        if( changed )
-        {
-            aVariant = result;
-            m_unitBinder->SetValue( result );
-        }
-    }
-
-    // Changing unspecified always causes event (returning
-    // true here should be enough to trigger it).
-    if( !changed && aVariant.IsNull() )
-        changed = true;
-
-    return changed;
+    return PGUnitBinderGetValue( *m_unitBinder, textCtrl->GetValue(), aVariant, kind, angleScale );
 }
 
 
@@ -422,58 +316,12 @@ bool PG_RATIO_EDITOR::GetValueFromControl( wxVariant& aVariant, wxPGProperty* aP
 {
     wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( aCtrl );
     KI_CHECK_MSG( textCtrl, false, "PG_RATIO_EDITOR requires a text control!" );
-    wxString textVal = textCtrl->GetValue();
 
-    if( textVal == wxT( "<...>" ) )
-    {
-        aVariant.MakeNull();
-        return true;
-    }
+    wxString normalizedText;
+    bool     changed = PGRatioFromText( textCtrl->GetValue(), aVariant, normalizedText );
 
-    bool changed;
-
-    if( aVariant.GetType() == wxT( "std::optional<double>" ) )
-    {
-        auto* variantData = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( aVariant.GetData() );
-
-        if( textVal.empty() )
-        {
-            changed = ( aVariant.IsNull() || variantData->Value().has_value() );
-
-            if( changed )
-                aVariant = wxVariant( std::optional<double>() );
-        }
-        else
-        {
-            double dblValue;
-            textVal.ToDouble( &dblValue );
-            std::optional<double> result( dblValue );
-            changed = ( aVariant.IsNull() || result != variantData->Value() );
-
-            if( changed )
-            {
-                aVariant = wxVariant( result );
-                textCtrl->SetValue( wxString::Format( wxS( "%g" ), dblValue ) );
-            }
-        }
-    }
-    else
-    {
-        double result;
-        textVal.ToDouble( &result );
-        changed = ( aVariant.IsNull() || result != aVariant.GetDouble() );
-
-        if( changed )
-        {
-            aVariant = result;
-            textCtrl->SetValue( wxString::Format( wxS( "%g" ), result ) );
-        }
-    }
-
-    // Changing unspecified always causes event (returning
-    // true here should be enough to trigger it).
-    if( !changed && aVariant.IsNull() )
-        changed = true;
+    if( !normalizedText.IsEmpty() )
+        textCtrl->SetValue( normalizedText );
 
     return changed;
 }

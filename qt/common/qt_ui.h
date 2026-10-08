@@ -61,4 +61,16 @@ inline QFont InfoFont( const QWidget* aWidget )
     return font;
 }
 
+
+/// The font of the docked panes (the GUI font, one point smaller on macOS, as
+/// KIUI::GetDockedPaneFont() of the wxWidgets build).
+inline QFont DockedPaneFont( const QWidget* aWidget )
+{
+#ifdef __APPLE__
+    return InfoFont( aWidget );
+#else
+    return aWidget ? aWidget->font() : QFont();
+#endif
+}
+
 } // namespace KIQT

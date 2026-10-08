@@ -28,6 +28,7 @@
 #include <memory>
 
 #include <lset.h>
+#include <toolkit/toolkit_types.h>
 #include <widgets/layer_box_selector.h>
 
 class PCB_BASE_FRAME;
@@ -43,7 +44,8 @@ public:
     // If you are thinking the constructor is a bit curious, just remember it is automatically
     // generated when used in wxFormBuilder files, and so must have the same signature as the
     // wxBitmapComboBox constructor.  In particular, value and style are not used by this class.
-    PCB_LAYER_BOX_SELECTOR( wxWindow* parent, wxWindowID id, const wxString& value = wxEmptyString,
+    PCB_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW* parent, wxWindowID id,
+                            const wxString& value = wxEmptyString,
                             const wxPoint& pos = wxDefaultPosition,
                             const wxSize& size = wxDefaultSize, int n = 0,
                             const wxString choices[] = nullptr, int style = 0 );
@@ -60,7 +62,8 @@ public:
     // INDETERMINATE_STATE or INDETERMINATE_ACTION.
     void SetUndefinedLayerName( const wxString& aName ) { m_undefinedLayerName = aName; }
 
-    // Reload the Layers names and bitmaps
+    // Reload the Layers names and bitmaps (with the GUI toolkit: pcb_layer_box_selector_wx.cpp,
+    // qt/pcbnew/pcb_layer_box_selector_qt.cpp)
     void Resync() override;
 
     // Allow (or not) the layers not activated for the current board to be shown in layer
@@ -68,6 +71,9 @@ public:
     void ShowNonActivatedLayers( bool aShow ) { m_showNotEnabledBrdlayers = aShow; }
 
 private:
+    /// The name of a layer in the list, with its hotkey and its status.
+    wxString layerItemName( PCB_LAYER_ID aLayer, bool aActivated ) const;
+
     // Returns true if the layer id is enabled (i.e. if it should be displayed)
     bool isLayerEnabled( int aLayer ) const override;
 

@@ -31,6 +31,7 @@
 #include <properties/property_choices.h>
 #include <gal/color4d.h>
 #include <origin_transforms.h>
+#include <properties/pg_factory.h>
 
 
 /// Convert the model's choice list into the wxPropertyGrid one.
@@ -49,7 +50,6 @@ class PROPERTY_BASE;
 class REGEX_VALIDATOR;
 class EDA_DRAW_FRAME;
 
-wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME* aFrame );
 
 ///< Customized abstract wxPGProperty class to handle coordinate/size units
 class PGPROPERTY_DISTANCE

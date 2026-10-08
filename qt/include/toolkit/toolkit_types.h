@@ -34,3 +34,22 @@ using TOOLKIT_WINDOW = QWidget;
 
 /// An event of the user interface (an input event, given to the tool dispatcher).
 using TOOLKIT_EVENT = QEvent;
+
+class QComboBox;
+
+/// A choice box (a drop-down list of strings, as the ones of the toolbars).
+using TOOLKIT_CHOICE = QComboBox;
+
+class QPixmap;
+class QIcon;
+
+/// An image of the user interface (an icon at one size, a color swatch).
+using TOOLKIT_BITMAP = QPixmap;
+
+/// An icon of the user interface, with its images at the different scales of the screens.
+using TOOLKIT_BITMAP_BUNDLE = QIcon;
+
+class QApplication;
+
+/// The application object of the GUI toolkit.
+using TOOLKIT_APP = QApplication;

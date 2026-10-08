@@ -92,6 +92,20 @@ bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow )
 }
 
 
+void CloseWindow( TOOLKIT_WINDOW* aWindow )
+{
+    if( aWindow )
+        aWindow->Close( true );
+}
+
+
+void ShowWindow( TOOLKIT_WINDOW* aWindow )
+{
+    if( aWindow )
+        aWindow->ShowWithEffect( wxSHOW_EFFECT_EXPAND );
+}
+
+
 std::unique_ptr<TOOLKIT_WINDOW> CreateHiddenWindow( TOOLKIT_WINDOW* aParent, const wxSize& aSize )
 {
     auto window = std::make_unique<wxFrame>( aParent, wxID_ANY, wxEmptyString, wxDefaultPosition,

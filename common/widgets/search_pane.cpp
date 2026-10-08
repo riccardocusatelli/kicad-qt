@@ -29,6 +29,7 @@
 #include <kiway.h>
 #include <widgets/search_pane_tab.h>
 #include <widgets/bitmap_button.h>
+#include <widgets/ui_common.h>
 #include <core/ki_assert.h>
 
 
@@ -135,6 +136,10 @@ SEARCH_PANE::SEARCH_PANE( EDA_DRAW_FRAME* aFrame ) :
 
     m_frame->Bind( wxEVT_AUI_PANE_CLOSE, &SEARCH_PANE::OnClosed, this );
     Bind( wxEVT_CHAR_HOOK, &SEARCH_PANE::OnCharHook, this );
+
+    wxFont infoFont = KIUI::GetDockedPaneFont( this );
+    SetFont( infoFont );
+    m_notebook->SetFont( infoFont );
 }
 
 

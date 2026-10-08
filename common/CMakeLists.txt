@@ -286,6 +286,8 @@ set( KICOMMON_MODEL_SRCS
 set( KICOMMON_SRCS
     kicad_gl/gl_utils.cpp
     kicad_gl/gl_context_mgr.cpp
+    toolkit/process_wx.cpp
+    toolkit/single_instance_wx.cpp
     dialogs/dialog_rc_job.cpp
     dialogs/dialog_rc_job_base.cpp
     dialogs/dialog_restore_local_history.cpp
@@ -312,6 +314,7 @@ set( KICOMMON_SRCS
     widgets/wx_html_report_panel_base.cpp
     widgets/wx_html_report_box.cpp
     background_jobs_monitor.cpp
+    background_jobs_list_wx.cpp
     bitmap.cpp
     bitmap_store.cpp
     confirm.cpp
@@ -325,6 +328,7 @@ set( KICOMMON_SRCS
     kiway_holder.cpp
     launch_ext.cpp
     notifications_manager.cpp
+    notifications_list_wx.cpp
     scintilla_tricks.cpp
     ui_events.cpp
     trace_helpers_gui.cpp
@@ -340,6 +344,7 @@ set( KICOMMON_SRCS
     gui_reporters.cpp
     local_history_ui.cpp
     pgm_gui.cpp
+    pgm_gui_wx.cpp
     raster_image_wx.cpp
     )
 
@@ -508,11 +513,11 @@ foreach( _kicommon_target kicommon_model kicommon )
     target_compile_definitions( ${_kicommon_target} PRIVATE KICOMMON_DLL=1 )
 endforeach()
 
-# Feed the desktop application identifiers to the Wayland app_id logic in pgm_gui.cpp
+# Feed the desktop application identifiers to the Wayland app_id logic in pgm_gui_wx.cpp
 # so the compositor matches windows to the installed desktop files (regular, Flatpak,
 # and Nightly builds each install a different reverse-DNS prefix).
 if( UNIX AND NOT APPLE )
-    set_property( SOURCE pgm_gui.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+    set_property( SOURCE pgm_gui_wx.cpp APPEND PROPERTY COMPILE_DEFINITIONS
         KICAD_DESKTOP_APP_NAME="${KICAD_APP_NAME}"
         KICAD_DESKTOP_APP_PREFIX="${KICAD_APP_PREFIX}" )
 endif()
@@ -680,6 +685,7 @@ set( COMMON_WIDGET_SRCS
     widgets/paged_dialog.cpp
     widgets/panel_design_block_chooser.cpp
     widgets/properties_panel.cpp
+    widgets/properties_panel_wx.cpp
     widgets/search_pane.cpp
     widgets/search_pane_base.cpp
     widgets/search_pane_tab.cpp
@@ -909,6 +915,8 @@ set( COMMON_SRCS
     toolkit/file_watcher_wx.cpp
     toolkit/gui_services_wx.cpp
     toolkit/gui_timer_wx.cpp
+    toolkit/event_blocker_wx.cpp
+    toolkit/choice_wx.cpp
 
     settings/cvpcb_settings.cpp
 
@@ -917,6 +925,7 @@ set( COMMON_SRCS
     properties/pg_cell_renderer.cpp
     properties/pg_editors.cpp
     properties/pg_properties.cpp
+    properties/pg_value_text.cpp
     properties/property_mgr.cpp
     properties/std_optional_variants.cpp
 

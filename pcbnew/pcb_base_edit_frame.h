@@ -42,6 +42,8 @@ class FILEDLG_HOOK_NEW_LIBRARY;
 struct PCB_SELECTION_FILTER_OPTIONS;
 class PCB_BARCODE;
 class PCB_VERTEX_EDITOR_PANE;
+class ACTION_TOOLBAR;
+class PCB_LAYER_BOX_SELECTOR;
 
 /**
  * Common, abstract interface for edit frames.
@@ -134,14 +136,14 @@ public:
      *  - Save the current board in Undo list
      *  - Get an old version of the board from Redo list
      */
-    void RestoreCopyFromRedoList( wxCommandEvent& aEvent );
+    void RestoreCopyFromRedoList();
 
     /**
      * Undo the last edit:
      *  - Save the current board in Redo list
      *  - Get an old version of the board from Undo list
      */
-    void RestoreCopyFromUndoList( wxCommandEvent& aEvent );
+    void RestoreCopyFromUndoList();
 
     /**
      * Perform an undo of the last edit **without** logging a corresponding redo.  Used to cancel
@@ -201,8 +203,6 @@ public:
     void UpdateVertexEditorSelection( BOARD_ITEM* aItem );
     void OnVertexEditorPaneClosed( PCB_VERTEX_EDITOR_PANE* aPane );
     static wxString VertexEditorPaneName();
-
-    wxAuiManager& GetAuiManager() { return m_auimgr; }
 
     ///< @copydoc EDA_DRAW_FRAME::UseGalCanvas()
     void ActivateGalCanvas() override;
@@ -275,7 +275,16 @@ protected:
 
     void unitsChangeRefresh() override;
 
-    void onDarkModeToggle( wxSysColourChangedEvent& aEvent );
+    /// Update the colors of the panels with the ones of the system (dark mode toggled).
+    void HandleSystemColorChange() override;
+
+private:
+    /// Bind the events of the GUI toolkit (the idle handling of the tools).
+    void setupToolkitEvents();
+    void releaseToolkitEvents();
+
+    /// Add the layer selector (#m_SelLayerBox) to a toolbar.
+    void addLayerSelector( ACTION_TOOLBAR* aToolbar );
 
 protected:
     bool                    m_undoRedoBlocked;
@@ -287,8 +296,6 @@ protected:
     PCB_VERTEX_EDITOR_PANE* m_vertexEditorPane;
 
     PCB_LAYER_BOX_SELECTOR* m_SelLayerBox; // a combo box to display and select active layer
-
-    wxAuiNotebook*          m_tabbedPanel;        /// Panel with Layers and Object Inspector tabs
 };
 
 #endif

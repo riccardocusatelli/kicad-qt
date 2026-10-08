@@ -24,8 +24,6 @@
 #include <fmt/format.h>
 #include <wx/dir.h>
 #include <wx/log.h>
-#include <wx/process.h>
-#include <wx/timer.h>
 #include <wx/utils.h>
 
 #include <api/api_plugin_manager.h>
@@ -37,59 +35,11 @@
 #include <pgm_gui.h>
 #include <python_manager.h>
 #include <reporter.h>
+#include <toolkit/process.h>
 #include <settings/settings_manager.h>
 #include <settings/common_settings.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
-
-
-wxDEFINE_EVENT( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, wxCommandEvent );
-wxDEFINE_EVENT( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED, wxCommandEvent );
-
-
-class ACTION_PROCESS : public wxProcess
-{
-public:
-    ACTION_PROCESS( std::function<void( int, const wxString&, const wxString& )> aCallback ) :
-            wxProcess(),
-            m_callback( std::move( aCallback ) )
-    {}
-
-    void OnTerminate( int aPid, int aStatus ) override
-    {
-        if( m_callback )
-        {
-            wxString output, error;
-
-            if( wxInputStream* processOut = GetInputStream() )
-            {
-                while( processOut->CanRead() )
-                {
-                    char buffer[4096];
-                    buffer[ processOut->Read( buffer, sizeof( buffer ) - 1 ).LastRead() ] = '\0';
-                    output.append( buffer, processOut->LastRead() );
-                }
-            }
-
-            if( wxInputStream* processErr = GetErrorStream() )
-            {
-                while( processErr->CanRead() )
-                {
-                    char buffer[4096];
-                    buffer[ processErr->Read( buffer, sizeof( buffer ) - 1 ).LastRead() ] = '\0';
-                    error.append( buffer, processErr->LastRead() );
-                }
-            }
-
-            m_callback( aStatus, output, error );
-        }
-
-        wxProcess::OnTerminate( aPid, aStatus );
-    }
-
-private:
-    std::function<void( int, const wxString&, const wxString& )> m_callback;
-};
 
 
 static void reportPluginActionMessage( REPORTER* aReporter, const wxString& aActionName,
@@ -132,11 +82,9 @@ static void reportPluginActionResult( REPORTER* aReporter, const wxString& aActi
 }
 
 
-API_PLUGIN_MANAGER::API_PLUGIN_MANAGER( wxEvtHandler* aEvtHandler ) :
-        wxEvtHandler(),
-        m_parent( aEvtHandler ),
+API_PLUGIN_MANAGER::API_PLUGIN_MANAGER() :
         m_lastPid( 0 ),
-        m_raiseTimer( nullptr )
+        m_nextAvailabilityListener( 0 )
 {
     // Read and store pcm schema
     wxFileName schemaFile( PATHS::GetStockDataPath( true ), wxS( "api.v1.schema.json" ) );
@@ -144,8 +92,48 @@ API_PLUGIN_MANAGER::API_PLUGIN_MANAGER( wxEvtHandler* aEvtHandler ) :
     schemaFile.AppendDir( wxS( "schemas" ) );
 
     m_schema_validator = std::make_unique<JSON_SCHEMA_VALIDATOR>( schemaFile );
+}
 
-    Bind( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, &API_PLUGIN_MANAGER::processNextJob, this );
+
+int API_PLUGIN_MANAGER::AddAvailabilityChangedListener( std::function<void()> aListener )
+{
+    int id = m_nextAvailabilityListener++;
+    m_availabilityListeners[id] = std::move( aListener );
+    return id;
+}
+
+
+void API_PLUGIN_MANAGER::RemoveAvailabilityChangedListener( int aId )
+{
+    m_availabilityListeners.erase( aId );
+}
+
+
+void API_PLUGIN_MANAGER::notifyAvailabilityChanged()
+{
+    // From the event loop, as the changes of the plugins are done from their jobs
+    TOOLKIT::RunOnMainThread(
+            [this]()
+            {
+                // A listener may remove itself
+                std::map<int, std::function<void()>> listeners = m_availabilityListeners;
+
+                for( const auto& [id, listener] : listeners )
+                {
+                    if( m_availabilityListeners.contains( id ) )
+                        listener();
+                }
+            } );
+}
+
+
+void API_PLUGIN_MANAGER::queueNextJob()
+{
+    TOOLKIT::RunOnMainThread(
+            [this]()
+            {
+                processNextJob();
+            } );
 }
 
 
@@ -266,8 +254,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
 
     m_reloadReporter.reset();
 
-    wxCommandEvent* evt = new wxCommandEvent( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED, wxID_ANY );
-    m_parent->QueueEvent( evt );
+    notifyAvailabilityChanged();
 }
 
 
@@ -301,8 +288,7 @@ void API_PLUGIN_MANAGER::RecreatePluginEnvironment( const wxString& aIdentifier 
         job.env_path = envConfigPath.GetPath();
         m_jobs.emplace_back( job );
 
-        wxCommandEvent* evt = new wxCommandEvent( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, wxID_ANY );
-        QueueEvent( evt );
+        queueNextJob();
     }
 }
 
@@ -337,7 +323,6 @@ void API_PLUGIN_MANAGER::InvokeAction( const wxString& aIdentifier, std::shared_
                           | wxPATH_NORM_TILDE, plugin.BasePath() );
     wxString pluginPath = pluginFile.GetFullPath();
 
-    std::vector<const wchar_t*> args;
     std::optional<wxString> py;
 
     switch( plugin.Runtime().type )
@@ -414,30 +399,24 @@ void API_PLUGIN_MANAGER::InvokeAction( const wxString& aIdentifier, std::shared_
 #ifdef __WXMAC__
         if( pid )
         {
-            if( !m_raiseTimer )
-            {
-                m_raiseTimer = new wxTimer( this );
-
-                Bind( wxEVT_TIMER,
-                        [&]( wxTimerEvent& )
-                        {
-                            wxString script = wxString::Format(
-                                wxS( "tell application \"System Events\"\n"
-                                  "  set plist to every process whose unix id is %ld\n"
-                                  "  repeat with proc in plist\n"
-                                  "    set the frontmost of proc to true\n"
-                                  "  end repeat\n"
-                                  "end tell" ), m_lastPid );
-
-                            wxString cmd = wxString::Format( "osascript -e '%s'", script );
-                            KI_LOG_TRACE( traceApi, wxString::Format( "Execute: %s", cmd ) );
-                            wxExecute( cmd );
-                        },
-                        m_raiseTimer->GetId() );
-            }
-
             m_lastPid = pid;
-            m_raiseTimer->StartOnce( 250 );
+
+            TOOLKIT::RunOnMainThread(
+                    [this]()
+                    {
+                        wxString script = wxString::Format(
+                            wxS( "tell application \"System Events\"\n"
+                              "  set plist to every process whose unix id is %ld\n"
+                              "  repeat with proc in plist\n"
+                              "    set the frontmost of proc to true\n"
+                              "  end repeat\n"
+                              "end tell" ), m_lastPid );
+
+                        wxString cmd = wxString::Format( "osascript -e '%s'", script );
+                        KI_LOG_TRACE( traceApi, wxString::Format( "Execute: %s", cmd ) );
+                        wxExecute( cmd );
+                    },
+                    250 );
         }
 #endif
 
@@ -457,20 +436,18 @@ void API_PLUGIN_MANAGER::InvokeAction( const wxString& aIdentifier, std::shared_
             return;
         }
 
-        args.emplace_back( pluginPath.wc_str() );
-
-        for( const wxString& arg : action->args )
-            args.emplace_back( arg.wc_str() );
-
-        args.emplace_back( nullptr );
-
         wxExecuteEnv env;
         wxGetEnvMap( &env.env );
         env.env[wxS( "KICAD_API_SOCKET" )] = PgmGui().GetApiServer().SocketPath();
         env.env[wxS( "KICAD_API_TOKEN" )] = PgmGui().GetApiServer().Token();
         env.cwd = pluginFile.GetPath();
 
-        ACTION_PROCESS* process = new ACTION_PROCESS(
+        std::vector<wxString> argv = { pluginPath };
+
+        for( const wxString& arg : action->args )
+            argv.emplace_back( arg );
+
+        long pidOrRetCode = TOOLKIT::ExecuteAsync( argv, &env, SIZE_MAX, true, nullptr,
                 [aReporter, action]( int aRetVal, const wxString& aOutput, const wxString& aError )
                 {
                     KI_LOG_TRACE( traceApi,
@@ -481,20 +458,6 @@ void API_PLUGIN_MANAGER::InvokeAction( const wxString& aIdentifier, std::shared_
 
                     reportPluginActionResult( aReporter.get(), action->name, aRetVal, aError );
                 } );
-
-        process->Redirect();
-        args.emplace_back( pluginPath.wc_str() );
-
-        for( const wxString& arg : action->args )
-            args.emplace_back( arg.wc_str() );
-
-        args.emplace_back( nullptr );
-
-        long pidOrRetCode = wxExecute( const_cast<wchar_t**>( args.data() ),
-                                       wxEXEC_ASYNC | wxEXEC_HIDE_CONSOLE, process, &env );
-
-        if( !pidOrRetCode )
-            delete process;
 
         if( !pidOrRetCode )
         {
@@ -598,13 +561,12 @@ void API_PLUGIN_MANAGER::processPluginDependencies()
 
     if( addedAnyJobs )
     {
-        wxCommandEvent* evt = new wxCommandEvent( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, wxID_ANY );
-        QueueEvent( evt );
+        queueNextJob();
     }
 }
 
 
-void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
+void API_PLUGIN_MANAGER::processNextJob()
 {
     if( m_jobs.empty() )
     {
@@ -668,9 +630,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
                         reportPluginLoadMessage( m_reloadReporter.get(), job.identifier, error );
                     }
 
-                    wxCommandEvent* evt =
-                            new wxCommandEvent( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, wxID_ANY );
-                    QueueEvent( evt );
+                    queueNextJob();
                 }, &env );
 
         JOB nextJob( job );
@@ -750,9 +710,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
                         reportPluginLoadMessage( m_reloadReporter.get(), job.identifier, error );
                     }
 
-                    wxCommandEvent* evt =
-                            new wxCommandEvent( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, wxID_ANY );
-                    QueueEvent( evt );
+                    queueNextJob();
                 }, &env );
 
             JOB nextJob( job );
@@ -846,20 +804,14 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
                                                                 job.identifier ) );
                         m_readyPlugins.insert( job.identifier );
                         m_busyPlugins.erase( job.identifier );
-                        wxCommandEvent* availabilityEvt =
-                                new wxCommandEvent( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED, wxID_ANY );
-                        wxTheApp->QueueEvent( availabilityEvt );
+                        notifyAvailabilityChanged();
                     }
 
-                    wxCommandEvent* evt = new wxCommandEvent( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED,
-                                                              wxID_ANY );
-
-                    QueueEvent( evt );
+                    queueNextJob();
                 }, &env );
         }
 
-        wxCommandEvent* evt = new wxCommandEvent( EDA_EVT_PLUGIN_MANAGER_JOB_FINISHED, wxID_ANY );
-        QueueEvent( evt );
+        queueNextJob();
     }
 
     m_jobs.pop_front();

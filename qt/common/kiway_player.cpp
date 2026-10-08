@@ -27,6 +27,9 @@
 
 #include <QApplication>
 #include <QEventLoop>
+#include <QHostAddress>
+#include <QTcpServer>
+#include <QTcpSocket>
 
 #include <kiway.h>
 #include <kiway_mail.h>
@@ -42,7 +45,8 @@ KIWAY_PLAYER::KIWAY_PLAYER( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType,
         m_modal( false ),
         m_modal_loop( nullptr ),
         m_modal_resultant_parent( nullptr ),
-        m_modal_ret_val( false )
+        m_modal_ret_val( false ),
+        m_socketServer( nullptr )
 {
 }
 
@@ -50,6 +54,40 @@ KIWAY_PLAYER::KIWAY_PLAYER( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType,
 KIWAY_PLAYER::~KIWAY_PLAYER() throw()
 {
     // The KIWAY forgets the frame when it is deleted (it holds QPointers)
+}
+
+
+void KIWAY_PLAYER::CreateServer( int service, bool local )
+{
+    // The server is a child of the frame: it is deleted (and stops listening) with the frame
+    delete m_socketServer;
+
+    m_socketServer = new QTcpServer( this );
+
+    QObject::connect( m_socketServer, &QTcpServer::newConnection, this,
+            [this]()
+            {
+                while( QTcpSocket* socket = m_socketServer->nextPendingConnection() )
+                {
+                    socket->setParent( this );
+
+                    QObject::connect( socket, &QTcpSocket::readyRead, socket,
+                            [this, socket]()
+                            {
+                                QByteArray command = socket->readAll();
+
+                                if( !command.isEmpty() )
+                                    ExecuteRemoteCommand( command.constData() );
+                            } );
+
+                    QObject::connect( socket, &QTcpSocket::disconnected, socket,
+                                      &QObject::deleteLater );
+                }
+            } );
+
+    m_socketServer->listen( local ? QHostAddress( QHostAddress::LocalHost )
+                                  : QHostAddress( QHostAddress::Any ),
+                            static_cast<quint16>( service ) );
 }
 
 

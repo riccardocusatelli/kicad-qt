@@ -24,6 +24,7 @@
 #pragma once
 
 #include <widgets/filter_combobox.h>
+#include <toolkit/toolkit_types.h>
 #include <core/ki_assert.h>
 
 
@@ -37,7 +38,7 @@ class NET_SELECTOR : public FILTER_COMBOBOX
 public:
     // Note: this list of arguments is here because it keeps us from having to customize
     // the constructor calls in wxFormBuilder.
-    NET_SELECTOR( wxWindow *parent, wxWindowID id, const wxPoint &pos = wxDefaultPosition,
+    NET_SELECTOR( TOOLKIT_WINDOW* parent, wxWindowID id, const wxPoint &pos = wxDefaultPosition,
                   const wxSize &size = wxDefaultSize, long style = 0 );
 
     void SetNetInfo( const NETINFO_LIST* aNetInfoList );

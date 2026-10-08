@@ -117,7 +117,7 @@ void QT_DOCUMENT::setTool( QT_TOOL* aTool )
         m_editCanvas->SetCrosshair( std::nullopt );
     }
 
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -161,7 +161,7 @@ void QT_DOCUMENT::setSelection( const std::vector<EDA_ITEM*>& aItems )
     if( m_editCanvas )
         m_editCanvas->update();
 
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -176,7 +176,7 @@ void QT_DOCUMENT::forgetSelected( EDA_ITEM* aItem )
     m_selection.erase( it );
 
     selectionChanged();
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -185,7 +185,7 @@ void QT_DOCUMENT::dropSelection()
     m_selection.clear();
     m_pressItem = nullptr;
     selectionChanged();
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -216,7 +216,7 @@ void QT_DOCUMENT::DeleteSelection()
     setSelection( {} );
     deleteItems( items );
 
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -233,7 +233,7 @@ void QT_DOCUMENT::RotateSelection()
     if( m_editCanvas )
         m_editCanvas->update();
 
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -249,7 +249,7 @@ void QT_DOCUMENT::Undo()
     if( m_editCanvas )
         m_editCanvas->update();
 
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -265,7 +265,7 @@ void QT_DOCUMENT::Redo()
     if( m_editCanvas )
         m_editCanvas->update();
 
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -295,7 +295,7 @@ void QT_DOCUMENT::Copy()
         return;
 
     QGuiApplication::clipboard()->setText( text );
-    emit statusMessage( tr( "%n item(s) copied.", nullptr, static_cast<int>( m_selection.size() ) ) );
+    Q_EMIT statusMessage( tr( "%n item(s) copied.", nullptr, static_cast<int>( m_selection.size() ) ) );
 }
 
 
@@ -320,7 +320,7 @@ void QT_DOCUMENT::Paste()
 
     if( text.isEmpty() || !beginPaste( text, position ) )
     {
-        emit statusMessage( tr( "The clipboard has nothing to paste here." ) );
+        Q_EMIT statusMessage( tr( "The clipboard has nothing to paste here." ) );
         return;
     }
 
@@ -389,7 +389,7 @@ void QT_DOCUMENT::onLeftPressed( const VECTOR2D& aPoint, Qt::KeyboardModifiers a
             m_editCanvas->SetCrosshair( std::nullopt );
 
         selectionChanged();     // the positions have changed
-        emit stateChanged();
+        Q_EMIT stateChanged();
         return;
     }
 
@@ -398,7 +398,7 @@ void QT_DOCUMENT::onLeftPressed( const VECTOR2D& aPoint, Qt::KeyboardModifiers a
         m_pressTaken = true;
         m_tool->Click( snapPoint( aPoint ), aModifiers );
         m_editCanvas->update();
-        emit stateChanged();
+        Q_EMIT stateChanged();
         return;
     }
 
@@ -507,7 +507,7 @@ void QT_DOCUMENT::onLeftReleased( const VECTOR2D& aPoint, Qt::KeyboardModifiers 
     {
         endMove( m_moved != VECTOR2I( 0, 0 ) );
         selectionChanged();     // the positions have changed
-        emit stateChanged();
+        Q_EMIT stateChanged();
     }
     else if( drag == DRAG::AREA )
     {
@@ -551,7 +551,7 @@ void QT_DOCUMENT::onLeftDoubleClicked( const VECTOR2D& aPoint, Qt::KeyboardModif
     {
         m_tool->DoubleClick( snapPoint( aPoint ) );
         m_editCanvas->update();
-        emit stateChanged();
+        Q_EMIT stateChanged();
     }
 }
 
@@ -602,7 +602,7 @@ void QT_DOCUMENT::onCancel()
             setTool( nullptr );
 
         m_editCanvas->update();
-        emit stateChanged();
+        Q_EMIT stateChanged();
     }
     else
     {

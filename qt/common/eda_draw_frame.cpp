@@ -29,6 +29,7 @@
  */
 
 #include <eda_draw_frame.h>
+#include <widgets/kistatusbar.h>
 
 #include <cmath>
 
@@ -147,33 +148,56 @@ EDA_DRAW_FRAME::~EDA_DRAW_FRAME()
 
 void EDA_DRAW_FRAME::createStatusBar()
 {
-    QStatusBar*  bar = statusBar();
-    QFontMetrics metrics( bar->font() );
+    CreateStatusBar( STATUS_FIELD_COUNT );
+    updateStatusBarWidths();
+}
+
+
+KISTATUSBAR* EDA_DRAW_FRAME::OnCreateStatusBar( int aNumber )
+{
+    return new KISTATUSBAR( aNumber, this, wxID_ANY, KISTATUSBAR::STYLE_FLAGS::WARNING_ICON );
+}
+
+
+void EDA_DRAW_FRAME::updateStatusBarWidths()
+{
+    QFontMetrics metrics( GetStatusBar()->font() );
     int          spacer = metrics.horizontalAdvance( QLatin1Char( 'M' ) );
 
-    // The widths of the fields, as the wxWidgets build: 0 is stretched
-    const std::vector<QString> sizes = {
-        QString(),                                              // message
-        QStringLiteral( "Z 762000" ),                           // zoom
-        QStringLiteral( "X 00000.0000  Y 00000.0000" ),         // cursor coords
-        QStringLiteral( "dx 00000.0000  dy 00000.0000  dist 00000.0000" ), // delta distances
-        QStringLiteral( "grid 0000.0000 x 0000.0000" ),         // grid size
-        ToQString( _( "Inches" ) ),                             // units
-        QString(),                                              // current tool
-        ToQString( _( "Constrain to H, V, 45" ) )               // constraint mode
+    auto textWidth =
+            [&]( const wxString& aText )
+            {
+                return metrics.horizontalAdvance( ToQString( aText ) ) + spacer;
+            };
+
+    // As the wxWidgets build: a negative width is a stretch factor
+    std::vector<int> dims = {
+        // remainder of status bar on far left is set to a default or whatever is left over.
+        -2,
+
+        // zoom:
+        textWidth( wxT( "Z 762000" ) ),
+
+        // cursor coords
+        textWidth( wxT( "X 00000.0000  Y 00000.0000" ) ),
+
+        // delta distances
+        textWidth( wxT( "dx 00000.0000  dy 00000.0000  dist 00000.0000" ) ),
+
+        // grid size
+        textWidth( wxT( "grid 0000.0000 x 0000.0000" ) ),
+
+        // units display, Inches is bigger than mm
+        textWidth( _( "Inches" ) ),
+
+        // Size for the "Current Tool" panel
+        -1,
+
+        // constraint mode
+        textWidth( _( "Constrain to H, V, 45" ) )
     };
 
-    for( int ii = 0; ii < STATUS_FIELD_COUNT; ++ii )
-    {
-        QLabel* field = new QLabel( bar );
-
-        if( !sizes[ii].isEmpty() )
-            field->setMinimumWidth( metrics.horizontalAdvance( sizes[ii] ) + spacer );
-
-        int stretch = ii == STATUS_MESSAGE ? 2 : ii == STATUS_TOOL ? 1 : 0;
-        bar->addPermanentWidget( field, stretch );
-        m_statusFields.push_back( field );
-    }
+    SetStatusWidths( dims.size(), dims.data() );
 }
 
 
@@ -698,7 +722,8 @@ wxString FRAME_MSG_PANEL_CONTEXT::EllipsizeStatusText( const wxString& aText ) c
 {
     // At most a third of the width of the frame, as the status texts of the wxWidgets build
     QString      text = ToQString( aText );
-    QFontMetrics metrics( m_frame->statusBar()->font() );
+    QFontMetrics metrics( m_frame->GetStatusBar() ? m_frame->GetStatusBar()->font()
+                                                  : m_frame->font() );
 
     text.replace( QLatin1Char( '\n' ), QLatin1Char( ' ' ) );
     text.replace( QLatin1Char( '\r' ), QLatin1Char( ' ' ) );

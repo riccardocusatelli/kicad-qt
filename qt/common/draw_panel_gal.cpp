@@ -34,6 +34,7 @@
 #include <kicad_gl/kiglad.h> // Must be included first (OpenGL GAL)
 
 #include <class_draw_panel_gal.h>
+#include <ui_hooks.h>
 
 #include <QApplication>
 #include <QEnterEvent>
@@ -142,6 +143,19 @@ EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( QWidget* aParentWindow,
     }
 
     SwitchBackend( aGalType );
+}
+
+
+EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( QWidget* aParentWindow, wxWindowID aWindowId,
+                                        const wxPoint& aPosition, const wxSize& aSize,
+                                        KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType ) :
+        EDA_DRAW_PANEL_GAL( aParentWindow, aOptions, aGalType )
+{
+    if( aWindowId != wxID_ANY )
+        KIQT::SetWindowId( this, aWindowId );
+
+    if( aSize.x > 0 && aSize.y > 0 )
+        resize( aSize.x, aSize.y );
 }
 
 
@@ -469,7 +483,7 @@ void EDA_DRAW_PANEL_GAL::RequestRefresh()
 }
 
 
-void EDA_DRAW_PANEL_GAL::Refresh()
+void EDA_DRAW_PANEL_GAL::Refresh( bool aEraseBackground )
 {
     // The drawing is done by the paint event, at most once by frame of the screen
     update();

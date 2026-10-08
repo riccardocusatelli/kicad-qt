@@ -84,6 +84,7 @@ wxString wxFileNameFromPath( const wxString& aPath );
 bool     wxMkdir( const wxString& aDir, int aPerm = wxS_DIR_DEFAULT );
 bool     wxRmdir( const wxString& aDir, int aFlags = 0 );
 bool     wxRemoveFile( const wxString& aFile );
+int      wxChmod( const wxString& aPath, int aMode );
 bool     wxRenameFile( const wxString& aFrom, const wxString& aTo, bool aOverwrite = true );
 bool     wxCopyFile( const wxString& aFrom, const wxString& aTo, bool aOverwrite = true );
 wxString wxGetCwd();

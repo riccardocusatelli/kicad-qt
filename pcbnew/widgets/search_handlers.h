@@ -24,7 +24,7 @@
 #ifndef SEARCH_HANDLERS_H
 #define SEARCH_HANDLERS_H
 
-#include <widgets/search_pane.h>
+#include <widgets/search_handler.h>
 #include <board_statistics.h>
 #include <unordered_map>
 

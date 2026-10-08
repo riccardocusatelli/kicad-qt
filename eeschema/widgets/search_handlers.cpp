@@ -158,19 +158,19 @@ void SCH_SEARCH_HANDLER::SelectItems( std::vector<long>& aItemRows )
 SYMBOL_SEARCH_HANDLER::SYMBOL_SEARCH_HANDLER( SCH_EDIT_FRAME* aFrame ) :
         SCH_SEARCH_HANDLER( _HKI( "Symbols" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Reference" ),            2, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Value" ),                6, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Footprint" ),           10, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Page" ),                 1, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back(  wxT( "X" ),                    3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back(  wxT( "Y" ),                    3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Excl. Sim" ),            2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Excl. BOM" ),            2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Excl. Board" ),          2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Excl. Pos Files" ), 2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "DNP" ),                  2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( _HKI( "Library Link" ),         8, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Library Description" ), 10, wxLIST_FORMAT_LEFT );
+    m_columns.emplace_back( _HKI( "Reference" ),            2, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Value" ),                6, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Footprint" ),           10, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Page" ),                 1, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back(  wxT( "X" ),                    3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back(  wxT( "Y" ),                    3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Excl. Sim" ),            2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Excl. BOM" ),            2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Excl. Board" ),          2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Excl. Pos Files" ), 2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "DNP" ),                  2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( _HKI( "Library Link" ),         8, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Library Description" ), 10, SEARCH_COLUMN_ALIGN::LEFT );
 }
 
 
@@ -257,11 +257,11 @@ wxString SYMBOL_SEARCH_HANDLER::getResultCell( const SCH_SEARCH_HIT& aHit, int a
 POWER_SEARCH_HANDLER::POWER_SEARCH_HANDLER( SCH_EDIT_FRAME* aFrame ) :
         SCH_SEARCH_HANDLER( _HKI( "Power" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Reference" ),   2,  wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Value" ),       6,  wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Page" ),        1,  wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "X" ),            3,  wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "Y" ),            3,  wxLIST_FORMAT_CENTER );
+    m_columns.emplace_back( _HKI( "Reference" ),   2,  SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Value" ),       6,  SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Page" ),        1,  SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "X" ),            3,  SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "Y" ),            3,  SEARCH_COLUMN_ALIGN::CENTER );
 }
 
 
@@ -332,11 +332,11 @@ wxString POWER_SEARCH_HANDLER::getResultCell( const SCH_SEARCH_HIT& aHit, int aC
 TEXT_SEARCH_HANDLER::TEXT_SEARCH_HANDLER( SCH_EDIT_FRAME* aFrame ) :
         SCH_SEARCH_HANDLER( _HKI( "Text" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Type" ), 2, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Text" ), 12, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Page" ), 1, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "X" ),     3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "Y" ),     3, wxLIST_FORMAT_CENTER );
+    m_columns.emplace_back( _HKI( "Type" ), 2, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Text" ), 12, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Page" ), 1, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "X" ),     3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "Y" ),     3, SEARCH_COLUMN_ALIGN::CENTER );
 }
 
 
@@ -420,11 +420,11 @@ wxString TEXT_SEARCH_HANDLER::getResultCell( const SCH_SEARCH_HIT& aHit, int aCo
 LABEL_SEARCH_HANDLER::LABEL_SEARCH_HANDLER( SCH_EDIT_FRAME* aFrame ) :
         SCH_SEARCH_HANDLER( _HKI( "Labels" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Type" ), 2, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Name" ), 6, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Page" ), 2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "X" ),     3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "Y" ),     3 , wxLIST_FORMAT_CENTER);
+    m_columns.emplace_back( _HKI( "Type" ), 2, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Name" ), 6, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Page" ), 2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "X" ),     3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "Y" ),     3 , SEARCH_COLUMN_ALIGN::CENTER);
 }
 
 
@@ -499,10 +499,10 @@ wxString LABEL_SEARCH_HANDLER::getResultCell( const SCH_SEARCH_HIT& aHit, int aC
 GROUP_SEARCH_HANDLER::GROUP_SEARCH_HANDLER( SCH_EDIT_FRAME* aFrame ) :
         SCH_SEARCH_HANDLER( _HKI( "Groups" ), aFrame )
 {
-    m_columns.emplace_back( _HKI( "Name" ), 6, wxLIST_FORMAT_LEFT );
-    m_columns.emplace_back( _HKI( "Page" ), 2, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "X" ),     3, wxLIST_FORMAT_CENTER );
-    m_columns.emplace_back( wxT( "Y" ),     3, wxLIST_FORMAT_CENTER);
+    m_columns.emplace_back( _HKI( "Name" ), 6, SEARCH_COLUMN_ALIGN::LEFT );
+    m_columns.emplace_back( _HKI( "Page" ), 2, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "X" ),     3, SEARCH_COLUMN_ALIGN::CENTER );
+    m_columns.emplace_back( wxT( "Y" ),     3, SEARCH_COLUMN_ALIGN::CENTER);
 }
 
 

@@ -127,6 +127,15 @@ public:
     void AddButton( wxHyperlinkCtrl* aHypertextButton );
 
     /**
+     * Add a hypertext link that calls a function when clicked.
+     * New buttons are added in the right-most position.
+     *
+     * @param aLabel is the text of the link
+     * @param aCallback is the function called when the link is clicked
+     */
+    void AddButton( const wxString& aLabel, std::function<void()> aCallback );
+
+    /**
      * Add a button with the provided ID and text.
      * The new button is created on the right-most position.
      *

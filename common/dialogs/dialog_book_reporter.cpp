@@ -94,6 +94,14 @@ int DIALOG_BOOK_REPORTER::GetPageCount() const
 }
 
 
+void DIALOG_BOOK_REPORTER::ShowApplyButton( const wxString& aLabel )
+{
+    m_sdbSizerApply->SetLabel( aLabel );
+    m_sdbSizerApply->PostSizeEventToParent();
+    m_sdbSizerApply->Show();
+}
+
+
 void DIALOG_BOOK_REPORTER::OnClose( wxCloseEvent& aEvent )
 {
     // Dialog is mode-less so let the parent know that it needs to be destroyed.

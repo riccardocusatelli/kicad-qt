@@ -205,6 +205,19 @@ void FILTER_COMBOPOPUP::rebuildList()
 }
 
 
+void FILTER_COMBOPOPUP::setComboValue( const wxString& aValue )
+{
+    GetComboCtrl()->SetValue( aValue );
+}
+
+
+void FILTER_COMBOPOPUP::notifySelected()
+{
+    wxCommandEvent changeEvent( FILTERED_ITEM_SELECTED );
+    wxPostEvent( GetComboCtrl(), changeEvent );
+}
+
+
 std::optional<wxString> FILTER_COMBOPOPUP::getSelectedValue() const
 {
     int selection = m_listBox->GetSelection();

@@ -31,6 +31,8 @@
 
 #include <kiqt.h>
 
+class QColor;
+
 class QWidget;
 
 namespace KIPLATFORM
@@ -51,6 +53,12 @@ namespace KIPLATFORM
          * @param aWindow is the window to pass focus to
          */
         void ForceFocus( QWidget* aWindow );
+
+        /**
+         * Return the background and foreground colors for info bars and the popups of
+         * information in the current UI theme (the info colors of the desktop).
+         */
+        void GetInfoBarColours( QColor& aFGColour, QColor& aBGColour );
 
         /**
          * Check to see if the given window is the currently active window (e.g. the window

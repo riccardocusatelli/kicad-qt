@@ -332,6 +332,22 @@ QIcon KiBitmapBundleDef( BITMAPS aBitmap, int aDefHeight )
 }
 
 
+QIcon KiBitmapBundleFromFiles( const std::vector<wxString>& aPngFiles )
+{
+    QIcon icon;
+
+    for( const wxString& file : aPngFiles )
+    {
+        QPixmap bmp;
+
+        if( bmp.load( ToQString( file ), "PNG" ) )
+            icon.addPixmap( bmp );
+    }
+
+    return icon;
+}
+
+
 QIcon KiDisabledBitmapBundle( BITMAPS aBitmap, int aMinHeight )
 {
     return GetBitmapStore()->GetDisabledBitmapBundle( aBitmap, aMinHeight );

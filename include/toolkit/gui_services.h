@@ -79,6 +79,13 @@ APIVISIBLE TOOLKIT_WINDOW* GetTopLevelParent( TOOLKIT_WINDOW* aWindow );
 /// @a aWindow and its parents are shown.
 APIVISIBLE bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow );
 
+/// Close a window (a modeless dialog, a frame), even if it would ask to stay open.
+APIVISIBLE void CloseWindow( TOOLKIT_WINDOW* aWindow );
+
+/// Show a window that needs the attention of the user (with the effect of the toolkit for a
+/// window that appears).
+APIVISIBLE void ShowWindow( TOOLKIT_WINDOW* aWindow );
+
 /**
  * A hidden top level window of @a aSize, child of @a aParent: the parent of a window drawn
  * off screen (a canvas rendering an image).

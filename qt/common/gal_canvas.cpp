@@ -107,7 +107,7 @@ void GAL_CANVAS::ZoomToFit( const BOX2I& aBox )
 
     m_view->SetViewport( box );
     m_view->MarkDirty();
-    emit zoomChanged( m_view->GetScale() );
+    Q_EMIT zoomChanged( m_view->GetScale() );
     update();
 }
 
@@ -252,7 +252,7 @@ void GAL_CANVAS::zoomAt( double aFactor, const VECTOR2D& aDevicePoint )
 
     m_view->SetScale( m_view->GetScale() * aFactor, anchor );
     m_view->MarkDirty();
-    emit zoomChanged( m_view->GetScale() );
+    Q_EMIT zoomChanged( m_view->GetScale() );
     update();
 }
 
@@ -351,7 +351,7 @@ void GAL_CANVAS::mousePressEvent( QMouseEvent* aEvent )
         m_dragging = false;
         m_leftStart = aEvent->position();
 
-        emit leftPressed( m_view->ToWorld( toDevice( m_leftStart ) ), aEvent->modifiers() );
+        Q_EMIT leftPressed( m_view->ToWorld( toDevice( m_leftStart ) ), aEvent->modifiers() );
     }
 
     aEvent->accept();
@@ -385,16 +385,16 @@ void GAL_CANVAS::mouseMoveEvent( QMouseEvent* aEvent )
             if( std::hypot( moved.x(), moved.y() ) >= DRAG_THRESHOLD_PX )
             {
                 m_dragging = true;
-                emit leftDragStarted( m_view->ToWorld( toDevice( m_leftStart ) ),
+                Q_EMIT leftDragStarted( m_view->ToWorld( toDevice( m_leftStart ) ),
                                       aEvent->modifiers() );
             }
         }
 
         if( m_dragging )
-            emit leftDragged( world, aEvent->modifiers() );
+            Q_EMIT leftDragged( world, aEvent->modifiers() );
     }
 
-    emit cursorMoved( world.x, world.y );
+    Q_EMIT cursorMoved( world.x, world.y );
 }
 
 
@@ -413,7 +413,7 @@ void GAL_CANVAS::mouseReleaseEvent( QMouseEvent* aEvent )
         m_leftDown = false;
         m_dragging = false;
 
-        emit leftReleased( m_view->ToWorld( toDevice( aEvent->position() ) ), aEvent->modifiers(),
+        Q_EMIT leftReleased( m_view->ToWorld( toDevice( aEvent->position() ) ), aEvent->modifiers(),
                            dragged );
     }
 
@@ -429,7 +429,7 @@ void GAL_CANVAS::mouseDoubleClickEvent( QMouseEvent* aEvent )
         m_leftDown = false;
         m_dragging = false;
 
-        emit leftDoubleClicked( m_view->ToWorld( toDevice( aEvent->position() ) ),
+        Q_EMIT leftDoubleClicked( m_view->ToWorld( toDevice( aEvent->position() ) ),
                                 aEvent->modifiers() );
     }
 
@@ -441,11 +441,11 @@ void GAL_CANVAS::keyPressEvent( QKeyEvent* aEvent )
 {
     switch( aEvent->key() )
     {
-    case Qt::Key_Home:   emit zoomToFitRequested(); break;
+    case Qt::Key_Home:   Q_EMIT zoomToFitRequested(); break;
     case Qt::Key_Plus:
     case Qt::Key_Equal:  ZoomIn();                  break;
     case Qt::Key_Minus:  ZoomOut();                 break;
-    case Qt::Key_Escape: emit cancelRequested();    break;
+    case Qt::Key_Escape: Q_EMIT cancelRequested();    break;
     default:             QWidget::keyPressEvent( aEvent ); return;
     }
 

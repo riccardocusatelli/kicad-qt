@@ -29,12 +29,14 @@
 #include <functional>
 #include <vector>
 
+#include <toolkit/toolkit_types.h>
+#include <wx/filename.h>
+#include <wx/gdicmn.h>
+
 class wxString;
 class KISTATUSBAR;
 struct NOTIFICATION;
 class NOTIFICATIONS_LIST;
-class wxWindow;
-class wxCloseEvent;
 
 
 struct KICOMMON_API NOTIFICATION
@@ -84,9 +86,10 @@ public:
     void Save();
 
     /**
-     * Show the notification list.
+     * Show the notification list (a window of the GUI toolkit, notifications_list_wx.cpp with
+     * wxWidgets), with its bottom right corner at @a aPos.
      */
-    void ShowList( wxWindow* aParent, wxPoint aPos );
+    void ShowList( TOOLKIT_WINDOW* aParent, wxPoint aPos );
 
     /**
      * Add a status bar for handling.
@@ -99,10 +102,13 @@ public:
     void UnregisterStatusBar( KISTATUSBAR* aStatusBar );
 
 private:
+    friend class NOTIFICATIONS_LIST;
+
     /**
-     * Handle removing the shown list window from our list of shown windows.
+     * Handle removing the shown list window from our list of shown windows (called by the
+     * list window when it closes).
      */
-    void onListWindowClosed( wxCloseEvent& aEvent );
+    void listClosed( NOTIFICATIONS_LIST* aList );
 
 private:
     /// Current stack of notifications.

@@ -25,20 +25,15 @@
 #include <set>
 #include <string>
 
-#include <wx/event.h>
 #include <wx/filename.h>
 
 #include <kicommon.h>
 
 class API_HANDLER;
 class KINNG_REQUEST_SERVER;
-class wxEvtHandler;
 
 
-wxDECLARE_EVENT( API_REQUEST_EVENT, wxCommandEvent );
-
-
-class KICOMMON_API KICAD_API_SERVER : public wxEvtHandler
+class KICOMMON_API KICAD_API_SERVER
 {
 public:
     KICAD_API_SERVER();
@@ -74,19 +69,19 @@ public:
 private:
 
     /**
-     * Callback that executes on the server thread and generates an event that will be handled by
-     * the wxWidgets event loop to process an incoming request.  Temporarily takes ownership of the
-     * request pointer so that it can be passed through the event system.
+     * Callback that executes on the server thread and passes the request to the event loop of
+     * the GUI, which handles it with handleApiRequest().
      *
      * @param aRequest is a pointer to a string containing bytes that came in over the wire
      */
     void onApiRequest( std::string* aRequest );
 
     /**
-     * Event handler that receives the event on the main thread sent by onApiRequest
-     * @param aEvent will contain a pointer to an incoming API request string in the client data
+     * Handle a request on the main thread (passed by onApiRequest).
+     *
+     * @param aRequest is the incoming API request string
      */
-    void handleApiEvent( wxCommandEvent& aEvent );
+    void handleApiRequest( std::string* aRequest );
 
     void log( const std::string& aOutput );
 
@@ -101,6 +96,10 @@ private:
     static wxString s_logFileName;
 
     wxFileName m_logFilePath;
+
+    /// Lives while the server runs: the requests passed to the event loop are handled while it
+    /// lives (they are dropped once the server is stopped)
+    std::shared_ptr<int> m_session;
 };
 
 #endif //KICAD_API_SERVER_H

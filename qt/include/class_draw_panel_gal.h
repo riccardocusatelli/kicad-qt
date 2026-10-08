@@ -47,6 +47,7 @@
 #include <widgets/msgpanel_item.h>
 #include <gal/kicursor.h>
 #include <toolkit/gui_timer.h>
+#include <wx/gdicmn.h>
 #include <core/ki_assert.h>
 
 class BOARD;
@@ -96,6 +97,18 @@ public:
      * @param aGalType is the type of GAL to use (the Qt build draws with Cairo)
      */
     EDA_DRAW_PANEL_GAL( QWidget* aParentWindow, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
+                        GAL_TYPE aGalType = GAL_TYPE_OPENGL );
+
+    /**
+     * Create a drawing panel as the canvases of the editors do (the constructor of the wxWidgets
+     * build).
+     *
+     * @param aWindowId is the id of the panel.
+     * @param aPosition is ignored: the panel is laid out by its parent.
+     * @param aSize is the initial size of the panel (wxDefaultSize for none).
+     */
+    EDA_DRAW_PANEL_GAL( QWidget* aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
+                        const wxSize& aSize, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
                         GAL_TYPE aGalType = GAL_TYPE_OPENGL );
     ~EDA_DRAW_PANEL_GAL();
 
@@ -150,8 +163,11 @@ public:
 
     /**
      * Repaint the canvas, if it has changed.
+     *
+     * @param aEraseBackground is unused: the canvas is always drawn whole (the parameter of
+     *                         the wxWidgets build).
      */
-    virtual void Refresh();
+    virtual void Refresh( bool aEraseBackground = true );
 
     /**
      * Force a redraw.
@@ -265,6 +281,9 @@ public:
 
     /// A point of the canvas (in logical pixels, as the events of Qt) in device pixels.
     VECTOR2D ToDevice( const QPointF& aPoint ) const;
+
+    /// The size of the canvas in logical pixels.
+    wxSize GetClientSize() const { return wxSize( width(), height() ); }
 
     /// The size of the canvas in device pixels.
     VECTOR2I GetClientSizeDevice() const;

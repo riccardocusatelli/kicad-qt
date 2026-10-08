@@ -119,6 +119,23 @@ wxBitmapBundle KiBitmapBundleDef( BITMAPS aBitmap, int aDefHeight )
 }
 
 
+wxBitmapBundle KiBitmapBundleFromFiles( const std::vector<wxString>& aPngFiles )
+{
+    wxVector<wxBitmap> bitmaps;
+
+    for( const wxString& file : aPngFiles )
+    {
+        wxBitmap bmp;
+        bmp.LoadFile( file, wxBITMAP_TYPE_PNG );
+
+        if( bmp.IsOk() )
+            bitmaps.push_back( bmp );
+    }
+
+    return wxBitmapBundle::FromBitmaps( bitmaps );
+}
+
+
 wxBitmapBundle KiDisabledBitmapBundle( BITMAPS aBitmap, int aMinHeight )
 {
     return GetBitmapStore()->GetDisabledBitmapBundle( aBitmap, aMinHeight );

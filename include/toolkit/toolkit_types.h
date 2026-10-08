@@ -37,3 +37,22 @@ using TOOLKIT_WINDOW = wxWindow;
 
 /// An event of the user interface (an input event, given to the tool dispatcher).
 using TOOLKIT_EVENT = wxEvent;
+
+class wxChoice;
+
+/// A choice box (a drop-down list of strings, as the ones of the toolbars).
+using TOOLKIT_CHOICE = wxChoice;
+
+class wxBitmap;
+class wxBitmapBundle;
+
+/// An image of the user interface (an icon at one size, a color swatch).
+using TOOLKIT_BITMAP = wxBitmap;
+
+/// An icon of the user interface, with its images at the different scales of the screens.
+using TOOLKIT_BITMAP_BUNDLE = wxBitmapBundle;
+
+class wxApp;
+
+/// The application object of the GUI toolkit.
+using TOOLKIT_APP = wxApp;

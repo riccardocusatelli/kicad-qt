@@ -75,7 +75,8 @@ public:
     /// @copydoc TOOL_BASE::Reset()
     void Reset( RESET_REASON aReason ) override;
 
-    void OnIdle( wxIdleEvent& aEvent );
+    /// Follow the modifier keys (the cursor of the selection mode) while the frame is idle.
+    void OnIdle();
 
     bool IsFootprintEditor()
     {

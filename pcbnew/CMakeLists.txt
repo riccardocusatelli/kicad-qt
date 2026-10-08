@@ -423,9 +423,12 @@ set( PCBNEW_CLASS_SRCS
     menubar_pcb_editor.cpp
     padstack.cpp
     pcb_base_edit_frame.cpp
+    pcb_base_edit_frame_wx.cpp
     pcb_design_block_utils.cpp
     pcb_layer_box_selector.cpp
+    pcb_layer_box_selector_wx.cpp
     pcb_edit_frame.cpp
+    pcb_edit_frame_wx.cpp
     pcb_plotter.cpp
     pcbnew_config.cpp
     pcbnew_jobs_handler.cpp
@@ -500,6 +503,7 @@ set( PCBNEW_CLASS_SRCS
     widgets/pcb_design_block_pane.cpp
     widgets/pcb_design_block_preview_widget.cpp
     widgets/pcb_properties_panel.cpp
+    widgets/pcb_properties_panel_wx.cpp
     widgets/pcb_search_pane.cpp
     widgets/search_handlers.cpp
     widgets/net_inspector_panel.cpp

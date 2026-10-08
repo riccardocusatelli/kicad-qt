@@ -25,12 +25,11 @@
 #define PCBNEW_SPACENAV_2D_PLUGIN_H
 
 #include <memory>
-#include <wx/timer.h>
+#include <toolkit/gui_timer.h>
 
 #include <kicommon.h>
 #include <math/vector2d.h>
 #include <spacenav/spacenav_driver.h>
-#include <spacenav/libspnav_driver.h>
 
 class EDA_DRAW_PANEL_GAL;
 namespace KIGFX
@@ -38,7 +37,7 @@ namespace KIGFX
     class VIEW;
 }
 
-class KICOMMON_API SPNAV_2D_PLUGIN : public wxEvtHandler, public SPACEMOUSE_HANDLER
+class KICOMMON_API SPNAV_2D_PLUGIN : public SPACEMOUSE_HANDLER
 {
 public:
     explicit SPNAV_2D_PLUGIN( EDA_DRAW_PANEL_GAL* aCanvas );
@@ -58,10 +57,10 @@ public:
     void OnButton( int button, bool pressed ) override;
 
 private:
-    void onPollTimer( wxTimerEvent& evt );
+    void onPollTimer();
 
     std::unique_ptr<SPACENAV_DRIVER> m_driver;
-    wxTimer                          m_timer;
+    GUI_TIMER                        m_timer;
     EDA_DRAW_PANEL_GAL*              m_canvas;
     KIGFX::VIEW*                     m_view;
     double                           m_scale;

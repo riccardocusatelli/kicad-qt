@@ -32,10 +32,9 @@
 #include <settings/color_settings.h>
 #include <tools/pcb_actions.h>
 #include <dpi_scaling_common.h>
-#include <wx/wupdlock.h>
 
 
-PCB_LAYER_BOX_SELECTOR::PCB_LAYER_BOX_SELECTOR( wxWindow* parent, wxWindowID id, const wxString& value,
+PCB_LAYER_BOX_SELECTOR::PCB_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW* parent, wxWindowID id, const wxString& value,
                                                 const wxPoint& pos, const wxSize& size, int n,
                                                 const wxString choices[], int style ) :
         LAYER_BOX_SELECTOR( parent, id, pos, size, n, choices ),
@@ -53,72 +52,24 @@ void PCB_LAYER_BOX_SELECTOR::SetBoardFrame( PCB_BASE_FRAME* aFrame )
 }
 
 
-// Reload the Layers
-void PCB_LAYER_BOX_SELECTOR::Resync()
+wxString PCB_LAYER_BOX_SELECTOR::layerItemName( PCB_LAYER_ID aLayer, bool aActivated ) const
 {
-    wxWindowUpdateLocker updateLock( this );
-
-    Clear();
-
-    const int size = 14;
-
-    LSET show = ( LSET::AllCuMask() | LSET::AllNonCuMask() ) & ~m_layerMaskDisable;
-    LSET activated = getEnabledLayers() & ~m_layerMaskDisable;
     wxString layerstatus;
 
-    for( PCB_LAYER_ID layerid : show.UIOrder() )
+    if( !aActivated )
+        layerstatus = wxT( " " ) + _( "(not activated)" );
+
+    wxString layername = m_layerPresentation->getLayerName( aLayer ) + layerstatus;
+
+    if( m_layerhotkeys )
     {
-        if( !m_showNotEnabledBrdlayers && !activated[layerid] )
-            continue;
-        else if( !activated[layerid] )
-            layerstatus = wxT( " " ) + _( "(not activated)" );
-        else
-            layerstatus.Empty();
+        TOOL_ACTION* action = PCB_ACTIONS::LayerIDToAction( aLayer );
 
-        wxVector<wxBitmap> bitmaps;
-
-        for( int scale = 1; scale <= 3; scale++ )
-        {
-            wxBitmap bmp( size * scale, size * scale );
-
-            m_layerPresentation->DrawColorSwatch( bmp, layerid );
-
-            bmp.SetScaleFactor( scale );
-            bitmaps.push_back( bmp );
-        }
-
-        wxString layername = m_layerPresentation->getLayerName( layerid ) + layerstatus;
-
-        if( m_layerhotkeys )
-        {
-            TOOL_ACTION* action = PCB_ACTIONS::LayerIDToAction( layerid );
-
-            if( action )
-                layername = AddHotkeyName( layername, action->GetHotKey(), IS_COMMENT );
-        }
-
-        Append( layername, wxBitmapBundle::FromBitmaps( bitmaps ), (void*) (intptr_t) layerid );
+        if( action )
+            layername = AddHotkeyName( layername, action->GetHotKey(), IS_COMMENT );
     }
 
-    if( !m_undefinedLayerName.IsEmpty() )
-        Append( m_undefinedLayerName, wxNullBitmap, (void*)(intptr_t)UNDEFINED_LAYER );
-
-    // Ensure the size of the widget is enough to show the text and the icon
-    // We have to have a selected item when doing this, because otherwise GTK
-    // will just choose a random size that might not fit the actual data
-    // (such as in cases where the font size is very large). So we select
-    // the first item, get the size of the control and make that the minimum size,
-    // then remove the selection (which was the initial state).
-    SetSelection( 0 );
-
-    SetMinSize( wxSize( -1, -1 ) );
-    wxSize bestSize = GetBestSize();
-
-    bestSize.x = GetBestSize().x + size + 10;
-    SetMinSize( bestSize );
-
-    SetSelection( wxNOT_FOUND );
-    Fit();
+    return layername;
 }
 
 

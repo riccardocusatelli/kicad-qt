@@ -264,9 +264,9 @@ bool AskSaveBoardFileName( PCB_EDIT_FRAME* aParent, wxString* aFileName, bool* a
 }
 
 
-void PCB_EDIT_FRAME::OnFileHistory( wxCommandEvent& event )
+void PCB_EDIT_FRAME::OnFileHistory( int aCommandId )
 {
-    wxString filename = GetFileFromHistory( event.GetId(), _( "Printed circuit board" ) );
+    wxString filename = GetFileFromHistory( aCommandId, _( "Printed circuit board" ) );
 
     if( !filename.IsEmpty() )
     {
@@ -281,7 +281,7 @@ void PCB_EDIT_FRAME::OnFileHistory( wxCommandEvent& event )
 }
 
 
-void PCB_EDIT_FRAME::OnClearFileHistory( wxCommandEvent& aEvent )
+void PCB_EDIT_FRAME::OnClearFileHistory()
 {
     ClearFileHistory();
 }

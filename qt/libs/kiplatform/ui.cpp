@@ -74,6 +74,15 @@ void KIPLATFORM::UI::ForceFocus( QWidget* aWindow )
 }
 
 
+void KIPLATFORM::UI::GetInfoBarColours( QColor& aFGColour, QColor& aBGColour )
+{
+    QPalette palette = QApplication::palette();
+
+    aBGColour = palette.color( QPalette::ToolTipBase );
+    aFGColour = palette.color( QPalette::ToolTipText );
+}
+
+
 bool KIPLATFORM::UI::IsWindowActive( QWidget* aWindow )
 {
     return aWindow && aWindow->isActiveWindow();

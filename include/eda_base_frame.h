@@ -56,6 +56,7 @@
 #include <origin_transforms.h>
 #include <ui_events.h>
 #include <toolkit/close_request.h>
+#include <frame_panes.h>
 
 // Option for main frames
 #define KICAD_DEFAULT_DRAWFRAME_STYLE wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS
@@ -72,6 +73,7 @@ class wxChoice;
 class wxEvent;
 class wxFileName;
 class EDA_ITEM;
+enum class BITMAPS : unsigned int;
 class EDA_DRAW_PANEL_GAL;
 class EDA_MSG_PANEL;
 class BASE_SCREEN;
@@ -138,6 +140,16 @@ public:
     ~EDA_BASE_FRAME();
 
     void ChangeUserUnits( EDA_UNITS aUnits );
+
+    /**
+     * Call a function each time the user units of the frame change (after the units changed
+     * event of the frame).
+     *
+     * @return the identifier of the function, to remove it.
+     */
+    int AddUnitsChangedListener( std::function<void( EDA_BASE_FRAME* )> aListener );
+
+    void RemoveUnitsChangedListener( int aId );
 
     virtual void ToggleUserUnits() { }
 
@@ -539,6 +551,42 @@ public:
      */
     virtual void UpdateStatusBar() { }
 
+    /// Lay out again the panes of the frame (after they were shown, hidden or changed).
+    void UpdatePanes() { m_auimgr.Update(); }
+
+    /**
+     * The panes of the frame (the panels docked around the canvas), by name.
+     *
+     * Changing them (showing, hiding, docking) takes effect with UpdatePanes().
+     */
+    bool IsPaneShown( const wxString& aName ) const;
+    void ShowPane( const wxString& aName, bool aShow = true );
+    bool IsPaneFloating( const wxString& aName ) const;
+    void SetPaneCaption( const wxString& aName, const wxString& aCaption );
+
+    /// The side the pane is docked to (a #PANE_DOCK value, as stored in the settings).
+    int  GetPaneDockDirection( const wxString& aName ) const;
+    void SetPaneDockDirection( const wxString& aName, int aDirection );
+
+    wxSize GetPaneFloatingSize( const wxString& aName ) const;
+    void   SetPaneFloatingSize( const wxString& aName, const wxSize& aSize );
+
+    /**
+     * Give a docked pane a size (-1 keeps the size in that direction), and lay out the panes.
+     */
+    void SetPaneSize( const wxString& aName, int aWidth, int aHeight );
+
+    /// The size of the panel of a pane.
+    wxSize GetPaneSize( const wxString& aName ) const;
+
+    /**
+     * Give the frame its icons (in the sizes the system needs).
+     *
+     * @param aIcons are the bitmaps of the icons, with their height tag (-1 for the size of
+     *               the bitmap).
+     */
+    void SetFrameIcons( const std::vector<std::pair<BITMAPS, int>>& aIcons );
+
     /**
      * Redraw the menus and what not in current language.
      */
@@ -927,6 +975,10 @@ private:
      * Associate file extensions with action to execute.
      */
     std::map<const wxString, TOOL_ACTION*> m_acceptedExts;
+
+    ///< The functions called when the user units change
+    std::map<int, std::function<void( EDA_BASE_FRAME* )>> m_unitsChangedListeners;
+    int                                                   m_nextUnitsChangedListener = 0;
 
     // Toolbar Settings - this is not owned by the frame
     TOOLBAR_SETTINGS*    m_toolbarSettings;

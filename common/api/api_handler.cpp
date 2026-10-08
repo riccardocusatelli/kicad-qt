@@ -19,7 +19,8 @@
  */
 
 #include <api/api_handler.h>
-#include <wx/wx.h>
+#include <wx/intl.h>
+#include <wx/string.h>
 
 using kiapi::common::ApiRequest, kiapi::common::ApiResponse, kiapi::common::ApiResponseStatus;
 

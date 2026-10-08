@@ -24,7 +24,8 @@
 #include <functional>
 #include <optional>
 
-#include <wx/wx.h>
+#include <wx/string.h>
+#include <wx/utils.h>     // wxExecuteEnv
 
 #include <kicommon.h>
 

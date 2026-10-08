@@ -27,7 +27,11 @@
 #ifndef BITMAP_TYPES_H_
 #define BITMAP_TYPES_H_
 
+#include <vector>
+
 #include <kicommon.h>
+
+class wxString;
 
 class QIcon;
 class QPixmap;
@@ -63,6 +67,12 @@ KICOMMON_API QIcon KiDisabledBitmapBundle( BITMAPS aBitmap, int aMinHeight = -1 
 
 /// The disabled look of an icon, with all its sizes and @a aDefHeight.
 KICOMMON_API QIcon KiDisabledBitmapBundleDef( BITMAPS aBitmap, int aDefHeight );
+
+/**
+ * A bitmap bundle with the images of PNG files (one image for each size of the icon); the files
+ * that can't be read are skipped.
+ */
+KICOMMON_API QIcon KiBitmapBundleFromFiles( const std::vector<wxString>& aPngFiles );
 
 /// Forget the icons made for the theme or the scale used so far.
 KICOMMON_API void ClearScaledBitmapCache();

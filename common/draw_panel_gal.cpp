@@ -498,6 +498,21 @@ void EDA_DRAW_PANEL_GAL::RequestRefresh()
 }
 
 
+void EDA_DRAW_PANEL_GAL::PostRefreshMouse( int aModifiers )
+{
+    wxMouseEvent moveEvent( KIGFX::WX_VIEW_CONTROLS::EVT_REFRESH_MOUSE );
+    VECTOR2D     msp = GetViewControls()->GetMousePosition( false );
+
+    moveEvent.SetX( msp.x );
+    moveEvent.SetY( msp.y );
+    moveEvent.SetControlDown( aModifiers & MD_CTRL );
+    moveEvent.SetShiftDown( aModifiers & MD_SHIFT );
+    moveEvent.SetAltDown( aModifiers & MD_ALT );
+
+    wxPostEvent( this, moveEvent );
+}
+
+
 void EDA_DRAW_PANEL_GAL::Refresh( bool aEraseBackground, const wxRect* aRect )
 {
     auto now = std::chrono::steady_clock::now();

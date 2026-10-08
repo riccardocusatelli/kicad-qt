@@ -302,10 +302,19 @@ void SEARCH_PANE_LISTVIEW::RefreshColumnNames()
 
     DeleteAllColumns();
 
-    std::vector<std::tuple<wxString, int, wxListColumnFormat>> columns = m_handler->GetColumns();
+    std::vector<std::tuple<wxString, int, SEARCH_COLUMN_ALIGN>> columns = m_handler->GetColumns();
 
     for( auto& [ columnName, colProportion, colAlign ] : columns )
-        AppendColumn( wxGetTranslation( columnName ), colAlign );
+    {
+        wxListColumnFormat format = wxLIST_FORMAT_LEFT;
+
+        if( colAlign == SEARCH_COLUMN_ALIGN::RIGHT )
+            format = wxLIST_FORMAT_RIGHT;
+        else if( colAlign == SEARCH_COLUMN_ALIGN::CENTER )
+            format = wxLIST_FORMAT_CENTER;
+
+        AppendColumn( wxGetTranslation( columnName ), format );
+    }
 
     int widthUnit = GetClientSize().GetWidth() / 10;
 

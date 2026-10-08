@@ -75,6 +75,7 @@
 #include <widgets/wx_infobar.h>
 #include <widgets/aui_json_serializer.h>
 #include <widgets/wx_aui_art_providers.h>
+#include <widgets/wx_aui_utils.h>
 #include <widgets/wx_grid.h>
 #include <widgets/wx_treebook.h>
 #include <wx/app.h>
@@ -171,6 +172,20 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
     m_mruPath           = PATHS::GetDefaultUserProjectsPath();
     m_frameSize         = defaultSize( aFrameType, this );
     m_displayIndex      = -1;
+
+    // The listeners of the user units follow the units changed events of the frame
+    Bind( EDA_EVT_UNITS_CHANGED,
+          [this]( wxCommandEvent& aEvent )
+          {
+              // A copy: a listener may remove itself
+              std::map<int, std::function<void( EDA_BASE_FRAME* )>> listeners =
+                      m_unitsChangedListeners;
+
+              for( const auto& [id, listener] : listeners )
+                  listener( this );
+
+              aEvent.Skip();
+          } );
 
     m_auimgr.SetArtProvider( new WX_AUI_DOCK_ART() );
 
@@ -1981,6 +1996,20 @@ void EDA_BASE_FRAME::OnModify()
 }
 
 
+int EDA_BASE_FRAME::AddUnitsChangedListener( std::function<void( EDA_BASE_FRAME* )> aListener )
+{
+    int id = m_nextUnitsChangedListener++;
+    m_unitsChangedListeners[id] = std::move( aListener );
+    return id;
+}
+
+
+void EDA_BASE_FRAME::RemoveUnitsChangedListener( int aId )
+{
+    m_unitsChangedListeners.erase( aId );
+}
+
+
 void EDA_BASE_FRAME::ChangeUserUnits( EDA_UNITS aUnits )
 {
     SetUserUnits( aUnits );
@@ -2178,3 +2207,96 @@ void EDA_BASE_FRAME::OnLanguageSelectionEvent( wxCommandEvent& event )
     // tell all the KIWAY_PLAYERs about the language change.
     Kiway().SetLanguage( id );
 }
+
+
+bool EDA_BASE_FRAME::IsPaneShown( const wxString& aName ) const
+{
+    const wxAuiPaneInfo& pane = const_cast<wxAuiManager&>( m_auimgr ).GetPane( aName );
+    return pane.IsOk() && pane.IsShown();
+}
+
+
+void EDA_BASE_FRAME::ShowPane( const wxString& aName, bool aShow )
+{
+    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( aName ); pane.IsOk() )
+        pane.Show( aShow );
+}
+
+
+bool EDA_BASE_FRAME::IsPaneFloating( const wxString& aName ) const
+{
+    const wxAuiPaneInfo& pane = const_cast<wxAuiManager&>( m_auimgr ).GetPane( aName );
+    return pane.IsOk() && pane.IsFloating();
+}
+
+
+void EDA_BASE_FRAME::SetPaneCaption( const wxString& aName, const wxString& aCaption )
+{
+    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( aName ); pane.IsOk() )
+        pane.Caption( aCaption );
+}
+
+
+int EDA_BASE_FRAME::GetPaneDockDirection( const wxString& aName ) const
+{
+    const wxAuiPaneInfo& pane = const_cast<wxAuiManager&>( m_auimgr ).GetPane( aName );
+    return pane.IsOk() ? pane.dock_direction : static_cast<int>( PANE_DOCK::NONE );
+}
+
+
+void EDA_BASE_FRAME::SetPaneDockDirection( const wxString& aName, int aDirection )
+{
+    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( aName ); pane.IsOk() )
+        pane.Direction( aDirection );
+}
+
+
+wxSize EDA_BASE_FRAME::GetPaneFloatingSize( const wxString& aName ) const
+{
+    const wxAuiPaneInfo& pane = const_cast<wxAuiManager&>( m_auimgr ).GetPane( aName );
+    return pane.IsOk() ? pane.floating_size : wxDefaultSize;
+}
+
+
+void EDA_BASE_FRAME::SetPaneFloatingSize( const wxString& aName, const wxSize& aSize )
+{
+    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( aName ); pane.IsOk() )
+        pane.FloatingSize( aSize );
+}
+
+
+void EDA_BASE_FRAME::SetPaneSize( const wxString& aName, int aWidth, int aHeight )
+{
+    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( aName ); pane.IsOk() )
+        SetAuiPaneSize( m_auimgr, pane, aWidth, aHeight );
+}
+
+
+wxSize EDA_BASE_FRAME::GetPaneSize( const wxString& aName ) const
+{
+    const wxAuiPaneInfo& pane = const_cast<wxAuiManager&>( m_auimgr ).GetPane( aName );
+    return pane.IsOk() && pane.window ? pane.window->GetSize() : wxDefaultSize;
+}
+
+
+void EDA_BASE_FRAME::SetFrameIcons( const std::vector<std::pair<BITMAPS, int>>& aIcons )
+{
+    wxIcon       icon;
+    wxIconBundle icon_bundle;
+
+    for( const auto& [bitmap, heightTag] : aIcons )
+    {
+        icon.CopyFromBitmap( KiBitmap( bitmap, heightTag ) );
+        icon_bundle.AddIcon( icon );
+    }
+
+    SetIcons( icon_bundle );
+}
+
+
+static_assert( static_cast<int>( PANE_DOCK::TOP ) == wxAUI_DOCK_TOP
+               && static_cast<int>( PANE_DOCK::RIGHT ) == wxAUI_DOCK_RIGHT
+               && static_cast<int>( PANE_DOCK::BOTTOM ) == wxAUI_DOCK_BOTTOM
+               && static_cast<int>( PANE_DOCK::LEFT ) == wxAUI_DOCK_LEFT
+               && static_cast<int>( PANE_DOCK::CENTER ) == wxAUI_DOCK_CENTER,
+               "the dock directions stored in the settings are the ones of wxAUI" );

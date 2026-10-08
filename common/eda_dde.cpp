@@ -31,6 +31,7 @@
 #include <id.h>
 
 #include <wx/crt.h>
+#include <wx/socket.h>
 
 
 static const wxString HOSTNAME( wxT( "localhost" ) );

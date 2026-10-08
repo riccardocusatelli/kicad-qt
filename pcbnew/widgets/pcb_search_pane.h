@@ -44,11 +44,12 @@ public:
                                          std::vector<BOARD_ITEM*>& aChangedItems ) override;
 
 private:
-    void onUnitsChanged( wxCommandEvent& event );
+    void onUnitsChanged();
     void onBoardChanging();
     void onBoardChanged();
 
 private:
     PCB_EDIT_FRAME* m_pcbFrame;
     BOARD*          m_brd;
+    int             m_unitsListener;
 };

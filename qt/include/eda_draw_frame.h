@@ -247,6 +247,12 @@ public:
     bool IsGridOverridden();
     virtual void SetGridOverrides( bool aOverride );
 
+    // Toolbar-related functions
+    virtual void ReCreateHToolbar() { };
+    virtual void ReCreateVToolbar() { };
+    virtual void ReCreateLeftToolbar() { };
+    virtual void ReCreateAuxiliaryToolbar() { }
+
     /**
      * @return the color of the grid
      */
@@ -512,6 +518,12 @@ protected:
      * grid, units...).
      */
     void createStatusBar();
+
+    /// The status bar of the draw frames: with the messages of the loads.
+    KISTATUSBAR* OnCreateStatusBar( int aNumber ) override;
+
+    /// Set the widths of the fields of the status bar for the current font.
+    void updateStatusBarWidths();
 
     /**
      * Determines the Canvas type to load (with prompt if required) and initializes m_canvasType

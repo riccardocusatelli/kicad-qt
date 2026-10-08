@@ -28,6 +28,7 @@
 #include <api/api_plugin.h>
 #include <api/api_plugin_manager.h>
 #include <api/api_utils.h>
+#include <bitmaps.h>
 #include <json_conversions.h>
 #include <json_schema_validator.h>
 #include <core/ki_log.h>
@@ -359,11 +360,11 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
     }
 
     auto handleBitmap =
-            [&]( const std::string& aKey, wxBitmapBundle& aDest )
+            [&]( const std::string& aKey, TOOLKIT_BITMAP_BUNDLE& aDest )
             {
                 if( aJson.contains( aKey ) && aJson.at( aKey ).is_array() )
                 {
-                    wxVector<wxBitmap> bitmaps;
+                    std::vector<wxString> iconFiles;
 
                     for( const nlohmann::json& iconJs : aJson.at( aKey ) )
                     {
@@ -391,17 +392,12 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
                             continue;
                         }
 
-                        wxBitmap bmp;
                         // TODO: If necessary; support types other than PNG
-                        bmp.LoadFile( iconFile.GetFullPath(), wxBITMAP_TYPE_PNG );
-
-                        if( bmp.IsOk() )
-                            bitmaps.push_back( bmp );
-                        else
-                            KI_LOG_TRACE( traceApi, "Plugin: icon file not a valid bitmap" );
+                        iconFiles.push_back( iconFile.GetFullPath() );
                     }
 
-                    aDest = wxBitmapBundle::FromBitmaps( bitmaps );
+                    // The files that are not valid bitmaps are skipped
+                    aDest = KiBitmapBundleFromFiles( iconFiles );
                 }
             };
 

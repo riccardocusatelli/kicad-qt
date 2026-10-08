@@ -67,7 +67,10 @@ public:
 
 private:
 #ifdef KICAD_IPC_API
-    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+    void onPluginAvailabilityChanged();
+
+    /// The id of the listener of the plugin availability
+    int m_pluginAvailabilityListener = -1;
 #endif
 
     enum GRID_COLUMNS

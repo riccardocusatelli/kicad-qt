@@ -24,8 +24,6 @@
  */
 
 #include <kiface_base.h>
-#include <kiplatform/ui.h>
-#include <background_jobs_monitor.h>
 #include <pcb_base_edit_frame.h>
 #include <3d_viewer/eda_3d_viewer_frame.h>
 #include <tool/tool_manager.h>
@@ -33,14 +31,12 @@
 #include <tools/pcb_selection_tool.h>
 #include <widgets/panel_selection_filter.h>
 #include <pgm_base.h>
-#include <pgm_gui.h>
 #include <board.h>
 #include <board_design_settings.h>
 #include <drc/drc_engine.h>
 #include <tool/action_toolbar.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <pcb_dimension.h>
-#include <pcb_layer_box_selector.h>
 #include <footprint.h>
 #include <layer_pairs.h>
 #include <project.h>
@@ -52,8 +48,6 @@
 #include <dialogs/eda_view_switcher.h>
 #include <wildcards_and_files_ext.h>
 
-#include <widgets/kistatusbar.h>
-#include <widgets/wx_aui_utils.h>
 #include <id.h>
 
 
@@ -65,40 +59,18 @@ PCB_BASE_EDIT_FRAME::PCB_BASE_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
         m_undoRedoBlocked( false ),
         m_selectionFilterPanel( nullptr ),
         m_appearancePanel( nullptr ),
-        m_vertexEditorPane( nullptr ),
-        m_tabbedPanel( nullptr )
+        m_vertexEditorPane( nullptr )
 {
     m_SelLayerBox = nullptr;
 
-    // Do not register the idle event handler if we are running in headless mode.
-    if( !wxApp::GetGUIInstance() )
-        return;
-
-    Bind( wxEVT_IDLE,
-          [this]( wxIdleEvent& aEvent )
-          {
-              // Handle cursor adjustments.  While we can get motion and key events through
-              // wxWidgets, we can't get modifier-key-up events.
-              if( m_toolManager )
-              {
-                  PCB_SELECTION_TOOL* selTool = m_toolManager->GetTool<PCB_SELECTION_TOOL>();
-
-                  if( selTool )
-                      selTool->OnIdle( aEvent );
-              }
-          } );
-
-    Bind( wxEVT_SYS_COLOUR_CHANGED, wxSysColourChangedEventHandler( PCB_BASE_EDIT_FRAME::onDarkModeToggle ), this );
-
-    PgmGui().GetBackgroundJobMonitor().RegisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
+    setupToolkitEvents();
 }
 
 
 PCB_BASE_EDIT_FRAME::~PCB_BASE_EDIT_FRAME()
 {
-    Unbind( wxEVT_SYS_COLOUR_CHANGED, wxSysColourChangedEventHandler( PCB_BASE_EDIT_FRAME::onDarkModeToggle ), this );
+    releaseToolkitEvents();
 
-    PgmGui().GetBackgroundJobMonitor().UnregisterStatusBar( static_cast<KISTATUSBAR*>( GetStatusBar() ) );
     CloseVertexEditor();
     GetCanvas()->GetView()->Clear();
 }
@@ -291,8 +263,10 @@ void PCB_BASE_EDIT_FRAME::handleActivateEvent( bool aActive )
 }
 
 
-void PCB_BASE_EDIT_FRAME::onDarkModeToggle( wxSysColourChangedEvent& aEvent )
+void PCB_BASE_EDIT_FRAME::HandleSystemColorChange()
 {
+    PCB_BASE_FRAME::HandleSystemColorChange();
+
     if( m_appearancePanel )
         m_appearancePanel->OnDarkModeToggle();
 
@@ -308,22 +282,20 @@ void PCB_BASE_EDIT_FRAME::ToggleProperties()
     if( !m_propertiesPanel )
         return;
 
-    bool show = !m_propertiesPanel->IsShownOnScreen();
+    bool show = !IsPaneShown( PropertiesPaneName() );
 
-    wxAuiPaneInfo& propertiesPaneInfo = m_auimgr.GetPane( PropertiesPaneName() );
-    propertiesPaneInfo.Show( show );
+    ShowPane( PropertiesPaneName(), show );
 
     PCBNEW_SETTINGS* settings = GetPcbNewSettings();
 
     if( show )
     {
-        SetAuiPaneSize( m_auimgr, propertiesPaneInfo,
-                        settings->m_AuiPanels.properties_panel_width, -1 );
+        SetPaneSize( PropertiesPaneName(), settings->m_AuiPanels.properties_panel_width, -1 );
     }
     else
     {
-        settings->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
-        m_auimgr.Update();
+        settings->m_AuiPanels.properties_panel_width = GetPaneSize( PropertiesPaneName() ).x;
+        UpdatePanes();
     }
 }
 
@@ -363,39 +335,7 @@ void PCB_BASE_EDIT_FRAME::configureToolbars()
     auto layerSelectorFactory =
             [this]( ACTION_TOOLBAR* aToolbar )
             {
-                if( !m_SelLayerBox )
-                {
-                    m_SelLayerBox = new PCB_LAYER_BOX_SELECTOR( aToolbar, ID_ON_LAYER_SELECT );
-                    m_SelLayerBox->SetBoardFrame( this );
-                }
-
-                m_SelLayerBox->SetToolTip( _( "+/- to switch" ) );
-                m_SelLayerBox->Resync();
-
-                aToolbar->Add( m_SelLayerBox );
-
-                // UI update handler for the control
-                aToolbar->Bind( wxEVT_UPDATE_UI,
-                                [this]( wxUpdateUIEvent& aEvent )
-                                    {
-                                        if( m_SelLayerBox->GetCount()
-                                            && ( m_SelLayerBox->GetLayerSelection() != GetActiveLayer() ) )
-                                        {
-                                            m_SelLayerBox->SetLayerSelection( GetActiveLayer() );
-                                        }
-                                    },
-                                m_SelLayerBox->GetId() );
-
-                // Event handler to respond to the user interacting with the control
-                aToolbar->Bind( wxEVT_COMBOBOX,
-                                [this]( wxCommandEvent& aEvent )
-                                    {
-                                        SetActiveLayer( ToLAYER_ID( m_SelLayerBox->GetLayerSelection() ) );
-
-                                        if( GetDisplayOptions().m_ContrastModeDisplay != HIGH_CONTRAST_MODE::NORMAL )
-                                            GetCanvas()->Refresh();
-                                    },
-                                m_SelLayerBox->GetId() );
+                addLayerSelector( aToolbar );
             };
 
     RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::layerSelector, layerSelectorFactory );
@@ -415,38 +355,18 @@ void PCB_BASE_EDIT_FRAME::ClearToolbarControl( int aId )
 
 void PCB_BASE_EDIT_FRAME::HighlightSelectionFilter( const PCB_SELECTION_FILTER_OPTIONS& aOptions )
 {
-    PCB_SELECTION_FILTER_EVENT evt( aOptions );
-    wxPostEvent( this, evt );
+    // After the event being handled (the selection that skipped the items)
+    CallAfter(
+            [this, aOptions]()
+            {
+                if( m_selectionFilterPanel )
+                    m_selectionFilterPanel->Flash( aOptions );
+            } );
 }
 
 wxString PCB_BASE_EDIT_FRAME::VertexEditorPaneName()
 {
     return wxS( "VertexEditor" );
-}
-
-void PCB_BASE_EDIT_FRAME::OpenVertexEditor( BOARD_ITEM* aItem )
-{
-    if( !m_vertexEditorPane )
-    {
-        m_vertexEditorPane = new PCB_VERTEX_EDITOR_PANE( this );
-
-        wxAuiPaneInfo paneInfo = EDA_PANE().Name( VertexEditorPaneName() )
-                                       .Float()
-                                       .Caption( _( "Edit Vertices" ) )
-                                       .PaneBorder( true )
-                                       .CloseButton( true )
-                                       .DestroyOnClose( true )
-                                       .Resizable( true )
-                                       .MinSize( FromDIP( wxSize( 260, 200 ) ) )
-                                       .BestSize( FromDIP( wxSize( 260, 320 ) ) )
-                                       .FloatingSize( FromDIP( wxSize( 320, 360 ) ) );
-
-        m_auimgr.AddPane( m_vertexEditorPane, paneInfo );
-        m_auimgr.Update();
-    }
-
-    m_vertexEditorPane->SetItem( aItem );
-    m_vertexEditorPane->SetFocus();
 }
 
 void PCB_BASE_EDIT_FRAME::CloseVertexEditor()

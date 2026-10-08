@@ -316,11 +316,11 @@ bool BOARD_DOCUMENT::Open( const QString& aFileName, QString& aError )
     selectionChanged();
     ZoomToFit();
 
-    emit statusMessage( tr( "%1: %2 footprints, %3 tracks and vias" )
+    Q_EMIT statusMessage( tr( "%1: %2 footprints, %3 tracks and vias" )
                                 .arg( aFileName )
                                 .arg( m_board->Footprints().size() )
                                 .arg( m_board->Tracks().size() ) );
-    emit stateChanged();
+    Q_EMIT stateChanged();
     return true;
 }
 
@@ -340,8 +340,8 @@ bool BOARD_DOCUMENT::Save( QString& aError )
     }
 
     m_undo->SetSaved();
-    emit statusMessage( tr( "%1 saved." ).arg( m_fileName ) );
-    emit stateChanged();
+    Q_EMIT statusMessage( tr( "%1 saved." ).arg( m_fileName ) );
+    Q_EMIT stateChanged();
     return true;
 }
 
@@ -468,7 +468,7 @@ void BOARD_DOCUMENT::onCurrentLayerChanged( QListWidgetItem* aCurrent )
 
 void BOARD_DOCUMENT::onCursorMoved( double aX, double aY )
 {
-    emit cursorPositionChanged( QStringLiteral( "X %1  Y %2 mm" )
+    Q_EMIT cursorPositionChanged( QStringLiteral( "X %1  Y %2 mm" )
                                         .arg( pcbIUScale.IUTomm( aX ), 0, 'f', 4 )
                                         .arg( pcbIUScale.IUTomm( aY ), 0, 'f', 4 ) );
 }
@@ -646,7 +646,7 @@ void BOARD_DOCUMENT::onPropertyEdited( const void* aKey, const QString& aValue )
         if( !SetPropertyValue( item, aKey, aValue, pcbIUScale, EDA_UNITS::MM, error ) )
         {
             commit->Revert();
-            emit statusMessage( error );
+            Q_EMIT statusMessage( error );
             selectionChanged();     // the values as they are
             return;
         }
@@ -656,7 +656,7 @@ void BOARD_DOCUMENT::onPropertyEdited( const void* aKey, const QString& aValue )
 
     selectionChanged();
     m_canvas->update();
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -711,7 +711,7 @@ std::vector<BOARD_ITEM*> BOARD_DOCUMENT::changeableItems( const std::vector<EDA_
     }
 
     if( items.size() < aItems.size() )
-        emit statusMessage( tr( "Locked items are not changed." ) );
+        Q_EMIT statusMessage( tr( "Locked items are not changed." ) );
 
     return items;
 }
@@ -1120,7 +1120,7 @@ void BOARD_DOCUMENT::applyUndoEntry( PICKED_ITEMS_LIST& aEntry )
     }
 
     if( result.itemsNotFound )
-        emit statusMessage( tr( "Incomplete undo/redo operation: some items not found." ) );
+        Q_EMIT statusMessage( tr( "Incomplete undo/redo operation: some items not found." ) );
 }
 
 

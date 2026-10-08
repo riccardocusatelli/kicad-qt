@@ -20,7 +20,6 @@
 
 #include <config.h>
 #include <gestfich.h>
-#include <wx/process.h>
 
 #include <future>
 #include <utility>
@@ -29,58 +28,13 @@
 #include <paths.h>
 #include <pgm_base.h>
 #include <python_manager.h>
-#include <thread_pool.h>
+#include <toolkit/process.h>
 #include <wx_filename.h>
 #include <core/ki_log.h>
 
 
-class PYTHON_PROCESS : public wxProcess
-{
-public:
-    PYTHON_PROCESS( std::function<void(int, const wxString&, const wxString&)> aCallback ) :
-            wxProcess(),
-            m_callback( std::move( aCallback ) )
-    {}
-
-    void OnTerminate( int aPid, int aStatus ) override
-    {
-        // Print stdout trace info from the monitor thread
-        wxLog::GetActiveTarget()->Flush();
-
-        if( m_callback )
-        {
-            wxString output, error;
-            wxInputStream* processOut = GetInputStream();
-            size_t bytesRead = 0;
-
-            while( processOut->CanRead() && bytesRead < MAX_OUTPUT_LEN )
-            {
-                char buffer[4096];
-                buffer[ processOut->Read( buffer, sizeof( buffer ) - 1 ).LastRead() ] = '\0';
-                output.append( buffer, processOut->LastRead() );
-                bytesRead += processOut->LastRead();
-            }
-
-            processOut = GetErrorStream();
-            bytesRead = 0;
-
-            while( processOut->CanRead() && bytesRead < MAX_OUTPUT_LEN )
-            {
-                char buffer[4096];
-                buffer[ processOut->Read( buffer, sizeof( buffer ) - 1 ).LastRead() ] = '\0';
-                error.append( buffer, processOut->LastRead() );
-                bytesRead += processOut->LastRead();
-            }
-
-            m_callback( aStatus, output, error );
-        }
-    }
-
-    static constexpr size_t MAX_OUTPUT_LEN = 1024L * 1024L;
-
-private:
-    std::function<void(int, const wxString&, const wxString&)> m_callback;
-};
+/// The maximum length of the output of the Python interpreter given to the callbacks
+static constexpr size_t MAX_OUTPUT_LEN = 1024L * 1024L;
 
 
 PYTHON_MANAGER::PYTHON_MANAGER( const wxString& aInterpreterPath )
@@ -95,62 +49,34 @@ long PYTHON_MANAGER::Execute( const std::vector<wxString>& aArgs,
         const std::function<void(int, const wxString&, const wxString&)>& aCallback,
         const wxExecuteEnv* aEnv, bool aSaveOutput )
 {
-    PYTHON_PROCESS* process = new PYTHON_PROCESS( aCallback );
-    process->Redirect();
-
-    auto monitor =
-        []( PYTHON_PROCESS* aProcess )
-        {
-            wxInputStream* processOut = aProcess->GetInputStream();
-
-            while( aProcess->IsInputOpened() )
-            {
-                if( processOut->CanRead() )
-                {
-                    char buffer[4096];
-                    buffer[processOut->Read( buffer, sizeof( buffer ) - 1 ).LastRead()] = '\0';
-                    wxString stdOut( buffer, processOut->LastRead() );
-                    stdOut = stdOut.BeforeLast( '\n' );
-                    KI_LOG_TRACE( traceApi, wxString::Format( "Python: %s", stdOut ) );
-                }
-            }
-        };
-
-    wxString argsStr;
-    std::vector<const wchar_t*> args = { m_interpreterPath.wc_str() };
+    wxString              argsStr;
+    std::vector<wxString> args = { m_interpreterPath };
 
     for( const wxString& arg : aArgs )
     {
-        args.emplace_back( arg.wc_str() );
+        args.emplace_back( arg );
         argsStr << arg << " ";
     }
 
-    args.emplace_back( nullptr );
+    // Unless the output is needed (which is currently only used for detecting the interpreter
+    // version), it is dumped to the trace log while the process runs (see TOOLKIT::ExecuteAsync)
+    TOOLKIT::PROCESS_OUTPUT_HANDLER traceOutput;
+
+    if( !aSaveOutput )
+    {
+        traceOutput =
+                []( const wxString& aOutput )
+                {
+                    wxString stdOut = aOutput.BeforeLast( '\n' );
+                    KI_LOG_TRACE( traceApi, wxString::Format( "Python: %s", stdOut ) );
+                };
+    }
 
     KI_LOG_TRACE( traceApi, wxString::Format( "Execute: %s %s", m_interpreterPath, argsStr ) );
-    long pid = wxExecute( args.data(), wxEXEC_ASYNC, process, aEnv );
+    long pid = TOOLKIT::ExecuteAsync( args, aEnv, MAX_OUTPUT_LEN, false, traceOutput, aCallback );
 
     if( pid == 0 )
-    {
-        delete process;
         aCallback( -1, wxEmptyString, _( "Process could not be created" ) );
-    }
-    else
-    {
-        // On Windows, if there is a lot of stdout written by the process, this can
-        // hang up the wxProcess such that it will never call OnTerminate.  To work
-        // around this, we use this monitor thread to just dump the stdout to the
-        // trace log, which prevents the hangup.  This flag is provided to keep the
-        // old behavior for commands where we need to read the output directly,
-        // which is currently only used for detecting the interpreter version.
-        // If we need to use the async monitor thread approach and preserve the stdout
-        // contents in the future, a more complicated hack might be necessary.
-        if( !aSaveOutput )
-        {
-            thread_pool& tp = GetKiCadThreadPool();
-            auto ret = tp.submit_task( [monitor, process] { monitor( process ); } );
-        }
-    }
 
     return pid;
 }

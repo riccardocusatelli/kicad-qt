@@ -19,9 +19,7 @@
  */
 
 #include <fmt/format.h>
-#include <wx/app.h>
 #include <wx/datetime.h>
-#include <wx/event.h>
 #include <wx/stdpaths.h>
 
 #include <advanced_config.h>
@@ -34,6 +32,7 @@
 #include <pgm_base.h>
 #include <settings/common_settings.h>
 #include <string_utils.h>
+#include <toolkit/process.h>
 
 #include <api/common/envelope.pb.h>
 #include <core/ki_log.h>
@@ -49,11 +48,7 @@ using kiapi::common::ApiRequest, kiapi::common::ApiResponse, kiapi::common::ApiS
 wxString KICAD_API_SERVER::s_logFileName = "api.log";
 
 
-wxDEFINE_EVENT( API_REQUEST_EVENT, wxCommandEvent );
-
-
 KICAD_API_SERVER::KICAD_API_SERVER() :
-        wxEvtHandler(),
         m_token( KIID().AsStdString() ),
         m_readyToReply( false )
 {
@@ -141,7 +136,8 @@ void KICAD_API_SERVER::Start()
 
     KI_LOG_TRACE( traceApi, wxString::Format( "Server: listening at %s", SocketPath() ) );
 
-    Bind( API_REQUEST_EVENT, &KICAD_API_SERVER::handleApiEvent, this );
+    // The requests of this run of the server are handled while it lives
+    m_session = std::make_shared<int>( 0 );
 }
 
 
@@ -151,7 +147,9 @@ void KICAD_API_SERVER::Stop()
         return;
 
     KI_LOG_TRACE( traceApi, "Stopping server" );
-    Unbind( API_REQUEST_EVENT, &KICAD_API_SERVER::handleApiEvent, this );
+
+    // The requests not yet handled are dropped
+    m_session.reset();
 
     m_server->Stop();
     m_server.reset( nullptr );
@@ -195,19 +193,21 @@ void KICAD_API_SERVER::onApiRequest( std::string* aRequest )
         return;
     }
 
-    wxCommandEvent* evt = new wxCommandEvent( API_REQUEST_EVENT );
+    // Handled from the event loop (on the main thread)
+    std::weak_ptr<int> session = m_session;
 
-    // We don't actually need write access to this string, but client data is non-const
-    evt->SetClientData( static_cast<void*>( aRequest ) );
-
-    // Takes ownership and frees the wxCommandEvent
-    QueueEvent( evt );
+    TOOLKIT::RunOnMainThread(
+            [this, session, aRequest]()
+            {
+                if( !session.expired() )
+                    handleApiRequest( aRequest );
+            } );
 }
 
 
-void KICAD_API_SERVER::handleApiEvent( wxCommandEvent& aEvent )
+void KICAD_API_SERVER::handleApiRequest( std::string* aRequest )
 {
-    std::string& requestString = *static_cast<std::string*>( aEvent.GetClientData() );
+    std::string& requestString = *aRequest;
     ApiRequest request;
 
     if( !request.ParseFromString( requestString ) )

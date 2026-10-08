@@ -28,10 +28,7 @@
 
 #include <wx/log.h>
 #include <wx/filename.h>
-#include <wx/filedlg.h>
-#include <wx/hyperlink.h>
-#include <wx/socket.h>
-#include <wx/wupdlock.h>
+#include <wx/utils.h>
 
 #include <advanced_config.h>
 #include <connectivity/connectivity_data.h>
@@ -131,18 +128,18 @@
 #include <widgets/panel_selection_filter.h>
 #include <widgets/pcb_properties_panel.h>
 #include <widgets/pcb_net_inspector_panel.h>
-#include <widgets/wx_aui_utils.h>
 #include <kiplatform/app.h>
 #include <kiplatform/ui.h>
 #include <core/profile.h>
 #include <math/box2_minmax.h>
-#include <view/wx_view_controls.h>
 #include <footprint_viewer_frame.h>
 #include <footprint_chooser_frame.h>
 #include <toolbars_pcb_editor.h>
 #include <drc/rule_editor/dialog_drc_rule_editor.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <toolkit/event_blocker.h>
+#include <toolkit/gui_services.h>
 
 #ifdef KICAD_IPC_API
 #include <api/api_server.h>
@@ -166,44 +163,7 @@ using namespace std::placeholders;
 #define FOOTPRINT_DIFF_DIALOG_NAME      wxT( "FootprintDiffDialog" )
 
 
-BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
-    EVT_SOCKET( ID_EDA_SOCKET_EVENT_SERV, PCB_EDIT_FRAME::OnSockRequestServer )
-    EVT_SOCKET( ID_EDA_SOCKET_EVENT, PCB_EDIT_FRAME::OnSockRequest )
-
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, PCB_EDIT_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, PCB_EDIT_FRAME::OnSelectGrid )
-
-    EVT_SIZE( PCB_EDIT_FRAME::OnSize )
-
-    // Menu Files:
-    EVT_MENU_RANGE( ID_FILE1, ID_FILEMAX, PCB_EDIT_FRAME::OnFileHistory )
-    EVT_MENU( ID_FILE_LIST_CLEAR, PCB_EDIT_FRAME::OnClearFileHistory )
-
-    EVT_MENU( wxID_EXIT, PCB_EDIT_FRAME::OnQuit )
-    EVT_MENU( wxID_CLOSE, PCB_EDIT_FRAME::OnQuit )
-
-    // Horizontal toolbar
-    EVT_CHOICE( ID_AUX_TOOLBAR_PCB_TRACK_WIDTH, PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event )
-    EVT_CHOICE( ID_AUX_TOOLBAR_PCB_VIA_SIZE, PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event )
-    EVT_CHOICE( ID_AUX_TOOLBAR_PCB_VARIANT_SELECT, PCB_EDIT_FRAME::onVariantSelected )
-
-    // Tracks and vias sizes general options
-    EVT_MENU_RANGE( ID_POPUP_PCB_SELECT_WIDTH_START_RANGE, ID_POPUP_PCB_SELECT_WIDTH_END_RANGE,
-                    PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event )
-
-    // User interface update event handlers.
-    EVT_UPDATE_UI( ID_AUX_TOOLBAR_PCB_TRACK_WIDTH, PCB_EDIT_FRAME::OnUpdateSelectTrackWidth )
-    EVT_UPDATE_UI( ID_AUX_TOOLBAR_PCB_VIA_SIZE, PCB_EDIT_FRAME::OnUpdateSelectViaSize )
-    EVT_UPDATE_UI_RANGE( ID_POPUP_PCB_SELECT_WIDTH1, ID_POPUP_PCB_SELECT_WIDTH8,
-                         PCB_EDIT_FRAME::OnUpdateSelectTrackWidth )
-    EVT_UPDATE_UI_RANGE( ID_POPUP_PCB_SELECT_VIASIZE1, ID_POPUP_PCB_SELECT_VIASIZE8,
-                         PCB_EDIT_FRAME::OnUpdateSelectViaSize )
-    // Drop files event
-    EVT_DROP_FILES( PCB_EDIT_FRAME::OnDropFiles )
-END_EVENT_TABLE()
-
-
-PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         PCB_BASE_EDIT_FRAME( aKiway, aParent, FRAME_PCB_EDITOR, _( "PCB Editor" ),
                              wxDefaultPosition, wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE,
                              PCB_EDIT_FRAME_NAME ),
@@ -215,8 +175,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_footprintDiffDlg( nullptr ),
     m_boardSetupDlg( nullptr ),
     m_designBlocksPane( nullptr ),
-    m_importProperties( nullptr ),
-    m_eventCounterTimer( nullptr )
+    m_importProperties( nullptr )
 {
     m_maximizeByDefault = true;
     m_showBorderAndTitleBlock = true;   // true to display sheet references
@@ -228,9 +187,11 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_ProbingSchToPcb = false;
     m_ShowSearch = false;
     m_ShowNetInspector = false;
-    // Ensure timer has an owner before binding so it generates events.
-    m_crossProbeFlashTimer.SetOwner( this );
-    Bind( wxEVT_TIMER, &PCB_EDIT_FRAME::OnCrossProbeFlashTimer, this, m_crossProbeFlashTimer.GetId() );
+    m_crossProbeFlashTimer.SetHandler(
+            [this]()
+            {
+                OnCrossProbeFlashTimer();
+            } );
 
     // We don't know what state board was in when it was last saved, so we have to
     // assume dirty
@@ -254,21 +215,11 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     SetCanvas( canvas );
     SetBoard( new BOARD() );
 
-    wxIcon icon;
-    wxIconBundle icon_bundle;
-
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pcbnew, 48 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pcbnew, 128 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pcbnew, 256 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pcbnew_32 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_pcbnew_16 ) );
-    icon_bundle.AddIcon( icon );
-
-    SetIcons( icon_bundle );
+    SetFrameIcons( { { BITMAPS::icon_pcbnew, 48 },
+                     { BITMAPS::icon_pcbnew, 128 },
+                     { BITMAPS::icon_pcbnew, 256 },
+                     { BITMAPS::icon_pcbnew_32, -1 },
+                     { BITMAPS::icon_pcbnew_16, -1 } } );
 
     // LoadSettings() *after* creating m_LayersManager, because LoadSettings()
     // initialize parameters in m_LayersManager
@@ -289,11 +240,6 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     ReCreateMenuBar();
 
-#ifdef KICAD_IPC_API
-    wxTheApp->Bind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
-                    &PCB_EDIT_FRAME::onPluginAvailabilityChanged, this );
-#endif
-
     // Fetch a COPY of the config as a lot of these initializations are going to overwrite our
     // data.
     PCBNEW_SETTINGS::AUI_PANELS aui_cfg = GetPcbNewSettings()->m_AuiPanels;
@@ -308,165 +254,30 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_netInspectorPanel = new PCB_NET_INSPECTOR_PANEL( this, this );
     m_designBlocksPane = new PCB_DESIGN_BLOCK_PANE( this, nullptr, m_designBlockHistoryList );
 
-    m_auimgr.SetManagedWindow( this );
-
-    CreateInfoBar();
-
-    // Secondary infobar stacked above the main one.  Load-time notices (such as
-    // the WRL -> STEP migration prompt) belong here so they aren't clobbered by
-    // the main infobar's read-only warnings, DRC rule errors, etc.
-#if defined( __WXOSX_MAC__ )
-    m_loadNoticeInfoBar = new WX_INFOBAR( GetToolCanvas() );
-#else
-    m_loadNoticeInfoBar = new WX_INFOBAR( this, &m_auimgr );
-    m_auimgr.AddPane( m_loadNoticeInfoBar,
-                      EDA_PANE().InfoBar().Name( wxS( "LoadNoticeInfoBar" ) ).Top().Layer( 1 )
-                              .Row( 1 ) );
-#endif
-
-    unsigned int auiFlags = wxAUI_MGR_DEFAULT;
-#if !defined( _WIN32 )
-    // Windows cannot redraw the UI fast enough during a live resize and may lead to all kinds
-    // of graphical glitches.
-    auiFlags |= wxAUI_MGR_LIVE_RESIZE;
-#endif
-    m_auimgr.SetFlags( auiFlags );
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( wxS( "TopMainToolbar" ) )
-                      .Top().Layer( 6 ) );
-    m_auimgr.AddPane( m_tbTopAux, EDA_PANE().HToolbar().Name( wxS( "TopAuxToolbar" ) )
-                      .Top().Layer( 5 ) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( wxS( "MsgPanel" ) )
-                      .Bottom().Layer( 6 ) );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( wxS( "LeftToolbar" ) )
-                      .Left().Layer( 3 ) );
-
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( wxS( "RightToolbar" ) )
-                      .Right().Layer( 3 ) );
-
-    m_auimgr.AddPane( m_appearancePanel, EDA_PANE().Name( wxS( "LayersManager" ) )
-                      .Right().Layer( 4 )
-                      .Caption( _( "Appearance" ) ).PaneBorder( false )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( m_appearancePanel->GetMinSize().x, FromDIP( 60 ) )
-#ifdef __WXMAC__
-                      // Best size for this pane is calculated larger than necessary on wxMac
-                      .BestSize( m_appearancePanel->GetMinSize().x, -1 )
-#else
-                      .BestSize( m_appearancePanel->GetBestSize().x, -1 )
-#endif
-                      .FloatingSize( m_appearancePanel->GetBestSize() )
-                      .CloseButton( false ) );
-
-    m_auimgr.AddPane( m_selectionFilterPanel, EDA_PANE().Name( wxS( "SelectionFilter" ) )
-                      .Right().Layer( 4 ).Position( 2 )
-                      .Caption( _( "Selection Filter" ) ).PaneBorder( false )
-                      // Fixed-size pane; -1 for MinSize height is required
-                      .MinSize( m_selectionFilterPanel->GetMinSize().x, -1 )
-                      .BestSize( m_selectionFilterPanel->GetBestSize().x, -1 )
-                      .FloatingSize( m_selectionFilterPanel->GetBestSize() )
-                      .CloseButton( false ) );
-
-    m_auimgr.AddPane( m_designBlocksPane, EDA_PANE().Name( DesignBlocksPaneName() )
-                      .Right().Layer( 5 )
-                      .Caption( _( "Design Blocks" ) )
-                      .CaptionVisible( true )
-                      .PaneBorder( true )
-                      .TopDockable( false )
-                      .BottomDockable( false )
-                      .CloseButton( true )
-                      .MinSize( FromDIP( wxSize( 240, 60 ) ) )
-                      .BestSize( FromDIP( wxSize( 300, 200 ) ) )
-                      .FloatingSize( FromDIP( wxSize( 800, 600 ) ) )
-                      .FloatingPosition( FromDIP( wxPoint( 50, 200 ) ) )
-                      .Show( true ) );
-
-    m_auimgr.AddPane( m_propertiesPanel, EDA_PANE().Name( PropertiesPaneName() )
-                      .Left().Layer( 5 )
-                      .Caption( _( "Properties" ) ).PaneBorder( false )
-                      .MinSize( FromDIP( wxSize( 240, 60 ) ) )
-                      .BestSize( FromDIP( wxSize( 300, 200 ) ) )
-                      .FloatingSize( wxSize( 300, 200 ) )
-                      .CloseButton( true ) );
-
-    // Center
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( wxS( "DrawFrame" ) )
-                      .Center() );
-
-    m_auimgr.AddPane( m_netInspectorPanel, EDA_PANE().Name( NetInspectorPanelName() )
-                      .Bottom()
-                      .Caption( _( "Net Inspector" ) )
-                      .PaneBorder( false )
-                      .MinSize( FromDIP( wxSize( 240, 60 ) ) )
-                      .BestSize( FromDIP( wxSize( 300, 200 ) ) )
-                      .FloatingSize( wxSize( 300, 200 ) )
-                      .CloseButton( true ) );
-
-    m_auimgr.AddPane( m_searchPane, EDA_PANE().Name( SearchPaneName() )
-                      .Bottom()
-                      .Caption( _( "Search" ) ).PaneBorder( false )
-                      .MinSize( FromDIP( wxSize ( 180, 60 ) ) )
-                      .BestSize( FromDIP( wxSize ( 180, 100 ) ) )
-                      .FloatingSize( FromDIP( wxSize( 480, 200 ) ) )
-                      .DestroyOnClose( false )
-                      .CloseButton( true ) );
-
-    RestoreAuiLayout();
-
-    m_auimgr.GetPane( "LayersManager" ).Show( m_ShowLayerManagerTools );
-    m_auimgr.GetPane( "SelectionFilter" ).Show( m_ShowLayerManagerTools );
-    m_auimgr.GetPane( PropertiesPaneName() ).Show( GetPcbNewSettings()->m_AuiPanels.show_properties );
-    m_auimgr.GetPane( NetInspectorPanelName() ).Show( m_ShowNetInspector );
-    m_auimgr.GetPane( SearchPaneName() ).Show( m_ShowSearch );
-    m_auimgr.GetPane( DesignBlocksPaneName() ).Show( GetPcbNewSettings()->m_AuiPanels.design_blocks_show );
-
-    // The selection filter doesn't need to grow in the vertical direction when docked
-    m_auimgr.GetPane( "SelectionFilter" ).dock_proportion = 0;
-    FinishAUIInitialization();
-
-    // FinishAUIInitialization only hides the primary "InfoBar" pane; the
-    // stacked load-notice bar has to be hidden explicitly.
-#if !defined( __WXOSX_MAC__ )
-    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( wxS( "LoadNoticeInfoBar" ) ); pane.IsOk() )
-    {
-        pane.Hide();
-        m_auimgr.Update();
-    }
-#endif
+    setupLayout();
 
     if( aui_cfg.right_panel_width > 0 )
     {
-        wxAuiPaneInfo& layersManager = m_auimgr.GetPane( wxS( "LayersManager" ) );
-        SetAuiPaneSize( m_auimgr, layersManager, aui_cfg.right_panel_width, -1 );
-
-        wxAuiPaneInfo& designBlocksPane = m_auimgr.GetPane( DesignBlocksPaneName() );
-        SetAuiPaneSize( m_auimgr, designBlocksPane, aui_cfg.design_blocks_panel_docked_width, -1 );
+        SetPaneSize( AppearancePanelName(), aui_cfg.right_panel_width, -1 );
+        SetPaneSize( DesignBlocksPaneName(), aui_cfg.design_blocks_panel_docked_width, -1 );
     }
 
     if( aui_cfg.properties_panel_width > 0 && m_propertiesPanel )
-    {
-        wxAuiPaneInfo& propertiesPanel = m_auimgr.GetPane( PropertiesPaneName() );
-        SetAuiPaneSize( m_auimgr, propertiesPanel, aui_cfg.properties_panel_width, -1 );
-    }
+        SetPaneSize( PropertiesPaneName(), aui_cfg.properties_panel_width, -1 );
+
+    PANE_DOCK searchDock = static_cast<PANE_DOCK>( aui_cfg.search_panel_dock_direction );
 
     if( aui_cfg.search_panel_height > 0
-        && ( aui_cfg.search_panel_dock_direction == wxAUI_DOCK_TOP
-            || aui_cfg.search_panel_dock_direction == wxAUI_DOCK_BOTTOM ) )
+        && ( searchDock == PANE_DOCK::TOP || searchDock == PANE_DOCK::BOTTOM ) )
     {
-        wxAuiPaneInfo& searchPane = m_auimgr.GetPane( SearchPaneName() );
-        searchPane.Direction( aui_cfg.search_panel_dock_direction );
-        SetAuiPaneSize( m_auimgr, searchPane, -1, aui_cfg.search_panel_height );
+        SetPaneDockDirection( SearchPaneName(), aui_cfg.search_panel_dock_direction );
+        SetPaneSize( SearchPaneName(), -1, aui_cfg.search_panel_height );
     }
     else if( aui_cfg.search_panel_width > 0
-            && ( aui_cfg.search_panel_dock_direction == wxAUI_DOCK_LEFT
-                || aui_cfg.search_panel_dock_direction == wxAUI_DOCK_RIGHT ) )
+            && ( searchDock == PANE_DOCK::LEFT || searchDock == PANE_DOCK::RIGHT ) )
     {
-        wxAuiPaneInfo& searchPane = m_auimgr.GetPane( SearchPaneName() );
-        searchPane.Direction( aui_cfg.search_panel_dock_direction );
-        SetAuiPaneSize( m_auimgr, searchPane, aui_cfg.search_panel_width, -1 );
+        SetPaneDockDirection( SearchPaneName(), aui_cfg.search_panel_dock_direction );
+        SetPaneSize( SearchPaneName(), aui_cfg.search_panel_width, -1 );
     }
 
     m_appearancePanel->SetTabIndex( aui_cfg.appearance_panel_tab );
@@ -474,7 +285,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     {
         m_layerPairSettings = std::make_unique<LAYER_PAIR_SETTINGS>();
 
-        m_layerPairSettings->Bind( PCB_LAYER_PAIR_PRESETS_CHANGED, [&]( wxCommandEvent& aEvt )
+        m_layerPairSettings->AddPresetsChangedListener( [&]()
         {
             // Update the project file list
             std::span<const LAYER_PAIR_INFO> newPairInfos = m_layerPairSettings->GetLayerPairs();
@@ -482,7 +293,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
                     std::vector<LAYER_PAIR_INFO>{ newPairInfos.begin(), newPairInfos.end() };
         });
 
-        m_layerPairSettings->Bind( PCB_CURRENT_LAYER_PAIR_CHANGED, [&]( wxCommandEvent& aEvt )
+        m_layerPairSettings->AddCurrentPairChangedListener( [&]()
         {
             const LAYER_PAIR& layerPair = m_layerPairSettings->GetCurrentLayerPair();
             PCB_SCREEN& screen = *GetScreen();
@@ -497,24 +308,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     GetToolManager()->PostAction( ACTIONS::zoomFitScreen );
 
-    // This is used temporarily to fix a client size issue on GTK that causes zoom to fit
-    // to calculate the wrong zoom size.  See PCB_EDIT_FRAME::onSize().
-    Bind( wxEVT_SIZE, &PCB_EDIT_FRAME::onSize, this );
-
-    Bind( wxEVT_IDLE,
-          [this]( wxIdleEvent& aEvent )
-          {
-              BOX2D viewport = GetCanvas()->GetView()->GetViewport();
-
-              if( viewport != m_lastNetnamesViewport )
-              {
-                  redrawNetnames();
-                  m_lastNetnamesViewport = viewport;
-              }
-
-              // Do not forget to pass the Idle event to other clients:
-              aEvent.Skip();
-          } );
+    setupToolkitEvents();
 
     resolveCanvasType();
 
@@ -546,6 +340,12 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
         m_apiHandlerCommon = std::make_unique<API_HANDLER_COMMON>();
         PgmGui().GetApiServer().RegisterHandler( m_apiHandlerCommon.get() );
     }
+
+    m_pluginAvailabilityListener = PgmGui().GetPluginManager().AddAvailabilityChangedListener(
+            [this]()
+            {
+                onPluginAvailabilityChanged();
+            } );
 #endif
 
     GetCanvas()->SwitchBackend( m_canvasType );
@@ -603,21 +403,11 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     if( ADVANCED_CFG::GetCfg().m_ShowEventCounters )
     {
-        m_eventCounterTimer = new wxTimer( this );
-
-        Bind( wxEVT_TIMER,
-                [&]( wxTimerEvent& aEvent )
+        m_eventCounterTimer = std::make_unique<GUI_TIMER>(
+                [this]()
                 {
-                    GetCanvas()->m_PaintEventCounter->Show();
-                    GetCanvas()->m_PaintEventCounter->Reset();
-
-                    KIGFX::WX_VIEW_CONTROLS* vc =
-                            static_cast<KIGFX::WX_VIEW_CONTROLS*>( GetCanvas()->GetViewControls() );
-                    vc->m_MotionEventCounter->Show();
-                    vc->m_MotionEventCounter->Reset();
-
-                },
-                m_eventCounterTimer->GetId() );
+                    showEventCounters();
+                } );
 
         m_eventCounterTimer->Start( 1000 );
     }
@@ -627,8 +417,6 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_acceptedExts.emplace( wxS( "dxf" ), &PCB_ACTIONS::ddImportGraphics );
     m_acceptedExts.emplace( FILEEXT::SVGFileExtension, &PCB_ACTIONS::ddImportGraphics );
     DragAcceptFiles( true );
-
-    Bind( EDA_EVT_CLOSE_DIALOG_BOOK_REPORTER, &PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs, this );
 }
 
 
@@ -676,16 +464,12 @@ void PCB_EDIT_FRAME::StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItem
     m_crossProbeFlashPhase = 0;
     m_crossProbeFlashing = true;
 
-    if( !m_crossProbeFlashTimer.GetOwner() )
-        m_crossProbeFlashTimer.SetOwner( this );
-
-    bool started = m_crossProbeFlashTimer.Start( 500, wxTIMER_CONTINUOUS ); // 0.5s intervals -> 3s total for 6 phases
-    KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): timer start=%d id=%d",
-                (int) started, m_crossProbeFlashTimer.GetId() );
+    m_crossProbeFlashTimer.Start( 500 ); // 0.5s intervals -> 3s total for 6 phases
+    KI_LOG_TRACE( traceCrossProbeFlash, "StartCrossProbeFlash(PCB): timer started" );
 }
 
 
-void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
+void PCB_EDIT_FRAME::OnCrossProbeFlashTimer()
 {
     KI_LOG_TRACE( traceCrossProbeFlash, "Timer(PCB) fired: phase=%d running=%d items=%zu",
                 m_crossProbeFlashPhase, (int) m_crossProbeFlashing, m_crossProbeFlashItems.size() );
@@ -775,6 +559,9 @@ void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
 
 PCB_EDIT_FRAME::~PCB_EDIT_FRAME()
 {
+    // No notification may reach the frame being deleted
+    releaseToolkitEvents();
+
     // Always ensure that we are unregistered even in a close without graceful doCloseWindow()
     if( GetBoard() )
         Kiway().LocalHistory().UnregisterSaver( GetBoard() );
@@ -786,19 +573,12 @@ PCB_EDIT_FRAME::~PCB_EDIT_FRAME()
         // Stop the timer during destruction early to avoid potential event race conditions (that
         // do happen on windows)
         m_eventCounterTimer->Stop();
-        delete m_eventCounterTimer;
+        m_eventCounterTimer.reset();
     }
 
     // Close modeless dialogs
-    wxWindow* drcDlg = wxWindow::FindWindowByName( DIALOG_DRC_WINDOW_NAME );
-
-    if( drcDlg )
-        drcDlg->Close( true );
-
-    wxWindow* ruleEditorDlg = wxWindow::FindWindowByName( DIALOG_DRC_RULE_EDITOR_WINDOW_NAME );
-
-    if( ruleEditorDlg )
-        ruleEditorDlg->Close( true );
+    TOOLKIT::CloseWindow( TOOLKIT::FindWindowByName( DIALOG_DRC_WINDOW_NAME ) );
+    TOOLKIT::CloseWindow( TOOLKIT::FindWindowByName( DIALOG_DRC_RULE_EDITOR_WINDOW_NAME ) );
 
     // Shutdown all running tools
     if( m_toolManager )
@@ -807,7 +587,7 @@ PCB_EDIT_FRAME::~PCB_EDIT_FRAME()
     if( GetBoard() )
         GetBoard()->RemoveAllListeners();
 
-    // We passed ownership of these to wxAuiManager.
+    // We passed ownership of these to the frame (its panes).
     // delete m_selectionFilterPanel;
     // delete m_appearancePanel;
     // delete m_propertiesPanel;
@@ -1130,13 +910,13 @@ void PCB_EDIT_FRAME::setupUIConditions()
     auto searchPaneCond =
             [this] ( const SELECTION& )
             {
-                return m_auimgr.GetPane( SearchPaneName() ).IsShown();
+                return IsPaneShown( SearchPaneName() );
             };
 
     auto designBlockCond =
             [ this ] (const SELECTION& aSel )
             {
-                return m_auimgr.GetPane( DesignBlocksPaneName() ).IsShown();
+                return IsPaneShown( DesignBlocksPaneName() );
             };
 
     auto highContrastCond =
@@ -1370,12 +1150,12 @@ void PCB_EDIT_FRAME::setupUIConditions()
 }
 
 
-void PCB_EDIT_FRAME::OnQuit( wxCommandEvent& event )
+void PCB_EDIT_FRAME::OnQuit( int aCommandId )
 {
-    if( event.GetId() == wxID_EXIT )
+    if( aCommandId == wxID_EXIT )
         Kiway().OnKiCadExit();
 
-    if( event.GetId() == wxID_CLOSE || Kiface().IsSingle() )
+    if( aCommandId == wxID_CLOSE || Kiface().IsSingle() )
         Close( false );
 }
 
@@ -1417,10 +1197,10 @@ bool PCB_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 
     if( zoneFillerTool->IsBusy() )
     {
-        wxBell();
+        TOOLKIT::Bell();
 
-        if( wxWindow* reporter = dynamic_cast<wxWindow*>( zoneFillerTool->GetProgressReporter() ) )
-            reporter->ShowWithEffect( wxSHOW_EFFECT_EXPAND );
+        if( TOOLKIT_WINDOW* reporter = dynamic_cast<TOOLKIT_WINDOW*>( zoneFillerTool->GetProgressReporter() ) )
+            TOOLKIT::ShowWindow( reporter );
 
         return false;
     }
@@ -1504,23 +1284,15 @@ void PCB_EDIT_FRAME::doCloseWindow()
 
 #ifdef KICAD_IPC_API
     PgmGui().GetApiServer().DeregisterHandler( m_apiHandler.get() );
-    wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
-                      &PCB_EDIT_FRAME::onPluginAvailabilityChanged, this );
+    PgmGui().GetPluginManager().RemoveAvailabilityChangedListener( m_pluginAvailabilityListener );
+    m_pluginAvailabilityListener = -1;
 #endif
 
     // Clean up mode-less dialogs.
-    Unbind( EDA_EVT_CLOSE_DIALOG_BOOK_REPORTER, &PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs,
-            this );
+    releaseToolkitEvents();
 
-    wxWindow* drcDlg = wxWindow::FindWindowByName( DIALOG_DRC_WINDOW_NAME );
-
-    if( drcDlg )
-        drcDlg->Close( true );
-
-    wxWindow* ruleEditorDlg = wxWindow::FindWindowByName( DIALOG_DRC_RULE_EDITOR_WINDOW_NAME );
-
-    if( ruleEditorDlg )
-        ruleEditorDlg->Close( true );
+    TOOLKIT::CloseWindow( TOOLKIT::FindWindowByName( DIALOG_DRC_WINDOW_NAME ) );
+    TOOLKIT::CloseWindow( TOOLKIT::FindWindowByName( DIALOG_DRC_RULE_EDITOR_WINDOW_NAME ) );
 
 
     if( m_findDialog )
@@ -1754,48 +1526,47 @@ void PCB_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
     if( cfg )
     {
-        wxAuiPaneInfo& apperancePane = m_auimgr.GetPane( AppearancePanelName() );
-        cfg->m_AuiPanels.show_layer_manager = apperancePane.IsShown();
+        cfg->m_AuiPanels.show_layer_manager = IsPaneShown( AppearancePanelName() );
 
         if( m_propertiesPanel )
         {
-            cfg->m_AuiPanels.show_properties        = m_propertiesPanel->IsShownOnScreen();
-            cfg->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
+            cfg->m_AuiPanels.show_properties        = TOOLKIT::IsShownOnScreen( m_propertiesPanel );
+            cfg->m_AuiPanels.properties_panel_width = GetPaneSize( PropertiesPaneName() ).x;
             cfg->m_AuiPanels.properties_splitter    = m_propertiesPanel->SplitterProportion();
         }
 
         // ensure m_ShowSearch is up to date (the pane can be closed)
-        wxAuiPaneInfo& searchPaneInfo = m_auimgr.GetPane( SearchPaneName() );
-        m_ShowSearch = searchPaneInfo.IsShown();
+        m_ShowSearch = IsPaneShown( SearchPaneName() );
         cfg->m_AuiPanels.show_search = m_ShowSearch;
-        cfg->m_AuiPanels.search_panel_height = m_searchPane->GetSize().y;
-        cfg->m_AuiPanels.search_panel_width = m_searchPane->GetSize().x;
-        cfg->m_AuiPanels.search_panel_dock_direction = searchPaneInfo.dock_direction;
+        cfg->m_AuiPanels.search_panel_height = GetPaneSize( SearchPaneName() ).y;
+        cfg->m_AuiPanels.search_panel_width = GetPaneSize( SearchPaneName() ).x;
+        cfg->m_AuiPanels.search_panel_dock_direction = GetPaneDockDirection( SearchPaneName() );
 
         if( m_netInspectorPanel )
         {
-            wxAuiPaneInfo& netInspectorhPaneInfo = m_auimgr.GetPane( NetInspectorPanelName() );
-            m_ShowNetInspector = netInspectorhPaneInfo.IsShown();
+            m_ShowNetInspector = IsPaneShown( NetInspectorPanelName() );
             cfg->m_AuiPanels.show_net_inspector = m_ShowNetInspector;
         }
 
         if( m_appearancePanel )
         {
-            cfg->m_AuiPanels.right_panel_width               = m_appearancePanel->GetSize().x;
+            cfg->m_AuiPanels.right_panel_width               = GetPaneSize( AppearancePanelName() ).x;
             cfg->m_AuiPanels.appearance_panel_tab            = m_appearancePanel->GetTabIndex();
             cfg->m_AuiPanels.appearance_expand_layer_display = m_appearancePanel->IsLayerOptionsExpanded();
             cfg->m_AuiPanels.appearance_expand_net_display   = m_appearancePanel->IsNetOptionsExpanded();
         }
 
-        wxAuiPaneInfo& designBlocksPane = m_auimgr.GetPane( DesignBlocksPaneName() );
-        cfg->m_AuiPanels.design_blocks_show = designBlocksPane.IsShown();
+        cfg->m_AuiPanels.design_blocks_show = IsPaneShown( DesignBlocksPaneName() );
 
-        if( designBlocksPane.IsDocked() )
-            cfg->m_AuiPanels.design_blocks_panel_docked_width = m_designBlocksPane->GetSize().x;
+        if( !IsPaneFloating( DesignBlocksPaneName() ) )
+        {
+            cfg->m_AuiPanels.design_blocks_panel_docked_width = GetPaneSize( DesignBlocksPaneName() ).x;
+        }
         else
         {
-            cfg->m_AuiPanels.design_blocks_panel_float_height = designBlocksPane.floating_size.y;
-            cfg->m_AuiPanels.design_blocks_panel_float_width = designBlocksPane.floating_size.x;
+            wxSize floatingSize = GetPaneFloatingSize( DesignBlocksPaneName() );
+            cfg->m_AuiPanels.design_blocks_panel_float_height = floatingSize.y;
+            cfg->m_AuiPanels.design_blocks_panel_float_width = floatingSize.x;
         }
 
         m_designBlocksPane->SaveSettings();
@@ -1933,11 +1704,9 @@ void PCB_EDIT_FRAME::OnBoardLoaded()
                                                        unresolved ),
                                              unresolved );
 
-            wxHyperlinkCtrl* link = new wxHyperlinkCtrl( m_loadNoticeInfoBar, wxID_ANY,
-                                                         _( "Show options" ), wxEmptyString );
-
-            link->Bind( wxEVT_COMMAND_HYPERLINK, std::function<void( wxHyperlinkEvent& )>(
-                    [this]( wxHyperlinkEvent& )
+            m_loadNoticeInfoBar->RemoveAllButtons();
+            m_loadNoticeInfoBar->AddButton( _( "Show options" ),
+                    [this]()
                     {
                         DIALOG_MIGRATE_3D_MODELS dlg( this );
                         dlg.ShowModal();
@@ -1946,10 +1715,7 @@ void PCB_EDIT_FRAME::OnBoardLoaded()
                         // otherwise leave it so the user can try again.
                         if( DIALOG_MIGRATE_3D_MODELS::CountUnresolvedWrlReferences( this ) == 0 )
                             m_loadNoticeInfoBar->Dismiss();
-                    } ) );
-
-            m_loadNoticeInfoBar->RemoveAllButtons();
-            m_loadNoticeInfoBar->AddButton( link );
+                    } );
             m_loadNoticeInfoBar->AddCloseButton();
             m_loadNoticeInfoBar->ShowMessageFor( msg, 10000, wxICON_INFORMATION );
         }
@@ -2041,11 +1807,11 @@ void PCB_EDIT_FRAME::ShowChangedLanguage()
     // call my base class
     PCB_BASE_EDIT_FRAME::ShowChangedLanguage();
 
-    m_auimgr.GetPane( m_appearancePanel ).Caption( _( "Appearance" ) );
-    m_auimgr.GetPane( m_selectionFilterPanel ).Caption( _( "Selection Filter" ) );
-    m_auimgr.GetPane( m_propertiesPanel ).Caption( _( "Properties" ) );
-    m_auimgr.GetPane( m_netInspectorPanel ).Caption( _( "Net Inspector" ) );
-    m_auimgr.Update();
+    SetPaneCaption( AppearancePanelName(), _( "Appearance" ) );
+    SetPaneCaption( wxS( "SelectionFilter" ), _( "Selection Filter" ) );
+    SetPaneCaption( PropertiesPaneName(), _( "Properties" ) );
+    SetPaneCaption( NetInspectorPanelName(), _( "Net Inspector" ) );
+    UpdatePanes();
 
     UpdateTitle();
 }
@@ -2270,7 +2036,7 @@ int PCB_EDIT_FRAME::TestStandalone()
 
     if( !frame->IsShownOnScreen() )
     {
-        wxEventBlocker blocker( this );
+        EVENT_BLOCKER blocker( this );
         wxFileName fn( Prj().GetProjectPath(), Prj().GetProjectName(),
                        FILEEXT::KiCadSchematicFileExtension );
 
@@ -3092,17 +2858,12 @@ void PCB_EDIT_FRAME::CommonSettingsChanged( int aFlags )
     }
     catch( PARSE_ERROR& )
     {
-        wxHyperlinkCtrl* button = new wxHyperlinkCtrl( infobar, wxID_ANY, _( "Edit design rules" ),
-                                                       wxEmptyString );
-
-        button->Bind( wxEVT_COMMAND_HYPERLINK, std::function<void( wxHyperlinkEvent& aEvent )>(
-                [&]( wxHyperlinkEvent& aEvent )
+        infobar->RemoveAllButtons();
+        infobar->AddButton( _( "Edit design rules" ),
+                [this]()
                 {
                     ShowBoardSetupDialog( _( "Custom Rules" ) );
-                } ) );
-
-        infobar->RemoveAllButtons();
-        infobar->AddButton( button );
+                } );
         infobar->AddCloseButton();
         infobar->ShowMessage( _( "Could not compile custom design rules." ), wxICON_ERROR,
                               WX_INFOBAR::MESSAGE_TYPE::DRC_RULES_ERROR );
@@ -3220,34 +2981,25 @@ wxString PCB_EDIT_FRAME::GetCurrentFileName() const
 
 bool PCB_EDIT_FRAME::LayerManagerShown()
 {
-    return m_auimgr.GetPane( wxS( "LayersManager" ) ).IsShown();
+    return IsPaneShown( AppearancePanelName() );
 }
 
 
 bool PCB_EDIT_FRAME::PropertiesShown()
 {
-    return m_auimgr.GetPane( PropertiesPaneName() ).IsShown();
+    return IsPaneShown( PropertiesPaneName() );
 }
 
 
 bool PCB_EDIT_FRAME::NetInspectorShown()
 {
-    return m_auimgr.GetPane( NetInspectorPanelName() ).IsShown();
+    return IsPaneShown( NetInspectorPanelName() );
 }
 
 
-void PCB_EDIT_FRAME::onSize( wxSizeEvent& aEvent )
+void PCB_EDIT_FRAME::onSize()
 {
-    if( IsShownOnScreen() )
-    {
-        // We only need this until the frame is done resizing and the final client size is
-        // established.
-        Unbind( wxEVT_SIZE, &PCB_EDIT_FRAME::onSize, this );
-        GetToolManager()->RunAction( ACTIONS::zoomFitScreen );
-    }
-
-    // Skip() is called in the base class.
-    EDA_DRAW_FRAME::OnSize( aEvent );
+    GetToolManager()->RunAction( ACTIONS::zoomFitScreen );
 }
 
 
@@ -3294,35 +3046,33 @@ DIALOG_BOOK_REPORTER* PCB_EDIT_FRAME::GetFootprintDiffDialog()
         m_footprintDiffDlg = new DIALOG_BOOK_REPORTER( this, FOOTPRINT_DIFF_DIALOG_NAME,
                                                        _( "Compare Footprint with Library" ) );
 
-        m_footprintDiffDlg->m_sdbSizerApply->SetLabel( _( "Update Footprint from Library..." ) );
-        m_footprintDiffDlg->m_sdbSizerApply->PostSizeEventToParent();
-        m_footprintDiffDlg->m_sdbSizerApply->Show();
+        m_footprintDiffDlg->ShowApplyButton( _( "Update Footprint from Library..." ) );
     }
 
     return m_footprintDiffDlg;
 }
 
 
-void PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent )
+void PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs( const wxString& aDialogName, int aId )
 {
-    if( m_inspectDrcErrorDlg && aEvent.GetString() == INSPECT_DRC_ERROR_DIALOG_NAME )
+    if( m_inspectDrcErrorDlg && aDialogName == INSPECT_DRC_ERROR_DIALOG_NAME )
     {
         m_inspectDrcErrorDlg->Destroy();
         m_inspectDrcErrorDlg = nullptr;
     }
-    else if( m_inspectClearanceDlg && aEvent.GetString() == INSPECT_CLEARANCE_DIALOG_NAME )
+    else if( m_inspectClearanceDlg && aDialogName == INSPECT_CLEARANCE_DIALOG_NAME )
     {
         m_inspectClearanceDlg->Destroy();
         m_inspectClearanceDlg = nullptr;
     }
-    else if( m_inspectConstraintsDlg && aEvent.GetString() == INSPECT_CONSTRAINTS_DIALOG_NAME )
+    else if( m_inspectConstraintsDlg && aDialogName == INSPECT_CONSTRAINTS_DIALOG_NAME )
     {
         m_inspectConstraintsDlg->Destroy();
         m_inspectConstraintsDlg = nullptr;
     }
-    else if( m_footprintDiffDlg && aEvent.GetString() == FOOTPRINT_DIFF_DIALOG_NAME )
+    else if( m_footprintDiffDlg && aDialogName == FOOTPRINT_DIFF_DIALOG_NAME )
     {
-        if( aEvent.GetId() == wxID_APPLY )
+        if( aId == wxID_APPLY )
         {
             KIID fpUUID = m_footprintDiffDlg->GetUserItemID();
 
@@ -3348,11 +3098,10 @@ void PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent 
 
 
 #ifdef KICAD_IPC_API
-void PCB_EDIT_FRAME::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
+void PCB_EDIT_FRAME::onPluginAvailabilityChanged()
 {
-    KI_LOG_TRACE( traceApi, "PCB frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
+    KI_LOG_TRACE( traceApi, "PCB frame: plugin availability changed" );
     RecreateToolbars();
-    aEvt.Skip();
 }
 #endif
 

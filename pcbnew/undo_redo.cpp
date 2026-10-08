@@ -162,7 +162,7 @@ void PCB_BASE_EDIT_FRAME::AppendCopyToUndoList( const PICKED_ITEMS_LIST& aItemsL
 }
 
 
-void PCB_BASE_EDIT_FRAME::RestoreCopyFromUndoList( wxCommandEvent& aEvent )
+void PCB_BASE_EDIT_FRAME::RestoreCopyFromUndoList()
 {
     if( UndoRedoBlocked() )
         return;
@@ -198,7 +198,7 @@ void PCB_BASE_EDIT_FRAME::RestoreCopyFromUndoList( wxCommandEvent& aEvent )
 }
 
 
-void PCB_BASE_EDIT_FRAME::RestoreCopyFromRedoList( wxCommandEvent& aEvent )
+void PCB_BASE_EDIT_FRAME::RestoreCopyFromRedoList()
 {
     if( UndoRedoBlocked() )
         return;

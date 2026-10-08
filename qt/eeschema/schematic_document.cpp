@@ -375,8 +375,8 @@ bool SCHEMATIC_DOCUMENT::Open( const QString& aFileName, QString& aError )
     fillSheets();
     showSheet( 0 );
 
-    emit statusMessage( tr( "%1: %2 sheets" ).arg( aFileName ).arg( m_sheets->topLevelItemCount() ) );
-    emit stateChanged();
+    Q_EMIT statusMessage( tr( "%1: %2 sheets" ).arg( aFileName ).arg( m_sheets->topLevelItemCount() ) );
+    Q_EMIT stateChanged();
     return true;
 }
 
@@ -420,8 +420,8 @@ bool SCHEMATIC_DOCUMENT::Save( QString& aError )
     }
 
     m_undo->SetSaved();
-    emit statusMessage( tr( "%1 saved." ).arg( m_fileName ) );
-    emit stateChanged();
+    Q_EMIT statusMessage( tr( "%1 saved." ).arg( m_fileName ) );
+    Q_EMIT stateChanged();
     return true;
 }
 
@@ -562,7 +562,7 @@ void SCHEMATIC_DOCUMENT::ZoomToFit()
 
 void SCHEMATIC_DOCUMENT::onCursorMoved( double aX, double aY )
 {
-    emit cursorPositionChanged( QStringLiteral( "X %1  Y %2 mm" )
+    Q_EMIT cursorPositionChanged( QStringLiteral( "X %1  Y %2 mm" )
                                         .arg( schIUScale.IUTomm( aX ), 0, 'f', 2 )
                                         .arg( schIUScale.IUTomm( aY ), 0, 'f', 2 ) );
 }
@@ -706,7 +706,7 @@ void SCHEMATIC_DOCUMENT::onPropertyEdited( const void* aKey, const QString& aVal
         if( !SetPropertyValue( item, aKey, aValue, schIUScale, EDA_UNITS::MM, error ) )
         {
             commit->Revert();
-            emit statusMessage( error );
+            Q_EMIT statusMessage( error );
             selectionChanged();     // the values as they are
             return;
         }
@@ -716,7 +716,7 @@ void SCHEMATIC_DOCUMENT::onPropertyEdited( const void* aKey, const QString& aVal
 
     selectionChanged();
     m_canvas->update();
-    emit stateChanged();
+    Q_EMIT stateChanged();
 }
 
 
@@ -766,7 +766,7 @@ std::vector<SCH_ITEM*> SCHEMATIC_DOCUMENT::changeableItems( const std::vector<ED
     }
 
     if( items.size() < aItems.size() )
-        emit statusMessage( tr( "Locked items are not changed." ) );
+        Q_EMIT statusMessage( tr( "Locked items are not changed." ) );
 
     return items;
 }
@@ -1122,7 +1122,7 @@ bool SCHEMATIC_DOCUMENT::beginPaste( const QString& aText, const VECTOR2I& aPosi
     }
 
     if( sheetsDropped )
-        emit statusMessage( tr( "The sheets of the clipboard are not pasted." ) );
+        Q_EMIT statusMessage( tr( "The sheets of the clipboard are not pasted." ) );
 
     if( pasted.empty() )
         return false;

@@ -563,13 +563,13 @@ public:
                               onRightGridRowSelected( aEvent.GetRow() );
                           } );
 
-        m_layerPairSettings.Bind( PCB_CURRENT_LAYER_PAIR_CHANGED,
-                                  [this]( wxCommandEvent& aEvent )
-                                  {
-                                      const LAYER_PAIR& newPair = m_layerPairSettings.GetCurrentLayerPair();
-                                      setCurrentSelection( rowForLayer( newPair.GetLayerA() ),
-                                                           rowForLayer( newPair.GetLayerB() ) );
-                                  } );
+        m_layerPairSettings.AddCurrentPairChangedListener(
+                [this]()
+                {
+                    const LAYER_PAIR& newPair = m_layerPairSettings.GetCurrentLayerPair();
+                    setCurrentSelection( rowForLayer( newPair.GetLayerA() ),
+                                         rowForLayer( newPair.GetLayerB() ) );
+                } );
     }
 
 private:

@@ -60,20 +60,10 @@ void EDA_3D_VIEWER_FRAME::setupWindow( EDA_3D_VIEWER_SETTINGS* aCfg )
 
     // Create the status line: the fields of EDA_3D_VIEWER_STATUSBAR, as the wxWidgets build
     // (the first one is stretched)
-    QStatusBar*  bar = statusBar();
-    QFontMetrics metrics( bar->font() );
     static const int status_dims[5] = { -1, 170, 130, 130, 130 };
 
-    for( int width : status_dims )
-    {
-        QLabel* field = new QLabel( bar );
-
-        if( width > 0 )
-            field->setMinimumWidth( width );
-
-        bar->addPermanentWidget( field, width < 0 ? 1 : 0 );
-        m_statusFields.push_back( field );
-    }
+    CreateStatusBar( 5 );
+    SetStatusWidths( 5, status_dims );
 
     // The main area: the infobar above the canvas
     QWidget*     central = new QWidget( this );

@@ -64,7 +64,7 @@ public:
     /// Show these properties, with a title (the type of the item); no rows for no selection.
     void ShowProperties( const QString& aTitle, const std::vector<PROPERTY_ROW>& aRows );
 
-signals:
+Q_SIGNALS:
     /**
      * The user changed a value.
      * @param aKey the property (PROPERTY_ROW::m_Key).

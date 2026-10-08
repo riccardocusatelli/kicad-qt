@@ -44,10 +44,12 @@
 #include <QMainWindow>
 
 #include <wx/datetime.h>
+#include <wx/filename.h>
 #include <wx/gdicmn.h>
 #include <wx/toplevel.h>         // the styles of the frames (kiwx)
 #include <layer_ids.h>
 #include <frame_type.h>
+#include <frame_panes.h>
 #include <hotkeys_basic.h>
 #include <kiway_holder.h>
 #include <tool/action_manager.h>     // ACTION_CONDITIONS
@@ -72,8 +74,11 @@ class ACTION_TOOLBAR;
 class ACTION_TOOLBAR_CONTROL;
 class TOOLBAR_SETTINGS;
 class QLabel;
+class QDockWidget;
+class KISTATUSBAR;
 class wxFileName;
 class EDA_ITEM;
+enum class BITMAPS : unsigned int;
 class EDA_DRAW_PANEL_GAL;
 class BASE_SCREEN;
 class PAGE_INFO;
@@ -146,6 +151,12 @@ public:
     int AddUnitsChangedListener( std::function<void( EDA_BASE_FRAME* )> aListener );
 
     void RemoveUnitsChangedListener( int aId );
+
+    /**
+     * Call a function each time the language of the GUI changes (as the language changed
+     * event of the wxWidgets build), after the frame was updated, as long as @a aOwner lives.
+     */
+    void AddLanguageChangedListener( QObject* aOwner, std::function<void()> aListener );
 
     virtual void ToggleUserUnits() { }
 
@@ -270,6 +281,21 @@ public:
     /// Show a text in a field of the status bar.
     virtual void SetStatusText( const wxString& aText, int aField = 0 );
 
+    /// Create the status bar of the frame with @a aNumber fields (OnCreateStatusBar()).
+    KISTATUSBAR* CreateStatusBar( int aNumber );
+
+    /// @return the status bar (nullptr if none).
+    KISTATUSBAR* GetStatusBar() const { return m_statusBar; }
+
+    /**
+     * Set the widths of the fields of the status bar: a positive width is fixed, a negative one
+     * is a stretch factor.
+     */
+    void SetStatusWidths( int aSize, const int* aWidths );
+
+    /// Create the status bar of CreateStatusBar() (a status bar with the fields only).
+    virtual KISTATUSBAR* OnCreateStatusBar( int aNumber );
+
     /**
      * Close the frame.
      *
@@ -277,6 +303,60 @@ public:
      * @return true if it was closed.
      */
     bool Close( bool aForce = false );
+
+    /// @return true if the frame is minimized.
+    bool IsIconized() const { return isMinimized(); }
+
+    /// Minimize the frame (or restore it, with @a aIconize false).
+    void Iconize( bool aIconize = true );
+
+    /// Bring the frame above the other windows, and activate it.
+    void Raise();
+
+    /// Show (or hide) the frame. @return true if its visibility changed.
+    bool Show( bool aShow = true );
+
+    /// Give the focus of the keyboard to the frame.
+    void SetFocus() { setFocus(); }
+
+    /// @return true if the frame accepts the input (it is not disabled by a modal dialog).
+    bool IsEnabled() const { return isEnabled(); }
+
+    /// Lay out again the panes of the frame (after they were shown, hidden or changed).
+    void UpdatePanes();
+
+    /**
+     * The panes of the frame (the panels docked around the canvas), by name.
+     *
+     * Changing them (showing, hiding, docking) takes effect with UpdatePanes().
+     */
+    bool IsPaneShown( const wxString& aName ) const;
+    void ShowPane( const wxString& aName, bool aShow = true );
+    bool IsPaneFloating( const wxString& aName ) const;
+    void SetPaneCaption( const wxString& aName, const wxString& aCaption );
+
+    /// The side the pane is docked to (a #PANE_DOCK value, as stored in the settings).
+    int  GetPaneDockDirection( const wxString& aName ) const;
+    void SetPaneDockDirection( const wxString& aName, int aDirection );
+
+    wxSize GetPaneFloatingSize( const wxString& aName ) const;
+    void   SetPaneFloatingSize( const wxString& aName, const wxSize& aSize );
+
+    /**
+     * Give a docked pane a size (-1 keeps the size in that direction), and lay out the panes.
+     */
+    void SetPaneSize( const wxString& aName, int aWidth, int aHeight );
+
+    /// The size of the panel of a pane.
+    wxSize GetPaneSize( const wxString& aName ) const;
+
+    /**
+     * Give the frame its icons (in the sizes the system needs).
+     *
+     * @param aIcons are the bitmaps of the icons, with their height tag (-1 for the size of
+     *               the bitmap).
+     */
+    void SetFrameIcons( const std::vector<std::pair<BITMAPS, int>>& aIcons );
 
     /**
      * Run a function later, from the event loop (after the event being handled).
@@ -589,6 +669,18 @@ public:
     virtual bool CanAcceptApiCommands() { return isEnabled(); }
 
 protected:
+    /**
+     * Dock a panel to a side of the frame, as the pane @a aName (hidden when it is not a
+     * pane shown by default).
+     *
+     * @return the dock widget of the pane.
+     */
+    QDockWidget* addPane( QWidget* aPanel, const wxString& aName, const wxString& aCaption,
+                          PANE_DOCK aDock, bool aShow = true );
+
+    /// @return the dock widget of the pane @a aName, or nullptr.
+    QDockWidget* findPane( const wxString& aName ) const;
+
     /// Fill the menu bar (the frames of the editors make their menus).
     virtual void doReCreateMenuBar() {}
 
@@ -673,6 +765,30 @@ protected:
     /// The theme of the system or the state of the window (iconized) changed.
     void changeEvent( QEvent* aEvent ) override;
 
+    /// Accept the drops of files (the files with an extension of m_acceptedExts).
+    void DragAcceptFiles( bool aAccept ) { setAcceptDrops( aAccept ); }
+
+    void dragEnterEvent( QDragEnterEvent* aEvent ) override;
+    void dropEvent( QDropEvent* aEvent ) override;
+
+    /**
+     * Files were dropped on the window: store the paths of the accepted ones and call
+     * DoWithAcceptedFiles().
+     */
+    void handleDroppedFiles( const std::vector<wxString>& aFiles );
+
+    /**
+     * Execute action on accepted dropped file.
+     *
+     * Called in handleDroppedFiles() and should be populated with the action to execute in
+     * inherited classes.
+     */
+    virtual void            DoWithAcceptedFiles();
+    std::vector<wxFileName> m_AcceptedFiles;
+
+    /// Associate file extensions with action to execute.
+    std::map<const wxString, TOOL_ACTION*> m_acceptedExts;
+
 private:
     void commonInit( FRAME_T aFrameType );
 
@@ -686,7 +802,7 @@ protected:
     wxString                m_aboutTitle;        // Name of program displayed in About.
 
     WX_INFOBAR*                m_infoBar;           // Infobar for the frame
-    std::vector<QLabel*>       m_statusFields;      // The fields of the status bar, if any
+    KISTATUSBAR*               m_statusBar = nullptr;  // The status bar, if any
     APPEARANCE_CONTROLS_3D*    m_appearancePanel = nullptr;
 
     wxString                m_configName;        // Prefix used to identify some params (frame
@@ -730,6 +846,9 @@ protected:
     ///< The functions called when the user units change
     std::map<int, std::function<void( EDA_BASE_FRAME* )>> m_unitsChangedListeners;
     int                                                   m_nextUnitsChangedListener = 0;
+
+    ///< The functions called when the language changes, by owner
+    std::multimap<QObject*, std::function<void()>>        m_languageChangedListeners;
 
     ///< Set by #NonUserClose() to indicate that the user did not request the current close.
     bool            m_isClosing;

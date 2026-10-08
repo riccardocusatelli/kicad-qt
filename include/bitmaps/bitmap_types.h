@@ -26,6 +26,8 @@
 #ifndef BITMAP_TYPES_H_
 #define BITMAP_TYPES_H_
 
+#include <vector>
+
 #include <kicommon.h>
 
 //FIXME: cannot include only this file in wxWidgets 2.9.3
@@ -70,6 +72,12 @@ KICOMMON_API wxBitmapBundle KiBitmapBundleDef( BITMAPS aBitmap, int aDefHeight )
 KICOMMON_API wxBitmapBundle KiDisabledBitmapBundle( BITMAPS aBitmap, int aMinHeight = -1 );
 
 KICOMMON_API wxBitmapBundle KiDisabledBitmapBundleDef( BITMAPS aBitmap, int aDefHeight );
+
+/**
+ * A bitmap bundle with the images of PNG files (one image for each size of the icon); the files
+ * that can't be read are skipped.
+ */
+KICOMMON_API wxBitmapBundle KiBitmapBundleFromFiles( const std::vector<wxString>& aPngFiles );
 
 /**
  * Wipes out the scaled bitmap cache so that the icon theme can be changed.

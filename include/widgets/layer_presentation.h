@@ -26,15 +26,16 @@
 
 #include <gal/color4d.h>
 #include <layer_ids.h>
-
-class wxBitmap;
-class wxBitmapBundle;
+#include <toolkit/toolkit_types.h>
 
 using KIGFX::COLOR4D;
 
 /**
  * Base class for an object that can provide information about
  * presenting layers (colours, etc).
+ *
+ * The drawing of the swatches is done with the GUI toolkit (layer_presentation.cpp with
+ * wxWidgets, qt/common/widgets/layer_presentation_qt.cpp with Qt).
  */
 class LAYER_PRESENTATION
 {
@@ -48,26 +49,28 @@ public:
     virtual wxString getLayerName( int aLayer ) const = 0;
 
     // Fill the layer bitmap aLayerbmp with the layer color
-    static void DrawColorSwatch( wxBitmap& aLayerbmp, const COLOR4D& aBackground,
+    static void DrawColorSwatch( TOOLKIT_BITMAP& aLayerbmp, const COLOR4D& aBackground,
                                  const COLOR4D& aColor );
 
     /**
      * Fill the layer bitmap aLayerbmp with the layer color
      * for the layer ID.
      */
-    void DrawColorSwatch( wxBitmap& aLayerbmp, int aLayer ) const;
+    void DrawColorSwatch( TOOLKIT_BITMAP& aLayerbmp, int aLayer ) const;
 
     /**
      * Create a layer pair "side-by-side swatch" icon
      */
-    static wxBitmapBundle CreateLayerPairIcon( const COLOR4D& aTopColor, const COLOR4D& aBottomColor,
-                                               int aDefSize = 24 );
+    static TOOLKIT_BITMAP_BUNDLE CreateLayerPairIcon( const COLOR4D& aTopColor,
+                                                      const COLOR4D& aBottomColor,
+                                                      int aDefSize = 24 );
 
     /**
      * Create a layer pair "side-by-side swatch" icon for the given
      * layer pair with the style of this presentation.
      */
-    wxBitmapBundle CreateLayerPairIcon( int aLeftLayer, int aRightLayer, int aDefSize = 24 ) const;
+    TOOLKIT_BITMAP_BUNDLE CreateLayerPairIcon( int aLeftLayer, int aRightLayer,
+                                               int aDefSize = 24 ) const;
 };
 
 #endif // LAYER_PRESENTATION_H

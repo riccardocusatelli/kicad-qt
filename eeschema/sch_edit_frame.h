@@ -960,7 +960,7 @@ protected:
     void updateSelectionFilterVisbility() override;
 
 #ifdef KICAD_IPC_API
-    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+    void onPluginAvailabilityChanged();
 #endif
 
 private:
@@ -1107,6 +1107,9 @@ private:
 
 #ifdef KICAD_IPC_API
     std::unique_ptr<API_HANDLER_SCH> m_apiHandler;
+
+    /// The id of the listener of the plugin availability (-1 for none)
+    int m_pluginAvailabilityListener = -1;
 #endif
 };
 

@@ -63,7 +63,7 @@
 using namespace std::placeholders;
 
 
-PCB_DRAW_PANEL_GAL::PCB_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWindowId,
+PCB_DRAW_PANEL_GAL::PCB_DRAW_PANEL_GAL( TOOLKIT_WINDOW* aParentWindow, wxWindowID aWindowId,
                                         const wxPoint& aPosition, const wxSize& aSize,
                                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType ) :
         EDA_DRAW_PANEL_GAL( aParentWindow, aWindowId, aPosition, aSize, aOptions, aGalType )
@@ -219,7 +219,7 @@ void PCB_DRAW_PANEL_GAL::OnShow()
     }
     catch( const std::runtime_error& e )
     {
-        DisplayError( GetParent(), e.what() );
+        DisplayError( m_parent, e.what() );
 
         // Use the fallback if we have one
         if( GAL_FALLBACK != m_backend )

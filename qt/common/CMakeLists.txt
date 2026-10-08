@@ -41,8 +41,15 @@ add_library( kiqt SHARED
     toolkit/file_watcher_qt.cpp
     toolkit/gui_services_qt.cpp
     toolkit/gui_timer_qt.cpp
+    toolkit/event_blocker_qt.cpp
+    toolkit/choice_qt.cpp
+    toolkit/process_qt.cpp
+    toolkit/single_instance_qt.cpp
     toolkit/qt_keys.cpp
+    widgets/bitmap_button.cpp
     widgets/bitmap_toggle.cpp
+    widgets/html_window.cpp
+    widgets/wx_html_report_box.cpp
     widgets/msgpanel.cpp
     widgets/spin_button.cpp
     widgets/wx_infobar.cpp
@@ -165,6 +172,7 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_view_switcher_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_color_picker_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/widgets/search_pane_base.fbp
     )
 
 add_library( kiqt_common STATIC
@@ -180,7 +188,14 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/preview_items/simple_overlay_item.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/msgpanel_item.cpp
 
+    background_jobs_list_qt.cpp
     dialog_shim.cpp
+    eda_dde_qt.cpp
+    notifications_list_qt.cpp
+    pgm_gui_qt.cpp
+    ${CMAKE_SOURCE_DIR}/common/background_jobs_monitor.cpp
+    ${CMAKE_SOURCE_DIR}/common/notifications_manager.cpp
+    ${CMAKE_SOURCE_DIR}/common/pgm_gui.cpp
     dialogs/dialog_color_picker.cpp
     dialogs/dialog_unit_entry.cpp
     dialogs/eda_list_dialog.cpp
@@ -196,6 +211,10 @@ add_library( kiqt_common STATIC
     tool/tool_dispatcher.cpp
     view/qt_view_controls.cpp
     widgets/color_swatch.cpp
+    widgets/kistatusbar.cpp
+    widgets/layer_box_selector.cpp
+    widgets/layer_presentation_qt.cpp
+    widgets/search_pane.cpp
     widgets/std_bitmap_button.cpp
     widgets/text_ctrl_eval.cpp
     widgets/unit_binder.cpp
@@ -203,6 +222,9 @@ add_library( kiqt_common STATIC
     )
 
 set_target_properties( kiqt_common PROPERTIES POSITION_INDEPENDENT_CODE ON )
+
+# The code of KiCad includes Python.h, whose structures have members named as the keywords of Qt
+target_compile_definitions( kiqt_common PRIVATE QT_NO_KEYWORDS )
 
 target_include_directories( kiqt_common PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -213,4 +235,27 @@ target_link_libraries( kiqt_common
     PUBLIC
         kiqt
         libcontext
+        Qt6::Network
     )
+
+# Python scripting and the IPC API of KiCad: the interpreter, the server of the requests and the
+# plugins (in kicommon in the wxWidgets build), with the program services of PGM_GUI
+target_sources( kiqt_common PRIVATE
+    ${CMAKE_SOURCE_DIR}/scripting/python_scripting.cpp
+    )
+
+target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/scripting )
+target_include_directories( kiqt_common SYSTEM PUBLIC ${PYTHON_INCLUDE_DIRS} )
+target_link_libraries( kiqt_common PUBLIC ${PYTHON_LIBRARIES} pybind11::embed )
+
+if( KICAD_IPC_API )
+    target_sources( kiqt_common PRIVATE
+        ${CMAKE_SOURCE_DIR}/common/api/api_handler.cpp
+        ${CMAKE_SOURCE_DIR}/common/api/api_plugin.cpp
+        ${CMAKE_SOURCE_DIR}/common/api/api_plugin_manager.cpp
+        ${CMAKE_SOURCE_DIR}/common/api/api_server.cpp
+        ${CMAKE_SOURCE_DIR}/scripting/python_manager.cpp
+        )
+
+    target_link_libraries( kiqt_common PUBLIC kinng kiapi )
+endif()

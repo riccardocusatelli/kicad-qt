@@ -24,26 +24,22 @@
 #ifndef LAYER_PAIRS_H
 #define LAYER_PAIRS_H
 
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
 #include <vector>
 #include <optional>
 
-#include <wx/event.h>
-
 #include <project/board_project_settings.h>
 
 
 class wxBitmap;
 
-wxDECLARE_EVENT( PCB_LAYER_PAIR_PRESETS_CHANGED, wxCommandEvent );
-wxDECLARE_EVENT( PCB_CURRENT_LAYER_PAIR_CHANGED, wxCommandEvent );
-
 /**
  * Management class for layer pairs in a PCB
  */
-class LAYER_PAIR_SETTINGS: public wxEvtHandler
+class LAYER_PAIR_SETTINGS
 {
 public:
     /**
@@ -91,7 +87,16 @@ public:
      */
     void SetCurrentLayerPair( const LAYER_PAIR& aPair );
 
+    /// Call @a aListener each time the preset layer pairs change (the listeners are not copied).
+    void AddPresetsChangedListener( std::function<void()> aListener );
+
+    /// Call @a aListener each time the current layer pair changes (the listeners are not copied).
+    void AddCurrentPairChangedListener( std::function<void()> aListener );
+
 private:
+    void notifyPresetsChanged();
+    void notifyCurrentPairChanged();
+
     bool addLayerPairInternal( LAYER_PAIR_INFO aPair );
     bool removeLayerPairInternal( const LAYER_PAIR& aPair );
 
@@ -103,6 +108,9 @@ private:
     std::optional<LAYER_PAIR> m_lastManualPair;
 
     LAYER_PAIR m_currentPair;
+
+    std::vector<std::function<void()>> m_presetsChangedListeners;
+    std::vector<std::function<void()>> m_currentPairChangedListeners;
 };
 
 #endif // LAYER_PAIRS_H

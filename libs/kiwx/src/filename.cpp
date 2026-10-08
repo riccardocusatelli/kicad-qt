@@ -147,6 +147,12 @@ bool wxRmdir( const wxString& aDir, int )
 }
 
 
+int wxChmod( const wxString& aPath, int aMode )
+{
+    return chmod( fsPath( aPath ).c_str(), aMode );
+}
+
+
 bool wxRemoveFile( const wxString& aFile )
 {
     if( unlink( fsPath( aFile ).c_str() ) == 0 )

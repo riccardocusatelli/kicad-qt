@@ -25,7 +25,7 @@
 #define SEARCH_HANDLERS_H
 
 #include <functional>
-#include <widgets/search_pane.h>
+#include <widgets/search_handler.h>
 
 class SCH_ITEM;
 class SCH_EDIT_FRAME;

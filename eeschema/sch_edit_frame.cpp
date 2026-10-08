@@ -225,7 +225,11 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
         GetToolManager()->RunAction( SCH_ACTIONS::angleSnapModeChanged );
 
 #ifdef KICAD_IPC_API
-    wxTheApp->Bind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED, &SCH_EDIT_FRAME::onPluginAvailabilityChanged, this );
+    m_pluginAvailabilityListener = PgmGui().GetPluginManager().AddAvailabilityChangedListener(
+            [this]()
+            {
+                onPluginAvailabilityChanged();
+            } );
 #endif
 
     m_hierarchy = new HIERARCHY_PANE( this );
@@ -1266,7 +1270,8 @@ void SCH_EDIT_FRAME::doCloseWindow()
 
 #ifdef KICAD_IPC_API
     PgmGui().GetApiServer().DeregisterHandler( m_apiHandler.get() );
-    wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED, &SCH_EDIT_FRAME::onPluginAvailabilityChanged, this );
+    PgmGui().GetPluginManager().RemoveAvailabilityChangedListener( m_pluginAvailabilityListener );
+    m_pluginAvailabilityListener = -1;
 #endif
 
     // Close modeless dialogs.  They're trouble when they get destroyed after the frame.
@@ -2387,9 +2392,7 @@ DIALOG_BOOK_REPORTER* SCH_EDIT_FRAME::GetSymbolDiffDialog()
         m_diffSymbolDialog = new DIALOG_BOOK_REPORTER( this, DIFF_SYMBOLS_DIALOG_NAME,
                                                        _( "Compare Symbol with Library" ) );
 
-        m_diffSymbolDialog->m_sdbSizerApply->SetLabel( _( "Update Symbol from Library..." ) );
-        m_diffSymbolDialog->m_sdbSizerApply->PostSizeEventToParent();
-        m_diffSymbolDialog->m_sdbSizerApply->Show();
+        m_diffSymbolDialog->ShowApplyButton( _( "Update Symbol from Library..." ) );
     }
 
     return m_diffSymbolDialog;
@@ -2806,11 +2809,10 @@ void SCH_EDIT_FRAME::updateSelectionFilterVisbility()
 
 
 #ifdef KICAD_IPC_API
-void SCH_EDIT_FRAME::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
+void SCH_EDIT_FRAME::onPluginAvailabilityChanged()
 {
-    KI_LOG_TRACE( traceApi, "SCH frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
+    KI_LOG_TRACE( traceApi, "SCH frame: plugin availability changed" );
     RecreateToolbars();
-    aEvt.Skip();
 }
 #endif
 

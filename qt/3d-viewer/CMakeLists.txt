@@ -72,6 +72,9 @@ add_library( 3d-viewer_qt STATIC
 
 set_target_properties( 3d-viewer_qt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 
+# The code of KiCad includes Python.h, whose structures have members named as the keywords of Qt
+target_compile_definitions( 3d-viewer_qt PRIVATE QT_NO_KEYWORDS )
+
 # Compiled as the 3d-viewer library (its include directories), the Qt headers (and the bases
 # of the panels generated from the wxFormBuilder files) first
 target_include_directories( 3d-viewer_qt BEFORE PRIVATE

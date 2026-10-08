@@ -29,25 +29,6 @@
 class PCB_SELECTION_TOOL;
 struct PCB_SELECTION_FILTER_OPTIONS;
 
-// Forward declare the event type
-class PCB_SELECTION_FILTER_EVENT;
-wxDECLARE_EVENT( EVT_PCB_SELECTION_FILTER_FLASH, PCB_SELECTION_FILTER_EVENT );
-
-class PCB_SELECTION_FILTER_EVENT : public wxCommandEvent
-{
-public:
-    PCB_SELECTION_FILTER_EVENT( const PCB_SELECTION_FILTER_OPTIONS& aOptions = PCB_SELECTION_FILTER_OPTIONS(), int id = 0 ) :
-            wxCommandEvent( EVT_PCB_SELECTION_FILTER_FLASH, id ), m_options( aOptions ) {}
-
-    wxEvent* Clone() const override
-    {
-        return new PCB_SELECTION_FILTER_EVENT( *this );
-    }
-
-    PCB_SELECTION_FILTER_OPTIONS m_options;
-};
-
-
 class PANEL_SELECTION_FILTER : public PANEL_SELECTION_FILTER_BASE
 {
 public:
@@ -56,6 +37,9 @@ public:
     ~PANEL_SELECTION_FILTER();
 
     void SetCheckboxesFromFilter( PCB_SELECTION_FILTER_OPTIONS& aOptions );
+
+    /// Flash the check boxes of the item types of @a aOptions (the types a selection skipped).
+    void Flash( const PCB_SELECTION_FILTER_OPTIONS& aOptions );
 
 protected:
     void OnFilterChanged( wxCommandEvent& aEvent ) override;
@@ -70,7 +54,6 @@ private:
 
     void flashCheckbox( wxCheckBox* aBox );
     void onFlashTimer( wxTimerEvent& aEvent );
-    void OnFlashEvent( PCB_SELECTION_FILTER_EVENT& aEvent );
     void onPanelPaint( wxPaintEvent& aEvent );
 
 private:

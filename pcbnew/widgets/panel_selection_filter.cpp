@@ -27,8 +27,6 @@
 #include <core/ki_assert.h>
 
 
-wxDEFINE_EVENT( EVT_PCB_SELECTION_FILTER_FLASH, PCB_SELECTION_FILTER_EVENT );
-
 PANEL_SELECTION_FILTER::PANEL_SELECTION_FILTER( wxWindow* aParent ) :
         PANEL_SELECTION_FILTER_BASE( aParent ),
         m_frame( dynamic_cast<PCB_BASE_EDIT_FRAME*>( aParent ) ),
@@ -78,7 +76,6 @@ PANEL_SELECTION_FILTER::PANEL_SELECTION_FILTER( wxWindow* aParent ) :
     m_defaultBg = GetBackgroundColour();
     m_flashTimer.SetOwner( this );
     Bind( wxEVT_TIMER, &PANEL_SELECTION_FILTER::onFlashTimer, this );
-    aParent->Bind( EVT_PCB_SELECTION_FILTER_FLASH, &PANEL_SELECTION_FILTER::OnFlashEvent, this );
 }
 
 
@@ -93,7 +90,6 @@ PANEL_SELECTION_FILTER::~PANEL_SELECTION_FILTER()
     m_flashCounters.clear();
 
     m_frame->Unbind( EDA_LANG_CHANGED, &PANEL_SELECTION_FILTER::OnLanguageChanged, this );
-    m_frame->Unbind( EVT_PCB_SELECTION_FILTER_FLASH, &PANEL_SELECTION_FILTER::OnFlashEvent, this );
 }
 
 
@@ -322,10 +318,8 @@ void PANEL_SELECTION_FILTER::onPanelPaint( wxPaintEvent& aEvent )
 }
 
 
-void PANEL_SELECTION_FILTER::OnFlashEvent( PCB_SELECTION_FILTER_EVENT& aEvent )
+void PANEL_SELECTION_FILTER::Flash( const PCB_SELECTION_FILTER_OPTIONS& aOptions )
 {
-    const PCB_SELECTION_FILTER_OPTIONS& aOptions = aEvent.m_options;
-
     if( aOptions.lockedItems )
         flashCheckbox( m_cbLockedItems );
 

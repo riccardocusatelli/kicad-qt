@@ -25,6 +25,7 @@
  */
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <advanced_config.h>
@@ -66,9 +67,7 @@
 #include <widgets/pcb_properties_panel.h>
 #include <widgets/net_inspector_panel.h>
 #include <widgets/pcb_search_pane.h>
-#include <widgets/wx_aui_utils.h>
-#include <wx/wupdlock.h>
-#include <wx/combobox.h>
+#include <toolkit/choice.h>
 #include <toolbars_pcb_editor.h>
 #include <settings/settings_manager.h>
 #include <eda_text.h>
@@ -81,7 +80,7 @@
 
 
 /* Data to build the layer pair indicator button */
-static wxBitmapBundle LayerPairBitmap;
+static std::optional<TOOLKIT_BITMAP_BUNDLE> LayerPairBitmap;
 
 
 void PCB_EDIT_FRAME::PrepareLayerIndicator( bool aForceRebuild )
@@ -113,13 +112,13 @@ void PCB_EDIT_FRAME::PrepareLayerIndicator( bool aForceRebuild )
         change = true;
     }
 
-    if( change || !LayerPairBitmap.IsOk() )
+    if( change || !LayerPairBitmap )
     {
         LayerPairBitmap = LAYER_PRESENTATION::CreateLayerPairIcon( top_color, bottom_color, icon_size );
 
         if( m_tbTopAux )
         {
-            m_tbTopAux->SetToolBitmap( PCB_ACTIONS::selectLayerPair, LayerPairBitmap );
+            m_tbTopAux->SetToolBitmap( PCB_ACTIONS::selectLayerPair, *LayerPairBitmap );
             m_tbTopAux->Refresh();
         }
     }
@@ -402,14 +401,18 @@ void PCB_EDIT_FRAME::configureToolbars()
             {
                 if( !m_SelTrackWidthBox )
                 {
-                    m_SelTrackWidthBox = new wxChoice( aToolbar, ID_AUX_TOOLBAR_PCB_TRACK_WIDTH,
-                                                       wxDefaultPosition, wxDefaultSize, 0, nullptr );
+                    m_SelTrackWidthBox = TOOLKIT::CreateChoice( aToolbar, ID_AUX_TOOLBAR_PCB_TRACK_WIDTH,
+                                                                [this]()
+                                                                {
+                                                                    onTrackWidthChoice();
+                                                                } );
                 }
 
-                m_SelTrackWidthBox->SetToolTip( _( "Select the default width for new tracks. Note that this "
-                                                   "width can be overridden by the board minimum width, or by "
-                                                   "the width of an existing track if the 'Use Existing Track "
-                                                   "Width' feature is enabled." ) );
+                TOOLKIT::ChoiceSetToolTip( m_SelTrackWidthBox,
+                                           _( "Select the default width for new tracks. Note that this "
+                                              "width can be overridden by the board minimum width, or by "
+                                              "the width of an existing track if the 'Use Existing Track "
+                                              "Width' feature is enabled." ) );
 
                 UpdateTrackWidthSelectBox( m_SelTrackWidthBox, true, true );
 
@@ -425,8 +428,11 @@ void PCB_EDIT_FRAME::configureToolbars()
             {
                 if( !m_SelViaSizeBox )
                 {
-                    m_SelViaSizeBox = new wxChoice( aToolbar, ID_AUX_TOOLBAR_PCB_VIA_SIZE,
-                                                    wxDefaultPosition, wxDefaultSize, 0, nullptr );
+                    m_SelViaSizeBox = TOOLKIT::CreateChoice( aToolbar, ID_AUX_TOOLBAR_PCB_VIA_SIZE,
+                                                             [this]()
+                                                             {
+                                                                 onViaSizeChoice();
+                                                             } );
                 }
 
                 UpdateViaSizeSelectBox( m_SelViaSizeBox, true, true );
@@ -441,11 +447,16 @@ void PCB_EDIT_FRAME::configureToolbars()
             {
                 if( !m_CurrentVariantCtrl )
                 {
-                    m_CurrentVariantCtrl = new wxChoice( aToolbar, ID_AUX_TOOLBAR_PCB_VARIANT_SELECT,
-                                                         wxDefaultPosition, wxDefaultSize, 0, nullptr );
+                    m_CurrentVariantCtrl = TOOLKIT::CreateChoice( aToolbar,
+                                                                  ID_AUX_TOOLBAR_PCB_VARIANT_SELECT,
+                                                                  [this]()
+                                                                  {
+                                                                      onVariantSelected();
+                                                                  } );
                 }
 
-                m_CurrentVariantCtrl->SetToolTip( _( "Select the current variant to display and edit." ) );
+                TOOLKIT::ChoiceSetToolTip( m_CurrentVariantCtrl,
+                                           _( "Select the current variant to display and edit." ) );
 
                 UpdateVariantSelectionCtrl();
 
@@ -512,21 +523,21 @@ void PCB_EDIT_FRAME::UpdateVariantSelectionCtrl()
 
     wxArrayString variantNames = GetBoard()->GetVariantNamesForUI();
 
-    m_CurrentVariantCtrl->Set( variantNames );
+    TOOLKIT::ChoiceSet( m_CurrentVariantCtrl, variantNames );
 
     int selectionIndex = 0;
     wxString currentVariant = GetBoard()->GetCurrentVariant();
 
     if( !currentVariant.IsEmpty() )
     {
-        int foundIndex = m_CurrentVariantCtrl->FindString( currentVariant );
+        int foundIndex = TOOLKIT::ChoiceFindString( m_CurrentVariantCtrl, currentVariant );
 
         if( foundIndex != wxNOT_FOUND )
             selectionIndex = foundIndex;
     }
 
-    if( m_CurrentVariantCtrl->GetCount() > 0 )
-        m_CurrentVariantCtrl->SetSelection( selectionIndex );
+    if( TOOLKIT::ChoiceGetCount( m_CurrentVariantCtrl ) > 0 )
+        TOOLKIT::ChoiceSetSelection( m_CurrentVariantCtrl, selectionIndex );
 }
 
 
@@ -550,12 +561,12 @@ void PCB_EDIT_FRAME::SetCurrentVariant( const wxString& aVariantName )
 }
 
 
-void PCB_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
+void PCB_EDIT_FRAME::onVariantSelected()
 {
     if( !m_CurrentVariantCtrl )
         return;
 
-    int selection = m_CurrentVariantCtrl->GetSelection();
+    int selection = TOOLKIT::ChoiceGetSelection( m_CurrentVariantCtrl );
 
     if( selection == wxNOT_FOUND || selection == 0 )
     {
@@ -564,7 +575,7 @@ void PCB_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
     }
     else
     {
-        wxString selectedVariant = m_CurrentVariantCtrl->GetString( selection );
+        wxString selectedVariant = TOOLKIT::ChoiceGetString( m_CurrentVariantCtrl, selection );
         SetCurrentVariant( selectedVariant );
     }
 
@@ -632,8 +643,8 @@ static wxString ComboBoxUnits( EDA_UNITS aUnits, double aValue, bool aIncludeLab
 }
 
 
-void PCB_EDIT_FRAME::UpdateTrackWidthSelectBox( wxChoice* aTrackWidthSelectBox, bool aShowNetclass,
-                                                bool aShowEdit )
+void PCB_EDIT_FRAME::UpdateTrackWidthSelectBox( TOOLKIT_CHOICE* aTrackWidthSelectBox,
+                                                bool aShowNetclass, bool aShowEdit )
 {
     if( aTrackWidthSelectBox == nullptr )
         return;
@@ -645,10 +656,10 @@ void PCB_EDIT_FRAME::UpdateTrackWidthSelectBox( wxChoice* aTrackWidthSelectBox, 
 
     wxString msg;
 
-    aTrackWidthSelectBox->Clear();
+    TOOLKIT::ChoiceClear( aTrackWidthSelectBox );
 
     if( aShowNetclass )
-        aTrackWidthSelectBox->Append( _( "Track: use netclass width" ) );
+        TOOLKIT::ChoiceAppend( aTrackWidthSelectBox, _( "Track: use netclass width" ) );
 
     for( unsigned ii = 1; ii < GetDesignSettings().m_TrackWidthList.size(); ii++ )
     {
@@ -657,13 +668,13 @@ void PCB_EDIT_FRAME::UpdateTrackWidthSelectBox( wxChoice* aTrackWidthSelectBox, 
         msg.Printf( _( "Track: %s (%s)" ), ComboBoxUnits( primaryUnit, size ),
                                            ComboBoxUnits( secondaryUnit, size ) );
 
-        aTrackWidthSelectBox->Append( msg );
+        TOOLKIT::ChoiceAppend( aTrackWidthSelectBox, msg );
     }
 
     if( aShowEdit )
     {
-        aTrackWidthSelectBox->Append( wxT( "---" ) );
-        aTrackWidthSelectBox->Append( _( "Edit Pre-defined Sizes..." ) );
+        TOOLKIT::ChoiceAppend( aTrackWidthSelectBox, wxT( "---" ) );
+        TOOLKIT::ChoiceAppend( aTrackWidthSelectBox, _( "Edit Pre-defined Sizes..." ) );
     }
 
     if( GetDesignSettings().GetTrackWidthIndex() >= (int) GetDesignSettings().m_TrackWidthList.size() )
@@ -671,17 +682,18 @@ void PCB_EDIT_FRAME::UpdateTrackWidthSelectBox( wxChoice* aTrackWidthSelectBox, 
 
     // GetDesignSettings().GetTrackWidthIndex() can be < 0 if no board loaded
     // So in this case select the first select box item available (use netclass)
-    aTrackWidthSelectBox->SetSelection( std::max( 0, GetDesignSettings().GetTrackWidthIndex() ) );
+    TOOLKIT::ChoiceSetSelection( aTrackWidthSelectBox,
+                                 std::max( 0, GetDesignSettings().GetTrackWidthIndex() ) );
 }
 
 
-void PCB_EDIT_FRAME::UpdateViaSizeSelectBox( wxChoice* aViaSizeSelectBox, bool aShowNetclass,
+void PCB_EDIT_FRAME::UpdateViaSizeSelectBox( TOOLKIT_CHOICE* aViaSizeSelectBox, bool aShowNetclass,
                                              bool aShowEdit )
 {
     if( aViaSizeSelectBox == nullptr )
         return;
 
-    aViaSizeSelectBox->Clear();
+    TOOLKIT::ChoiceClear( aViaSizeSelectBox );
 
     COMMON_TOOLS* cmnTool   = m_toolManager->GetTool<COMMON_TOOLS>();
     EDA_UNITS primaryUnit   = GetUserUnits();
@@ -693,7 +705,7 @@ void PCB_EDIT_FRAME::UpdateViaSizeSelectBox( wxChoice* aViaSizeSelectBox, bool a
         secondaryUnit = cmnTool ? cmnTool->GetLastImperialUnits() : EDA_UNITS::MILS;
 
     if( aShowNetclass )
-        aViaSizeSelectBox->Append( _( "Via: use netclass sizes" ) );
+        TOOLKIT::ChoiceAppend( aViaSizeSelectBox, _( "Via: use netclass sizes" ) );
 
     for( unsigned ii = 1; ii < GetDesignSettings().m_ViasDimensionsList.size(); ii++ )
     {
@@ -718,13 +730,13 @@ void PCB_EDIT_FRAME::UpdateViaSizeSelectBox( wxChoice* aViaSizeSelectBox, bool a
 
         msg.Printf( _( "Via: %s (%s)" ), priStr, secStr );
 
-        aViaSizeSelectBox->Append( msg );
+        TOOLKIT::ChoiceAppend( aViaSizeSelectBox, msg );
     }
 
     if( aShowEdit )
     {
-        aViaSizeSelectBox->Append( wxT( "---" ) );
-        aViaSizeSelectBox->Append( _( "Edit Pre-defined Sizes..." ) );
+        TOOLKIT::ChoiceAppend( aViaSizeSelectBox, wxT( "---" ) );
+        TOOLKIT::ChoiceAppend( aViaSizeSelectBox, _( "Edit Pre-defined Sizes..." ) );
     }
 
     if( GetDesignSettings().GetViaSizeIndex() >= (int) GetDesignSettings().m_ViasDimensionsList.size() )
@@ -732,7 +744,8 @@ void PCB_EDIT_FRAME::UpdateViaSizeSelectBox( wxChoice* aViaSizeSelectBox, bool a
 
     // GetDesignSettings().GetViaSizeIndex() can be < 0 if no board loaded
     // So in this case select the first select box item available (use netclass)
-    aViaSizeSelectBox->SetSelection( std::max( 0, GetDesignSettings().GetViaSizeIndex() ) );
+    TOOLKIT::ChoiceSetSelection( aViaSizeSelectBox,
+                                 std::max( 0, GetDesignSettings().GetViaSizeIndex() ) );
 }
 
 
@@ -752,25 +765,23 @@ void PCB_EDIT_FRAME::ReCreateLayerBox( bool aForceResizeToolbar )
 void PCB_EDIT_FRAME::ToggleLayersManager()
 {
     PCBNEW_SETTINGS* settings      = GetPcbNewSettings();
-    wxAuiPaneInfo&   layersManager = m_auimgr.GetPane( AppearancePanelName() );
-    wxAuiPaneInfo&   selectionFilter = m_auimgr.GetPane( "SelectionFilter" );
 
     // show auxiliary Vertical layers and visibility manager toolbar
-    m_ShowLayerManagerTools = layersManager.IsShown();
+    m_ShowLayerManagerTools = IsPaneShown( AppearancePanelName() );
 
     m_ShowLayerManagerTools = !m_ShowLayerManagerTools;
 
-    layersManager.Show( m_ShowLayerManagerTools );
-    selectionFilter.Show( m_ShowLayerManagerTools );
+    ShowPane( AppearancePanelName(), m_ShowLayerManagerTools );
+    ShowPane( wxS( "SelectionFilter" ), m_ShowLayerManagerTools );
 
     if( m_ShowLayerManagerTools )
     {
-        SetAuiPaneSize( m_auimgr, layersManager, settings->m_AuiPanels.right_panel_width, -1 );
+        SetPaneSize( AppearancePanelName(), settings->m_AuiPanels.right_panel_width, -1 );
     }
     else
     {
-        settings->m_AuiPanels.right_panel_width = m_appearancePanel->GetSize().x;
-        m_auimgr.Update();
+        settings->m_AuiPanels.right_panel_width = GetPaneSize( AppearancePanelName() ).x;
+        UpdatePanes();
     }
 }
 
@@ -778,24 +789,23 @@ void PCB_EDIT_FRAME::ToggleLayersManager()
 void PCB_EDIT_FRAME::ToggleNetInspector()
 {
     PCBNEW_SETTINGS* settings          = GetPcbNewSettings();
-    wxAuiPaneInfo&   netInspectorPanel = m_auimgr.GetPane( NetInspectorPanelName() );
 
-    m_ShowNetInspector = netInspectorPanel.IsShown();
+    m_ShowNetInspector = IsPaneShown( NetInspectorPanelName() );
 
     m_ShowNetInspector = !m_ShowNetInspector;
 
-    netInspectorPanel.Show( m_ShowNetInspector );
+    ShowPane( NetInspectorPanelName(), m_ShowNetInspector );
 
     if( m_ShowNetInspector )
     {
-        SetAuiPaneSize( m_auimgr, netInspectorPanel, settings->m_AuiPanels.net_inspector_width, -1 );
+        SetPaneSize( NetInspectorPanelName(), settings->m_AuiPanels.net_inspector_width, -1 );
         m_netInspectorPanel->OnShowPanel();
     }
     else
     {
         m_netInspectorPanel->SaveSettings();
-        settings->m_AuiPanels.net_inspector_width = m_netInspectorPanel->GetSize().x;
-        m_auimgr.Update();
+        settings->m_AuiPanels.net_inspector_width = GetPaneSize( NetInspectorPanelName() ).x;
+        UpdatePanes();
     }
 }
 
@@ -805,38 +815,32 @@ void PCB_EDIT_FRAME::ToggleSearch()
     PCBNEW_SETTINGS* settings = GetPcbNewSettings();
 
     // Ensure m_ShowSearch is up to date (the pane can be closed outside the menu)
-    m_ShowSearch = m_auimgr.GetPane( SearchPaneName() ).IsShown();
+    m_ShowSearch = IsPaneShown( SearchPaneName() );
 
     m_ShowSearch = !m_ShowSearch;
 
-    wxAuiPaneInfo& searchPaneInfo = m_auimgr.GetPane( SearchPaneName() );
-    searchPaneInfo.Show( m_ShowSearch );
+    ShowPane( SearchPaneName(), m_ShowSearch );
 
     if( m_ShowSearch )
     {
-        searchPaneInfo.Direction( settings->m_AuiPanels.search_panel_dock_direction );
+        PANE_DOCK dock = static_cast<PANE_DOCK>( settings->m_AuiPanels.search_panel_dock_direction );
 
-        if( settings->m_AuiPanels.search_panel_dock_direction == wxAUI_DOCK_TOP
-            || settings->m_AuiPanels.search_panel_dock_direction == wxAUI_DOCK_BOTTOM )
-        {
-            SetAuiPaneSize( m_auimgr, searchPaneInfo,
-                            -1, settings->m_AuiPanels.search_panel_height );
-        }
-        else if( settings->m_AuiPanels.search_panel_dock_direction == wxAUI_DOCK_LEFT
-                 || settings->m_AuiPanels.search_panel_dock_direction == wxAUI_DOCK_RIGHT )
-        {
-            SetAuiPaneSize( m_auimgr, searchPaneInfo,
-                            settings->m_AuiPanels.search_panel_width, -1 );
-        }
+        SetPaneDockDirection( SearchPaneName(), settings->m_AuiPanels.search_panel_dock_direction );
+
+        if( dock == PANE_DOCK::TOP || dock == PANE_DOCK::BOTTOM )
+            SetPaneSize( SearchPaneName(), -1, settings->m_AuiPanels.search_panel_height );
+        else if( dock == PANE_DOCK::LEFT || dock == PANE_DOCK::RIGHT )
+            SetPaneSize( SearchPaneName(), settings->m_AuiPanels.search_panel_width, -1 );
+
         m_searchPane->FocusSearch();
         m_searchPane->RefreshSearch();
     }
     else
     {
-        settings->m_AuiPanels.search_panel_height = m_searchPane->GetSize().y;
-        settings->m_AuiPanels.search_panel_width = m_searchPane->GetSize().x;
-        settings->m_AuiPanels.search_panel_dock_direction = searchPaneInfo.dock_direction;
-        m_auimgr.Update();
+        settings->m_AuiPanels.search_panel_height = GetPaneSize( SearchPaneName() ).y;
+        settings->m_AuiPanels.search_panel_width = GetPaneSize( SearchPaneName() ).x;
+        settings->m_AuiPanels.search_panel_dock_direction = GetPaneDockDirection( SearchPaneName() );
+        UpdatePanes();
         GetCanvas()->SetFocus();
     }
 }
@@ -849,41 +853,41 @@ void PCB_EDIT_FRAME::ReCreateAuxiliaryToolbar()
 }
 
 
-void PCB_EDIT_FRAME::OnUpdateSelectTrackWidth( wxUpdateUIEvent& aEvent )
+void PCB_EDIT_FRAME::OnUpdateSelectTrackWidth()
 {
-    if( aEvent.GetId() == ID_AUX_TOOLBAR_PCB_TRACK_WIDTH )
-    {
-        BOARD_DESIGN_SETTINGS& bds = GetDesignSettings();
-        int                    sel;
+    if( !m_SelTrackWidthBox )
+        return;
 
-        if( bds.UseCustomTrackViaSize() )
-            sel = wxNOT_FOUND;
-        else
-            // if GetTrackWidthIndex() < 0, display the "use netclass" option
-            sel = std::max( 0, bds.GetTrackWidthIndex() );
+    BOARD_DESIGN_SETTINGS& bds = GetDesignSettings();
+    int                    sel;
 
-        if( m_SelTrackWidthBox->GetSelection() != sel )
-            m_SelTrackWidthBox->SetSelection( sel );
-    }
+    if( bds.UseCustomTrackViaSize() )
+        sel = wxNOT_FOUND;
+    else
+        // if GetTrackWidthIndex() < 0, display the "use netclass" option
+        sel = std::max( 0, bds.GetTrackWidthIndex() );
+
+    if( TOOLKIT::ChoiceGetSelection( m_SelTrackWidthBox ) != sel )
+        TOOLKIT::ChoiceSetSelection( m_SelTrackWidthBox, sel );
 }
 
 
-void PCB_EDIT_FRAME::OnUpdateSelectViaSize( wxUpdateUIEvent& aEvent )
+void PCB_EDIT_FRAME::OnUpdateSelectViaSize()
 {
-    if( aEvent.GetId() == ID_AUX_TOOLBAR_PCB_VIA_SIZE )
-    {
-        BOARD_DESIGN_SETTINGS& bds = GetDesignSettings();
-        int                    sel = 0;
+    if( !m_SelViaSizeBox )
+        return;
 
-        if( bds.UseCustomTrackViaSize() )
-            sel = wxNOT_FOUND;
-        else
-            // if GetViaSizeIndex() < 0, display the "use netclass" option
-            sel = std::max( 0, bds.GetViaSizeIndex() );
+    BOARD_DESIGN_SETTINGS& bds = GetDesignSettings();
+    int                    sel = 0;
 
-        if( m_SelViaSizeBox->GetSelection() != sel )
-            m_SelViaSizeBox->SetSelection( sel );
-    }
+    if( bds.UseCustomTrackViaSize() )
+        sel = wxNOT_FOUND;
+    else
+        // if GetViaSizeIndex() < 0, display the "use netclass" option
+        sel = std::max( 0, bds.GetViaSizeIndex() );
+
+    if( TOOLKIT::ChoiceGetSelection( m_SelViaSizeBox ) != sel )
+        TOOLKIT::ChoiceSetSelection( m_SelViaSizeBox, sel );
 }
 
 
@@ -893,36 +897,37 @@ void PCB_EDIT_FRAME::ToggleLibraryTree()
 
     KI_CHECK( cfg, /* void */ );
 
-    wxAuiPaneInfo& db_library_pane = m_auimgr.GetPane( DesignBlocksPaneName() );
+    const wxString paneName = DesignBlocksPaneName();
 
-    db_library_pane.Show( !db_library_pane.IsShown() );
+    ShowPane( paneName, !IsPaneShown( paneName ) );
 
-    if( db_library_pane.IsShown() )
+    if( IsPaneShown( paneName ) )
     {
-        if( db_library_pane.IsFloating() )
+        if( IsPaneFloating( paneName ) )
         {
-            db_library_pane.FloatingSize( cfg->m_AuiPanels.design_blocks_panel_float_width,
-                                          cfg->m_AuiPanels.design_blocks_panel_float_height );
-            m_auimgr.Update();
+            SetPaneFloatingSize( paneName, wxSize( cfg->m_AuiPanels.design_blocks_panel_float_width,
+                                                   cfg->m_AuiPanels.design_blocks_panel_float_height ) );
+            UpdatePanes();
         }
         else
         {
-            // SetAuiPaneSize also updates m_auimgr
-            SetAuiPaneSize( m_auimgr, db_library_pane, cfg->m_AuiPanels.design_blocks_panel_docked_width, -1 );
+            // SetPaneSize also updates the panes
+            SetPaneSize( paneName, cfg->m_AuiPanels.design_blocks_panel_docked_width, -1 );
         }
     }
     else
     {
-        if( db_library_pane.IsFloating() )
+        if( IsPaneFloating( paneName ) )
         {
-            cfg->m_AuiPanels.design_blocks_panel_float_width = db_library_pane.floating_size.x;
-            cfg->m_AuiPanels.design_blocks_panel_float_height = db_library_pane.floating_size.y;
+            wxSize floatingSize = GetPaneFloatingSize( paneName );
+            cfg->m_AuiPanels.design_blocks_panel_float_width = floatingSize.x;
+            cfg->m_AuiPanels.design_blocks_panel_float_height = floatingSize.y;
         }
         else
         {
-            cfg->m_AuiPanels.design_blocks_panel_docked_width = m_designBlocksPane->GetSize().x;
+            cfg->m_AuiPanels.design_blocks_panel_docked_width = GetPaneSize( paneName ).x;
         }
 
-        m_auimgr.Update();
+        UpdatePanes();
     }
 }
