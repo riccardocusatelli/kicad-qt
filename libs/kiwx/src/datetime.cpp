@@ -20,8 +20,12 @@
 #include <wx/datetime.h>
 #include <wx/translation.h>
 
+#include "kiwx_compat.h"
 #include <chrono>
 #include <cstring>
+#include <iomanip>
+#include <locale>
+#include <sstream>
 
 
 const wxDateTime wxDefaultDateTime;
@@ -78,10 +82,7 @@ long wxDateTime::TimeZone::GetOffset() const
     if( m_utc )
         return 0;
 
-    time_t    now = std::time( nullptr );
-    struct tm local;
-    localtime_r( &now, &local );
-    return local.tm_gmtoff;
+    return kiwx::GmtOffset( std::time( nullptr ) );
 }
 
 
@@ -93,12 +94,12 @@ struct tm wxDateTime::tm( const TimeZone& aTz ) const
 
     if( aTz.IsLocal() )
     {
-        localtime_r( &secs, &result );
+        kiwx::LocalTime( secs, result );
     }
     else
     {
         time_t shifted = secs + aTz.GetOffset();
-        gmtime_r( &shifted, &result );
+        kiwx::GmTime( shifted, result );
     }
 
     return result;
@@ -214,7 +215,7 @@ wxDateTime& wxDateTime::Set( wxDateTime_t aHour, wxDateTime_t aMinute, wxDateTim
 {
     time_t    now = time( nullptr );
     struct tm tm;
-    localtime_r( &now, &tm );
+    kiwx::LocalTime( now, tm );
     tm.tm_hour = aHour;
     tm.tm_min = aMinute;
     tm.tm_sec = aSecond;
@@ -330,10 +331,22 @@ bool wxDateTime::ParseFormat( const wxString& aDate, const wxString& aFormat,
 
     std::string date = aDate.utf8_string();
     std::string fmt = aFormat.utf8_string();
+#ifdef _WIN32
+    // No strptime(): std::get_time() takes the same conversions
+    std::istringstream in( date );
+    in.imbue( std::locale::classic() );
+    in >> std::get_time( &t, fmt.c_str() );
+
+    if( in.fail() )
+        return false;
+
+    const char* end = date.c_str() + ( in.eof() ? date.size() : static_cast<size_t>( in.tellg() ) );
+#else
     const char* end = strptime( date.c_str(), fmt.c_str(), &t );
 
     if( !end )
         return false;
+#endif
 
     Set( t );
 

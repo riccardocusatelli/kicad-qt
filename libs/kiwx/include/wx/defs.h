@@ -127,7 +127,13 @@ typedef int64_t        wxInt64;
 typedef uint64_t       wxUint64;
 
 // as wxWidgets with gcc: long long, a type different from long even on LP64 systems
-static_assert( sizeof( long ) == 8, "kiwx supports LP64 systems" );
+// long is 32 bit on Windows (LLP64), 64 bit elsewhere (LP64)
+
+#ifdef _MSC_VER
+// POSIX type, used by the wx API (as wxWidgets defines it for MSVC)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
 #define wxLongLong_t   long long
 #define wxULongLong_t  unsigned long long
 #define wxLongLongFmtSpec "ll"

@@ -42,11 +42,16 @@ bool isSpace( wchar_t c )
 }
 
 
-/// The C locale, for the locale-independent conversions.
-locale_t cLocale()
+/// wcstod() in the C locale, whatever the current locale.
+double cLocaleWcstod( const wchar_t* aStr, wchar_t** aEnd )
 {
+#ifdef _WIN32
+    static _locale_t loc = _create_locale( LC_ALL, "C" );
+    return _wcstod_l( aStr, aEnd, loc );
+#else
     static locale_t loc = newlocale( LC_ALL_MASK, "C", (locale_t) 0 );
-    return loc;
+    return wcstod_l( aStr, aEnd, loc );
+#endif
 }
 
 } // namespace
@@ -900,7 +905,7 @@ bool wxString::ToCDouble( double* aValue ) const
     wchar_t*       end;
 
     errno = 0;
-    double val = wcstod_l( start, &end, cLocale() );
+    double val = cLocaleWcstod( start, &end );
 
     if( end == start || errno == ERANGE )
         return false;

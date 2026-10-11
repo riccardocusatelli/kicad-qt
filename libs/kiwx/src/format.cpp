@@ -80,6 +80,9 @@ long long signedAs( long long aValue, const std::string& aLength )
     if( aLength.empty() )
         return static_cast<int>( aValue );
 
+    if( aLength == "l" )    // 32 bit on Windows
+        return static_cast<long>( aValue );
+
     return aValue;
 }
 
@@ -94,6 +97,9 @@ unsigned long long unsignedAs( long long aValue, const std::string& aLength )
 
     if( aLength.empty() )
         return static_cast<unsigned int>( aValue );
+
+    if( aLength == "l" )    // 32 bit on Windows
+        return static_cast<unsigned long>( aValue );
 
     return static_cast<unsigned long long>( aValue );
 }

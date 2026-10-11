@@ -23,6 +23,7 @@
 #include <wx/log.h>
 #include <wx/tokenzr.h>
 
+#include "kiwx_compat.h"
 #include <atomic>
 #include <cerrno>
 #include <cstdlib>
@@ -78,7 +79,7 @@ wxString formatTime( const wxString& aFormat, time_t aTime )
         return wxString();
 
     struct tm tmv;
-    localtime_r( &aTime, &tmv );
+    kiwx::LocalTime( aTime, tmv );
 
     char buf[128];
     size_t len = std::strftime( buf, sizeof( buf ), aFormat.utf8_string().c_str(), &tmv );
@@ -365,7 +366,7 @@ wxString wxSysErrorMsgStr( unsigned long aErrCode )
         aErrCode = errno;
 
     char        buf[256];
-    const char* text = strerror_r( static_cast<int>( aErrCode ), buf, sizeof( buf ) );
+    const char* text = kiwx::StrError( static_cast<int>( aErrCode ), buf, sizeof( buf ) );
     return wxString( text );
 }
 

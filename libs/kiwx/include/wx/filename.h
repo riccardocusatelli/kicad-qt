@@ -89,7 +89,7 @@ enum
 
 /**
  * A file name split in volume, directories, name and extension, with the semantics of
- * wxFileName for Unix paths.
+ * wxFileName for the Unix and the DOS (Windows) paths.
  */
 class wxFileName
 {
@@ -221,16 +221,19 @@ public:
     bool operator==( const wxString& aOther ) const { return SameAs( wxFileName( aOther ) ); }
     bool operator!=( const wxString& aOther ) const { return !SameAs( wxFileName( aOther ) ); }
 
-    static bool     IsCaseSensitive( wxPathFormat = wxPATH_NATIVE ) { return true; }
+    /// wxPATH_NATIVE as the format of this system (wxPATH_DOS on Windows, wxPATH_UNIX elsewhere).
+    static wxPathFormat GetFormat( wxPathFormat aFormat = wxPATH_NATIVE );
+
+    static bool     IsCaseSensitive( wxPathFormat aFormat = wxPATH_NATIVE );
     static wxString GetForbiddenChars( wxPathFormat aFormat = wxPATH_NATIVE );
-    static wxString GetVolumeSeparator( wxPathFormat = wxPATH_NATIVE ) { return wxString(); }
+    static wxString GetVolumeSeparator( wxPathFormat aFormat = wxPATH_NATIVE );
     static wxUniChar GetPathSeparator( wxPathFormat aFormat = wxPATH_NATIVE );
     static wxString GetPathSeparators( wxPathFormat aFormat = wxPATH_NATIVE );
     static wxString GetPathTerminators( wxPathFormat aFormat = wxPATH_NATIVE ) { return GetPathSeparators( aFormat ); }
     static bool     IsPathSeparator( wxUniChar aCh, wxPathFormat aFormat = wxPATH_NATIVE );
-    static bool     IsMSWUniqueVolumeNamePath( const wxString&, wxPathFormat = wxPATH_NATIVE ) { return false; }
+    static bool     IsMSWUniqueVolumeNamePath( const wxString& aPath, wxPathFormat aFormat = wxPATH_NATIVE );
 
-    bool IsAbsolute( wxPathFormat = wxPATH_NATIVE ) const { return !m_relative; }
+    bool IsAbsolute( wxPathFormat aFormat = wxPATH_NATIVE ) const;
     bool IsRelative( wxPathFormat aFormat = wxPATH_NATIVE ) const { return !IsAbsolute( aFormat ); }
     bool IsDir() const { return m_name.empty() && m_ext.empty(); }
 
@@ -270,8 +273,13 @@ public:
         return GetPath( wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR, aFormat );
     }
     wxString GetFullPath( wxPathFormat aFormat = wxPATH_NATIVE ) const;
+#ifdef _WIN32
+    wxString GetShortPath() const;
+    wxString GetLongPath() const;
+#else
     wxString GetShortPath() const { return GetFullPath(); }
     wxString GetLongPath() const { return GetFullPath(); }
+#endif
 
     static void SplitPath( const wxString& aFullPath, wxString* aVolume, wxString* aPath,
                            wxString* aName, wxString* aExt, bool* aHasExt = nullptr,

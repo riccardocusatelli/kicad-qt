@@ -66,8 +66,53 @@ wxString stripTrailingSeparators( const wxString& aPath )
 {
     wxString path = aPath;
 
-    while( path.length() > 1 && path.Last() == wxT( '/' ) )
+    while( path.length() > 1 && wxIsPathSeparator( path.Last() ) )
         path.RemoveLast();
+
+    return path;
+}
+
+
+/// The length of the "\\?\Volume{guid}\" prefix of the Windows unique volume names.
+const size_t MSW_UNIQUE_VOLUME_PREFIX_LENGTH = 49;
+
+
+bool isDOSPathSep( wxUniChar aCh )
+{
+    return aCh == wxFILE_SEP_PATH_DOS || aCh == wxFILE_SEP_PATH_UNIX;
+}
+
+
+/// Whether the path looks like a UNC path ("\\server\share").
+bool isUNCPath( const wxString& aPath )
+{
+    return aPath.length() >= 3 && isDOSPathSep( aPath[0] ) && isDOSPathSep( aPath[1] )
+           && !isDOSPathSep( aPath[2] );
+}
+
+
+/// Whether the path looks like a volume GUID path ("\\?\Volume{guid}\").
+bool isVolumeGUIDPath( const wxString& aPath )
+{
+    return aPath.length() >= MSW_UNIQUE_VOLUME_PREFIX_LENGTH
+           && aPath.StartsWith( wxS( "\\\\?\\Volume{" ) )
+           && aPath[MSW_UNIQUE_VOLUME_PREFIX_LENGTH - 1] == wxFILE_SEP_PATH_DOS;
+}
+
+
+/// The volume as it starts a path ("C:", "\\server\share"; nothing for Unix paths).
+wxString volumeString( const wxString& aVolume, wxPathFormat aFormat )
+{
+    wxString path;
+
+    if( !aVolume.empty() && wxFileName::GetFormat( aFormat ) == wxPATH_DOS )
+    {
+        path = aVolume;
+
+        // no colon after the UNC and volume GUID names, only after the drive letters
+        if( aVolume.length() == 1 )
+            path += wxFileName::GetVolumeSeparator( aFormat );
+    }
 
     return path;
 }
@@ -94,7 +139,19 @@ bool wxDirExists( const wxString& aDir )
 
 bool wxIsAbsolutePath( const wxString& aPath )
 {
-    return !aPath.empty() && aPath[0] == wxT( '/' );
+    if( aPath.empty() )
+        return false;
+
+    if( aPath[0] == wxT( '/' ) )
+        return true;
+
+#ifdef _WIN32
+    // MSDOS like
+    if( aPath[0] == wxT( '\\' ) || ( aPath.size() > 1 && std::iswalpha( aPath[0] ) && aPath[1] == wxT( ':' ) ) )
+        return true;
+#endif
+
+    return false;
 }
 
 
@@ -109,15 +166,19 @@ wxString wxPathOnly( const wxString& aPath )
     if( aPath.empty() )
         return wxString();
 
-    int pos = aPath.Find( wxT( '/' ), true );
+    // Unix or Windows separators, on all the systems (as wxWidgets)
+    size_t pos = aPath.find_last_of( wxT( "/\\" ) );
 
-    if( pos == wxNOT_FOUND )
-        return wxString();
+    if( pos != wxString::npos )
+        return aPath.Left( pos == 0 ? 1 : pos );
 
-    if( pos == 0 )
-        return wxT( "/" );
+#ifdef _WIN32
+    // A drive: "A:junk" gives "A:." (since "A:.\\junk" is not "A:\\junk")
+    if( aPath.length() >= 2 && std::iswalpha( aPath[0] ) && aPath[1] == wxT( ':' ) )
+        return aPath.Left( 2 ) + wxT( "." );
+#endif
 
-    return aPath.Left( pos );
+    return wxString();
 }
 
 
@@ -1146,15 +1207,50 @@ void wxFileName::Clear()
 }
 
 
+wxPathFormat wxFileName::GetFormat( wxPathFormat aFormat )
+{
+    if( aFormat == wxPATH_NATIVE )
+    {
+#ifdef _WIN32
+        aFormat = wxPATH_DOS;
+#else
+        aFormat = wxPATH_UNIX;
+#endif
+    }
+
+    return aFormat;
+}
+
+
+bool wxFileName::IsCaseSensitive( wxPathFormat aFormat )
+{
+    // only Unix file names are truly case-sensitive
+    return GetFormat( aFormat ) == wxPATH_UNIX;
+}
+
+
+wxString wxFileName::GetVolumeSeparator( wxPathFormat aFormat )
+{
+    return GetFormat( aFormat ) == wxPATH_DOS ? wxString( wxFILE_SEP_DSK ) : wxString();
+}
+
+
+bool wxFileName::IsMSWUniqueVolumeNamePath( const wxString& aPath, wxPathFormat aFormat )
+{
+    return GetFormat( aFormat ) == wxPATH_DOS && isVolumeGUIDPath( aPath );
+}
+
+
 wxUniChar wxFileName::GetPathSeparator( wxPathFormat aFormat )
 {
-    return aFormat == wxPATH_DOS ? wxT( '\\' ) : wxT( '/' );
+    return GetFormat( aFormat ) == wxPATH_DOS ? wxT( '\\' ) : wxT( '/' );
 }
 
 
 wxString wxFileName::GetPathSeparators( wxPathFormat aFormat )
 {
-    return aFormat == wxPATH_DOS ? wxT( "\\/" ) : wxT( "/" );
+    // DOS: both, as the Windows API, the native one first (the one of GetFullPath())
+    return GetFormat( aFormat ) == wxPATH_DOS ? wxT( "\\/" ) : wxT( "/" );
 }
 
 
@@ -1168,7 +1264,7 @@ wxString wxFileName::GetForbiddenChars( wxPathFormat aFormat )
 {
     wxString chars = wxT( "*?" );
 
-    if( aFormat == wxPATH_DOS )
+    if( GetFormat( aFormat ) == wxPATH_DOS )
         chars += wxT( "\\/:\"<>|" );
 
     return chars;
@@ -1176,14 +1272,68 @@ wxString wxFileName::GetForbiddenChars( wxPathFormat aFormat )
 
 
 void wxFileName::SplitVolume( const wxString& aFullPath, wxString* aVolume, wxString* aPath,
-                              wxPathFormat )
+                              wxPathFormat aFormat )
 {
-    // No volumes on Unix.
+    wxString pathOnly = aFullPath;
+
     if( aVolume )
         aVolume->clear();
 
+    // No volumes in the Unix paths
+    if( GetFormat( aFormat ) == wxPATH_DOS )
+    {
+        if( isVolumeGUIDPath( aFullPath ) )
+        {
+            if( aVolume )
+                *aVolume = aFullPath.Left( MSW_UNIQUE_VOLUME_PREFIX_LENGTH - 1 );
+
+            // the first slash stays in the path
+            pathOnly = aFullPath.Mid( MSW_UNIQUE_VOLUME_PREFIX_LENGTH - 1 );
+        }
+        else if( isUNCPath( aFullPath ) )
+        {
+            // isUNCPath() checks that the third character is not a separator
+            size_t posFirstSlash = aFullPath.find_first_of( GetPathTerminators( aFormat ), 3 );
+
+            if( posFirstSlash != wxString::npos )
+            {
+                if( aVolume )
+                    *aVolume = aFullPath.Left( posFirstSlash );
+
+                pathOnly = aFullPath.Mid( posFirstSlash );
+            }
+            else if( aVolume )
+            {
+                // the root of the share ("\\\\share")
+                *aVolume = aFullPath;
+            }
+
+            // backslashes are the canonical separators of the UNC paths
+            if( aVolume )
+            {
+                ( *aVolume )[0] = wxT( '\\' );
+                ( *aVolume )[1] = wxT( '\\' );
+            }
+
+            pathOnly = posFirstSlash != wxString::npos ? pathOnly : wxString();
+        }
+        else
+        {
+            // a colon at the very start is not a volume separator
+            size_t posFirstColon = aFullPath.find_first_of( GetVolumeSeparator( aFormat ) );
+
+            if( posFirstColon && posFirstColon != wxString::npos )
+            {
+                if( aVolume )
+                    *aVolume = aFullPath.Left( posFirstColon );
+
+                pathOnly = aFullPath.Mid( posFirstColon + 1 );
+            }
+        }
+    }
+
     if( aPath )
-        *aPath = aFullPath;
+        *aPath = pathOnly;
 }
 
 
@@ -1193,7 +1343,7 @@ void wxFileName::SplitPath( const wxString& aFullPathWithVolume, wxString* aVolu
     wxString fullPath;
     SplitVolume( aFullPathWithVolume, aVolume, &fullPath, aFormat );
 
-    size_t posLastSlash = fullPath.find_last_of( GetPathSeparators( aFormat ) );
+    size_t posLastSlash = fullPath.find_last_of( GetPathTerminators( aFormat ) );
     size_t posLastDot = fullPath.find_last_of( wxFILE_SEP_EXT );
 
     // A dot at the start of the name is not an extension (hidden files).
@@ -1258,8 +1408,8 @@ void wxFileName::SplitPath( const wxString& aFullPath, wxString* aPath, wxString
     wxString volume;
     SplitPath( aFullPath, &volume, aPath, aName, aExt, nullptr, aFormat );
 
-    if( aPath && !volume.empty() )
-        aPath->Prepend( volume );
+    if( aPath )
+        aPath->Prepend( volumeString( volume, aFormat ) );
 }
 
 
@@ -1387,7 +1537,10 @@ void wxFileName::SetPath( const wxString& aPathOrig, wxPathFormat aFormat )
     if( path.empty() )
         return;
 
-    m_relative = !IsPathSeparator( path[0], aFormat );
+    if( GetFormat( aFormat ) == wxPATH_DOS )
+        m_relative = !IsPathSeparator( path[0], aFormat );
+    else
+        m_relative = path[0] != wxT( '/' );
 
     // Empty components (a//b) are ignored; "/" alone gives no components and m_relative false.
     wxStringTokenizer tn( path, GetPathSeparators( aFormat ) );
@@ -1407,7 +1560,7 @@ wxString wxFileName::GetPath( int aFlags, wxPathFormat aFormat ) const
     wxString fullPath;
 
     if( aFlags & wxPATH_GET_VOLUME )
-        fullPath += m_volume;
+        fullPath += volumeString( m_volume, aFormat );
 
     if( !m_relative )
         fullPath += GetPathSeparator( aFormat );
@@ -1449,6 +1602,27 @@ wxString wxFileName::GetFullName() const
 }
 
 
+bool wxFileName::IsAbsolute( wxPathFormat aFormat ) const
+{
+    // the Unix paths starting with ~ are absolute (only with wxPATH_UNIX given explicitly, as
+    // in wxWidgets)
+    if( aFormat == wxPATH_UNIX && !m_dirs.empty() && !m_dirs[0].empty()
+        && m_dirs[0][0] == wxT( '~' ) )
+    {
+        return true;
+    }
+
+    if( m_relative )
+        return false;
+
+    // where there are volumes an absolute path has one
+    if( !GetVolumeSeparator( aFormat ).empty() && GetVolume().empty() )
+        return false;
+
+    return true;
+}
+
+
 bool wxFileName::IsValidDirComponent( const wxString& aDir )
 {
     if( aDir.empty() )
@@ -1456,7 +1630,7 @@ bool wxFileName::IsValidDirComponent( const wxString& aDir )
 
     for( wxUniChar c : aDir )
     {
-        if( IsPathSeparator( c ) )
+        if( IsPathSeparator( c ) || ( c == wxFILE_SEP_DSK && !GetVolumeSeparator().empty() ) )
             return false;
     }
 
@@ -1507,7 +1681,9 @@ bool wxFileName::Normalize( int aFlags, const wxString& aCwd, wxPathFormat aForm
             curDir.AssignDir( aCwd );
     }
 
-    if( ( aFlags & wxPATH_NORM_TILDE ) && m_relative && !dirs.empty() )
+    aFormat = GetFormat( aFormat );
+
+    if( aFormat == wxPATH_UNIX && ( aFlags & wxPATH_NORM_TILDE ) && m_relative && !dirs.empty() )
     {
         wxString dir = dirs[0];
 
@@ -1564,6 +1740,22 @@ bool wxFileName::Normalize( int aFlags, const wxString& aCwd, wxPathFormat aForm
         m_dirs.Add( dir );
     }
 
+#ifdef _WIN32
+    if( ( aFlags & wxPATH_NORM_LONG ) && aFormat == wxPATH_DOS )
+        Assign( GetLongPath() );
+#endif
+
+    // The case last, once the path does not change any more
+    if( ( aFlags & wxPATH_NORM_CASE ) && !IsCaseSensitive( aFormat ) )
+    {
+        m_volume.MakeLower();
+        m_name.MakeLower();
+        m_ext.MakeLower();
+
+        for( wxString& dir : m_dirs )
+            dir.MakeLower();
+    }
+
     return true;
 }
 
@@ -1577,12 +1769,15 @@ bool wxFileName::MakeRelativeTo( const wxString& aPathBase, wxPathFormat aFormat
     Normalize( normFlags, cwd, aFormat );
     fnBase.Normalize( normFlags, cwd, aFormat );
 
-    if( !GetVolume().IsSameAs( fnBase.GetVolume() ) )
+    bool withCase = IsCaseSensitive( aFormat );
+
+    if( !GetVolume().IsSameAs( fnBase.GetVolume(), withCase ) )
         return false;
 
     m_volume.clear();
 
-    while( !m_dirs.empty() && !fnBase.m_dirs.empty() && m_dirs[0] == fnBase.m_dirs[0] )
+    while( !m_dirs.empty() && !fnBase.m_dirs.empty()
+           && m_dirs[0].IsSameAs( fnBase.m_dirs[0], withCase ) )
     {
         m_dirs.RemoveAt( 0 );
         fnBase.m_dirs.RemoveAt( 0 );
@@ -1658,7 +1853,8 @@ bool wxFileName::SameAs( const wxFileName& aOther, wxPathFormat aFormat ) const
     wxFileName fn2 = aOther;
 
     wxString cwd = wxGetCwd();
-    const int flags = wxPATH_NORM_ALL & ~( wxPATH_NORM_CASE | wxPATH_NORM_SHORTCUT );
+    // the case only matters where the file names are case sensitive
+    const int flags = ( wxPATH_NORM_ALL | wxPATH_NORM_CASE ) & ~wxPATH_NORM_SHORTCUT;
     fn1.Normalize( flags, cwd, aFormat );
     fn2.Normalize( flags, cwd, aFormat );
 
@@ -1887,7 +2083,7 @@ bool wxFileName::Mkdir( const wxString& aDir, int aPerm, int aFlags )
         wxFileName fn;
         fn.AssignDir( aDir );
 
-        wxString currPath = fn.GetVolume();
+        wxString currPath = volumeString( fn.GetVolume(), wxPATH_NATIVE );
         const wxArrayString& dirs = fn.GetDirs();
 
         for( size_t i = 0; i < dirs.size(); i++ )

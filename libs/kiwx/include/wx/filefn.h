@@ -35,11 +35,21 @@
 #define wxFILE_SEP_PATH_UNIX  wxT( '/' )
 #define wxFILE_SEP_PATH_MAC   wxT( ':' )
 #define wxFILE_SEP_PATH_VMS   wxT( '.' )
-#define wxFILE_SEP_PATH       wxFILE_SEP_PATH_UNIX
 #define wxPATH_SEP_DOS        wxT( ";" )
 #define wxPATH_SEP_UNIX       wxT( ":" )
+
+#ifdef _WIN32
+#define wxFILE_SEP_PATH       wxFILE_SEP_PATH_DOS
+#define wxPATH_SEP            wxPATH_SEP_DOS
+// Windows accepts both separators
+#define wxIsPathSeparator( c ) ( ( c ) == wxFILE_SEP_PATH_DOS || ( c ) == wxFILE_SEP_PATH_UNIX )
+#define wxARE_FILENAMES_CASE_SENSITIVE false
+#else
+#define wxFILE_SEP_PATH       wxFILE_SEP_PATH_UNIX
 #define wxPATH_SEP            wxPATH_SEP_UNIX
 #define wxIsPathSeparator( c ) ( ( c ) == wxFILE_SEP_PATH )
+#define wxARE_FILENAMES_CASE_SENSITIVE true
+#endif
 
 enum wxPosixPermissions
 {
@@ -107,6 +117,14 @@ wxFileKind wxGetFileKind( FILE* aFile );
 long long kiwxFileSize( const wxString& aFile );
 
 
+#ifdef _WIN32
+/// No umask on Windows: does nothing, as in wxWidgets.
+class wxUmaskChanger
+{
+public:
+    explicit wxUmaskChanger( int ) {}
+};
+#else
 /// Sets the umask in the constructor (unless -1) and restores it in the destructor.
 class wxUmaskChanger
 {
@@ -125,6 +143,7 @@ public:
 private:
     int m_umaskOld;
 };
+#endif
 
 #define wxMAKE_UNIQUE_NAME_CAT2( a, b ) a##b
 #define wxMAKE_UNIQUE_NAME_CAT( a, b ) wxMAKE_UNIQUE_NAME_CAT2( a, b )

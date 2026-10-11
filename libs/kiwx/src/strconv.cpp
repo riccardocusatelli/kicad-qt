@@ -20,10 +20,17 @@
 #include <wx/strconv.h>
 #include <wx/string.h>
 
+#include "kiwx_unicode.h"
+
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <iconv.h>
+#endif
 
 
 std::string kiwxToUTF8( const wchar_t* aStr, size_t aLen )
@@ -31,9 +38,9 @@ std::string kiwxToUTF8( const wchar_t* aStr, size_t aLen )
     std::string out;
     out.reserve( aLen );
 
-    for( size_t i = 0; i < aLen; ++i )
+    for( size_t i = 0; i < aLen; )
     {
-        uint32_t c = static_cast<uint32_t>( aStr[i] );
+        uint32_t c = kiwx::NextCodePoint( aStr, aLen, i );
 
         if( c < 0x80 )
         {
@@ -123,7 +130,7 @@ bool kiwxFromUTF8( const char* aStr, size_t aLen, std::wstring& aOut )
         if( code < min || code > 0x10FFFF || ( code >= 0xD800 && code <= 0xDFFF ) )
             return false;
 
-        aOut += static_cast<wchar_t>( code );
+        kiwx::AppendCodePoint( aOut, code );
         p += extra + 1;
     }
 
@@ -358,7 +365,7 @@ bool wxMBConvUTF8::Decode( const char* aSrc, size_t aLen, std::wstring& aOut ) c
                                                      : ( c & 0xF8 ) == 0xF0 ? 4 : 0;
         std::wstring  ch;
 
-        if( len && i + len <= aLen && kiwxFromUTF8( aSrc + i, len, ch ) && ch.size() == 1 )
+        if( len && i + len <= aLen && kiwxFromUTF8( aSrc + i, len, ch ) && !ch.empty() )
         {
             aOut += ch;
             i += len;
@@ -386,9 +393,9 @@ bool wxMBConvUTF8::Decode( const char* aSrc, size_t aLen, std::wstring& aOut ) c
 
 bool wxMBConvUTF8::Encode( const wchar_t* aSrc, size_t aLen, std::string& aOut ) const
 {
-    for( size_t i = 0; i < aLen; ++i )
+    for( size_t i = 0; i < aLen; )
     {
-        uint32_t c = static_cast<uint32_t>( aSrc[i] );
+        uint32_t c = kiwx::NextCodePoint( aSrc, aLen, i );
 
         if( c > 0x10FFFF || ( c >= 0xD800 && c <= 0xDFFF ) )
             return false;
@@ -439,7 +446,7 @@ bool decodeUTF16( const char* aSrc, size_t aLen, std::wstring& aOut, bool aBigEn
             return false;
         }
 
-        aOut += static_cast<wchar_t>( c );
+        kiwx::AppendCodePoint( aOut, c );
     }
 
     return true;
@@ -459,9 +466,9 @@ bool encodeUTF16( const wchar_t* aSrc, size_t aLen, std::string& aOut, bool aBig
                 aOut += aBigEndian ? lo : hi;
             };
 
-    for( size_t i = 0; i < aLen; ++i )
+    for( size_t i = 0; i < aLen; )
     {
-        uint32_t c = static_cast<uint32_t>( aSrc[i] );
+        uint32_t c = kiwx::NextCodePoint( aSrc, aLen, i );
 
         if( c > 0x10FFFF )
             return false;
@@ -498,7 +505,7 @@ bool decodeUTF32( const char* aSrc, size_t aLen, std::wstring& aOut, bool aBigEn
         if( c > 0x10FFFF )
             return false;
 
-        aOut += static_cast<wchar_t>( c );
+        kiwx::AppendCodePoint( aOut, c );
     }
 
     return true;
@@ -509,9 +516,9 @@ bool encodeUTF32( const wchar_t* aSrc, size_t aLen, std::string& aOut, bool aBig
 {
     aOut.clear();
 
-    for( size_t i = 0; i < aLen; ++i )
+    for( size_t i = 0; i < aLen; )
     {
-        uint32_t c = static_cast<uint32_t>( aSrc[i] );
+        uint32_t c = kiwx::NextCodePoint( aSrc, aLen, i );
 
         for( int b = 0; b < 4; ++b )
         {
@@ -556,6 +563,95 @@ public:
 };
 
 
+#ifdef _WIN32
+
+/// The Windows code page of a character set name (as charsetOf() and normaliseCharset() give
+/// them), 0 if there is none.
+UINT codePageOf( const std::string& aCharset )
+{
+    static const std::pair<const char*, UINT> named[] = {
+        { "UTF-7", 65000 },     { "KOI8-R", 20866 },     { "KOI8-U", 21866 },
+        { "EUC-JP", 20932 },    { "ISO-2022-JP", 50220 }, { "SHIFT_JIS", 932 },
+        { "SJIS", 932 },        { "GBK", 936 },          { "GB2312", 936 },
+        { "EUC-KR", 949 },      { "BIG5", 950 },         { "MACINTOSH", 10000 },
+        { "US-ASCII", 20127 },  { "ASCII", 20127 }
+    };
+
+    for( const auto& [name, cp] : named )
+    {
+        if( aCharset == name )
+            return cp;
+    }
+
+    try
+    {
+        if( aCharset.rfind( "ISO-8859-", 0 ) == 0 || aCharset.rfind( "ISO8859-", 0 ) == 0 )
+            return 28590 + std::stoi( aCharset.substr( aCharset.find( '9' ) + 2 ) );
+
+        if( aCharset.rfind( "CP", 0 ) == 0 )
+            return std::stoi( aCharset.substr( 2 ) );
+    }
+    catch( ... )
+    {
+    }
+
+    return 0;
+}
+
+
+bool isValidCodePage( UINT aCodePage )
+{
+    return aCodePage && IsValidCodePage( aCodePage );
+}
+
+
+/// Decode @a aSrc from the code page @a aCodePage (wchar_t is UTF-16 on Windows).
+bool codePageDecode( UINT aCodePage, const char* aSrc, size_t aLen, std::wstring& aOut )
+{
+    aOut.clear();
+
+    if( aLen == 0 )
+        return true;
+
+    // Not all the code pages accept MB_ERR_INVALID_CHARS
+    DWORD flags = aCodePage < 50000 && aCodePage != 42 ? MB_ERR_INVALID_CHARS : 0;
+    int   len = MultiByteToWideChar( aCodePage, flags, aSrc, static_cast<int>( aLen ), nullptr,
+                                     0 );
+
+    if( len <= 0 )
+        return false;
+
+    aOut.resize( len );
+    MultiByteToWideChar( aCodePage, flags, aSrc, static_cast<int>( aLen ), aOut.data(), len );
+    return true;
+}
+
+
+/// Encode @a aSrc into the code page @a aCodePage; fails if a character has no equivalent.
+bool codePageEncode( UINT aCodePage, const wchar_t* aSrc, size_t aLen, std::string& aOut )
+{
+    aOut.clear();
+
+    if( aLen == 0 )
+        return true;
+
+    // Only these code pages report the characters they cannot represent
+    bool  checkDefault = aCodePage != 65000 && aCodePage != 50220 && aCodePage != 42;
+    BOOL  usedDefault = FALSE;
+    int   len = WideCharToMultiByte( aCodePage, 0, aSrc, static_cast<int>( aLen ), nullptr, 0,
+                                     nullptr, checkDefault ? &usedDefault : nullptr );
+
+    if( len <= 0 || usedDefault )
+        return false;
+
+    aOut.resize( len );
+    WideCharToMultiByte( aCodePage, 0, aSrc, static_cast<int>( aLen ), aOut.data(), len,
+                         nullptr, nullptr );
+    return true;
+}
+
+#else
+
 bool iconvConvert( const std::string& aFrom, const std::string& aTo, const char* aSrc,
                    size_t aLen, std::string& aOut )
 {
@@ -588,6 +684,8 @@ bool iconvConvert( const std::string& aFrom, const std::string& aTo, const char*
     iconv_close( cd );
     return ok;
 }
+
+#endif
 
 
 std::string charsetOf( wxFontEncoding aEncoding )
@@ -746,11 +844,15 @@ void wxCSConv::init()
         return;
     }
 
+#ifdef _WIN32
+    m_ok = isValidCodePage( codePageOf( m_charset ) );
+#else
     iconv_t cd = iconv_open( "UTF-32LE", m_charset.c_str() );
     m_ok = cd != (iconv_t) -1;
 
     if( m_ok )
         iconv_close( cd );
+#endif
 }
 
 
@@ -771,12 +873,16 @@ bool wxCSConv::Decode( const char* aSrc, size_t aLen, std::wstring& aOut ) const
     if( m_direct )
         return m_direct->Decode( aSrc, aLen, aOut );
 
+#ifdef _WIN32
+    return m_ok && codePageDecode( codePageOf( m_charset ), aSrc, aLen, aOut );
+#else
     std::string utf32;
 
     if( !m_ok || !iconvConvert( m_charset, "UTF-32LE", aSrc, aLen, utf32 ) )
         return false;
 
     return decodeUTF32( utf32.data(), utf32.size(), aOut, false );
+#endif
 }
 
 
@@ -785,10 +891,14 @@ bool wxCSConv::Encode( const wchar_t* aSrc, size_t aLen, std::string& aOut ) con
     if( m_direct )
         return m_direct->Encode( aSrc, aLen, aOut );
 
+#ifdef _WIN32
+    return m_ok && codePageEncode( codePageOf( m_charset ), aSrc, aLen, aOut );
+#else
     std::string utf32;
     encodeUTF32( aSrc, aLen, utf32, false );
 
     return m_ok && iconvConvert( "UTF-32LE", m_charset, utf32.data(), utf32.size(), aOut );
+#endif
 }
 
 

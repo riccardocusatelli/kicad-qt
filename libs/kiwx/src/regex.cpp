@@ -30,9 +30,15 @@
 #include <cwctype>
 #include <vector>
 
-// wxString holds wchar_t, 32 bit here: the matching is done on it directly.
-static_assert( sizeof( wchar_t ) == 4, "kiwx regex needs a 32 bit wchar_t" );
+// wxString holds wchar_t (UTF-16 on Windows, UTF-32 elsewhere): the matching is done on it
+// directly, with the PCRE2 library of the same code unit, as wxWidgets does.
+#ifdef _WIN32
+static_assert( sizeof( wchar_t ) == 2 );
+#define PCRE2_CODE_UNIT_WIDTH 16
+#else
+static_assert( sizeof( wchar_t ) == 4 );
 #define PCRE2_CODE_UNIT_WIDTH 32
+#endif
 #include <pcre2.h>
 
 
