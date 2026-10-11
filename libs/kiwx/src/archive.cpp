@@ -130,9 +130,18 @@ wxZipEntry::wxZipEntry( const wxString& aName, const wxDateTime& aDt, wxFileOffs
 
 wxString wxZipEntry::GetInternalName( const wxString& aName, wxPathFormat aFormat, bool* aIsDir )
 {
-    wxString internal = aFormat == wxPATH_DOS ? wxFileName( aName, aFormat ).GetFullPath( wxPATH_UNIX ) : aName;
+    wxString internal = wxFileName::GetFormat( aFormat ) != wxPATH_UNIX
+                                ? wxFileName( aName, aFormat ).GetFullPath( wxPATH_UNIX )
+                                : aName;
 
-    bool isDir = !internal.empty() && internal.Last() == wxT( '/' );
+    // both separators, whatever the format (as wxWidgets)
+    auto isSep =
+            []( wxUniChar aCh )
+            {
+                return aCh == wxT( '/' ) || aCh == wxT( '\\' );
+            };
+
+    bool isDir = !internal.empty() && isSep( internal.Last() );
 
     if( aIsDir )
         *aIsDir = isDir;
@@ -140,10 +149,10 @@ wxString wxZipEntry::GetInternalName( const wxString& aName, wxPathFormat aForma
     if( isDir )
         internal.RemoveLast();
 
-    while( !internal.empty() && internal[0] == wxT( '/' ) )
+    while( !internal.empty() && isSep( internal[0] ) )
         internal.erase( 0, 1 );
 
-    while( internal.StartsWith( wxT( "./" ) ) )
+    while( internal.length() >= 2 && internal[0] == wxT( '.' ) && isSep( internal[1] ) )
         internal.erase( 0, 2 );
 
     if( internal == wxT( "." ) || internal == wxT( ".." ) )
@@ -153,9 +162,30 @@ wxString wxZipEntry::GetInternalName( const wxString& aName, wxPathFormat aForma
 }
 
 
-wxString wxZipEntry::GetName( wxPathFormat ) const
+namespace
 {
-    return m_isDir && !m_name.empty() ? m_name + wxT( "/" ) : m_name;
+
+/// An internal name (with '/') in the given format.
+wxString externalName( const wxString& aName, bool aIsDir, wxPathFormat aFormat )
+{
+    bool isDir = aIsDir && !aName.empty();
+
+    if( wxFileName::GetFormat( aFormat ) == wxPATH_DOS )
+    {
+        wxString name( aName );
+        name.Replace( wxT( "/" ), wxT( "\\" ) );
+        return isDir ? name + wxT( "\\" ) : name;
+    }
+
+    return isDir ? aName + wxT( "/" ) : aName;
+}
+
+} // namespace
+
+
+wxString wxZipEntry::GetName( wxPathFormat aFormat ) const
+{
+    return externalName( m_name, m_isDir, aFormat );
 }
 
 
@@ -731,9 +761,9 @@ wxTarEntry::wxTarEntry( const wxString& aName, const wxDateTime& aDt, wxFileOffs
 }
 
 
-wxString wxTarEntry::GetName( wxPathFormat ) const
+wxString wxTarEntry::GetName( wxPathFormat aFormat ) const
 {
-    return IsDir() && !m_name.empty() ? m_name + wxT( "/" ) : m_name;
+    return externalName( m_name, IsDir(), aFormat );
 }
 
 

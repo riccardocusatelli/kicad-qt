@@ -109,7 +109,7 @@ public:
     void Write8( wxUint8 i ) { WriteString( wxString::Format( wxT( "%u" ), (unsigned) i ) ); }
     void WriteDouble( double d ) { WriteString( wxString::Format( wxT( "%f" ), d ) ); }
 
-    void  SetMode( wxEOL aMode = wxEOL_NATIVE ) { m_mode = aMode == wxEOL_NATIVE ? wxEOL_UNIX : aMode; }
+    void  SetMode( wxEOL aMode = wxEOL_NATIVE ) { m_mode = aMode == wxEOL_NATIVE ? kiwxNativeEOL : aMode; }
     wxEOL GetMode() { return m_mode; }
 
     wxTextOutputStream& operator<<( const wxString& s ) { WriteString( s ); return *this; }

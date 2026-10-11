@@ -198,6 +198,13 @@ enum wxEOL
     wxEOL_DOS
 };
 
+/// The line end of the text files of this system (wxEOL_NATIVE).
+#ifdef _WIN32
+constexpr wxEOL kiwxNativeEOL = wxEOL_DOS;
+#else
+constexpr wxEOL kiwxNativeEOL = wxEOL_UNIX;
+#endif
+
 #define wxMin( a, b ) ( ( ( b ) < ( a ) ) ? ( b ) : ( a ) )
 #define wxMax( a, b ) ( ( ( a ) < ( b ) ) ? ( b ) : ( a ) )
 

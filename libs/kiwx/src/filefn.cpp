@@ -35,6 +35,8 @@
 #include "kiwx_private.h"
 
 #include <chrono>
+#include <cstdio>
+#include <string>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -233,10 +235,14 @@ time_t wxFileModificationTime( const wxString& aFile )
 
 bool wxGetDiskSpace( const wxString& aPath, wxLongLong* aTotal, wxLongLong* aFree )
 {
+    // only for existing paths (std::filesystem::space() takes the volume of the others)
+    if( fileType( aPath ) == fs::file_type::none )
+        return false;
+
     std::error_code ec;
     fs::space_info  info = fs::space( kiwx::FsPath( aPath ), ec );
 
-    if( aPath.empty() || ec )
+    if( ec )
         return false;
 
     if( aTotal )
@@ -264,8 +270,12 @@ wxString wxNow()
     struct tm tmv;
     kiwx::LocalTime( std::time( nullptr ), tmv );
 
+    // ctime() format; %e is not in all the C libraries
+    char   day[8];
     char   buf[64];
-    size_t len = std::strftime( buf, sizeof( buf ), "%a %b %e %H:%M:%S %Y", &tmv );
+    std::snprintf( day, sizeof( day ), "%2d", tmv.tm_mday );
+    std::string fmt = std::string( "%a %b " ) + day + " %H:%M:%S %Y";
+    size_t      len = std::strftime( buf, sizeof( buf ), fmt.c_str(), &tmv );
     return wxString::FromUTF8( buf, len );
 }
 

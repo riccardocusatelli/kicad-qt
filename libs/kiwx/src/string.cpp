@@ -32,6 +32,7 @@
 #include <sstream>
 
 
+
 namespace
 {
 
@@ -45,7 +46,11 @@ bool isSpace( wchar_t c )
 /// wcstod() in the C locale, whatever the current locale.
 double cLocaleWcstod( const wchar_t* aStr, wchar_t** aEnd )
 {
-#ifdef _WIN32
+#if defined( __MINGW32__ ) && !defined( _UCRT )
+    // MinGW on msvcrt.dll has no _wcstod_l() (only for the tests of kiwx with MinGW: KiCad
+    // builds with MSVC and the UCRT)
+    return std::wcstod( aStr, aEnd );
+#elif defined( _WIN32 )
     static _locale_t loc = _create_locale( LC_ALL, "C" );
     return _wcstod_l( aStr, aEnd, loc );
 #else

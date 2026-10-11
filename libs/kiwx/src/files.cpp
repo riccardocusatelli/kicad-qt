@@ -203,7 +203,18 @@ bool wxFFile::Error() const
 
 wxString wxDir::GetName() const
 {
+#ifdef _WIN32
+    // the canonical Windows form, as wxMSW
+    wxString name = m_dirName;
+    name.Replace( wxT( "/" ), wxT( "\\" ) );
+
+    if( name.length() > 1 && name.Last() == wxT( '\\' ) )
+        name.RemoveLast();
+
+    return name;
+#else
     return m_dirName;
+#endif
 }
 
 

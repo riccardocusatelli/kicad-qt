@@ -658,7 +658,8 @@ void wxFileName::Assign( const wxString& aFullPath, wxPathFormat aFormat )
 void wxFileName::Assign( const wxString& aVolume, const wxString& aPath, const wxString& aName,
                          const wxString& aExt, bool aHasExt, wxPathFormat aFormat )
 {
-    SetPath( aPath, aFormat );
+    // the volume is given: a path like \\foo\bar is not a UNC path here
+    doSetPath( aPath, aFormat, false );
 
     m_volume = aVolume;
     m_ext = aExt;
@@ -742,6 +743,12 @@ void wxFileName::AssignTempFileName( const wxString& aPrefix, wxFFile* aFileTemp
 
 void wxFileName::SetPath( const wxString& aPathOrig, wxPathFormat aFormat )
 {
+    doSetPath( aPathOrig, aFormat, true );
+}
+
+
+void wxFileName::doSetPath( const wxString& aPathOrig, wxPathFormat aFormat, bool aMayHaveVolume )
+{
     m_dirs.clear();
 
     if( aPathOrig.empty() )
@@ -750,13 +757,18 @@ void wxFileName::SetPath( const wxString& aPathOrig, wxPathFormat aFormat )
         return;
     }
 
-    wxString volume, path;
-    SplitVolume( aPathOrig, &volume, &path, aFormat );
+    wxString path = aPathOrig;
 
-    if( !volume.empty() )
+    if( aMayHaveVolume )
     {
-        m_relative = false;
-        SetVolume( volume );
+        wxString volume;
+        SplitVolume( aPathOrig, &volume, &path, aFormat );
+
+        if( !volume.empty() )
+        {
+            m_relative = false;
+            SetVolume( volume );
+        }
     }
 
     if( path.empty() )

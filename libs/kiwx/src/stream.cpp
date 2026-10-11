@@ -893,7 +893,7 @@ wxTextInputStream& wxTextInputStream::operator>>( char& c )
 
 wxTextOutputStream::wxTextOutputStream( wxOutputStream& aStream, wxEOL aMode, const wxMBConv& aConv ) :
         m_output( aStream ),
-        m_mode( aMode == wxEOL_NATIVE ? wxEOL_UNIX : aMode ),
+        m_mode( aMode == wxEOL_NATIVE ? kiwxNativeEOL : aMode ),
         m_conv( aConv.Clone() )
 {
 }

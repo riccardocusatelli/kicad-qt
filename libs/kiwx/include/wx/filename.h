@@ -308,6 +308,9 @@ public:
                                           wxSizeConvention aConv = wxSIZE_CONV_TRADITIONAL );
 
 private:
+    /// SetPath(), with or without a volume at the start of @a aPath.
+    void doSetPath( const wxString& aPath, wxPathFormat aFormat, bool aMayHaveVolume );
+
     static bool IsValidDirComponent( const wxString& aDir );
 
     wxString      m_volume;

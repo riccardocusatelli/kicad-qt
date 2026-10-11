@@ -42,7 +42,11 @@ enum wxTextFileType
 class wxTextBuffer
 {
 public:
+#ifdef _WIN32
+    static const wxTextFileType typeDefault = wxTextFileType_Dos;
+#else
     static const wxTextFileType typeDefault = wxTextFileType_Unix;
+#endif
 
     static wxString       Translate( const wxString& aText, wxTextFileType aType = typeDefault );
     static const wxChar*  GetEOL( wxTextFileType aType = typeDefault );
