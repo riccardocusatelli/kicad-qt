@@ -294,6 +294,44 @@ static void testFiles()
     OUT( wxRemoveFile( base + wxT( "/a/b/moved.txt" ) ) );
     OUT( wxRemoveFile( base + wxT( "/a/b/moved.txt" ) ) );
 
+    {
+        wxLogNull noLog;
+        wxString  dir = base + wxT( "/mk" );
+        OUT( wxMkdir( dir ) );
+        OUT( wxMkdir( dir ) );
+        OUT( wxDirExists( dir ) );
+        OUT( wxRemoveFile( dir ) );
+        OUT( wxDirExists( dir ) );
+        OUT( wxRmdir( file ) );
+        OUT( wxFileExists( file ) );
+        OUT( wxRmdir( dir ) );
+        OUT( wxRmdir( dir ) );
+        OUT( wxDirExists( dir ) );
+        OUT( wxMkdir( base + wxT( "/no/such/parent" ) ) );
+
+        wxString cwd = wxGetCwd();
+        OUT( wxSetWorkingDirectory( base + wxT( "/a" ) ) );
+        OUT( wxGetCwd().Replace( base, wxT( "BASE" ) ) );
+        OUT( wxFileExists( wxT( "test.txt" ) ) );
+        OUT( wxSetWorkingDirectory( base + wxT( "/none" ) ) );
+        OUT( wxSetWorkingDirectory( cwd ) );
+        OUT( wxGetCwd() == cwd );
+
+        time_t mtime = wxFileModificationTime( file );
+        OUT( mtime > 0 );
+        OUT( mtime == wxFileName( file ).GetModificationTime().GetTicks() );
+        OUT( wxFileModificationTime( base + wxT( "/none" ) ) );
+
+        wxLongLong total, free;
+        OUT( wxGetDiskSpace( base, &total, &free ) );
+        OUT( total > 0 && free >= 0 && free <= total );
+        OUT( wxGetDiskSpace( base + wxT( "/none" ), &total, &free ) );
+        OUT( wxGetDiskSpace( wxEmptyString, &total, &free ) );
+
+        OUT( wxNow().length() );
+        OUT( wxNow().Mid( 19 ) == wxDateTime::Now().Format( wxT( " %Y" ) ) );
+    }
+
     wxFFile( base + wxT( "/a/b/c/deep.kicad_sch" ), wxT( "w" ) ).Write( wxString( wxT( "x" ) ) );
     wxFFile( base + wxT( "/a/b/.hidden.kicad_sch" ), wxT( "w" ) ).Write( wxString( wxT( "x" ) ) );
     wxFFile( base + wxT( "/a/b/vis.kicad_pcb" ), wxT( "w" ) ).Write( wxString( wxT( "x" ) ) );

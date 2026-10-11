@@ -35,6 +35,7 @@ add_library( kiwx SHARED
     src/datetime.cpp
     src/dynlib.cpp
     src/fileconf.cpp
+    src/filefn.cpp
     src/filename.cpp
     src/files.cpp
     src/format.cpp
@@ -53,6 +54,21 @@ add_library( kiwx SHARED
     src/variant.cpp
     src/xml.cpp
     )
+
+# The services of the operating system
+if( WIN32 )
+    target_sources( kiwx PRIVATE
+        src/msw/dynlib_msw.cpp
+        src/msw/file_msw.cpp
+        src/msw/utils_msw.cpp
+        )
+else()
+    target_sources( kiwx PRIVATE
+        src/unix/dynlib_unix.cpp
+        src/unix/file_unix.cpp
+        src/unix/utils_unix.cpp
+        )
+endif()
 
 target_include_directories( kiwx PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include )
 

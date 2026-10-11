@@ -29,49 +29,14 @@
 #include <wx/tokenzr.h>
 #include <wx/utils.h>
 
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
-#include <filesystem>
-#include <fstream>
+#include "kiwx_private.h"
+
+#include <cwctype>
 #include <thread>
-
-#include <dirent.h>
-#include <fcntl.h>
-#include <fnmatch.h>
-#include <pwd.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/utsname.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <utime.h>
-
-extern char** environ;
 
 
 namespace
 {
-
-std::string fsPath( const wxString& aPath )
-{
-    return aPath.utf8_string();
-}
-
-
-/// The path without its trailing separators (but "/" stays "/").
-wxString stripTrailingSeparators( const wxString& aPath )
-{
-    wxString path = aPath;
-
-    while( path.length() > 1 && wxIsPathSeparator( path.Last() ) )
-        path.RemoveLast();
-
-    return path;
-}
-
 
 /// The length of the "\\?\Volume{guid}\" prefix of the Windows unique volume names.
 const size_t MSW_UNIQUE_VOLUME_PREFIX_LENGTH = 49;
@@ -121,21 +86,6 @@ wxString volumeString( const wxString& aVolume, wxPathFormat aFormat )
 
 
 // Free functions on files
-
-bool wxFileExists( const wxString& aFile )
-{
-    struct stat st;
-    return !aFile.empty() && stat( fsPath( aFile ).c_str(), &st ) == 0 && S_ISREG( st.st_mode );
-}
-
-
-bool wxDirExists( const wxString& aDir )
-{
-    struct stat st;
-    wxString    dir = stripTrailingSeparators( aDir );
-    return !dir.empty() && stat( fsPath( dir ).c_str(), &st ) == 0 && S_ISDIR( st.st_mode );
-}
-
 
 bool wxIsAbsolutePath( const wxString& aPath )
 {
@@ -188,132 +138,6 @@ wxString wxFileNameFromPath( const wxString& aPath )
 }
 
 
-bool wxMkdir( const wxString& aDir, int aPerm )
-{
-    if( mkdir( fsPath( aDir ).c_str(), aPerm ) == 0 )
-        return true;
-
-    wxLogSysError( _( "Directory '%s' couldn't be created" ), aDir );
-    return false;
-}
-
-
-bool wxRmdir( const wxString& aDir, int )
-{
-    if( rmdir( fsPath( aDir ).c_str() ) == 0 )
-        return true;
-
-    wxLogSysError( _( "Directory '%s' couldn't be deleted" ), aDir );
-    return false;
-}
-
-
-int wxChmod( const wxString& aPath, int aMode )
-{
-    return chmod( fsPath( aPath ).c_str(), aMode );
-}
-
-
-bool wxRemoveFile( const wxString& aFile )
-{
-    if( unlink( fsPath( aFile ).c_str() ) == 0 )
-        return true;
-
-    wxLogSysError( _( "File '%s' couldn't be removed" ), aFile );
-    return false;
-}
-
-
-bool wxRenameFile( const wxString& aFrom, const wxString& aTo, bool aOverwrite )
-{
-    if( !aOverwrite && wxFileExists( aTo ) )
-        return false;
-
-    if( std::rename( fsPath( aFrom ).c_str(), fsPath( aTo ).c_str() ) == 0 )
-        return true;
-
-    // Across file systems: copy and remove.
-    if( wxCopyFile( aFrom, aTo, aOverwrite ) && wxRemoveFile( aFrom ) )
-        return true;
-
-    wxLogSysError( _( "File '%s' couldn't be renamed '%s'" ), aFrom, aTo );
-    return false;
-}
-
-
-bool wxCopyFile( const wxString& aFrom, const wxString& aTo, bool aOverwrite )
-{
-    if( !aOverwrite && wxFileExists( aTo ) )
-    {
-        wxLogSysError( _( "Impossible to overwrite the file '%s'" ), aTo );
-        return false;
-    }
-
-    struct stat st;
-
-    if( stat( fsPath( aFrom ).c_str(), &st ) != 0 )
-        return false;
-
-    int in = open( fsPath( aFrom ).c_str(), O_RDONLY );
-
-    if( in < 0 )
-        return false;
-
-    unlink( fsPath( aTo ).c_str() );
-    int out = open( fsPath( aTo ).c_str(), O_WRONLY | O_CREAT | O_TRUNC, st.st_mode & 0777 );
-
-    if( out < 0 )
-    {
-        close( in );
-        return false;
-    }
-
-    char    buf[65536];
-    ssize_t n;
-    bool    ok = true;
-
-    while( ( n = read( in, buf, sizeof( buf ) ) ) > 0 )
-    {
-        if( write( out, buf, n ) != n )
-        {
-            ok = false;
-            break;
-        }
-    }
-
-    if( n < 0 )
-        ok = false;
-
-    close( in );
-
-    if( close( out ) != 0 )
-        ok = false;
-
-    chmod( fsPath( aTo ).c_str(), st.st_mode & 07777 );
-    return ok;
-}
-
-
-wxString wxGetCwd()
-{
-    char buf[PATH_MAX];
-    return getcwd( buf, sizeof( buf ) ) ? wxString( buf ) : wxString();
-}
-
-
-bool wxSetWorkingDirectory( const wxString& aDir )
-{
-    return chdir( fsPath( aDir ).c_str() ) == 0;
-}
-
-
-time_t wxFileModificationTime( const wxString& aFile )
-{
-    struct stat st;
-    return stat( fsPath( aFile ).c_str(), &st ) == 0 ? st.st_mtime : -1;
-}
-
-
 bool wxIsWild( const wxString& aPattern )
 {
     return aPattern.find_first_of( wxT( "*?[" ) ) != wxString::npos;
@@ -332,190 +156,18 @@ bool wxMatchWild( const wxString& aPattern, const wxString& aText, bool aDotSpec
 }
 
 
-bool wxIsWritable( const wxString& aPath )
-{
-    return access( fsPath( aPath ).c_str(), W_OK ) == 0;
-}
-
-
-bool wxIsReadable( const wxString& aPath )
-{
-    return access( fsPath( aPath ).c_str(), R_OK ) == 0;
-}
-
-
-bool wxIsExecutable( const wxString& aPath )
-{
-    return access( fsPath( aPath ).c_str(), X_OK ) == 0;
-}
-
-
-namespace
-{
-
-struct FIND_STATE
-{
-    wxArrayString matches;
-    size_t        next = 0;
-};
-
-FIND_STATE& findState()
-{
-    static thread_local FIND_STATE state;
-    return state;
-}
-
-} // namespace
-
-
-wxString wxFindFirstFile( const wxString& aSpec, int aFlags )
-{
-    FIND_STATE& state = findState();
-    state.matches.clear();
-    state.next = 0;
-
-    wxString dir = wxPathOnly( aSpec );
-    wxString mask = wxFileNameFromPath( aSpec );
-
-    if( dir.empty() )
-        dir = wxT( "." );
-
-    if( DIR* d = opendir( fsPath( dir ).c_str() ) )
-    {
-        while( struct dirent* e = readdir( d ) )
-        {
-            wxString name( e->d_name );
-
-            if( name == wxT( "." ) || name == wxT( ".." ) )
-                continue;
-
-            if( wxMatchWild( mask, name ) )
-            {
-                wxString full = aSpec.Contains( wxT( "/" ) ) ? dir + wxT( "/" ) + name : name;
-                bool     isDir = wxDirExists( dir + wxT( "/" ) + name );
-
-                if( aFlags == 0 || ( isDir && ( aFlags & 2 ) ) || ( !isDir && ( aFlags & 1 ) ) )
-                    state.matches.Add( full );
-            }
-        }
-
-        closedir( d );
-    }
-
-    return wxFindNextFile();
-}
-
-
-wxString wxFindNextFile()
-{
-    FIND_STATE& state = findState();
-    return state.next < state.matches.size() ? state.matches[state.next++] : wxString();
-}
-
-
-wxString wxRealPath( const wxString& aPath )
-{
-    char buf[PATH_MAX];
-    return realpath( fsPath( aPath ).c_str(), buf ) ? wxString( buf ) : aPath;
-}
-
-
-bool wxGetDiskSpace( const wxString& aPath, wxLongLong* aTotal, wxLongLong* aFree )
-{
-    struct statvfs fs;
-
-    if( statvfs( fsPath( aPath ).c_str(), &fs ) != 0 )
-        return false;
-
-    if( aTotal )
-        *aTotal = static_cast<long long>( fs.f_blocks ) * fs.f_frsize;
-
-    if( aFree )
-        *aFree = static_cast<long long>( fs.f_bavail ) * fs.f_frsize;
-
-    return true;
-}
-
-
-wxFileKind wxGetFileKind( int aFd )
-{
-    struct stat st;
-
-    if( fstat( aFd, &st ) != 0 )
-        return wxFILE_KIND_UNKNOWN;
-
-    if( isatty( aFd ) )
-        return wxFILE_KIND_TERMINAL;
-
-    if( S_ISFIFO( st.st_mode ) )
-        return wxFILE_KIND_PIPE;
-
-    return wxFILE_KIND_DISK;
-}
-
-
 wxFileKind wxGetFileKind( FILE* aFile )
 {
     return aFile ? wxGetFileKind( fileno( aFile ) ) : wxFILE_KIND_UNKNOWN;
 }
 
 
-long long kiwxFileSize( const wxString& aFile )
-{
-    struct stat st;
-    return stat( fsPath( aFile ).c_str(), &st ) == 0 ? static_cast<long long>( st.st_size ) : -1;
-}
-
-
 // Environment and system
-
-bool wxGetEnv( const wxString& aVar, wxString* aValue )
-{
-    const char* v = std::getenv( fsPath( aVar ).c_str() );
-
-    if( !v )
-        return false;
-
-    if( aValue )
-        *aValue = wxString( v );
-
-    return true;
-}
-
-
-bool wxSetEnv( const wxString& aVar, const wxString& aValue )
-{
-    return setenv( fsPath( aVar ).c_str(), fsPath( aValue ).c_str(), 1 ) == 0;
-}
-
-
-bool wxUnsetEnv( const wxString& aVar )
-{
-    return unsetenv( fsPath( aVar ).c_str() ) == 0;
-}
-
-
-bool wxGetEnvMap( wxEnvVariableHashMap* aMap )
-{
-    if( !aMap )
-        return false;
-
-    aMap->clear();
-
-    for( char** e = environ; e && *e; ++e )
-    {
-        wxString entry( *e );
-        aMap->emplace( entry.BeforeFirst( '=' ), entry.AfterFirst( '=' ) );
-    }
-
-    return true;
-}
-
 
 wxString wxExpandEnvVars( const wxString& aStr )
 {
-    // The rules of wxWidgets on Unix: $VAR, ${VAR}, $(VAR); unknown variables are kept as
-    // they are; a backslash before $ suppresses the expansion.
+    // The rules of wxWidgets: $VAR, ${VAR}, $(VAR) and, on Windows, %VAR%; unknown variables
+    // are kept as they are; a backslash before $ or % suppresses the expansion.
     const std::wstring& str = aStr.impl();
     wxString            result;
     result.reserve( str.size() );
@@ -524,11 +176,21 @@ wxString wxExpandEnvVars( const wxString& aStr )
     {
         wchar_t c = str[n];
 
-        if( c == L'$' )
+#ifdef _WIN32
+        const bool windowsBracket = c == L'%';
+#else
+        const bool windowsBracket = false;
+#endif
+
+        if( c == L'$' || windowsBracket )
         {
             wchar_t bracket = 0;
 
-            if( n + 1 < str.size() )
+            if( windowsBracket )
+            {
+                bracket = L'%';
+            }
+            else if( n + 1 < str.size() )
             {
                 if( str[n + 1] == L'(' )
                 {
@@ -557,7 +219,7 @@ wxString wxExpandEnvVars( const wxString& aStr )
             }
             else
             {
-                if( bracket )
+                if( bracket && !windowsBracket )
                     result += str[n - 1];
 
                 result += str[n];
@@ -568,9 +230,12 @@ wxString wxExpandEnvVars( const wxString& aStr )
             {
                 if( m == str.size() || str[m] != bracket )
                 {
+                    // not on Windows, where '%' is common in the values (as wxWidgets)
+#ifndef _WIN32
                     wxLogWarning( _( "Environment variables expansion failed: missing '%c' at "
                                      "position %u in '%s'." ),
                                   (char) bracket, (unsigned int) ( m + 1 ), aStr );
+#endif
                 }
                 else
                 {
@@ -598,41 +263,6 @@ wxString wxExpandEnvVars( const wxString& aStr )
 }
 
 
-wxString wxGetHomeDir()
-{
-    wxString home;
-
-    if( wxGetEnv( wxT( "HOME" ), &home ) && !home.empty() )
-        return home;
-
-    if( struct passwd* pw = getpwuid( getuid() ) )
-        return wxString( pw->pw_dir );
-
-    return wxT( "/" );
-}
-
-
-wxString wxGetUserHome( const wxString& aUser )
-{
-    if( aUser.empty() )
-        return wxGetHomeDir();
-
-    if( struct passwd* pw = getpwnam( fsPath( aUser ).c_str() ) )
-        return wxString( pw->pw_dir );
-
-    return wxString();
-}
-
-
-wxString wxGetUserId()
-{
-    if( struct passwd* pw = getpwuid( getuid() ) )
-        return wxString( pw->pw_name );
-
-    return wxString();
-}
-
-
 bool wxGetUserId( wxChar* aBuf, int aSize )
 {
     wxString id = wxGetUserId();
@@ -646,90 +276,6 @@ bool wxGetUserId( wxChar* aBuf, int aSize )
 }
 
 
-wxString wxGetUserName()
-{
-    if( struct passwd* pw = getpwuid( getuid() ) )
-    {
-        wxString gecos( pw->pw_gecos );
-        gecos = gecos.BeforeFirst( ',' );
-        return gecos.empty() ? wxString( pw->pw_name ) : gecos;
-    }
-
-    return wxString();
-}
-
-
-wxString wxGetHostName()
-{
-    char buf[256];
-
-    if( gethostname( buf, sizeof( buf ) ) != 0 )
-        return wxString();
-
-    buf[sizeof( buf ) - 1] = 0;
-    return wxString( buf ).BeforeFirst( '.' );
-}
-
-
-wxString wxGetFullHostName()
-{
-    char buf[256];
-
-    if( gethostname( buf, sizeof( buf ) ) != 0 )
-        return wxString();
-
-    buf[sizeof( buf ) - 1] = 0;
-    return wxString( buf );
-}
-
-
-unsigned long wxGetProcessId()
-{
-    return static_cast<unsigned long>( getpid() );
-}
-
-
-wxString wxGetOsDescription()
-{
-    struct utsname u;
-
-    if( uname( &u ) != 0 )
-        return wxT( "Unknown" );
-
-    return wxString::Format( wxT( "%s %s %s" ), u.sysname, u.release, u.machine );
-}
-
-
-int wxGetOsVersion( int* aMajor, int* aMinor, int* aMicro )
-{
-    struct utsname u;
-    int            major = 0;
-    int            minor = 0;
-    int            micro = 0;
-
-    if( uname( &u ) == 0 )
-        std::sscanf( u.release, "%d.%d.%d", &major, &minor, &micro );
-
-    if( aMajor )
-        *aMajor = major;
-
-    if( aMinor )
-        *aMinor = minor;
-
-    if( aMicro )
-        *aMicro = micro;
-
-    return 0;
-}
-
-
-wxString wxGetCpuArchitectureName()
-{
-    struct utsname u;
-    return uname( &u ) == 0 ? wxString( u.machine ) : wxString();
-}
-
-
 wxString wxGetNativeCpuArchitectureName()
 {
     return wxGetCpuArchitectureName();
@@ -739,39 +285,6 @@ wxString wxGetNativeCpuArchitectureName()
 bool wxIsPlatform64Bit()
 {
     return sizeof( void* ) == 8;
-}
-
-
-wxLinuxDistributionInfo wxGetLinuxDistributionInfo()
-{
-    wxLinuxDistributionInfo info;
-    std::ifstream           in( "/etc/os-release" );
-    std::string             line;
-
-    auto value =
-            []( const std::string& aLine )
-            {
-                std::string v = aLine.substr( aLine.find( '=' ) + 1 );
-
-                if( v.size() >= 2 && v.front() == '"' && v.back() == '"' )
-                    v = v.substr( 1, v.size() - 2 );
-
-                return wxString::FromUTF8( v );
-            };
-
-    while( std::getline( in, line ) )
-    {
-        if( line.rfind( "ID=", 0 ) == 0 )
-            info.Id = value( line ).Capitalize();
-        else if( line.rfind( "VERSION_ID=", 0 ) == 0 )
-            info.Release = value( line );
-        else if( line.rfind( "VERSION_CODENAME=", 0 ) == 0 )
-            info.CodeName = value( line );
-        else if( line.rfind( "PRETTY_NAME=", 0 ) == 0 )
-            info.Description = value( line );
-    }
-
-    return info;
 }
 
 
@@ -790,253 +303,6 @@ void wxMicroSleep( unsigned long aUs )
 void wxSleep( int aSeconds )
 {
     std::this_thread::sleep_for( std::chrono::seconds( aSeconds ) );
-}
-
-
-namespace
-{
-
-/// Split a command line as wxWidgets does: whitespace separated, quotes group words.
-std::vector<std::string> splitCommand( const wxString& aCommand )
-{
-    std::vector<std::string> args;
-    std::string              cmd = aCommand.utf8_string();
-    std::string              current;
-    char                     quote = 0;
-    bool                     inArg = false;
-
-    for( size_t i = 0; i < cmd.size(); ++i )
-    {
-        char c = cmd[i];
-
-        if( quote )
-        {
-            if( c == quote )
-                quote = 0;
-            else if( c == '\\' && quote == '"' && i + 1 < cmd.size()
-                     && ( cmd[i + 1] == '"' || cmd[i + 1] == '\\' ) )
-                current += cmd[++i];
-            else
-                current += c;
-        }
-        else if( c == '"' || c == '\'' )
-        {
-            quote = c;
-            inArg = true;
-        }
-        else if( c == ' ' || c == '\t' )
-        {
-            if( inArg )
-            {
-                args.push_back( current );
-                current.clear();
-                inArg = false;
-            }
-        }
-        else if( c == '\\' && i + 1 < cmd.size() )
-        {
-            current += cmd[++i];
-            inArg = true;
-        }
-        else
-        {
-            current += c;
-            inArg = true;
-        }
-    }
-
-    if( inArg )
-        args.push_back( current );
-
-    return args;
-}
-
-
-// Runs a command; with aOutput / aErrors, its standard output / error are captured.
-long run( const std::vector<std::string>& aArgs, int aFlags, const wxExecuteEnv* aEnv,
-          std::string* aOutput, std::string* aErrors )
-{
-    if( aArgs.empty() )
-        return aFlags & wxEXEC_SYNC ? -1 : 0;
-
-    int outPipe[2] = { -1, -1 };
-    int errPipe[2] = { -1, -1 };
-
-    if( aOutput && pipe( outPipe ) != 0 )
-        return -1;
-
-    if( aErrors && pipe( errPipe ) != 0 )
-        return -1;
-
-    pid_t pid = fork();
-
-    if( pid < 0 )
-        return aFlags & wxEXEC_SYNC ? -1 : 0;
-
-    if( pid == 0 )
-    {
-        if( aOutput )
-        {
-            dup2( outPipe[1], STDOUT_FILENO );
-            close( outPipe[0] );
-            close( outPipe[1] );
-        }
-
-        if( aErrors )
-        {
-            dup2( errPipe[1], STDERR_FILENO );
-            close( errPipe[0] );
-            close( errPipe[1] );
-        }
-
-        if( aEnv )
-        {
-            if( !aEnv->cwd.empty() && chdir( aEnv->cwd.utf8_string().c_str() ) != 0 )
-                _exit( 127 );
-
-            if( !aEnv->env.empty() )
-            {
-                clearenv();
-
-                for( const auto& [name, value] : aEnv->env )
-                    setenv( name.utf8_string().c_str(), value.utf8_string().c_str(), 1 );
-            }
-        }
-
-        std::vector<char*> argv;
-
-        for( const std::string& arg : aArgs )
-            argv.push_back( const_cast<char*>( arg.c_str() ) );
-
-        argv.push_back( nullptr );
-        execvp( argv[0], argv.data() );
-        _exit( 127 );
-    }
-
-    auto readAll =
-            []( int aFd, std::string* aData )
-            {
-                char    buf[4096];
-                ssize_t n;
-
-                while( ( n = read( aFd, buf, sizeof( buf ) ) ) > 0 )
-                    aData->append( buf, n );
-
-                close( aFd );
-            };
-
-    if( aOutput )
-        close( outPipe[1] );
-
-    if( aErrors )
-        close( errPipe[1] );
-
-    if( aOutput && aErrors )
-    {
-        std::thread errReader( readAll, errPipe[0], aErrors );
-        readAll( outPipe[0], aOutput );
-        errReader.join();
-    }
-    else if( aOutput )
-    {
-        readAll( outPipe[0], aOutput );
-    }
-    else if( aErrors )
-    {
-        readAll( errPipe[0], aErrors );
-    }
-
-    if( !( aFlags & wxEXEC_SYNC ) && !aOutput && !aErrors )
-        return pid;
-
-    int status = 0;
-
-    if( waitpid( pid, &status, 0 ) < 0 )
-        return -1;
-
-    return WIFEXITED( status ) ? WEXITSTATUS( status ) : -1;
-}
-
-
-// The lines of a captured output, as wxWidgets reads them (wxTextInputStream::ReadLine()).
-void toLines( const std::string& aData, wxArrayString& aLines )
-{
-    wxMemoryInputStream in( aData.data(), aData.size() );
-    wxTextInputStream   text( in );
-
-    while( in.CanRead() && !in.Eof() )
-    {
-        wxString line = text.ReadLine();
-
-        if( in.Eof() && line.empty() )
-            break;
-
-        aLines.Add( line );
-    }
-}
-
-
-long runForProcess( const std::vector<std::string>& aArgs, int aFlags, wxProcess* aProcess,
-                    const wxExecuteEnv* aEnv )
-{
-    if( !aProcess || !aProcess->IsRedirected() )
-        return run( aArgs, aFlags, aEnv, nullptr, nullptr );
-
-    // the output is read until the end: the command runs synchronously
-    std::string out, err;
-    long        ret = run( aArgs, aFlags | wxEXEC_SYNC, aEnv, &out, &err );
-    aProcess->SetCapturedOutput( out, err );
-    return ret;
-}
-
-} // namespace
-
-
-long wxExecute( const wxString& aCommand, int aFlags, wxProcess* aProcess, const wxExecuteEnv* aEnv )
-{
-    return runForProcess( splitCommand( aCommand ), aFlags, aProcess, aEnv );
-}
-
-
-long wxExecute( const wxString& aCommand, wxArrayString& aOutput, int aFlags, const wxExecuteEnv* aEnv )
-{
-    std::string out;
-    long        ret = run( splitCommand( aCommand ), aFlags | wxEXEC_SYNC, aEnv, &out, nullptr );
-    toLines( out, aOutput );
-    return ret;
-}
-
-
-long wxExecute( const wxString& aCommand, wxArrayString& aOutput, wxArrayString& aErrors, int aFlags,
-                const wxExecuteEnv* aEnv )
-{
-    std::string out, err;
-    long        ret = run( splitCommand( aCommand ), aFlags | wxEXEC_SYNC, aEnv, &out, &err );
-    toLines( out, aOutput );
-    toLines( err, aErrors );
-    return ret;
-}
-
-
-long wxExecute( const char* const* aArgv, int aFlags, wxProcess* aProcess, const wxExecuteEnv* aEnv )
-{
-    std::vector<std::string> args;
-
-    for( ; aArgv && *aArgv; ++aArgv )
-        args.emplace_back( *aArgv );
-
-    return runForProcess( args, aFlags, aProcess, aEnv );
-}
-
-
-long wxExecute( const wchar_t* const* aArgv, int aFlags, wxProcess* aProcess, const wxExecuteEnv* aEnv )
-{
-    std::vector<std::string> args;
-
-    for( ; aArgv && *aArgv; ++aArgv )
-        args.push_back( wxString( *aArgv ).utf8_string() );
-
-    return runForProcess( args, aFlags, aProcess, aEnv );
 }
 
 
@@ -1133,30 +399,6 @@ wxString wxPathList::FindAbsoluteValidPath( const wxString& aFile ) const
 }
 
 
-int wxKill( long aPid, wxSignal aSig, wxKillError* aRc, int aFlags )
-{
-    int  err = kill( static_cast<pid_t>( ( aFlags & wxKILL_CHILDREN ) ? -aPid : aPid ),
-                     static_cast<int>( aSig ) );
-    wxKillError rc = wxKILL_OK;
-
-    if( err != 0 )
-    {
-        switch( errno )
-        {
-        case EINVAL: rc = wxKILL_BAD_SIGNAL; break;
-        case EPERM:  rc = wxKILL_ACCESS_DENIED; break;
-        case ESRCH:  rc = wxKILL_NO_PROCESS; break;
-        default:     rc = wxKILL_ERROR; break;
-        }
-    }
-
-    if( aRc )
-        *aRc = rc;
-
-    return err;
-}
-
-
 wxKillError wxProcess::Kill( int aPid, wxSignal aSig, int aFlags )
 {
     wxKillError rc;
@@ -1173,23 +415,6 @@ bool wxProcess::Exists( int aPid )
     case wxKILL_ACCESS_DENIED: return true;
     default:                   return false;
     }
-}
-
-
-bool wxShell( const wxString& aCommand )
-{
-    std::string cmd = aCommand.empty() ? std::string( "/bin/sh" ) : aCommand.utf8_string();
-    return std::system( cmd.c_str() ) == 0;
-}
-
-
-wxString wxNow()
-{
-    time_t now = std::time( nullptr );
-    char   buf[64];
-    ctime_r( &now, buf );
-    wxString s( buf );
-    return s.Trim();
 }
 
 
@@ -1828,25 +1053,6 @@ bool wxFileName::ReplaceHomeDir( wxPathFormat aFormat )
 }
 
 
-wxFileName wxFileName::ResolveLink()
-{
-    char        buf[PATH_MAX];
-    std::string path = fsPath( GetFullPath() );
-    ssize_t     len = readlink( path.c_str(), buf, sizeof( buf ) - 1 );
-
-    if( len < 0 )
-        return *this;
-
-    wxString target = wxString::FromUTF8( buf, len );
-    wxFileName result( target );
-
-    if( result.IsRelative() )
-        result.MakeAbsolute( GetPath() );
-
-    return result;
-}
-
-
 bool wxFileName::SameAs( const wxFileName& aOther, wxPathFormat aFormat ) const
 {
     wxFileName fn1 = *this;
@@ -1871,103 +1077,6 @@ bool wxFileName::FileExists( const wxString& aFile )
 bool wxFileName::DirExists( const wxString& aDir )
 {
     return wxDirExists( aDir );
-}
-
-
-bool wxFileName::Exists( const wxString& aPath, int aFlags )
-{
-    struct stat st;
-    std::string path = fsPath( aPath );
-    bool        follow = !( aFlags & wxFILE_EXISTS_NO_FOLLOW );
-
-    if( ( follow ? stat( path.c_str(), &st ) : lstat( path.c_str(), &st ) ) != 0 )
-        return false;
-
-    if( ( aFlags & wxFILE_EXISTS_REGULAR ) && S_ISREG( st.st_mode ) )
-        return true;
-
-    if( ( aFlags & wxFILE_EXISTS_DIR ) && S_ISDIR( st.st_mode ) )
-        return true;
-
-    if( ( aFlags & wxFILE_EXISTS_SYMLINK & ~wxFILE_EXISTS_NO_FOLLOW ) && S_ISLNK( st.st_mode ) )
-        return true;
-
-    if( ( aFlags & wxFILE_EXISTS_DEVICE ) && ( S_ISBLK( st.st_mode ) || S_ISCHR( st.st_mode ) ) )
-        return true;
-
-    if( ( aFlags & wxFILE_EXISTS_FIFO ) && S_ISFIFO( st.st_mode ) )
-        return true;
-
-    if( ( aFlags & wxFILE_EXISTS_SOCKET ) && S_ISSOCK( st.st_mode ) )
-        return true;
-
-    return aFlags == wxFILE_EXISTS_ANY;
-}
-
-
-bool wxFileName::GetTimes( wxDateTime* aAccess, wxDateTime* aMod, wxDateTime* aCreate ) const
-{
-    struct stat st;
-
-    if( stat( fsPath( GetFullPath() ).c_str(), &st ) != 0 )
-        return false;
-
-    auto toDateTime =
-            []( const struct timespec& aTs )
-            {
-                return wxDateTime::FromMilliseconds( static_cast<long long>( aTs.tv_sec ) * 1000
-                                                     + aTs.tv_nsec / 1000000 );
-            };
-
-    if( aAccess )
-        *aAccess = toDateTime( st.st_atim );
-
-    if( aMod )
-        *aMod = toDateTime( st.st_mtim );
-
-    if( aCreate )
-        *aCreate = toDateTime( st.st_ctim );
-
-    return true;
-}
-
-
-bool wxFileName::SetTimes( const wxDateTime* aAccess, const wxDateTime* aMod, const wxDateTime* ) const
-{
-    if( !aAccess && !aMod )
-        return true;
-
-    wxDateTime access, mod;
-
-    if( !GetTimes( &access, &mod, nullptr ) )
-        return false;
-
-    struct timeval tv[2];
-    long long      a = aAccess ? aAccess->GetValue().GetValue() : access.GetValue().GetValue();
-    long long      m = aMod ? aMod->GetValue().GetValue() : mod.GetValue().GetValue();
-    tv[0].tv_sec = a / 1000;
-    tv[0].tv_usec = ( a % 1000 ) * 1000;
-    tv[1].tv_sec = m / 1000;
-    tv[1].tv_usec = ( m % 1000 ) * 1000;
-
-    return utimes( fsPath( GetFullPath() ).c_str(), tv ) == 0;
-}
-
-
-bool wxFileName::Touch() const
-{
-    std::string path = fsPath( GetFullPath() );
-
-    if( utime( path.c_str(), nullptr ) == 0 )
-        return true;
-
-    int fd = open( path.c_str(), O_WRONLY | O_CREAT, 0666 );
-
-    if( fd < 0 )
-        return false;
-
-    close( fd );
-    return true;
 }
 
 
@@ -2005,77 +1114,6 @@ wxString wxFileName::GetHomeDir()
 }
 
 
-wxString wxFileName::GetTempDir()
-{
-    for( const wchar_t* var : { L"TMPDIR", L"TMP", L"TEMP", L"TEMPDIR" } )
-    {
-        wxString dir;
-
-        if( wxGetEnv( var, &dir ) && !dir.empty() )
-            return stripTrailingSeparators( dir );
-    }
-
-    return wxT( "/tmp" );
-}
-
-
-namespace
-{
-
-/// mkstemp() on prefix + "XXXXXX"; @return the name and the open descriptor (-1 on failure).
-wxString makeTemp( const wxString& aPrefix, int* aFd )
-{
-    wxString dir, name;
-    wxFileName::SplitPath( aPrefix, &dir, &name, nullptr );
-
-    if( dir.empty() )
-        dir = wxFileName::GetTempDir();
-
-    wxString    path = dir + wxT( "/" ) + name + wxT( "XXXXXX" );
-    std::string buf = path.utf8_string();
-    int         fd = mkstemp( buf.data() );
-
-    *aFd = fd;
-    return fd < 0 ? wxString() : wxString::FromUTF8( buf );
-}
-
-} // namespace
-
-
-wxString wxFileName::CreateTempFileName( const wxString& aPrefix, wxFile* aFileTemp )
-{
-    int      fd;
-    wxString name = makeTemp( aPrefix, &fd );
-
-    if( name.empty() )
-        return name;
-
-    if( aFileTemp )
-        aFileTemp->Attach( fd );
-    else
-        close( fd );
-
-    return name;
-}
-
-
-wxString wxFileName::CreateTempFileName( const wxString& aPrefix, wxFFile* aFileTemp )
-{
-    int      fd;
-    wxString name = makeTemp( aPrefix, &fd );
-
-    if( name.empty() )
-        return name;
-
-    if( aFileTemp )
-        aFileTemp->Attach( fdopen( fd, "w+b" ), name );
-    else
-        close( fd );
-
-    return name;
-}
-
-
 bool wxFileName::Mkdir( const wxString& aDir, int aPerm, int aFlags )
 {
     if( aFlags & wxPATH_MKDIR_FULL )
@@ -2101,30 +1139,6 @@ bool wxFileName::Mkdir( const wxString& aDir, int aPerm, int aFlags )
     }
 
     return wxMkdir( aDir, aPerm );
-}
-
-
-bool wxFileName::Rmdir( const wxString& aDir, int aFlags )
-{
-    std::error_code ec;
-    std::filesystem::path path( fsPath( aDir ) );
-
-    if( aFlags & wxPATH_RMDIR_RECURSIVE )
-        return std::filesystem::remove_all( path, ec ) > 0 && !ec;
-
-    if( aFlags & wxPATH_RMDIR_FULL )
-    {
-        // Only empty subdirectories.
-        for( const auto& entry : std::filesystem::recursive_directory_iterator( path, ec ) )
-        {
-            if( !entry.is_directory() )
-                return false;
-        }
-
-        return std::filesystem::remove_all( path, ec ) > 0 && !ec;
-    }
-
-    return wxRmdir( aDir );
 }
 
 

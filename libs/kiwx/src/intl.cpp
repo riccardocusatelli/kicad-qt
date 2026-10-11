@@ -19,20 +19,25 @@
 
 #include <wx/intl.h>
 
-#include <clocale>
-#include <cstdlib>
-#include <cstring>
-#include <langinfo.h>
 #include <wx/translation.h>
 
+#include <algorithm>
 #include <cctype>
 #include <clocale>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <locale>
 #include <mutex>
+#include <stdexcept>
 #include <unordered_set>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <langinfo.h>
+#endif
 
 
 namespace
@@ -152,7 +157,22 @@ wxLocale*& currentLocale()
 }
 
 
-/// The language of the environment (LC_ALL, LC_MESSAGES, LANG), as "it_IT".
+/// The name of the C library locale of a language ("it_IT"), with UTF-8: "it_IT.UTF-8" (on
+/// Windows "it-IT.UTF-8", the Windows locale names are BCP 47 tags).
+std::string localeName( const wxString& aCanonical, bool aUTF8 = true )
+{
+    std::string name = aCanonical.utf8_string();
+
+#ifdef _WIN32
+    std::replace( name.begin(), name.end(), '_', '-' );
+#endif
+
+    return aUTF8 ? name + ".UTF-8" : name;
+}
+
+
+/// The language of the environment (LC_ALL, LC_MESSAGES, LANG; on Windows the user locale
+/// unless they are set), as "it_IT".
 wxString environmentLanguage()
 {
     for( const char* var : { "LC_ALL", "LC_MESSAGES", "LANG" } )
@@ -166,6 +186,17 @@ wxString environmentLanguage()
             return lang;
         }
     }
+
+#ifdef _WIN32
+    wchar_t name[LOCALE_NAME_MAX_LENGTH];
+
+    if( GetUserDefaultLocaleName( name, LOCALE_NAME_MAX_LENGTH ) > 0 )
+    {
+        wxString lang( name );
+        lang.Replace( wxS( "-" ), wxS( "_" ) );
+        return lang;
+    }
+#endif
 
     return wxS( "C" );
 }
@@ -720,10 +751,10 @@ bool wxLocale::Init( const wxString& aName, const wxString& aShortName, const wx
     }
     else
     {
-        rc = std::setlocale( LC_ALL, ( m_canonical.utf8_string() + ".UTF-8" ).c_str() );
+        rc = std::setlocale( LC_ALL, localeName( m_canonical ).c_str() );
 
         if( !rc )
-            rc = std::setlocale( LC_ALL, m_canonical.utf8_string().c_str() );
+            rc = std::setlocale( LC_ALL, localeName( m_canonical, false ).c_str() );
     }
 
     m_sysName = rc ? wxString( rc ) : wxString();
@@ -821,13 +852,16 @@ bool wxLocale::IsAvailable( int aLanguage )
     if( !info )
         return false;
 
-    locale_t loc = newlocale( LC_ALL_MASK, ( info->CanonicalName.utf8_string() + ".UTF-8" ).c_str(),
-                              (locale_t) 0 );
-
-    if( loc )
-        freelocale( loc );
-
-    return loc != (locale_t) 0;
+    // std::locale throws if the C library does not know the locale
+    try
+    {
+        std::locale loc( localeName( info->CanonicalName ) );
+        return true;
+    }
+    catch( const std::runtime_error& )
+    {
+        return false;
+    }
 }
 
 
@@ -863,6 +897,12 @@ wxString wxLocale::GetSystemEncodingName()
 {
     wxString encname;
 
+#ifdef _WIN32
+    // the ANSI code page, as wxMSW (UTF-8 with the manifest of KiCad)
+    UINT codePage = GetACP();
+    return codePage == CP_UTF8 ? wxString( wxS( "UTF-8" ) )
+                               : wxString::Format( wxS( "windows-%u" ), codePage );
+#else
     {
         // in the default locale of the environment, as wxWidgets' TempLocaleSetter
         std::string old = std::setlocale( LC_CTYPE, nullptr );
@@ -898,4 +938,5 @@ wxString wxLocale::GetSystemEncodingName()
     }
 
     return encname;
+#endif
 }

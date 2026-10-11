@@ -28,9 +28,12 @@
 #include <wx/defs.h>
 #include <wx/string.h>
 
-#include <dlfcn.h>
-
+#ifdef _WIN32
+// HMODULE, without windows.h
+typedef struct HINSTANCE__* wxDllType;
+#else
 typedef void* wxDllType;
+#endif
 
 enum wxDLFlags
 {
@@ -58,8 +61,12 @@ enum wxDynamicLibraryCategory
 class wxDynamicLibrary
 {
 public:
-    static wxDllType GetProgramHandle() { return dlopen( nullptr, RTLD_LAZY ); }
+    static wxDllType GetProgramHandle();
+#ifdef _WIN32
+    static wxString  GetDllExt( wxDynamicLibraryCategory = wxDL_LIBRARY ) { return ".dll"; }
+#else
     static wxString  GetDllExt( wxDynamicLibraryCategory = wxDL_LIBRARY ) { return ".so"; }
+#endif
 
     wxDynamicLibrary() = default;
     wxDynamicLibrary( const wxString& aLibName, int aFlags = wxDL_DEFAULT )

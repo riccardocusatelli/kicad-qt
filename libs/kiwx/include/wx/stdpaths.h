@@ -114,6 +114,43 @@ protected:
 
 
 #define wxHAS_NATIVE_STDPATHS
+
+#ifdef _WIN32
+
+/// The Windows implementation (as wxMSW): the known folders of the shell, and the directory of
+/// the program for its data.
+class wxStandardPaths : public wxStandardPathsBase
+{
+public:
+    wxString GetExecutablePath() const override;
+    wxString GetConfigDir() const override;
+    wxString GetUserConfigDir() const override;
+    wxString GetDataDir() const override;
+    wxString GetUserDataDir() const override;
+    wxString GetUserLocalDataDir() const override;
+    wxString GetPluginsDir() const override;
+    wxString GetUserDir( Dir aUserDir ) const override;
+    wxString MakeConfigFileName( const wxString& aBasename,
+                                 ConfigFileConv aConv = ConfigFileConv_Ext ) const override;
+
+    /// The program directory without its last component if it matches (e.g. "debug").
+    void IgnoreAppSubDir( const wxString& aSubdirPattern );
+    void IgnoreAppBuildSubDirs();
+    void DontIgnoreAppSubDir();
+
+protected:
+    wxStandardPaths();
+
+    wxString GetAppDir() const;
+
+private:
+    friend class wxStandardPathsBase;
+
+    mutable wxString m_appDir;
+};
+
+#else
+
 #define wxHAS_STDPATHS_INSTALL_PREFIX
 
 /// The Unix implementation.
@@ -144,5 +181,7 @@ private:
 
     wxString m_prefix;
 };
+
+#endif
 
 #pragma GCC visibility pop

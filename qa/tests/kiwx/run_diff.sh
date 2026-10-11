@@ -9,7 +9,7 @@ export LC_ALL=C.UTF-8
 SRC=$(cd "$(dirname "$0")/../../.." && pwd)
 OUT=${1:-/tmp/kiwx_diff}; shift || true
 mkdir -p "$OUT"
-KIWX_SRCS=$(ls "$SRC"/libs/kiwx/src/*.cpp)
+KIWX_SRCS=$(ls "$SRC"/libs/kiwx/src/*.cpp "$SRC"/libs/kiwx/src/unix/*.cpp)
 CXX=${CXX:-g++}
 FLAGS="-std=c++20 -O1 -g -Wall -Wno-unused-variable"
 KIWX_LIBS="-lexpat -lz -lpcre2-32 -ldl -lpthread"
@@ -18,7 +18,7 @@ KIWX_LIBS="-lexpat -lz -lpcre2-32 -ldl -lpthread"
 mkdir -p "$OUT/kiwx_obj"
 for s in $KIWX_SRCS; do
     o="$OUT/kiwx_obj/$(basename "$s" .cpp).o"
-    if [ ! -f "$o" ] || [ "$s" -nt "$o" ] || [ -n "$(find "$SRC/libs/kiwx/include" -newer "$o" -name '*.h' | head -1)" ]; then
+    if [ ! -f "$o" ] || [ "$s" -nt "$o" ] || [ -n "$(find "$SRC/libs/kiwx/include" "$SRC/libs/kiwx/src" -newer "$o" -name '*.h' | head -1)" ]; then
         $CXX $FLAGS -I"$SRC/libs/kiwx/include" -c "$s" -o "$o"
     fi
 done

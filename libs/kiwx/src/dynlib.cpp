@@ -52,34 +52,6 @@ bool wxDynamicLibrary::Load( const wxString& aLibNameOrig, int aFlags )
 }
 
 
-wxDllType wxDynamicLibrary::RawLoad( const wxString& aLibName, int aFlags )
-{
-    wxASSERT_MSG( !( aFlags & wxDL_NOW ) || !( aFlags & wxDL_LAZY ),
-                  wxT( "wxDL_LAZY and wxDL_NOW are mutually exclusive." ) );
-
-    // glibc fails with no flags: RTLD_NOW unless lazy
-    int rtldFlags = aFlags & wxDL_LAZY ? RTLD_LAZY : RTLD_NOW;
-
-    if( aFlags & wxDL_GLOBAL )
-        rtldFlags |= RTLD_GLOBAL;
-
-    return dlopen( aLibName.fn_str(), rtldFlags );
-}
-
-
-void wxDynamicLibrary::Unload( wxDllType aHandle )
-{
-    if( dlclose( aHandle ) != 0 )
-        ReportError( _( "Failed to unload shared library" ) );
-}
-
-
-void* wxDynamicLibrary::RawGetSymbol( wxDllType aHandle, const wxString& aName )
-{
-    return dlsym( aHandle, aName.fn_str() );
-}
-
-
 void* wxDynamicLibrary::DoGetSymbol( const wxString& aName, bool* aSuccess ) const
 {
     wxCHECK_MSG( IsLoaded(), nullptr, wxT( "Can't load symbol from unloaded library" ) );
@@ -107,26 +79,11 @@ void* wxDynamicLibrary::GetSymbol( const wxString& aName, bool* aSuccess ) const
 wxString wxDynamicLibrary::CanonicalizeName( const wxString& aName, wxDynamicLibraryCategory aCat )
 {
     // libraries start with "lib" on Unix, modules have no prefix
+#ifdef _WIN32
+    wxString nameCanonic;
+#else
     wxString nameCanonic = aCat == wxDL_LIBRARY ? wxString( "lib" ) : wxString();
+#endif
     nameCanonic << aName << GetDllExt( aCat );
     return nameCanonic;
-}
-
-
-void wxDynamicLibrary::ReportError( const wxString& aMessage, const wxString& aName )
-{
-    wxString msg( aMessage );
-
-    if( aName.IsEmpty() && msg.Find( "%s" ) == wxNOT_FOUND )
-        msg += "%s";
-
-    wxASSERT( msg.Find( "%s" ) != wxNOT_FOUND );
-
-    const char* dlerr = dlerror();
-    wxString    err( dlerr ? dlerr : "" );
-
-    if( err.empty() )
-        err = _( "Unknown dynamic library error" );
-
-    wxLogError( msg + wxT( ": %s" ), aName, err );
 }
