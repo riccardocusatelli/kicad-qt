@@ -65,6 +65,17 @@ endfunction()
 include_directories( BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include
                              ${KIQT_FBP_DIR}/common )
 
+# The wxWidgets compatibility layer (wxcompat): the controls of the dialogs (wxCheckBox,
+# wxTextCtrl...) on the widgets of Qt, for the code of the dialogs of KiCad
+set( KIQT_WXCOMPAT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wxcompat/include )
+include_directories( ${KIQT_WXCOMPAT_INCLUDE_DIR} )
+
+# kiqt_gui_target( <target> ): a library of the GUI of the Qt build: its windows are the widgets
+# of Qt, wxWindow (of the code of KiCad) is QWidget, as TOOLKIT_WINDOW
+function( kiqt_gui_target aTarget )
+    target_compile_definitions( ${aTarget} PRIVATE wxWindow=QWidget )
+endfunction()
+
 # Sources of the model the documents use, besides the ones kicad-cli links
 # (see cmake/WxFree.cmake)
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_pcbcommon

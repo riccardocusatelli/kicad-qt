@@ -140,6 +140,7 @@ set_target_properties( pcbnew_gui_qt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 
 # The code of KiCad includes Python.h, whose structures have members named as the keywords of Qt
 target_compile_definitions( pcbnew_gui_qt PRIVATE QT_NO_KEYWORDS )
+kiqt_gui_target( pcbnew_gui_qt )
 
 # Compiled as the pcbnew KIFACE (its include directories and definitions), the Qt headers (and the
 # bases of the panels generated from the wxFormBuilder files) first

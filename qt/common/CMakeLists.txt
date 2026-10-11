@@ -57,6 +57,7 @@ add_library( kiqt SHARED
     widgets/wx_progress_reporters.cpp
     validators_qt.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gui.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
     # OpenGL canvas of Qt
@@ -125,6 +126,10 @@ target_link_libraries( kiqt
         core
         ${wxWidgets_BASE_LIBRARIES}
     )
+
+# The classes of kiqt are exported (KIQT_API)
+target_compile_definitions( kiqt PRIVATE KIQT_DLL )
+kiqt_gui_target( kiqt )
 
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     target_link_options( kiqt PRIVATE "LINKER:--no-undefined" )
@@ -255,6 +260,7 @@ set_target_properties( kiqt_common PROPERTIES POSITION_INDEPENDENT_CODE ON )
 
 # The code of KiCad includes Python.h, whose structures have members named as the keywords of Qt
 target_compile_definitions( kiqt_common PRIVATE QT_NO_KEYWORDS )
+kiqt_gui_target( kiqt_common )
 
 target_include_directories( kiqt_common PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

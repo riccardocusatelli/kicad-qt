@@ -40,6 +40,8 @@
 #include <kiqt.h>
 #include <QDialog>
 
+#include <wx/kiwx_gui.h>     // the wxWidgets API of the windows (wxcompat)
+
 #include <kicommon.h>
 #include <eda_units.h>
 #include <kiway_holder.h>
@@ -60,7 +62,7 @@ class UNIT_BINDER;
  * the quasi-modal mode of KiCad, and remembers the geometry of the dialog (with the same
  * settings as the wxWidgets build).
  */
-class KICOMMON_API DIALOG_SHIM : public QDialog, public KIWAY_HOLDER
+class KICOMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HOLDER
 {
 public:
     DIALOG_SHIM( QWidget* aParent, const wxString& aTitle );
@@ -98,6 +100,12 @@ public:
      * validated and transferred first (the dialog stays open if they are not valid).
      */
     void EndModal( int aRetCode );
+
+    /**
+     * End the dialog (modal or quasi-modal) with a return code, without checking or transferring
+     * the values of the controls.
+     */
+    void EndDialog( int aRetCode );
 
     int ShowQuasiModal();      // disable only the parent window, otherwise modal.
 

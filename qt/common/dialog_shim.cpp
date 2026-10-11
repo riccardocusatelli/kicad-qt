@@ -76,7 +76,7 @@ static std::string getDialogKeyFromTitle( const wxString& aTitle )
 
 
 DIALOG_SHIM::DIALOG_SHIM( QWidget* aParent, const wxString& aTitle ) :
-        QDialog( aParent ),
+        wxWindowCompat<QDialog>( aParent ),
         KIWAY_HOLDER( nullptr, KIWAY_HOLDER::DIALOG ),
         m_units( EDA_UNITS::MM ),
         m_initialFocusTarget( nullptr ),
@@ -297,6 +297,19 @@ void DIALOG_SHIM::EndModal( int aRetCode )
     // The values are checked and kept before the dialog closes
     if( aRetCode == wxID_OK && ( !Validate() || !TransferDataFromWindow() ) )
         return;
+
+    m_returnCode = aRetCode;
+    QDialog::done( aRetCode == wxID_OK ? QDialog::Accepted : QDialog::Rejected );
+}
+
+
+void DIALOG_SHIM::EndDialog( int aRetCode )
+{
+    if( IsQuasiModal() )
+    {
+        EndQuasiModal( aRetCode );
+        return;
+    }
 
     m_returnCode = aRetCode;
     QDialog::done( aRetCode == wxID_OK ? QDialog::Accepted : QDialog::Rejected );

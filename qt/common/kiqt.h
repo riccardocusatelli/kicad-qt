@@ -25,7 +25,15 @@
  * libkiqt: the Qt widgets shared by the Qt shell (kicad-qt) and the Qt KIFACEs.
  */
 
-#define KIQT_API __attribute__( ( visibility( "default" ) ) )
+#include <import_export.h>
+
+// The classes of the kiqt library: exported when it is built (KIQT_DLL), imported by the other
+// libraries (the declspecs of Windows, the visibility of the other platforms)
+#ifdef KIQT_DLL
+#define KIQT_API APIEXPORT
+#else
+#define KIQT_API APIIMPORT
+#endif
 
 // Qt's METHOD() macro, of the connections by string, is the name of a class of the properties
 // of KiCad (properties/property.h): the Qt code of KiCad does not use it.
