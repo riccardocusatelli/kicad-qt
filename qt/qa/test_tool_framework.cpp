@@ -90,6 +90,7 @@
 #include <zoom_defines.h>
 
 #include <qt_strings.h>
+#include <widgets/kistatusbar.h>
 
 
 namespace
@@ -367,7 +368,7 @@ public:
 
     TEST_TOOL* TestTool() const { return m_testTool; }
 
-    QString StatusField( int aField ) const { return m_statusFields[aField]->text(); }
+    QString StatusField( int aField ) const { return ToQString( m_statusBar->GetStatusText( aField ) ); }
 
     ACTION_TOOLBAR* LeftToolbar() const { return m_tbLeft; }
 

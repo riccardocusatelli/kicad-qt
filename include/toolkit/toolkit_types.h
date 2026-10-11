@@ -52,7 +52,18 @@ using TOOLKIT_BITMAP = wxBitmap;
 /// An icon of the user interface, with its images at the different scales of the screens.
 using TOOLKIT_BITMAP_BUNDLE = wxBitmapBundle;
 
+#include <wx/defs.h>
+
+#ifdef KIWX
+// The wxBase of KiCad (the headless tools of the Qt build) has no GUI application: its wxApp is
+// a typedef of wxAppConsole
+class wxAppConsole;
+
+/// The application object of the GUI toolkit.
+using TOOLKIT_APP = wxAppConsole;
+#else
 class wxApp;
 
 /// The application object of the GUI toolkit.
 using TOOLKIT_APP = wxApp;
+#endif
