@@ -32,6 +32,7 @@
 #include <pcb_group.h>
 #include <tools/board_reannotate_tool.h>
 #include <tools/pcb_selection_tool.h>
+#include <tool/tool_manager.h>
 #include <core/ki_assert.h>
 
 
