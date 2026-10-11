@@ -23,7 +23,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/defs.h>
 
@@ -286,7 +288,12 @@ struct wxAnyAsImpl;
 // KiCad registered in each kiface, for instance) is not merged into one object at load time,
 // which would be constructed and destroyed once per module.  The types are compared by name
 // (IsSameType()), so values still convert across modules.
+#ifdef _WIN32
+// the symbols of a DLL are local unless exported
+#define KIWX_ANY_MODULE_LOCAL
+#else
 #define KIWX_ANY_MODULE_LOCAL __attribute__( ( visibility( "hidden" ) ) )
+#endif
 
 template<typename T>
 class KIWX_ANY_MODULE_LOCAL wxAnyValueTypeImplBase : public wxAnyValueType
@@ -400,7 +407,7 @@ _WX_ANY_DEFINE_SUB_TYPE(T, CLSTYPE)\
     typedef unsigned long wxAnyBaseUintType;
 #endif
 
-class wxAnyValueTypeImplInt :
+class WXDLLIMPEXP_BASE wxAnyValueTypeImplInt :
     public wxAnyValueTypeImplBase<wxAnyBaseIntType>
 {
     WX_DECLARE_ANY_VALUE_TYPE(wxAnyValueTypeImplInt)
@@ -414,7 +421,7 @@ public:
                               wxAnyValueBuffer& dst) const override;
 };
 
-class wxAnyValueTypeImplUint :
+class WXDLLIMPEXP_BASE wxAnyValueTypeImplUint :
     public wxAnyValueTypeImplBase<wxAnyBaseUintType>
 {
     WX_DECLARE_ANY_VALUE_TYPE(wxAnyValueTypeImplUint)
@@ -449,7 +456,7 @@ WX_ANY_DEFINE_SUB_TYPE(wxULongLong_t, Uint)
 // WX_IMPLEMENT_ANY_VALUE_TYPE(wxAnyValueTypeImpl##TYPENAME)
 //
 #define _WX_ANY_DEFINE_CONVERTIBLE_TYPE(T, TYPENAME, CONVFUNC, GV) \
-class wxAnyValueTypeImpl##TYPENAME : \
+class WXDLLIMPEXP_BASE wxAnyValueTypeImpl##TYPENAME : \
     public wxAnyValueTypeImplBase<T> \
 { \
     WX_DECLARE_ANY_VALUE_TYPE(wxAnyValueTypeImpl##TYPENAME) \
@@ -516,7 +523,7 @@ public:
 //
 // Floating point value type
 //
-class wxAnyValueTypeImplDouble :
+class WXDLLIMPEXP_BASE wxAnyValueTypeImplDouble :
     public wxAnyValueTypeImplBase<double>
 {
     WX_DECLARE_ANY_VALUE_TYPE(wxAnyValueTypeImplDouble)
@@ -588,7 +595,7 @@ class wxAnyToVariantRegistration;
 // wxAny<->wxVariant conversion code is missing.
 //
 
-class wxAnyValueTypeImplVariantData :
+class WXDLLIMPEXP_BASE wxAnyValueTypeImplVariantData :
     public wxAnyValueTypeImplBase<wxVariantData*>
 {
     WX_DECLARE_ANY_VALUE_TYPE(wxAnyValueTypeImplVariantData)
@@ -1074,4 +1081,6 @@ inline bool wxAnyValueType::CheckType() const
 
 WX_DECLARE_LIST_WITH_DECL(wxAny, wxAnyList, class WXDLLIMPEXP_BASE);
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

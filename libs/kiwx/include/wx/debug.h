@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/defs.h>
 
@@ -34,10 +36,10 @@ wxAssertHandler_t wxSetAssertHandler( wxAssertHandler_t aHandler );
 void              wxSetDefaultAssertHandler();
 bool              wxIsDebuggerRunning();
 
-extern wxAssertHandler_t wxTheAssertHandler;
+extern WXDLLIMPEXP_DATA_BASE( wxAssertHandler_t ) wxTheAssertHandler;
 
 /// Whether the debugger trap is used after an assert (never in kiwx: there is no dialog).
-extern bool wxTrapInAssert;
+extern WXDLLIMPEXP_DATA_BASE( bool ) wxTrapInAssert;
 
 class wxString;
 
@@ -114,4 +116,6 @@ inline void wxDisableAsserts()
 #define wxDISABLE_DEBUG_SUPPORT()
 #define wxDISABLE_ASSERTS_IN_RELEASE_BUILD()
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

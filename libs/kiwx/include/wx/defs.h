@@ -30,7 +30,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <cstddef>
 #include <cstdint>
@@ -82,9 +84,20 @@
 #define wxUSE_GUI            0
 #define wxDEBUG_LEVEL        1
 
-// The classes that wxWidgets exports explicitly (most of the kiwx API is exported as a whole,
-// see the visibility pragmas of the headers)
+// The classes that wxWidgets exports explicitly.  Elsewhere than on Windows the kiwx API is
+// exported as a whole (see the visibility pragmas of the headers); on Windows the functions are
+// exported as a whole (WINDOWS_EXPORT_ALL_SYMBOLS of CMake), but the data must be imported
+// explicitly: WXDLLIMPEXP_BASE marks the classes with static data, WXDLLIMPEXP_DATA_BASE the
+// global variables.  KIWX_STATIC: kiwx linked statically (its tests).
+#if defined( _WIN32 ) && defined( KIWX_STATIC )
+#define WXDLLIMPEXP_BASE
+#elif defined( _WIN32 ) && defined( KIWX_BUILDING )
+#define WXDLLIMPEXP_BASE __declspec( dllexport )
+#elif defined( _WIN32 )
+#define WXDLLIMPEXP_BASE __declspec( dllimport )
+#else
 #define WXDLLIMPEXP_BASE __attribute__( ( visibility( "default" ) ) )
+#endif
 #define WXDLLIMPEXP_CORE
 #define WXDLLIMPEXP_XML
 #define WXDLLIMPEXP_NET
@@ -379,10 +392,12 @@ enum wxDuplexMode
 
 #define wxGCC_WARNING_SUPPRESS( x )
 #define wxGCC_WARNING_RESTORE( x )
-#define WXDLLIMPEXP_DATA_BASE( type ) type
+#define WXDLLIMPEXP_DATA_BASE( type ) WXDLLIMPEXP_BASE type
 #define wxNOEXCEPT noexcept
 
 // as in wxWidgets, the asserts come with the basic definitions
 #include <wx/debug.h>
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

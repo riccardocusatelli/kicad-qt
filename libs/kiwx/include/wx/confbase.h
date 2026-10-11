@@ -23,7 +23,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/defs.h>
 #include <wx/string.h>
@@ -88,7 +90,7 @@ enum
 // (long) type (TODO doubles and other types such as wxDate coming soon).
 // ----------------------------------------------------------------------------
 
-class wxConfigBase
+class WXDLLIMPEXP_BASE wxConfigBase
 {
 public:
   // constants
@@ -467,4 +469,6 @@ wxString wxExpandEnvVars(const wxString &sz);
  */
 void wxSplitPath(wxArrayString& aParts, const wxString& path);
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

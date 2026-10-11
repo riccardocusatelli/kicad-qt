@@ -23,7 +23,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/buffer.h>
 #include <wx/strconv.h>
@@ -86,4 +88,6 @@ inline wxMemoryBuffer wxBase64Decode( const wxString& aSrc,
     return wxBase64Decode( aSrc.ToAscii(), wxNO_LEN, aMode, aPosErr );
 }
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

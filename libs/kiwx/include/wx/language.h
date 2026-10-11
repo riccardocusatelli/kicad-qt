@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 /// The languages KiCad is translated to (a subset of the wxWidgets list, with other values).
 enum wxLanguage
@@ -77,4 +79,6 @@ enum wxLanguage
     wxLANGUAGE_USER_DEFINED
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

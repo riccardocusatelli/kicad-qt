@@ -23,14 +23,16 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <cstdio>
 
 #include <wx/string.h>
 
 /// Where the messages that are not log messages go (the usage of a program, for instance).
-class wxMessageOutput
+class WXDLLIMPEXP_BASE wxMessageOutput
 {
 public:
     virtual ~wxMessageOutput() {}
@@ -81,4 +83,6 @@ public:
     explicit wxMessageOutputBest( wxMessageOutputFlags = wxMSGOUT_PREFER_STDERR ) {}
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

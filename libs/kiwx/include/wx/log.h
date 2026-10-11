@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/crt.h>   // as wxWidgets, through wx/hashmap.h
 #include <wx/arrstr.h>
@@ -275,4 +277,6 @@ inline void wxLogTrace( const wchar_t* aMask, const wxString& aFormat, const ARG
 #define wxLogGeneric( level, ... )                                                             \
     kiwx::Log( level, wxString::Format( __VA_ARGS__ ), __FILE__, __LINE__, __func__ )
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

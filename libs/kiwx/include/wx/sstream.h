@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/stream.h>
 #include <wx/strconv.h>
@@ -68,4 +70,6 @@ private:
     std::unique_ptr<wxMBConv> m_conv;
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

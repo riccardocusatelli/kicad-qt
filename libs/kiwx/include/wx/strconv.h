@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/defs.h>
 #include <wx/buffer.h>
@@ -254,4 +256,6 @@ std::string kiwxToUTF8( const wchar_t* aStr, size_t aLen );
 /// UTF-8 decoding; @return false on invalid input (aOut is then undefined).
 bool kiwxFromUTF8( const char* aStr, size_t aLen, std::wstring& aOut );
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

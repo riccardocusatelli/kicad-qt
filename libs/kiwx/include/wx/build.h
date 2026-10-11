@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/version.h>
 
@@ -30,4 +32,6 @@
 #define __WX_BO_WXWIN_COMPAT_2_8 ""
 #define __WX_BO_WXWIN_COMPAT_3_0 ",compatible with 3.0"
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

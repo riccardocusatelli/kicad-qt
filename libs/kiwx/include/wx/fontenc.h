@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 // Same values as wxWidgets 3.2.
 enum wxFontEncoding
@@ -144,4 +146,6 @@ enum wxFontEncoding
     wxFONTENCODING_VIETNAMESE = wxFONTENCODING_CP1258
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

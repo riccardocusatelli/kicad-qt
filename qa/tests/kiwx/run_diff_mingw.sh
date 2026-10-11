@@ -34,7 +34,7 @@ mkdir -p "$OUT/kiwx_obj"
 for s in $KIWX_SRCS; do
     o="$OUT/kiwx_obj/$(basename "$s" .cpp).o"
     if [ ! -f "$o" ] || [ "$s" -nt "$o" ] || [ -n "$(find "$SRC/libs/kiwx/include" "$SRC/libs/kiwx/src" -newer "$o" -name '*.h' | head -1)" ]; then
-        $CXX $FLAGS $THIRDPARTY -I"$SRC/libs/kiwx/include" -c "$s" -o "$o"
+        $CXX $FLAGS -DKIWX_STATIC $THIRDPARTY -I"$SRC/libs/kiwx/include" -c "$s" -o "$o"
     fi
 done
 rm -f "$OUT/libkiwx.a"
@@ -46,7 +46,7 @@ status=0
 for t in $TESTS; do
     $CXX $FLAGS $("$WX_MINGW_CONFIG" --cxxflags base,xml) -I"$SRC/qa/tests/kiwx" \
         "$SRC/qa/tests/kiwx/$t.cpp" -o "$OUT/$t.wx.exe" $("$WX_MINGW_CONFIG" --libs base,xml) -static
-    $CXX $FLAGS -I"$SRC/libs/kiwx/include" -I"$SRC/qa/tests/kiwx" "$SRC/qa/tests/kiwx/$t.cpp" \
+    $CXX $FLAGS -DKIWX_STATIC -I"$SRC/libs/kiwx/include" -I"$SRC/qa/tests/kiwx" "$SRC/qa/tests/kiwx/$t.cpp" \
         -o "$OUT/$t.kiwx.exe" "$OUT/libkiwx.a" $KIWX_LIBS
     ( cd "$OUT" && timeout 120 wine ./$t.wx.exe > $t.wx.txt 2>&1 ) || true
     ( cd "$OUT" && timeout 120 wine ./$t.kiwx.exe > $t.kiwx.txt 2>&1 ) || true

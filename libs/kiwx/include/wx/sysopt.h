@@ -23,7 +23,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/string.h>
 
@@ -42,4 +44,6 @@ public:
     }
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

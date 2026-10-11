@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/mstream.h>
 #include <wx/utils.h>
@@ -114,4 +116,6 @@ private:
 #define wxPROCESS_DEFAULT 0
 #define wxPROCESS_REDIRECT 1
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

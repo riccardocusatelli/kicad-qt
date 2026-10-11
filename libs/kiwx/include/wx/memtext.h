@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/textbuf.h>
 
@@ -39,4 +41,6 @@ protected:
     bool OnWrite( wxTextFileType, const wxMBConv& ) override { return true; }
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

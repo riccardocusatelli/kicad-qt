@@ -496,25 +496,32 @@ wxString wxTextBuffer::Translate( const wxString& aText, wxTextFileType aType )
 
 wxTextFileType wxTextBuffer::GuessType() const
 {
-    size_t unix = 0, dos = 0, mac = 0;
+    size_t nUnix = 0, nDos = 0, nMac = 0;
 
     for( wxTextFileType type : m_types )
     {
         if( type == wxTextFileType_Unix )
-            unix++;
+            nUnix++;
         else if( type == wxTextFileType_Dos )
-            dos++;
+            nDos++;
         else if( type == wxTextFileType_Mac )
-            mac++;
+            nMac++;
     }
 
-    if( dos > unix && dos > mac )
-        return wxTextFileType_Dos;
+    // as wxWidgets: the most frequent, the default one for ties
+    auto greaterOf =
+            []( size_t aN1, wxTextFileType aT1, size_t aN2, wxTextFileType aT2 )
+            {
+                return aN1 == aN2 ? typeDefault : aN1 > aN2 ? aT1 : aT2;
+            };
 
-    if( mac > unix && mac > dos )
-        return wxTextFileType_Mac;
+    if( nDos > nUnix )
+        return greaterOf( nDos, wxTextFileType_Dos, nMac, wxTextFileType_Mac );
 
-    return unix || ( !dos && !mac ) ? wxTextFileType_Unix : typeDefault;
+    if( nDos < nUnix )
+        return greaterOf( nUnix, wxTextFileType_Unix, nMac, wxTextFileType_Mac );
+
+    return nMac > nDos ? wxTextFileType_Mac : typeDefault;
 }
 
 

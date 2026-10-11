@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/string.h>
 
@@ -174,4 +176,6 @@ int wxSscanf( const char* aStr, const char* aFormat, ARGS... aArgs )
     return std::sscanf( aStr, aFormat, aArgs... );
 }
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

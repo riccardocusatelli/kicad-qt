@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <type_traits>
 
@@ -31,4 +33,6 @@ struct wxIf
     typedef typename std::conditional<Cond, T1, T2>::type value;
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

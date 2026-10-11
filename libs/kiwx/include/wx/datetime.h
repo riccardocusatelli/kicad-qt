@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/longlong.h>
 #include <wx/string.h>
@@ -306,7 +308,7 @@ private:
 };
 
 
-extern const wxDateTime wxDefaultDateTime;
+extern WXDLLIMPEXP_DATA_BASE( const wxDateTime ) wxDefaultDateTime;
 #define wxInvalidDateTime wxDefaultDateTime
 
 /// Milliseconds since the epoch.
@@ -315,4 +317,6 @@ wxLongLong wxGetUTCTimeMillis();
 long       wxGetLocalTime();
 long       wxGetUTCTime();
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

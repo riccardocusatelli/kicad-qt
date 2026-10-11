@@ -28,7 +28,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 // With C++20 combining values of different enums is deprecated: allow it explicitly
 #define wxALLOW_COMBINING_ENUMS_IMPL( en1, en2 )                                                 \
@@ -1184,4 +1186,6 @@ enum wxKeyModifier
 
 /* Paper types */
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

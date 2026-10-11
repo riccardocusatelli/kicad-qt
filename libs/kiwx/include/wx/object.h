@@ -23,7 +23,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/defs.h>
 #include <wx/chartype.h>
@@ -159,4 +161,6 @@ protected:
 #define wxStaticCast( obj, className ) static_cast<className*>( obj )
 #define wxConstCast( obj, className ) const_cast<className*>( obj )
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

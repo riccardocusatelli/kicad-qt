@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/defs.h>
 #include <wx/buffer.h>
@@ -977,4 +979,6 @@ wxFormatArg wxFormatArg::Make( const T& aValue )
     return arg;
 }
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

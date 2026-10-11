@@ -23,7 +23,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/crt.h>   // as wxWidgets, through wx/hashmap.h
 #include <wx/defs.h>
@@ -658,7 +660,9 @@ wxRect operator*(const wxRect& r1, const wxRect& r2);
 inline void wxSize::IncBy(const wxPoint& pt) { IncBy(pt.x, pt.y); }
 inline void wxSize::DecBy(const wxPoint& pt) { DecBy(pt.x, pt.y); }
 
-extern const wxSize  wxDefaultSize;
-extern const wxPoint wxDefaultPosition;
+extern WXDLLIMPEXP_DATA_BASE( const wxSize ) wxDefaultSize;
+extern WXDLLIMPEXP_DATA_BASE( const wxPoint ) wxDefaultPosition;
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

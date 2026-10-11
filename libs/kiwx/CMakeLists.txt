@@ -22,8 +22,24 @@
 find_package( EXPAT REQUIRED )
 find_package( ZLIB REQUIRED )
 find_package( Threads REQUIRED )
-find_package( PkgConfig REQUIRED )
-pkg_check_modules( PCRE2_32 REQUIRED IMPORTED_TARGET libpcre2-32 )
+
+# PCRE2 with the code unit of wchar_t: 16 bit on Windows, 32 bit elsewhere (as wxWidgets)
+if( WIN32 )
+    set( KIWX_PCRE2_WIDTH 16 )
+else()
+    set( KIWX_PCRE2_WIDTH 32 )
+endif()
+
+# the CMake package (vcpkg), else pkg-config
+find_package( PCRE2 CONFIG QUIET COMPONENTS ${KIWX_PCRE2_WIDTH}BIT )
+
+if( TARGET PCRE2::${KIWX_PCRE2_WIDTH}BIT )
+    set( KIWX_PCRE2_TARGET PCRE2::${KIWX_PCRE2_WIDTH}BIT )
+else()
+    find_package( PkgConfig REQUIRED )
+    pkg_check_modules( KIWX_PCRE2 REQUIRED IMPORTED_TARGET libpcre2-${KIWX_PCRE2_WIDTH} )
+    set( KIWX_PCRE2_TARGET PkgConfig::KIWX_PCRE2 )
+endif()
 
 add_library( kiwx SHARED
     src/any.cpp
@@ -60,33 +76,50 @@ if( WIN32 )
     target_sources( kiwx PRIVATE
         src/msw/dynlib_msw.cpp
         src/msw/file_msw.cpp
+        src/msw/stdpaths_msw.cpp
         src/msw/utils_msw.cpp
         )
 else()
     target_sources( kiwx PRIVATE
         src/unix/dynlib_unix.cpp
         src/unix/file_unix.cpp
+        src/unix/stdpaths_unix.cpp
         src/unix/utils_unix.cpp
         )
 endif()
 
 target_include_directories( kiwx PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
-# The whole API is exported, as wxWidgets does (WXDLLIMPEXP_BASE)
+# The whole API is exported, as wxWidgets does (WXDLLIMPEXP_BASE).  On Windows the functions
+# are exported by CMake, the data by WXDLLIMPEXP_BASE / WXDLLIMPEXP_DATA_BASE (see wx/defs.h).
 set_target_properties( kiwx PROPERTIES
     CXX_VISIBILITY_PRESET default
     VISIBILITY_INLINES_HIDDEN OFF
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
     )
+
+target_compile_definitions( kiwx PRIVATE KIWX_BUILDING )
 
 target_link_libraries( kiwx
     PRIVATE
         EXPAT::EXPAT
         ZLIB::ZLIB
-        PkgConfig::PCRE2_32
+        ${KIWX_PCRE2_TARGET}
         ${CMAKE_DL_LIBS}
     PUBLIC
         Threads::Threads
     )
+
+if( WIN32 )
+    # the known folders, PathMatchSpec()
+    target_link_libraries( kiwx PRIVATE shell32 shlwapi ole32 uuid )
+endif()
+
+if( MINGW )
+    # WINDOWS_EXPORT_ALL_SYMBOLS is for the MSVC tools; GNU ld exports all only without
+    # dllexport
+    target_link_options( kiwx PRIVATE "LINKER:--export-all-symbols" )
+endif()
 
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     target_link_options( kiwx PRIVATE "LINKER:--no-undefined" )

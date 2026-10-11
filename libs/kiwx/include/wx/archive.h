@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/datetime.h>
 #include <wx/filename.h>
@@ -111,4 +113,6 @@ protected:
     const wxArchiveClassFactory* m_next = nullptr;
 };
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

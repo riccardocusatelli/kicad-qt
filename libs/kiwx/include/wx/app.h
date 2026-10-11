@@ -20,7 +20,9 @@
 #pragma once
 
 // exported from the kiwx library, as the wxWidgets API (WXDLLIMPEXP_BASE)
+#ifndef _WIN32
 #pragma GCC visibility push( default )
+#endif
 
 #include <wx/arrstr.h>
 #include <wx/string.h>
@@ -51,7 +53,7 @@ private:
  * The application object of a program without user interface: the names and the command
  * line, and the OnInit() / OnRun() / OnExit() sequence of wxEntry().
  */
-class wxAppConsole
+class WXDLLIMPEXP_BASE wxAppConsole
 {
 public:
     wxAppConsole();
@@ -116,4 +118,6 @@ int wxEntry( int& aArgc, char** aArgv );
 
 #define IMPLEMENT_APP_CONSOLE( appname ) wxIMPLEMENT_APP_CONSOLE( appname )
 
+#ifndef _WIN32
 #pragma GCC visibility pop
+#endif

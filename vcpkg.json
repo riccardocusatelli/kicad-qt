@@ -24,6 +24,7 @@
       "features": [ "webview" ]
     },
     "curl",
+    "expat",
     {
       "name": "gettext",
       "features": [ "tools" ],
@@ -36,6 +37,7 @@
       "features": [ "rapidjson" ]
     },
     "opengl",
+    "pcre2",
     "python3",
     "openssl",
     {
@@ -51,6 +53,7 @@
     },
     "nng",
     "protobuf",
+    "zlib",
     "zstd"
   ],
   "overrides": [
