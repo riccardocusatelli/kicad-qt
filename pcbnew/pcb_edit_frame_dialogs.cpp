@@ -36,8 +36,13 @@
 #include <footprint_edit_frame.h>
 #include <kiface_base.h>
 #include <kiway.h>
+#include <pad.h>
+#include <pcb_barcode.h>
 #include <pcb_dimension.h>
+#include <pcb_generator.h>
+#include <pcb_group.h>
 #include <pcb_table.h>
+#include <pcb_target.h>
 #include <pcbnew_settings.h>
 #include <pgm_base.h>
 #include <project.h>
@@ -194,7 +199,7 @@ void PCB_EDIT_FRAME::ShowFindDialog()
     {
         m_findDialog = new DIALOG_FIND( this );
         m_findDialog->SetCallback( std::bind( &PCB_SELECTION_TOOL::FindItem,
-                                              m_toolManager->GetTool<PCB_SELECTION_TOOL>(), _1 ) );
+                                              m_toolManager->GetTool<PCB_SELECTION_TOOL>(), std::placeholders::_1 ) );
     }
 
     wxString findString;
