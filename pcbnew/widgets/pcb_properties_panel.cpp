@@ -449,7 +449,7 @@ void PCB_PROPERTIES_PANEL::valueChanged( const wxString& aName, const wxVariant&
 
     changes.Push( _( "Edit Properties" ) );
 
-    m_frame->Refresh();
+    m_frame->RefreshCanvas();
 
     // Perform grid updates as necessary based on value change
     AfterCommit();

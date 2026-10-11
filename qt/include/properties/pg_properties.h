@@ -17,6 +17,7 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef PG_PROPERTIES_H
 #define PG_PROPERTIES_H
@@ -85,13 +86,14 @@ public:
     void           SetClientData( PROPERTY_BASE* aProperty ) { m_clientData = aProperty; }
     PROPERTY_BASE* GetClientData() const { return m_clientData; }
 
-    void             SetValue( const wxVariant& aValue ) { m_value = aValue; }
+    /// Set the value (the grid of the property shows it).
+    void             SetValue( const wxVariant& aValue );
     const wxVariant& GetValue() const { return m_value; }
 
     /// The selection has different values for the property.
     bool IsValueUnspecified() const { return m_value.IsNull(); }
 
-    void SetReadOnly( bool aReadOnly ) { m_readOnly = aReadOnly; }
+    void SetReadOnly( bool aReadOnly );
     bool IsReadOnly() const { return m_readOnly; }
 
     EDITOR GetEditor() const { return m_editor; }
@@ -101,11 +103,15 @@ public:
     void            SetEditorFrame( EDA_DRAW_FRAME* aFrame ) { m_editorFrame = aFrame; }
     EDA_DRAW_FRAME* GetEditorFrame() const { return m_editorFrame; }
 
-    void                    SetChoices( const PROPERTY_CHOICES& aChoices ) { m_choices = aChoices; }
+    void                    SetChoices( const PROPERTY_CHOICES& aChoices );
     const PROPERTY_CHOICES& GetChoices() const { return m_choices; }
     PROPERTY_CHOICES&       Choices() { return m_choices; }
 
     bool IsCategory() const { return m_editor == EDITOR::NONE; }
+
+    /// The grid showing the property (set by PROPERTY_GRID::Append()).
+    void           SetGrid( PROPERTY_GRID* aGrid ) { m_grid = aGrid; }
+    PROPERTY_GRID* GetGrid() const { return m_grid; }
 
     /// The text of a value of the property.
     virtual wxString ValueToString( const wxVariant& aValue ) const;
@@ -146,6 +152,7 @@ protected:
     bool             m_readOnly;
     PROPERTY_CHOICES m_choices;
     EDA_DRAW_FRAME*  m_editorFrame;
+    PROPERTY_GRID*   m_grid;
 };
 
 

@@ -19,7 +19,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "properties_panel.h"
+#include <widgets/properties_panel.h>
 #include <tool/selection.h>
 #include <eda_base_frame.h>
 #include <eda_item.h>

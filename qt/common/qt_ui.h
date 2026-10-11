@@ -28,9 +28,11 @@
 
 #include <QColor>
 #include <QFont>
+#include <QStringList>
 #include <QWidget>
 
 #include <gal/color4d.h>
+#include <qt_strings.h>
 
 
 /// The QColor of a color of KiCad.
@@ -71,6 +73,39 @@ inline QFont DockedPaneFont( const QWidget* aWidget )
 #else
     return aWidget ? aWidget->font() : QFont();
 #endif
+}
+
+
+/**
+ * The filter of a QFileDialog for a wildcard of wxFileDialog ("Description (*.a)|*.a|...", as
+ * built by AddFileExtListToFilter()): "Description (*.a);;...".
+ */
+inline QString FileDialogFilter( const wxString& aWildcard )
+{
+    QStringList parts = ToQString( aWildcard ).split( QLatin1Char( '|' ) );
+    QStringList filters;
+
+    for( int ii = 0; ii + 1 < parts.size(); ii += 2 )
+    {
+        QString description = parts[ii].trimmed();
+        QString patterns = parts[ii + 1].split( QLatin1Char( ';' ), Qt::SkipEmptyParts )
+                                        .join( QLatin1Char( ' ' ) );
+
+        // The description has its patterns between parentheses for Qt
+        if( !description.contains( QLatin1Char( '(' ) ) )
+            description += QStringLiteral( " (" ) + patterns + QLatin1Char( ')' );
+        else
+            description = description.left( description.lastIndexOf( QLatin1Char( '(' ) ) ).trimmed()
+                          + QStringLiteral( " (" ) + patterns + QLatin1Char( ')' );
+
+        filters << description;
+    }
+
+    // A wildcard without description
+    if( filters.isEmpty() && !aWildcard.IsEmpty() )
+        filters << ToQString( aWildcard );
+
+    return filters.join( QStringLiteral( ";;" ) );
 }
 
 } // namespace KIQT

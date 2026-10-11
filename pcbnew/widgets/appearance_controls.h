@@ -384,6 +384,28 @@ private:
 
     void passOnFocus();
 
+    // What the controls do, without the GUI toolkit (appearance_controls.cpp)
+
+    /// The command @a aId of the layers context menu (ID_SHOW_ALL_COPPER_LAYERS...).
+    void doLayerContextMenu( int aId );
+
+    /// The color of a layer (or of an object) was changed in its swatch.
+    void onLayerColorChanged( int aLayer, const COLOR4D& aColor );
+
+    void setNetclassColor( const wxString& aNetclassName, const COLOR4D& aColor );
+    void setNetColorMode( NET_COLOR_MODE aMode );
+    void setRatsnestDisplay( bool aShow, RATSNEST_MODE aMode );
+
+    /// The command @a aId of the netclass context menu, for m_contextMenuNetclass.
+    void doNetclassContextMenu( int aId );
+
+    /// The GAL layers of the Objects tab of the footprint editor.
+    static bool isAllowedInFpEditor( int aLayer );
+
+    // The nets grid of the GUI toolkit (appearance_controls_wx.cpp)
+    void netGridSetVisibility( int aNetCode, bool aVisible );
+    void netGridRefresh();
+
     void idleFocusHandler( wxIdleEvent& aEvent );
 
     void onReadOnlySwatch();
@@ -396,7 +418,7 @@ private:
 
     wxWindow* m_focusOwner;
 
-    static const APPEARANCE_SETTING s_objectSettings[];
+    static const std::vector<APPEARANCE_SETTING> s_objectSettings;
 
     ROW_ICON_PROVIDER* m_iconProvider;
 

@@ -219,6 +219,60 @@ private:
     /// Refreshes displayed data for the given rows
     void updateDisplayedRowValues( const std::optional<LIST_ITEM_ITER>& aRow ) const;
 
+    // What the panel does, without the GUI toolkit (pcb_net_inspector_panel.cpp)
+
+    /// The text of the column @a aCol of an entry (in the time domain or not).
+    wxString itemText( const LIST_ITEM* aItem, unsigned int aCol, bool aTimeDomain ) const;
+
+    /// The order of two entries by the column @a aCol: 0 if their values are the same.
+    int compareItems( const LIST_ITEM& aItem1, const LIST_ITEM& aItem2, unsigned int aCol,
+                      bool aAsc, bool aTimeDomain ) const;
+
+    /// Read the filtering and grouping settings.
+    void readFilterSettings( const PANEL_NET_INSPECTOR_SETTINGS* aCfg );
+
+    /// Fill the data model with the nets of the board matching the filter.
+    void fillDataModel( const PANEL_NET_INSPECTOR_SETTINGS* aCfg );
+
+    /// The command @a aId of a context menu (ID_ADD_NET...).
+    void doContextMenuCommand( int aId );
+
+    // The view of the GUI toolkit (pcb_net_inspector_panel_wx.cpp)
+
+    wxString searchText() const;
+    void     setSearchText( const wxString& aText );
+
+    /// The panel is shown on the screen (the board changes are ignored when it is hidden).
+    bool isPanelShown() const;
+
+    /// The view has been displayed (its settings can be saved).
+    bool isViewDisplayed() const;
+
+    void refreshList() const;
+    void freezeList() const;
+    void thawList() const;
+
+    std::vector<const LIST_ITEM*> selectedItems() const;
+
+    /// Select @a aItems (none: unselect all) and show the first one.
+    void selectItems( const std::vector<const LIST_ITEM*>& aItems ) const;
+
+    /// Create the columns of the view (for m_columns, in the order of the settings).
+    void viewBuildColumns( PANEL_NET_INSPECTOR_SETTINGS* aCfg );
+
+    /// Save the sorting, the columns and the expanded groups of the view.
+    void saveViewSettings( PANEL_NET_INSPECTOR_SETTINGS& aCfg ) const;
+
+    /// The commands of the context menus on the columns (ID_AUTOFIT_COLUMN, ID_HIDE_COLUMN...).
+    void viewColumnCommand( int aId );
+
+    /// Ask the user for a text (net or group name): false if cancelled.
+    bool askText( const wxString& aTitle, const wxString& aPrompt, wxString& aValue,
+                  const wxString& aHelp = wxEmptyString );
+
+    /// The file of the report chosen by the user (empty if cancelled).
+    wxString chooseReportFile();
+
     /// Parent BOARD
     BOARD*          m_board = nullptr;
 

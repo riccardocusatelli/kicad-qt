@@ -188,6 +188,13 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/preview_items/simple_overlay_item.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/msgpanel_item.cpp
 
+    # the properties panels: the toolkit-independent logic, the values of the properties
+    ${CMAKE_SOURCE_DIR}/common/properties/color4d_variant.cpp
+    ${CMAKE_SOURCE_DIR}/common/properties/eda_angle_variant.cpp
+    ${CMAKE_SOURCE_DIR}/common/properties/pg_value_text.cpp
+    ${CMAKE_SOURCE_DIR}/common/properties/std_optional_variants.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/properties_panel.cpp
+
     background_jobs_list_qt.cpp
     dialog_shim.cpp
     eda_dde_qt.cpp
@@ -206,14 +213,18 @@ add_library( kiqt_common STATIC
     eda_draw_frame.cpp
     kiway.cpp
     kiway_player.cpp
+    properties/pg_properties.cpp
     tool/action_menu.cpp
     tool/action_toolbar.cpp
     tool/tool_dispatcher.cpp
     view/qt_view_controls.cpp
     widgets/color_swatch.cpp
+    widgets/filter_combobox.cpp
     widgets/kistatusbar.cpp
     widgets/layer_box_selector.cpp
     widgets/layer_presentation_qt.cpp
+    widgets/properties_panel_qt.cpp
+    widgets/property_grid.cpp
     widgets/search_pane.cpp
     widgets/std_bitmap_button.cpp
     widgets/text_ctrl_eval.cpp

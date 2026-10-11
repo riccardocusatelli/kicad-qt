@@ -31,6 +31,8 @@
 #include <properties/property.h>
 #include <properties/std_optional_variants.h>
 #include <core/ki_assert.h>
+#include <macros.h>
+#include <widgets/property_grid.h>
 
 #include <wx/intl.h>
 
@@ -39,8 +41,36 @@ PG_PROPERTY::PG_PROPERTY( EDITOR aEditor ) :
         m_editor( aEditor ),
         m_clientData( nullptr ),
         m_readOnly( false ),
-        m_editorFrame( nullptr )
+        m_editorFrame( nullptr ),
+        m_grid( nullptr )
 {
+}
+
+
+void PG_PROPERTY::SetValue( const wxVariant& aValue )
+{
+    m_value = aValue;
+
+    if( m_grid )
+        m_grid->RefreshProperty( this );
+}
+
+
+void PG_PROPERTY::SetReadOnly( bool aReadOnly )
+{
+    m_readOnly = aReadOnly;
+
+    if( m_grid )
+        m_grid->RefreshProperty( this );
+}
+
+
+void PG_PROPERTY::SetChoices( const PROPERTY_CHOICES& aChoices )
+{
+    m_choices = aChoices;
+
+    if( m_grid )
+        m_grid->RefreshProperty( this );
 }
 
 

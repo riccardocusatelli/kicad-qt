@@ -180,6 +180,9 @@ EVENTS = {
     'OnHyperlink':          ( 'const QString& aUrl', 'link' ),
     'OnHtmlLinkClicked':    ( 'const QString& aUrl', 'htmllink' ),
     'OnNotebookPageChanged': ( 'int aPage', 'signal:QTabWidget::currentChanged' ),
+    'OnGridCellLeftClick':  ( 'int aRow, int aCol', 'signal:QTableWidget::cellClicked' ),
+    'OnGridCellLeftDClick': ( 'int aRow, int aCol', 'signal:QTableWidget::cellDoubleClicked' ),
+    'OnGridCellRightClick': ( 'int aRow, int aCol', 'gridrightclick' ),
     'OnAuiNotebookPageChanged': ( 'int aPage', 'signal:QTabWidget::currentChanged' ),
     'OnSearchButton':       ( SOURCE, 'textenter' ),
     'OnCancelButton':       ( SOURCE, 'searchcancel' ),
@@ -361,6 +364,9 @@ class FormClass:
                 elif params == 'int aPage':
                     self.code.append( '    QObject::connect( %s, &%s, this, [this]( int aPage ) { %s( aPage ); } );'
                                       % ( aVar, signal, handler ) )
+                elif params == 'int aRow, int aCol':
+                    self.code.append( '    QObject::connect( %s, &%s, this, [this]( int aRow, int aCol ) { %s( aRow, aCol ); } );'
+                                      % ( aVar, signal, handler ) )
                 else:
                     raise FbpError( 'event %s: parameters' % event )
 
@@ -409,6 +415,13 @@ class FormClass:
             elif kind.startswith( 'filter:' ):
                 self.code.append( '    KIQT::OnEvent( %s, %s, [this, src = %s]( QEvent* ) { %s( src ); } );'
                                   % ( aVar, kind[len( 'filter:' ):], src, handler ) )
+
+            elif kind == 'gridrightclick':
+                # The context menu of a cell of a grid
+                self.code.append( '    %s->setContextMenuPolicy( Qt::CustomContextMenu );' % aVar )
+                self.code.append( '    QObject::connect( %s, &QWidget::customContextMenuRequested, this, [this, grid = %s]( const QPoint& aPos ) { '
+                                  'if( QTableWidgetItem* item = grid->itemAt( aPos ) ) %s( item->row(), item->column() ); } );'
+                                  % ( aVar, aVar, handler ) )
 
             elif kind == 'updateui':
                 self.code.append( '    KIQT::RegisterUpdateUI( this, [this, src = %s]() { %s( src ); } );'
@@ -705,6 +718,20 @@ class FormClass:
             if 'wxLC_SINGLE_SEL' not in style:
                 self.code.append( '    %s->setSelectionMode( QAbstractItemView::ExtendedSelection );' % var )
 
+        elif cls == 'wxGrid':
+            # A table (WX_GRID of the Qt build), its rows and columns set by the code
+            var, t = make( 'QTableWidget' )
+            self.code.append( '    %s->setRowCount( %d );' % ( var, parse_int( p.get( 'rows' ), 0 ) ) )
+            self.code.append( '    %s->setColumnCount( %d );' % ( var, parse_int( p.get( 'cols' ), 0 ) ) )
+
+            if parse_int( p.get( 'col_label_size' ), 1 ) == 0:
+                self.code.append( '    %s->horizontalHeader()->hide();' % var )
+
+            if parse_int( p.get( 'row_label_size' ), 1 ) == 0:
+                self.code.append( '    %s->verticalHeader()->hide();' % var )
+
+            self.qt( 'QHeaderView' )
+
         elif cls == 'wxCheckListBox':
             qt = 'QListWidget'
             var, t = make( qt )
@@ -756,6 +783,14 @@ class FormClass:
                     self.code.append( '    %s->setWidgetResizable( true );' % var )
                     self.code.append( '    %s->setFrameShape( QFrame::NoFrame );' % var )
             else:
+                # The header of the class can be in its subclass property only
+                if sub == klass and subHeader:
+                    if fwd:
+                        self.gen.forward.add( klass )
+                        self.include( subHeader, aInHeader = False )
+                    else:
+                        self.include( subHeader )
+
                 var = self.var( aObj, klass, 'new %s( %s )' % ( klass, aParent ) )
                 qt = klass
 

@@ -68,6 +68,7 @@
 #include <view/view.h>
 #include <view/view_controls.h>
 #include <widgets/msgpanel.h>
+#include <widgets/properties_panel.h>
 #include <widgets/wx_infobar.h>
 #include <core/ki_assert.h>
 
@@ -954,7 +955,10 @@ void EDA_DRAW_FRAME::ShowChangedLanguage()
 
 void EDA_DRAW_FRAME::UpdateProperties()
 {
-    // The properties panel comes with the panels of the editors
+    if( m_isClosing || !m_propertiesPanel || !m_propertiesPanel->isVisible() )
+        return;
+
+    m_propertiesPanel->UpdateData();
 }
 
 

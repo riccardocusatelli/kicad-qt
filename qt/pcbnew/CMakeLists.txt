@@ -87,6 +87,9 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/pcb_tool_utils.cpp
     tools/tool_event_utils.cpp
     tools/zone_create_helper.cpp
+    widgets/appearance_controls.cpp
+    widgets/pcb_net_inspector_panel.cpp
+    widgets/pcb_properties_panel.cpp
     widgets/pcb_search_pane.cpp
     widgets/search_handlers.cpp
     zone_manager/board_edges_bounding_item.cpp
@@ -96,15 +99,22 @@ set( KIQT_PCBNEW_GUI_SRCS
 list( TRANSFORM KIQT_PCBNEW_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/ )
 
 kiqt_generate_fbp( KIQT_PCBNEW_GUI_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_move_exact_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/widgets/appearance_controls_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/widgets/panel_selection_filter_base.fbp
     )
 
 add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
+    ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
+    dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
     pcb_layer_box_selector_qt.cpp
+    widgets/appearance_controls_qt.cpp
     widgets/panel_selection_filter.cpp
+    widgets/pcb_net_inspector_panel_qt.cpp
+    widgets/pcb_properties_panel_qt.cpp
     widgets/vertex_editor_pane.cpp
     )
 
