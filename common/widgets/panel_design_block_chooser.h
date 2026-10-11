@@ -110,6 +110,12 @@ protected:
 
     void displayErrors( wxTopLevelWindow* aWindow );
 
+    /// Show the selected design block in the preview (shared by the GUI toolkits).
+    void showSelectedDesignBlock();
+
+    /// Repaint the panel (with the GUI toolkit).
+    void refreshView();
+
 protected:
     static wxString       g_designBlockSearchString;
 

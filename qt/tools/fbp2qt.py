@@ -730,6 +730,13 @@ class FormClass:
             if parse_int( p.get( 'row_label_size' ), 1 ) == 0:
                 self.code.append( '    %s->verticalHeader()->hide();' % var )
 
+            # The labels of the columns ("Name" "Value"), translated
+            labels = parse_choices( p.get( 'col_label_values' ) )
+
+            if labels:
+                self.code.append( '    %s->setHorizontalHeaderLabels( { %s } );'
+                                  % ( var, ', '.join( tr( label ) for label in labels ) ) )
+
             self.qt( 'QHeaderView' )
 
         elif cls == 'wxCheckListBox':

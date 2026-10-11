@@ -157,6 +157,98 @@ protected:
 #define wxIMPLEMENT_ABSTRACT_CLASS( name, base )
 #define wxIMPLEMENT_DYNAMIC_CLASS( name, base )
 
+/**
+ * A smart pointer to a reference counted object (a wxRefCounter, or any class with IncRef() and
+ * DecRef()).  As in wxWidgets, the pointer given to the constructor or to reset() is adopted
+ * without a new reference: its object was created with a count of one.
+ */
+template <class T>
+class wxObjectDataPtr
+{
+public:
+    typedef T element_type;
+
+    explicit wxObjectDataPtr( T* aPtr = nullptr ) : m_ptr( aPtr ) {}
+
+    wxObjectDataPtr( const wxObjectDataPtr<T>& aOther ) : m_ptr( aOther.get() )
+    {
+        if( m_ptr )
+            m_ptr->IncRef();
+    }
+
+    template <typename U>
+    wxObjectDataPtr( const wxObjectDataPtr<U>& aOther ) : m_ptr( aOther.get() )
+    {
+        if( m_ptr )
+            m_ptr->IncRef();
+    }
+
+    ~wxObjectDataPtr()
+    {
+        if( m_ptr )
+            m_ptr->DecRef();
+    }
+
+    T* get() const { return m_ptr; }
+
+    explicit operator bool() const { return m_ptr != nullptr; }
+
+    T& operator*() const { return *m_ptr; }
+    T* operator->() const { return m_ptr; }
+
+    void reset( T* aPtr )
+    {
+        if( m_ptr )
+            m_ptr->DecRef();
+
+        m_ptr = aPtr;
+    }
+
+    T* release()
+    {
+        T* ptr = m_ptr;
+        m_ptr = nullptr;
+        return ptr;
+    }
+
+    wxObjectDataPtr& operator=( const wxObjectDataPtr& aOther )
+    {
+        if( aOther.m_ptr )
+            aOther.m_ptr->IncRef();
+
+        if( m_ptr )
+            m_ptr->DecRef();
+
+        m_ptr = aOther.m_ptr;
+        return *this;
+    }
+
+    template <typename U>
+    wxObjectDataPtr& operator=( const wxObjectDataPtr<U>& aOther )
+    {
+        T* ptr = aOther.get();
+
+        if( ptr )
+            ptr->IncRef();
+
+        if( m_ptr )
+            m_ptr->DecRef();
+
+        m_ptr = ptr;
+        return *this;
+    }
+
+    wxObjectDataPtr& operator=( T* aPtr )
+    {
+        reset( aPtr );
+        return *this;
+    }
+
+private:
+    T* m_ptr;
+};
+
+
 #define wxDynamicCast( obj, className ) dynamic_cast<className*>( obj )
 #define wxStaticCast( obj, className ) static_cast<className*>( obj )
 #define wxConstCast( obj, className ) const_cast<className*>( obj )

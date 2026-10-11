@@ -40,9 +40,7 @@ using KIGFX::COLOR4D;
 
 wxSize COLOR_SWATCH::DialogUnitsToPixels( const QWidget* aWidget, const wxSize& aSize )
 {
-    QFontMetrics metrics( aWidget ? aWidget->font() : QFont() );
-
-    return wxSize( aSize.x * metrics.averageCharWidth() / 4, aSize.y * metrics.height() / 8 );
+    return KIQT::DialogUnitsToPixels( aWidget, aSize );
 }
 
 

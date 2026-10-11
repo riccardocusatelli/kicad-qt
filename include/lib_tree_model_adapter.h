@@ -441,11 +441,30 @@ protected:
 
     void resortTree();
 
+    // What the adapter does, without the GUI toolkit (lib_tree_model_adapter.cpp)
+
+    /// The node of a library (empty item name) or of an item, or nullptr.
+    LIB_TREE_NODE* findNode( const LIB_ID& aLibId );
+
+    /// The text of the column @a aCol of a node.
+    wxString nodeText( const LIB_TREE_NODE* aNode, unsigned int aCol ) const;
+
+    /// Score and sort the nodes for a search string.
+    void scoreAndSortNodes( const wxString& aSearch );
+
 private:
     /**
      * Find and expand successful search results.  Return the best match (if any).
      */
     const LIB_TREE_NODE* showResults();
+
+    // The view of the GUI toolkit (lib_tree_model_adapter_wx.cpp)
+
+    /// Expand the parents of a node in the view.
+    void expandAncestors( const LIB_TREE_NODE* aNode );
+
+    /// Scroll the view to show a node.
+    void ensureVisible( const LIB_TREE_NODE* aNode );
 
     wxDataViewColumn* doAddColumn( const wxString& aHeader, bool aTranslate = true );
 

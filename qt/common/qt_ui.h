@@ -28,10 +28,12 @@
 
 #include <QColor>
 #include <QFont>
+#include <QFontMetrics>
 #include <QStringList>
 #include <QWidget>
 
 #include <gal/color4d.h>
+#include <wx/gdicmn.h>
 #include <qt_strings.h>
 
 
@@ -73,6 +75,16 @@ inline QFont DockedPaneFont( const QWidget* aWidget )
 #else
     return aWidget ? aWidget->font() : QFont();
 #endif
+}
+
+
+/// The size in pixels of a size in dialog units (wxWindow::ConvertDialogToPixels()), for the
+/// font of @a aWidget.
+inline wxSize DialogUnitsToPixels( const QWidget* aWidget, const wxSize& aSize )
+{
+    QFontMetrics metrics( aWidget ? aWidget->font() : QFont() );
+
+    return wxSize( aSize.x * metrics.averageCharWidth() / 4, aSize.y * metrics.height() / 8 );
 }
 
 

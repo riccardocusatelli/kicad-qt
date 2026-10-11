@@ -34,7 +34,7 @@ class LIB_TREE_NODE;
 /**
  * Handle schematic design block actions in the schematic editor.
  */
-class DESIGN_BLOCK_CONTROL : public TOOL_INTERACTIVE, public wxEvtHandler
+class DESIGN_BLOCK_CONTROL : public TOOL_INTERACTIVE
 {
 public:
     DESIGN_BLOCK_CONTROL( const std::string& aName );

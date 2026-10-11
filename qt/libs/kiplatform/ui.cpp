@@ -189,3 +189,8 @@ void KIPLATFORM::UI::SetFloatLevel( QWidget* aWindow )
     if( aWindow )
         aWindow->setWindowFlag( Qt::WindowStaysOnTopHint, true );
 }
+
+
+void KIPLATFORM::UI::CancelPendingScroll( QTreeView* aCtrl )
+{
+}

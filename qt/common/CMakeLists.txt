@@ -173,6 +173,7 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_color_picker_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/widgets/search_pane_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     )
 
 add_library( kiqt_common STATIC
@@ -194,6 +195,20 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/properties/pg_value_text.cpp
     ${CMAKE_SOURCE_DIR}/common/properties/std_optional_variants.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/properties_panel.cpp
+
+    # the trees of the libraries: the model and what the adapter does, toolkit-independent
+    ${CMAKE_SOURCE_DIR}/common/lib_tree_model.cpp
+    ${CMAKE_SOURCE_DIR}/common/lib_tree_model_adapter.cpp
+    ${CMAKE_SOURCE_DIR}/common/design_block_tree_model_adapter.cpp
+    lib_tree_model_adapter_qt.cpp
+    widgets/lib_tree.cpp
+
+    # the design blocks panes: what they do, toolkit-independent, and their Qt widgets
+    ${CMAKE_SOURCE_DIR}/common/widgets/design_block_pane.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/panel_design_block_chooser.cpp
+    dialogs/dialog_design_block_properties_qt.cpp
+    widgets/design_block_pane_qt.cpp
+    widgets/panel_design_block_chooser_qt.cpp
 
     background_jobs_list_qt.cpp
     dialog_shim.cpp

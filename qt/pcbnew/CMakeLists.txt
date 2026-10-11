@@ -88,6 +88,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/tool_event_utils.cpp
     tools/zone_create_helper.cpp
     widgets/appearance_controls.cpp
+    widgets/pcb_design_block_preview_widget.cpp
     widgets/pcb_net_inspector_panel.cpp
     widgets/pcb_properties_panel.cpp
     widgets/pcb_search_pane.cpp
@@ -113,6 +114,8 @@ add_library( pcbnew_gui_qt STATIC
     pcb_layer_box_selector_qt.cpp
     widgets/appearance_controls_qt.cpp
     widgets/panel_selection_filter.cpp
+    widgets/pcb_design_block_pane_qt.cpp
+    widgets/pcb_design_block_preview_widget_qt.cpp
     widgets/pcb_net_inspector_panel_qt.cpp
     widgets/pcb_properties_panel_qt.cpp
     widgets/vertex_editor_pane.cpp

@@ -21,6 +21,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+/**
+ * @file design_block_pane.cpp
+ * What DESIGN_BLOCK_PANE does without the GUI toolkit: the design blocks and their libraries
+ * (create, add, delete, edit).  The pane and its dialogs are in design_block_pane_wx.cpp (and in
+ * qt/common/widgets/design_block_pane_qt.cpp).
+ */
+
 #include <design_block.h>
 #include <design_block_library_adapter.h>
 #include <design_block_io.h>
@@ -28,60 +35,16 @@
 #include <env_paths.h>
 #include <pgm_base.h>
 #include <common.h>
-#include <kidialog.h>
 #include <widgets/design_block_pane.h>
-#include <dialog_design_block_properties.h>
 #include <widgets/panel_design_block_chooser.h>
-#include <widgets/filedlg_hook_new_library.h>
 #include <kiface_base.h>
 #include <core/kicad_algo.h>
 #include <template_fieldnames.h>
-#include <wx/sizer.h>
-#include <wx/textdlg.h>
 #include <confirm.h>
 #include <wildcards_and_files_ext.h>
 #include <tool/tool_manager.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
-
-DESIGN_BLOCK_PANE::DESIGN_BLOCK_PANE( EDA_DRAW_FRAME* aParent, const LIB_ID* aPreselect,
-                                      std::vector<LIB_ID>& aHistoryList ) :
-        WX_PANEL( aParent ),
-        m_frame( aParent )
-{
-    m_frame->Bind( wxEVT_AUI_PANE_CLOSE, &DESIGN_BLOCK_PANE::OnClosed, this );
-    m_frame->Bind( EDA_LANG_CHANGED, &DESIGN_BLOCK_PANE::OnLanguageChanged, this );
-}
-
-
-DESIGN_BLOCK_PANE::~DESIGN_BLOCK_PANE()
-{
-    m_frame->Unbind( wxEVT_AUI_PANE_CLOSE, &DESIGN_BLOCK_PANE::OnClosed, this );
-    m_frame->Unbind( EDA_LANG_CHANGED, &DESIGN_BLOCK_PANE::OnLanguageChanged, this );
-}
-
-
-void DESIGN_BLOCK_PANE::OnLanguageChanged( wxCommandEvent& aEvent )
-{
-    if( m_chooserPanel )
-        m_chooserPanel->ShowChangedLanguage();
-
-    setLabelsAndTooltips();
-
-    aEvent.Skip();
-}
-
-
-void DESIGN_BLOCK_PANE::OnClosed( wxAuiManagerEvent& aEvent )
-{
-    if( APP_SETTINGS_BASE* cfg = m_frame->config() )
-    {
-        if( IsShownOnScreen() ) // Ensure the panel is shown when trying to save its size
-            m_frame->SaveSettings( cfg );
-    }
-
-    aEvent.Skip();
-}
 
 
 void DESIGN_BLOCK_PANE::SaveSettings()
@@ -151,17 +114,11 @@ wxString DESIGN_BLOCK_PANE::CreateNewDesignBlockLibrary( const wxString& aDialog
 
 wxString DESIGN_BLOCK_PANE::createNewDesignBlockLibrary( const wxString& aDialogTitle )
 {
-    wxFileName               fn;
-    static bool              isGlobal = true;
-    FILEDLG_HOOK_NEW_LIBRARY tableChooser( isGlobal );
+    wxFileName  fn;
+    static bool isGlobal = true;
 
-    if( !m_frame->LibraryFileBrowser( aDialogTitle, false, fn, FILEEXT::KiCadDesignBlockLibPathWildcard(),
-                                      FILEEXT::KiCadDesignBlockLibPathExtension, false, &tableChooser ) )
-    {
+    if( !chooseNewLibraryPath( aDialogTitle, fn, isGlobal ) )
         return wxEmptyString;
-    }
-
-    isGlobal = tableChooser.GetUseGlobalTable();
 
     wxString libPath = fn.GetFullPath();
 
@@ -198,11 +155,8 @@ wxString DESIGN_BLOCK_PANE::createNewDesignBlockLibrary( const wxString& aDialog
             else
             {
                 wxString msg = wxString::Format( _( "Library %s already exists." ), libPath );
-                KIDIALOG dlg( m_frame, msg, _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
-                dlg.SetOKLabel( _( "Overwrite" ) );
-                dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
 
-                if( dlg.ShowModal() == wxID_CANCEL )
+                if( !confirmOverwriteLibrary( msg ) )
                     return wxEmptyString;
 
                 pi->DeleteLibrary( libPath );
@@ -237,8 +191,7 @@ bool DESIGN_BLOCK_PANE::AddDesignBlockLibrary( const wxString& aDialogTitle, con
         return false;
 
     // Open a dialog to ask for a description
-    wxString description = wxGetTextFromUser( _( "Enter a description for the library:" ), aDialogTitle,
-                                              wxEmptyString, m_frame );
+    wxString description = askLibraryDescription( aDialogTitle );
 
     DESIGN_BLOCK_IO_MGR::DESIGN_BLOCK_FILE_T lib_type = DESIGN_BLOCK_IO_MGR::GuessPluginTypeFromLibPath( libPath );
 
@@ -391,10 +344,9 @@ bool DESIGN_BLOCK_PANE::EditDesignBlockProperties( const LIB_ID& aLibId )
     if( !designBlock )
         return false;
 
-    wxString                       originalName = designBlock->GetLibId().GetLibItemName();
-    DIALOG_DESIGN_BLOCK_PROPERTIES dlg( m_frame, designBlock.get() );
+    wxString originalName = designBlock->GetLibId().GetLibItemName();
 
-    if( dlg.ShowModal() != wxID_OK )
+    if( !editDesignBlockProperties( designBlock.get() ) )
         return false;
 
     wxString newName = designBlock->GetLibId().GetLibItemName();
@@ -430,7 +382,7 @@ bool DESIGN_BLOCK_PANE::EditDesignBlockProperties( const LIB_ID& aLibId )
 }
 
 
-bool DESIGN_BLOCK_PANE::checkOverwrite( wxWindow* aFrame, wxString& libname, wxString& newName )
+bool DESIGN_BLOCK_PANE::checkOverwrite( TOOLKIT_WINDOW* aFrame, wxString& libname, wxString& newName )
 {
     wxString msg = wxString::Format( _( "Design block '%s' already exists in library '%s'." ),
                                      newName.GetData(), libname.GetData() );

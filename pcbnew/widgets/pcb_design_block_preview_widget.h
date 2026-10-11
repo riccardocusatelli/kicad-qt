@@ -27,6 +27,7 @@
 #include <class_draw_panel_gal.h>
 
 
+class BOARD;
 class LIB_ID;
 class DESIGN_BLOCK;
 class SCHEMATIC;
@@ -67,6 +68,14 @@ protected:
     void onSize( wxSizeEvent& aEvent );
 
     void fitOnDrawArea();    // set the view scale to fit the item on screen and center
+
+    // The widgets of the GUI toolkit (pcb_design_block_preview_widget_wx.cpp)
+
+    /// Load the board of a design block (with a progress reporter).
+    BOARD* loadBoard( const wxString& aFileName );
+
+    /// Show the canvas in place of the status.
+    void showCanvas();
 
     GAL_DISPLAY_OPTIONS_IMPL   m_galDisplayOptions;
     EDA_DRAW_PANEL_GAL*        m_preview;

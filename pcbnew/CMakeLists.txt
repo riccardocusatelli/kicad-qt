@@ -503,6 +503,7 @@ set( PCBNEW_CLASS_SRCS
     widgets/panel_selection_filter_base.cpp
     widgets/pcb_design_block_pane.cpp
     widgets/pcb_design_block_preview_widget.cpp
+    widgets/pcb_design_block_preview_widget_wx.cpp
     widgets/pcb_properties_panel.cpp
     widgets/pcb_properties_panel_wx.cpp
     widgets/pcb_search_pane.cpp

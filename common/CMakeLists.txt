@@ -664,6 +664,7 @@ set( COMMON_WIDGET_SRCS
     widgets/button_row_panel.cpp
     widgets/color_swatch.cpp
     widgets/design_block_pane.cpp
+    widgets/design_block_pane_wx.cpp
     widgets/filter_combobox.cpp
     widgets/font_choice.cpp
     widgets/footprint_choice.cpp
@@ -684,6 +685,7 @@ set( COMMON_WIDGET_SRCS
     widgets/msgpanel_item.cpp
     widgets/paged_dialog.cpp
     widgets/panel_design_block_chooser.cpp
+    widgets/panel_design_block_chooser_wx.cpp
     widgets/properties_panel.cpp
     widgets/properties_panel_wx.cpp
     widgets/search_pane.cpp
@@ -850,6 +852,7 @@ set( COMMON_SRCS
     lib_table_notebook_panel.cpp
     lib_tree_model.cpp
     lib_tree_model_adapter.cpp
+    lib_tree_model_adapter_wx.cpp
     design_block_tree_model_adapter.cpp
     marker_base.cpp
     origin_transforms.cpp

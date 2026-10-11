@@ -30,6 +30,8 @@
 #include <wx/checkbox.h>
 #include <wx/filedlgcustomize.h>
 #include <eda_draw_frame.h>
+#include <toolkit/toolkit_types.h>
+#include <wx/filename.h>
 
 
 class DESIGN_BLOCK;
@@ -99,8 +101,22 @@ protected:
     PANEL_DESIGN_BLOCK_CHOOSER* m_chooserPanel = nullptr;
 
 private:
-    bool checkOverwrite( wxWindow* aFrame, wxString& libname, wxString& newName );
+    bool checkOverwrite( TOOLKIT_WINDOW* aFrame, wxString& libname, wxString& newName );
 
     wxString createNewDesignBlockLibrary( const wxString& aDialogTitle );
+
+    // The dialogs of the GUI toolkit (design_block_pane_wx.cpp)
+
+    /// The file of a new library and its table (global or project): false if cancelled.
+    bool chooseNewLibraryPath( const wxString& aDialogTitle, wxFileName& aFileName, bool& aIsGlobal );
+
+    /// The user confirms the overwrite of an existing library.
+    bool confirmOverwriteLibrary( const wxString& aMessage );
+
+    /// The description of a new library.
+    wxString askLibraryDescription( const wxString& aDialogTitle );
+
+    /// Edit the properties of a design block: false if cancelled.
+    bool editDesignBlockProperties( DESIGN_BLOCK* aDesignBlock );
 };
 #endif

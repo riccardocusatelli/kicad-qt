@@ -32,6 +32,7 @@
 #include <kiqt.h>
 
 class QColor;
+class QTreeView;
 
 class QWidget;
 
@@ -133,6 +134,13 @@ namespace KIPLATFORM
          * Intended to set the floating window level in macOS on a window
          */
         void SetFloatLevel( QWidget* aWindow );
+
+        /**
+         * Drop a scroll of a tree view pending in the toolkit, before its rows are freed (a
+         * GtkTreeView of wxWidgets on GTK).  Nothing to do with Qt: the views of Qt scroll to
+         * their indexes, invalidated with the model.
+         */
+        void CancelPendingScroll( QTreeView* aCtrl );
     }
 }
 
