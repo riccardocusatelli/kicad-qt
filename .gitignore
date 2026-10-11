@@ -30,6 +30,7 @@ Makefile
 auto_renamed_to_cpp
 Testing
 config.h
+!libs/kiwx/include/wx/config.h
 install_manifest.txt
 doxygen/out
 *.bak
