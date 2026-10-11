@@ -54,6 +54,8 @@ add_library( kiqt SHARED
     widgets/spin_button.cpp
     widgets/wx_infobar.cpp
     widgets/wx_panel.cpp
+    widgets/wx_progress_reporters.cpp
+    validators_qt.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
@@ -174,6 +176,7 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/widgets/search_pane_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
     )
 
 add_library( kiqt_common STATIC
@@ -219,6 +222,7 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/notifications_manager.cpp
     ${CMAKE_SOURCE_DIR}/common/pgm_gui.cpp
     dialogs/dialog_color_picker.cpp
+    dialogs/dialog_text_entry.cpp
     dialogs/dialog_unit_entry.cpp
     dialogs/eda_list_dialog.cpp
     dialogs/eda_view_switcher.cpp

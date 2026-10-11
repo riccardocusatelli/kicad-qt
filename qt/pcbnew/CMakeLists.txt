@@ -37,6 +37,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     array_pad_number_provider.cpp
     autorouter/ar_autoplacer.cpp
     autorouter/ar_matrix.cpp
+    autorouter/spread_footprints.cpp
     board_stackup_manager/board_stackup_reporter.cpp
     board_stackup_manager/dielectric_material.cpp
     board_tables/board_characteristics_table.cpp
@@ -48,8 +49,11 @@ set( KIQT_PCBNEW_GUI_SRCS
     component_classes/component_class_cache_proxy.cpp
     component_classes/component_class_manager.cpp
     convert_shape_list_to_polygon.cpp
+    cross-probing.cpp
     drc/drc_interactive_courtyard_clearance.cpp
     drc/drc_test_provider.cpp
+    drc/rule_editor/drc_re_panel_matcher.cpp
+    drc/rule_editor/drc_re_rule_saver.cpp
     edit_track_width.cpp
     exporters/export_footprint_associations.cpp
     exporters/export_hyperlynx.cpp
@@ -58,16 +62,20 @@ set( KIQT_PCBNEW_GUI_SRCS
     footprint_import_reconciler.cpp
     footprint_info_impl.cpp
     footprint_wizard.cpp
+    fp_tree_model_adapter.cpp
     generate_footprint_info.cpp
     git/kigit_pcb_merge.cpp
     graphics_cleaner.cpp
     import_gfx/graphics_importer_pcbnew.cpp
     layer_pairs.cpp
+    microwave/microwave_footprint.cpp
+    microwave/microwave_inductor.cpp
     microwave/microwave_tool.cpp
     netlist_reader/board_netlist_updater.cpp
     netlist_reader/netlist.cpp
     padstack.cpp
     pcb_base_frame.cpp
+    pcb_base_edit_frame.cpp
     pcb_draw_panel_gal.cpp
     pcb_edit_frame.cpp
     pcb_layer_box_selector.cpp
@@ -85,9 +93,11 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/pcb_grid_helper.cpp
     tools/pcb_selection.cpp
     tools/pcb_selection_conditions.cpp
+    tools/pcb_tool_base.cpp
     tools/pcb_tool_utils.cpp
     tools/tool_event_utils.cpp
     tools/zone_create_helper.cpp
+    tracks_cleaner.cpp
     widgets/appearance_controls.cpp
     widgets/pcb_design_block_preview_widget.cpp
     widgets/pcb_net_inspector_panel.cpp
