@@ -38,6 +38,7 @@
 #include <kidialog.h>
 #include <kiface_base.h>
 #include <kiplatform/app.h>
+#include <kiplatform/ui.h>
 #include <kiway_mail.h>
 #include <symbol_edit_frame.h>
 #include <lib_symbol_library_manager.h>
@@ -285,7 +286,7 @@ SYMBOL_EDIT_FRAME::SYMBOL_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_acceptedExts.emplace( FILEEXT::KiCadSymbolLibFileExtension, &ACTIONS::ddAddLibrary );
     DragAcceptFiles( true );
 
-    KIPLATFORM::APP::SetShutdownBlockReason( this, _( "Library changes are unsaved" ) );
+    KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Library changes are unsaved" ) );
 
     // Catch unhandled accelerator command characters that were no handled by the library tree
     // panel.

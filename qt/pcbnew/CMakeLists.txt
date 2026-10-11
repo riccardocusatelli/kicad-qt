@@ -69,6 +69,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     padstack.cpp
     pcb_base_frame.cpp
     pcb_draw_panel_gal.cpp
+    pcb_edit_frame.cpp
     pcb_layer_box_selector.cpp
     pcb_origin_transforms.cpp
     pcb_screen.cpp
@@ -111,6 +112,7 @@ add_library( pcbnew_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
+    pcb_edit_frame_qt.cpp
     pcb_layer_box_selector_qt.cpp
     widgets/appearance_controls_qt.cpp
     widgets/panel_selection_filter.cpp

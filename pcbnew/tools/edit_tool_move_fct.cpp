@@ -59,6 +59,7 @@
 #include <wx/choicdlg.h>
 #include <unordered_set>
 #include <unordered_map>
+#include <status_popup.h>
 
 
 static bool PromptConnectedPadDecision( PCB_BASE_EDIT_FRAME* aFrame, const std::vector<PAD*>& aPads,

@@ -251,7 +251,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     rfn.MakeRelativeTo( Prj().GetProjectPath() );
     LoadWindowState( rfn.GetFullPath() );
 
-    KIPLATFORM::APP::SetShutdownBlockReason( this, _( "Schematic file changes are unsaved" ) );
+    KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Schematic file changes are unsaved" ) );
 
     if( Kiface().IsSingle() )
     {

@@ -34,6 +34,10 @@
 #include <QWidget>
 #include <QWindow>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 
 namespace
 {
@@ -193,4 +197,27 @@ void KIPLATFORM::UI::SetFloatLevel( QWidget* aWindow )
 
 void KIPLATFORM::UI::CancelPendingScroll( QTreeView* aCtrl )
 {
+}
+
+
+void KIPLATFORM::UI::RemoveShutdownBlockReason( QWidget* aWindow )
+{
+#ifdef _WIN32
+    // Destroys any block reason that may have existed
+    ShutdownBlockReasonDestroy( reinterpret_cast<HWND>( aWindow->winId() ) );
+#endif
+}
+
+
+void KIPLATFORM::UI::SetShutdownBlockReason( QWidget* aWindow, const wxString& aReason )
+{
+#ifdef _WIN32
+    // The message on the shutdown page on why it's being "blocked" (with the handling of
+    // WM_QUERYENDSESSION, the closing of the frame); ShutdownBlockReasonCreate doesn't block by
+    // itself
+    HWND hwnd = reinterpret_cast<HWND>( aWindow->winId() );
+
+    ShutdownBlockReasonDestroy( hwnd );
+    ShutdownBlockReasonCreate( hwnd, aReason.wc_str() );
+#endif
 }

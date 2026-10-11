@@ -759,3 +759,13 @@ wxPoint KIPLATFORM::UI::GetMousePosition()
 
 
 #endif
+
+
+void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
+{
+}
+
+
+void KIPLATFORM::UI::SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason )
+{
+}

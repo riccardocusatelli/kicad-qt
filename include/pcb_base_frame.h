@@ -405,6 +405,18 @@ public:
     void GetLibraryItemsForListDialog( wxArrayString& aHeaders,
                                        std::vector<wxArrayString>& aItemsToDisplay );
 
+    /**
+     * @return true if the footprint being edited comes from the board (footprint editor).
+     */
+    virtual bool IsCurrentFPFromBoard() const { return false; }
+
+    /**
+     * Ask to apply the changes of a footprint from the board before closing (footprint editor).
+     *
+     * @return false if the user cancelled.
+     */
+    virtual bool CanCloseFPFromBoard( bool doClose ) { return true; }
+
 protected:
     bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
 

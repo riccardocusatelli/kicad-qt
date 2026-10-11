@@ -27,7 +27,6 @@
 #include <math/vector2d.h>
 #include <tools/pcb_tool_base.h>
 #include <tools/pcb_selection_tool.h>
-#include <status_popup.h>
 
 
 class BOARD_COMMIT;

@@ -55,6 +55,8 @@ class TOOL_MENU;
 class APP_SETTINGS_BASE;
 class LIB_TREE;
 class PROPERTIES_PANEL;
+class SEARCH_PANE;
+class NET_INSPECTOR_PANEL;
 class PAGE_INFO;
 class TITLE_BLOCK;
 struct EDA_SEARCH_DATA;
@@ -568,7 +570,9 @@ protected:
 
     COLOR_SETTINGS*      m_colorSettings;
 
+    SEARCH_PANE*         m_searchPane;
     PROPERTIES_PANEL*    m_propertiesPanel;
+    NET_INSPECTOR_PANEL* m_netInspectorPanel;
 
     /// The current canvas type.
     EDA_DRAW_PANEL_GAL::GAL_TYPE    m_canvasType;

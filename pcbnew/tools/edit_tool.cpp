@@ -184,6 +184,9 @@ EDIT_TOOL::EDIT_TOOL() :
 }
 
 
+EDIT_TOOL::~EDIT_TOOL() = default;
+
+
 void EDIT_TOOL::Reset( RESET_REASON aReason )
 {
     m_dragging = false;

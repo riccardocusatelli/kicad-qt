@@ -39,7 +39,7 @@
 #include "panel_drc_group_header.h"
 #include <widgets/rc_tree_model.h>
 
-#define DIALOG_DRC_RULE_EDITOR_WINDOW_NAME wxT( "DialogDrcRuleEditorWindowName" )
+#include <dialogs/drc_window_names.h>
 
 class PCB_EDIT_FRAME;
 class DIALOG_DRC_RULE_EDITOR;

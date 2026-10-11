@@ -113,7 +113,9 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameT
     m_colorSettings       = nullptr;
     m_polarCoords         = false;
     m_findReplaceData     = std::make_unique<EDA_SEARCH_DATA>();
+    m_searchPane          = nullptr;
     m_propertiesPanel     = nullptr;
+    m_netInspectorPanel   = nullptr;
 
     SetUserUnits( EDA_UNITS::MM );
 

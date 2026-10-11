@@ -104,7 +104,11 @@ int ARRAY_TOOL::CreateArray( const TOOL_EVENT& aEvent )
     m_array_opts.reset();
     m_dialog = new DIALOG_CREATE_ARRAY( editFrame, m_array_opts, enableArrayNumbering, origin );
 
-    m_dialog->Bind( wxEVT_CLOSE_WINDOW, &ARRAY_TOOL::onDialogClosed, this );
+    m_dialog->Bind( wxEVT_CLOSE_WINDOW,
+                    [this]( wxCloseEvent& aEvent )
+                    {
+                        onDialogClosed( aEvent );
+                    } );
 
     // Show the dialog, but it's not modal - the user might ask to select a point, in which case
     // we'll exit and do to that.

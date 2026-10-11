@@ -472,7 +472,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 #endif
 
     // Default shutdown reason until a file is loaded
-    KIPLATFORM::APP::SetShutdownBlockReason( this, _( "New schematic file is unsaved" ) );
+    KIPLATFORM::UI::SetShutdownBlockReason( this, _( "New schematic file is unsaved" ) );
 
     // Init for dropping files
     m_acceptedExts.emplace( FILEEXT::KiCadSchematicFileExtension, &SCH_ACTIONS::ddAppendFile );

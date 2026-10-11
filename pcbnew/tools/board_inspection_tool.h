@@ -24,7 +24,6 @@
 #ifndef BOARD_INSPECTION_TOOL_H
 #define BOARD_INSPECTION_TOOL_H
 
-#include <dialogs/dialog_book_reporter.h>
 #include <drc/drc_rule.h>
 #include <drc/drc_engine.h>
 #include <pcb_edit_frame.h>
@@ -34,12 +33,14 @@
 
 class CONNECTIVITY_DATA;
 class FOOTPRINT_DIFF_WIDGET;
+class wxPanel;
+class wxTopLevelWindow;
 
 
 /**
  * Tool for pcb inspection.
  */
-class BOARD_INSPECTION_TOOL : public wxEvtHandler, public PCB_TOOL_BASE
+class BOARD_INSPECTION_TOOL : public PCB_TOOL_BASE
 {
 public:
     BOARD_INSPECTION_TOOL();

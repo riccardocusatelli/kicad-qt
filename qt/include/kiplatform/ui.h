@@ -28,6 +28,7 @@
 #define KIPLATFORM_UI_H_
 
 #include <wx/gdicmn.h>      // wxPoint, wxSize (kiwx)
+#include <wx/string.h>      // wxString (kiwx)
 
 #include <kiqt.h>
 
@@ -141,6 +142,25 @@ namespace KIPLATFORM
          * their indexes, invalidated with the model.
          */
         void CancelPendingScroll( QTreeView* aCtrl );
+
+        /**
+         * Sets the block reason why the window/application is preventing OS shutdown.
+         * This should be set far ahead of any close event.
+         *
+         * This is mainly intended for Windows platforms where this is a native feature
+         * (see KIPLATFORM::APP::SupportsShutdownBlockReason()).
+         *
+         * @param aWindow that will have a shutdown blocker message
+         * @param aReason to display why the shutdown block is occurring
+         */
+        void SetShutdownBlockReason( QWidget* aWindow, const wxString& aReason );
+
+        /**
+         * Removes any shutdown block reason set
+         *
+         * @param aWindow that has a shutdown block reason set
+         */
+        void RemoveShutdownBlockReason( QWidget* aWindow );
     }
 }
 

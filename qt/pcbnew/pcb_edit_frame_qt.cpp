@@ -138,14 +138,12 @@ void PCB_EDIT_FRAME::setupLayout()
 
     // The design blocks can't be docked on the top and on the bottom sides
     designBlocks->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
-    m_designBlocksPane->setMinimumSize( FromDIP( wxSize( 240, 60 ) ).x,
-                                        FromDIP( wxSize( 240, 60 ) ).y );
+    m_designBlocksPane->setMinimumSize( 240, 60 );
 
     // The properties on the left side
     addPane( m_propertiesPanel, PropertiesPaneName(), _( "Properties" ), PANE_DOCK::LEFT,
              settings->m_AuiPanels.show_properties );
-    m_propertiesPanel->setMinimumSize( FromDIP( wxSize( 240, 60 ) ).x,
-                                       FromDIP( wxSize( 240, 60 ) ).y );
+    m_propertiesPanel->setMinimumSize( 240, 60 );
 
     // The net inspector and the search on the bottom side
     QDockWidget* netInspector = addPane( m_netInspectorPanel, NetInspectorPanelName(),
@@ -154,23 +152,21 @@ void PCB_EDIT_FRAME::setupLayout()
     QDockWidget* search = addPane( m_searchPane, SearchPaneName(), _( "Search" ),
                                    PANE_DOCK::BOTTOM, m_ShowSearch );
 
-    m_netInspectorPanel->setMinimumSize( FromDIP( wxSize( 240, 60 ) ).x,
-                                         FromDIP( wxSize( 240, 60 ) ).y );
-    m_searchPane->setMinimumSize( FromDIP( wxSize( 180, 60 ) ).x,
-                                  FromDIP( wxSize( 180, 60 ) ).y );
+    m_netInspectorPanel->setMinimumSize( 240, 60 );
+    m_searchPane->setMinimumSize( 180, 60 );
 
     tabifyDockWidget( netInspector, search );
 
-    // The best sizes of the panels (as the wxWidgets build)
-    resizeDocks( { appearance, designBlocks }, { m_appearancePanel->sizeHint().width(),
-                                                 FromDIP( wxSize( 300, 200 ) ).x },
+    // The best sizes of the panels (as the wxWidgets build; the sizes of Qt are independent of
+    // the DPI)
+    resizeDocks( { appearance, designBlocks }, { m_appearancePanel->sizeHint().width(), 300 },
                  Qt::Horizontal );
 
     // The selection filter doesn't need to grow in the vertical direction when docked
     resizeDocks( { selectionFilter }, { m_selectionFilterPanel->sizeHint().height() },
                  Qt::Vertical );
 
-    resizeDocks( { netInspector }, { FromDIP( wxSize( 300, 200 ) ).y }, Qt::Vertical );
+    resizeDocks( { netInspector }, { 200 }, Qt::Vertical );
 }
 
 

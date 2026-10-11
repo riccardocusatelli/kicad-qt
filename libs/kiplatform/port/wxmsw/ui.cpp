@@ -223,3 +223,22 @@ void KIPLATFORM::UI::CancelPendingScroll( wxDataViewCtrl* aCtrl )
 {
     // Not needed on this platform; the native control does not race on model resets.
 }
+
+
+void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
+{
+    // Destroys any block reason that may have existed
+    ShutdownBlockReasonDestroy( aWindow->GetHandle() );
+}
+
+
+void KIPLATFORM::UI::SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason )
+{
+    // Sets up the pretty message on the shutdown page on why it's being "blocked"
+    // This is used in conjunction with handling WM_QUERYENDSESSION (wxCloseEvent)
+    // ShutdownBlockReasonCreate does not block by itself
+
+    ShutdownBlockReasonDestroy( aWindow->GetHandle() ); // Destroys any existing or nonexisting reason
+
+    ShutdownBlockReasonCreate( aWindow->GetHandle(), aReason.wc_str() );
+}

@@ -32,6 +32,7 @@
 
 
 class PCB_EDIT_FRAME;
+class wxIdleEvent;
 class PROGRESS_REPORTER;
 class WX_PROGRESS_REPORTER;
 class ZONE_FILLER;

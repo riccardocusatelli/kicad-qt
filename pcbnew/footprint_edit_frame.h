@@ -59,9 +59,9 @@ public:
      */
     bool IsContentModified() const override;
 
-    bool IsCurrentFPFromBoard() const;
+    bool IsCurrentFPFromBoard() const override;
 
-    bool CanCloseFPFromBoard( bool doClose );
+    bool CanCloseFPFromBoard( bool doClose ) override;
 
     FOOTPRINT_EDITOR_SETTINGS* GetSettings();
 

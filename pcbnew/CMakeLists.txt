@@ -428,6 +428,7 @@ set( PCBNEW_CLASS_SRCS
     pcb_layer_box_selector.cpp
     pcb_layer_box_selector_wx.cpp
     pcb_edit_frame.cpp
+    pcb_edit_frame_dialogs.cpp
     pcb_edit_frame_wx.cpp
     pcb_plotter.cpp
     pcbnew_config.cpp

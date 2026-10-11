@@ -266,3 +266,13 @@ void KIPLATFORM::UI::CancelPendingScroll( wxDataViewCtrl* aCtrl )
 {
     // Not needed on this platform; the native control does not race on model resets.
 }
+
+
+void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
+{
+}
+
+
+void KIPLATFORM::UI::SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason )
+{
+}

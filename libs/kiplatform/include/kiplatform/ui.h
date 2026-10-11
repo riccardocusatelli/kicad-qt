@@ -243,6 +243,25 @@ namespace KIPLATFORM
          * controls do not exhibit this race.
          */
         void CancelPendingScroll( wxDataViewCtrl* aCtrl );
+
+        /**
+         * Sets the block reason why the window/application is preventing OS shutdown.
+         * This should be set far ahead of any close event.
+         *
+         * This is mainly intended for Windows platforms where this is a native feature
+         * (see KIPLATFORM::APP::SupportsShutdownBlockReason()).
+         *
+         * @param aWindow that will have a shutdown blocker message
+         * @param aReason to display why the shutdown block is occurring
+         */
+        void SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason );
+
+        /**
+         * Removes any shutdown block reason set
+         *
+         * @param aWindow that has a shutdown block reason set
+         */
+        void RemoveShutdownBlockReason( wxWindow* aWindow );
     }
 }
 

@@ -41,7 +41,7 @@ class wxStatusBar;
 class BOARD_DESIGN_SETTINGS;
 
 
-#define DIALOG_DRC_WINDOW_NAME wxT( "DialogDrcWindowName" )
+#include <dialogs/drc_window_names.h>
 
 class
 DIALOG_DRC: public DIALOG_DRC_BASE, PROGRESS_REPORTER_BASE

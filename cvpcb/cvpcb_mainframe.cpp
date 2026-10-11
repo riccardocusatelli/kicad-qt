@@ -229,7 +229,7 @@ CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     m_filterTimer->StartOnce( 100 );
 
-    KIPLATFORM::APP::SetShutdownBlockReason( this, _( "Symbol to footprint changes are unsaved" ) );
+    KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Symbol to footprint changes are unsaved" ) );
 }
 
 

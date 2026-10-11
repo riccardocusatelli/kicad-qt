@@ -24,6 +24,7 @@
 
 #include <QApplication>
 #include <QWidget>
+#include <QLayout>
 #include <QKeyEvent>
 
 #include <wx/defs.h>        // WXK_ key codes
@@ -206,6 +207,29 @@ void CloseWindow( TOOLKIT_WINDOW* aWindow )
 {
     if( aWindow )
         aWindow->close();
+}
+
+
+void SetEventsEnabled( TOOLKIT_WINDOW* aWindow, bool aEnabled )
+{
+    // The input events (the painting is stopped with the canvas)
+    if( aWindow )
+        aWindow->setEnabled( aEnabled );
+}
+
+
+void Relayout( TOOLKIT_WINDOW* aWindow )
+{
+    if( !aWindow )
+        return;
+
+    if( QLayout* layout = aWindow->layout() )
+    {
+        layout->invalidate();
+        layout->activate();
+    }
+
+    aWindow->updateGeometry();
 }
 
 

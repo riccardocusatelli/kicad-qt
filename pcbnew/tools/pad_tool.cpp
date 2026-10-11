@@ -47,6 +47,7 @@
 #include <dialogs/dialog_enum_pads.h>
 #include <widgets/wx_infobar.h>
 #include <core/ki_assert.h>
+#include <status_popup.h>
 
 
 using KIGFX::PCB_RENDER_SETTINGS;

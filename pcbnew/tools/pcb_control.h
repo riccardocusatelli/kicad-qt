@@ -30,7 +30,7 @@
 #include <pcb_io/pcb_io_mgr.h>
 #include <memory>
 #include <tools/pcb_tool_base.h>
-#include <status_popup.h>
+class STATUS_TEXT_POPUP;
 
 namespace KIGFX {
     class ORIGIN_VIEWITEM;

@@ -96,6 +96,7 @@
 #include <pcb_io/pcb_io.h>
 #include <wx/hyperlink.h>
 #include <core/ki_assert.h>
+#include <status_popup.h>
 
 
 using namespace std::placeholders;

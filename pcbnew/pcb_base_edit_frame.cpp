@@ -51,7 +51,7 @@
 #include <id.h>
 
 
-PCB_BASE_EDIT_FRAME::PCB_BASE_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
+PCB_BASE_EDIT_FRAME::PCB_BASE_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent,
                                           FRAME_T aFrameType, const wxString& aTitle,
                                           const wxPoint& aPos, const wxSize& aSize, long aStyle,
                                           const wxString& aFrameName ) :

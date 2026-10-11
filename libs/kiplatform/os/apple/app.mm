@@ -71,16 +71,6 @@ bool KIPLATFORM::APP::SupportsShutdownBlockReason()
 }
 
 
-void KIPLATFORM::APP::RemoveShutdownBlockReason( wxWindow* aWindow )
-{
-}
-
-
-void KIPLATFORM::APP::SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason )
-{
-}
-
-
 void KIPLATFORM::APP::ForceTimerMessagesToBeCreatedIfNecessary()
 {
 }

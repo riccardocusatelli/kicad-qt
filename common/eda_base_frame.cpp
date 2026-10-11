@@ -391,7 +391,7 @@ EDA_BASE_FRAME::~EDA_BASE_FRAME()
 
     SocketCleanup();
 
-    KIPLATFORM::APP::RemoveShutdownBlockReason( this );
+    KIPLATFORM::UI::RemoveShutdownBlockReason( this );
 }
 
 

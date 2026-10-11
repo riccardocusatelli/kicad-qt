@@ -24,6 +24,7 @@
  */
 
 #include "tools/board_reannotate_tool.h"
+#include <dialogs/dialog_board_reannotate.h>
 
 #include <wx/filedlg.h>
 

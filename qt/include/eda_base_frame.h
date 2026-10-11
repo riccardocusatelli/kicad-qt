@@ -811,6 +811,9 @@ protected:
 
     SETTINGS_MANAGER*       m_settingsManager;
 
+    wxSize                  m_frameSize;         // The size of the frame at its creation (the
+                                                 // initial size of the canvases)
+
     bool                    m_supportsAutoSave;
     bool                    m_autoSavePending;
     bool                    m_autoSaveRequired;

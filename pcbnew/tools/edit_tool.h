@@ -31,7 +31,6 @@
 #include <math/vector2d.h>
 #include <tools/pcb_tool_base.h>
 #include <tools/pcb_selection_tool.h>
-#include <status_popup.h>
 #include <unordered_set>
 
 
@@ -56,6 +55,9 @@ class EDIT_TOOL : public PCB_TOOL_BASE
 {
 public:
     EDIT_TOOL();
+
+    /// Out of line: the status popup is only declared here.
+    ~EDIT_TOOL() override;
 
     /// @copydoc TOOL_INTERACTIVE::Reset()
     void Reset( RESET_REASON aReason ) override;

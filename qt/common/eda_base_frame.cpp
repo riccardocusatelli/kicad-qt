@@ -61,6 +61,7 @@
 #include <local_history.h>
 #include <pgm_base.h>
 #include <paths.h>
+#include <kiplatform/ui.h>
 #include <project.h>
 #include <project/project_local_settings.h>
 #include <scoped_set_reset.h>
@@ -263,6 +264,8 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxSt
     if( aSize.x > 0 && aSize.y > 0 )
         resize( aSize.x, aSize.y );
 
+    m_frameSize = wxSize( width(), height() );
+
     if( aPos != wxDefaultPosition )
         move( aPos.x, aPos.y );
 
@@ -275,6 +278,8 @@ EDA_BASE_FRAME::~EDA_BASE_FRAME()
     m_autoSaveTimer.Stop();
 
     ClearUndoRedoList();
+
+    KIPLATFORM::UI::RemoveShutdownBlockReason( this );
 }
 
 

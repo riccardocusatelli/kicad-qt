@@ -82,6 +82,12 @@ APIVISIBLE bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow );
 /// Close a window (a modeless dialog, a frame), even if it would ask to stay open.
 APIVISIBLE void CloseWindow( TOOLKIT_WINDOW* aWindow );
 
+/// Let @a aWindow process its events, or not (a canvas while its frame closes).
+APIVISIBLE void SetEventsEnabled( TOOLKIT_WINDOW* aWindow, bool aEnabled );
+
+/// Lay out the children of @a aWindow again (after a change of their sizes or of the fonts).
+APIVISIBLE void Relayout( TOOLKIT_WINDOW* aWindow );
+
 /// Show a window that needs the attention of the user (with the effect of the toolkit for a
 /// window that appears).
 APIVISIBLE void ShowWindow( TOOLKIT_WINDOW* aWindow );

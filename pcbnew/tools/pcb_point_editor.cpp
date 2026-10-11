@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <limits>
 #include <core/ki_assert.h>
+#include <status_popup.h>
 
 using namespace std::placeholders;
 #include <advanced_config.h>

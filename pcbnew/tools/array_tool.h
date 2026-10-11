@@ -25,7 +25,6 @@
 
 #include <memory>
 
-#include <wx/event.h>
 
 #include <math/vector2d.h>
 #include <tools/pcb_tool_base.h>
@@ -44,7 +43,10 @@ class DIALOG_CREATE_ARRAY;
  * to give the user a chance to choose a point or item manually.
  */
 
-class ARRAY_TOOL : public PCB_TOOL_BASE, public wxEvtHandler
+class wxCloseEvent;
+
+
+class ARRAY_TOOL : public PCB_TOOL_BASE
 {
 public:
     ARRAY_TOOL();

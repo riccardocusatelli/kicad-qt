@@ -306,7 +306,7 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     resolveCanvasType();
 
     // Default shutdown reason until a file is loaded
-    KIPLATFORM::APP::SetShutdownBlockReason( this, _( "Footprint changes are unsaved" ) );
+    KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Footprint changes are unsaved" ) );
 
     // Catch unhandled accelerator command characters that were no handled by the library tree
     // panel.

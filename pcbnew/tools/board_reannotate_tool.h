@@ -26,13 +26,12 @@
 #ifndef PCBREANNOTATETOOL_H_
 #define PCBREANNOTATETOOL_H_
 
-#include <dialogs/dialog_board_reannotate.h>
 #include <pcb_edit_frame.h>
 #include <tools/pcb_actions.h>
 #include <tools/pcb_tool_base.h>
 
 
-class BOARD_REANNOTATE_TOOL : public wxEvtHandler, public PCB_TOOL_BASE
+class BOARD_REANNOTATE_TOOL : public PCB_TOOL_BASE
 {
 public:
     BOARD_REANNOTATE_TOOL();

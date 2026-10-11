@@ -859,6 +859,13 @@ protected:
 
     void redrawNetnames();
 
+    /// Replace the WRL 3D models by their STEP siblings, and offer the options for the others
+    /// (pcb_edit_frame_dialogs.cpp).
+    void checkWrlModels();
+
+    /// Destroy the modeless dialogs (find, reports) of the frame (pcb_edit_frame_dialogs.cpp).
+    void destroyModelessDialogs();
+
     void saveProjectSettings() override;
 
     /**

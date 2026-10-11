@@ -922,11 +922,11 @@ void PL_EDITOR_FRAME::OnNewDrawingSheet()
     if( GetCurrentFileName().IsEmpty() )
     {
         // Default shutdown reason until a file is loaded
-        KIPLATFORM::APP::SetShutdownBlockReason( this, _( "New drawing sheet file is unsaved" ) );
+        KIPLATFORM::UI::SetShutdownBlockReason( this, _( "New drawing sheet file is unsaved" ) );
     }
     else
     {
-        KIPLATFORM::APP::SetShutdownBlockReason( this, _( "Drawing sheet changes are unsaved" ) );
+        KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Drawing sheet changes are unsaved" ) );
     }
 }
 

@@ -99,6 +99,23 @@ void CloseWindow( TOOLKIT_WINDOW* aWindow )
 }
 
 
+void SetEventsEnabled( TOOLKIT_WINDOW* aWindow, bool aEnabled )
+{
+    if( aWindow )
+        aWindow->SetEvtHandlerEnabled( aEnabled );
+}
+
+
+void Relayout( TOOLKIT_WINDOW* aWindow )
+{
+    if( aWindow )
+    {
+        aWindow->Layout();
+        aWindow->SendSizeEvent();
+    }
+}
+
+
 void ShowWindow( TOOLKIT_WINDOW* aWindow )
 {
     if( aWindow )

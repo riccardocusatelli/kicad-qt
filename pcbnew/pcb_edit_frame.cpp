@@ -52,14 +52,6 @@
 #include <pcbnew_id.h>
 #include <pcbnew_settings.h>
 #include <pcb_layer_box_selector.h>
-#include <footprint_edit_frame.h>
-#include <dialog_find.h>
-#include <dialog_footprint_properties.h>
-#include <dialogs/dialog_exchange_footprints.h>
-#include <dialogs/dialog_migrate_3d_models.h>
-#include <dialog_board_setup.h>
-#include <dialogs/dialog_dimension_properties.h>
-#include <dialogs/dialog_table_properties.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <pad.h>
 #include <pcb_target.h>
@@ -71,6 +63,7 @@
 #include <functional>
 #include <pcb_barcode.h>
 #include <pcb_painter.h>
+#include <progress_reporter.h>
 #include <project/project_file.h>
 #include <project/project_local_settings.h>
 #include <python_scripting.h>
@@ -119,7 +112,7 @@
 #include <autorouter/autoplace_tool.h>
 #include <python/scripting/pcb_scripting_tool.h>
 #include <netlist_reader/netlist_reader.h>
-#include <dialog_drc.h>     // for DIALOG_DRC_WINDOW_NAME definition
+#include <dialogs/drc_window_names.h>
 #include <ratsnest/ratsnest_view_item.h>
 #include <widgets/appearance_controls.h>
 #include <widgets/pcb_design_block_pane.h>
@@ -132,10 +125,7 @@
 #include <kiplatform/ui.h>
 #include <core/profile.h>
 #include <math/box2_minmax.h>
-#include <footprint_viewer_frame.h>
-#include <footprint_chooser_frame.h>
 #include <toolbars_pcb_editor.h>
-#include <drc/rule_editor/dialog_drc_rule_editor.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 #include <toolkit/event_blocker.h>
@@ -148,19 +138,12 @@
 #include <api/api_utils.h>
 #endif
 
-#include <action_plugin.h>
 #include <pcbnew_scripting_helpers.h>
 #include <richio.h>
 
 #include "../scripting/python_scripting.h"
 
 using namespace std::placeholders;
-
-
-#define INSPECT_DRC_ERROR_DIALOG_NAME   wxT( "InspectDrcErrorDialog" )
-#define INSPECT_CLEARANCE_DIALOG_NAME   wxT( "InspectClearanceDialog" )
-#define INSPECT_CONSTRAINTS_DIALOG_NAME wxT( "InspectConstraintsDialog" )
-#define FOOTPRINT_DIFF_DIALOG_NAME      wxT( "FootprintDiffDialog" )
 
 
 PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
@@ -352,7 +335,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     ActivateGalCanvas();
 
     // Default shutdown reason until a file is loaded
-    KIPLATFORM::APP::SetShutdownBlockReason( this, _( "New PCB file is unsaved" ) );
+    KIPLATFORM::UI::SetShutdownBlockReason( this, _( "New PCB file is unsaved" ) );
 
     // disable Export STEP item if kicad2step does not exist
     wxString strK2S = Pgm().GetExecutablePath();
@@ -1206,26 +1189,26 @@ bool PCB_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
     }
 
     // Don't allow closing while the modal footprint chooser is open
-    auto* chooser = (FOOTPRINT_CHOOSER_FRAME*) Kiway().Player( FRAME_FOOTPRINT_CHOOSER, false );
+    KIWAY_PLAYER* chooser = Kiway().Player( FRAME_FOOTPRINT_CHOOSER, false );
 
     if( chooser && chooser->IsModal() ) // Can close footprint chooser?
         return false;
 
     if( Kiface().IsSingle() )
     {
-        auto* fpEditor = (FOOTPRINT_EDIT_FRAME*) Kiway().Player( FRAME_FOOTPRINT_EDITOR, false );
+        KIWAY_PLAYER* fpEditor = Kiway().Player( FRAME_FOOTPRINT_EDITOR, false );
 
         if( fpEditor && !fpEditor->Close() )   // Can close footprint editor?
             return false;
 
-        auto* fpViewer = (FOOTPRINT_VIEWER_FRAME*) Kiway().Player( FRAME_FOOTPRINT_VIEWER, false );
+        KIWAY_PLAYER* fpViewer = Kiway().Player( FRAME_FOOTPRINT_VIEWER, false );
 
         if( fpViewer && !fpViewer->Close() )   // Can close footprint viewer?
             return false;
     }
     else
     {
-        auto* fpEditor = (FOOTPRINT_EDIT_FRAME*) Kiway().Player( FRAME_FOOTPRINT_EDITOR, false );
+        auto* fpEditor = static_cast<PCB_BASE_FRAME*>( Kiway().Player( FRAME_FOOTPRINT_EDITOR, false ) );
 
         if( fpEditor && fpEditor->IsCurrentFPFromBoard() )
         {
@@ -1278,7 +1261,7 @@ void PCB_EDIT_FRAME::doCloseWindow()
     // See https://bugs.launchpad.net/kicad/+bug/1655858
     // I think this is certainly a OpenGL event fired after frame deletion, so this workaround
     // avoid the crash (JPC)
-    GetCanvas()->SetEvtHandlerEnabled( false );
+    TOOLKIT::SetEventsEnabled( GetCanvas(), false );
 
     GetCanvas()->StopDrawing();
 
@@ -1294,36 +1277,7 @@ void PCB_EDIT_FRAME::doCloseWindow()
     TOOLKIT::CloseWindow( TOOLKIT::FindWindowByName( DIALOG_DRC_WINDOW_NAME ) );
     TOOLKIT::CloseWindow( TOOLKIT::FindWindowByName( DIALOG_DRC_RULE_EDITOR_WINDOW_NAME ) );
 
-
-    if( m_findDialog )
-    {
-        m_findDialog->Destroy();
-        m_findDialog = nullptr;
-    }
-
-    if( m_inspectDrcErrorDlg )
-    {
-        m_inspectDrcErrorDlg->Destroy();
-        m_inspectDrcErrorDlg = nullptr;
-    }
-
-    if( m_inspectClearanceDlg )
-    {
-        m_inspectClearanceDlg->Destroy();
-        m_inspectClearanceDlg = nullptr;
-    }
-
-    if( m_inspectConstraintsDlg )
-    {
-        m_inspectConstraintsDlg->Destroy();
-        m_inspectConstraintsDlg = nullptr;
-    }
-
-    if( m_footprintDiffDlg )
-    {
-        m_footprintDiffDlg->Destroy();
-        m_footprintDiffDlg = nullptr;
-    }
+    destroyModelessDialogs();
 
     // Delete the auto save file if it exists.  Only sweep when the board was actually
     // dirtied in this session; otherwise an existing autosave is a previous-session
@@ -1350,8 +1304,8 @@ void PCB_EDIT_FRAME::doCloseWindow()
     // the Layer Manager
     if( m_ShowLayerManagerTools )
     {
-        m_auimgr.GetPane( wxS( "LayersManager" ) ).Show( false );
-        m_auimgr.GetPane( wxS( "TabbedPanel" ) ).Show( false );
+        ShowPane( wxS( "LayersManager" ), false );
+        ShowPane( wxS( "TabbedPanel" ), false );
     }
 
     // Unlink the old project if needed
@@ -1374,124 +1328,6 @@ void PCB_EDIT_FRAME::ActivateGalCanvas()
     PCB_BASE_EDIT_FRAME::ActivateGalCanvas();
     GetCanvas()->UpdateColors();
     GetCanvas()->Refresh();
-}
-
-
-void PCB_EDIT_FRAME::ShowBoardSetupDialog( const wxString& aInitialPage, wxWindow* aParent )
-{
-    static std::mutex dialogMutex; // Local static mutex
-
-    std::unique_lock<std::mutex> dialogLock( dialogMutex, std::try_to_lock );
-
-    // One dialog at a time.
-    if( !dialogLock.owns_lock() )
-    {
-        if( m_boardSetupDlg && m_boardSetupDlg->IsShown() )
-        {
-            m_boardSetupDlg->Raise(); // Brings the existing dialog to the front
-        }
-
-        return;
-    }
-
-    // Make sure everything's up-to-date
-    GetBoard()->BuildListOfNets();
-
-    DIALOG_BOARD_SETUP dlg( this, aParent );
-
-    if( !aInitialPage.IsEmpty() )
-        dlg.SetInitialPage( aInitialPage, wxEmptyString );
-
-    // Assign dlg to the m_boardSetupDlg pointer to track its status.
-    m_boardSetupDlg = &dlg;
-
-    // QuasiModal required for Scintilla auto-complete
-    if( dlg.ShowQuasiModal() == wxID_OK )
-    {
-        // Note: We must synchronise time domain properties before nets and classes, otherwise the updates
-        // called by the board listener events are using stale data
-        GetBoard()->SynchronizeTuningProfileProperties();
-        GetBoard()->SynchronizeNetsAndNetClasses( true );
-
-        if( !GetBoard()->SynchronizeComponentClasses( std::unordered_set<wxString>() ) )
-        {
-            m_infoBar->RemoveAllButtons();
-            m_infoBar->AddCloseButton();
-            m_infoBar->ShowMessage( _( "Could not load component class assignment rules" ),
-                                    wxICON_WARNING, WX_INFOBAR::MESSAGE_TYPE::GENERIC );
-        }
-
-        // We don't know if anything was modified, so err on the side of requiring a save
-        OnModify();
-
-        Kiway().CommonSettingsChanged( TEXTVARS_CHANGED );
-
-        Prj().IncrementTextVarsTicker();
-        Prj().IncrementNetclassesTicker();
-
-        PCBNEW_SETTINGS* settings = GetPcbNewSettings();
-        static LSET      maskAndPasteLayers = LSET( { F_Mask, F_Paste, B_Mask, B_Paste } );
-
-        GetCanvas()->GetView()->UpdateAllItemsConditionally(
-                [&]( KIGFX::VIEW_ITEM* aItem ) -> int
-                {
-                    int flags = 0;
-
-                    if( !aItem->IsBOARD_ITEM() )
-                        return flags;
-
-                    BOARD_ITEM* item = static_cast<BOARD_ITEM*>( aItem );
-
-                    if( item->Type() == PCB_VIA_T || item->Type() == PCB_PAD_T )
-                    {
-                        // Note: KIGFX::REPAINT isn't enough for things that go from invisible
-                        // to visible as they won't be found in the view layer's itemset for
-                        // re-painting.
-                        if( ( GetBoard()->GetVisibleLayers() & maskAndPasteLayers ).any() )
-                            flags |= KIGFX::ALL;
-                    }
-
-                    if( item->Type() == PCB_TRACE_T || item->Type() == PCB_ARC_T || item->Type() == PCB_VIA_T )
-                    {
-                        if( settings->m_Display.m_TrackClearance == SHOW_WITH_VIA_ALWAYS )
-                            flags |= KIGFX::REPAINT;
-                    }
-
-                    if( item->Type() == PCB_PAD_T )
-                    {
-                        if( settings->m_Display.m_PadClearance )
-                            flags |= KIGFX::REPAINT;
-                    }
-
-                    if( EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aItem ) )
-                    {
-                        if( text->HasTextVars() )
-                        {
-                            text->ClearRenderCache();
-                            text->ClearBoundingBoxCache();
-                            flags |= KIGFX::GEOMETRY | KIGFX::REPAINT;
-                        }
-                    }
-
-                    return flags;
-                } );
-
-        GetCanvas()->Refresh();
-
-        UpdateUserInterface();
-        ReCreateAuxiliaryToolbar();
-        m_toolManager->ResetTools( TOOL_BASE::MODEL_RELOAD );
-
-        //this event causes the routing tool to reload its design rules information
-        TOOL_EVENT toolEvent( TC_COMMAND, TA_MODEL_CHANGE, AS_ACTIVE );
-        toolEvent.SetHasPosition( false );
-        m_toolManager->ProcessEvent( toolEvent );
-    }
-
-    GetCanvas()->SetFocus();
-
-    // Reset m_boardSetupDlg after the dialog is closed
-    m_boardSetupDlg = nullptr;
 }
 
 
@@ -1688,38 +1524,7 @@ void PCB_EDIT_FRAME::OnBoardLoaded()
     // export time via the --subst-models flag, and the 3D cache quietly falls
     // back to sibling STEP files for missing WRLs in headless contexts.
     if( Pgm().IsGUI() )
-    {
-        // Silently replace references whose filename uniquely identifies a
-        // STEP sibling.  Leaves ambiguous cases for the infobar below.
-        DIALOG_MIGRATE_3D_MODELS::AutoMigrateByFilename( this );
-
-        const int unresolved = DIALOG_MIGRATE_3D_MODELS::CountUnresolvedWrlReferences( this );
-
-        if( unresolved > 0 )
-        {
-            wxString msg = wxString::Format( wxPLURAL( "%d WRL 3D model could not be matched "
-                                                       "to an equivalent STEP model.",
-                                                       "%d WRL 3D models could not be matched "
-                                                       "to equivalent STEP models.",
-                                                       unresolved ),
-                                             unresolved );
-
-            m_loadNoticeInfoBar->RemoveAllButtons();
-            m_loadNoticeInfoBar->AddButton( _( "Show options" ),
-                    [this]()
-                    {
-                        DIALOG_MIGRATE_3D_MODELS dlg( this );
-                        dlg.ShowModal();
-
-                        // Dismiss the infobar if nothing remains to resolve;
-                        // otherwise leave it so the user can try again.
-                        if( DIALOG_MIGRATE_3D_MODELS::CountUnresolvedWrlReferences( this ) == 0 )
-                            m_loadNoticeInfoBar->Dismiss();
-                    } );
-            m_loadNoticeInfoBar->AddCloseButton();
-            m_loadNoticeInfoBar->ShowMessageFor( msg, 10000, wxICON_INFORMATION );
-        }
-    }
+        checkWrlModels();
 
     UpdateTitle();
 
@@ -1774,7 +1579,7 @@ void PCB_EDIT_FRAME::OnBoardLoaded()
     SetMsgPanel( GetBoard() );
     SetStatusText( wxEmptyString );
 
-    KIPLATFORM::APP::SetShutdownBlockReason( this, _( "PCB file changes are unsaved" ) );
+    KIPLATFORM::UI::SetShutdownBlockReason( this, _( "PCB file changes are unsaved" ) );
 }
 
 
@@ -1968,58 +1773,6 @@ void PCB_EDIT_FRAME::SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType )
 }
 
 
-void PCB_EDIT_FRAME::ShowFindDialog()
-{
-    if( !m_findDialog )
-    {
-        m_findDialog = new DIALOG_FIND( this );
-        m_findDialog->SetCallback( std::bind( &PCB_SELECTION_TOOL::FindItem,
-                                              m_toolManager->GetTool<PCB_SELECTION_TOOL>(), _1 ) );
-    }
-
-    wxString findString;
-
-    PCB_SELECTION& selection = m_toolManager->GetTool<PCB_SELECTION_TOOL>()->GetSelection();
-
-    if( selection.Size() == 1 )
-    {
-        EDA_ITEM* front = selection.Front();
-
-        switch( front->Type() )
-        {
-        case PCB_FOOTPRINT_T:
-            findString = UnescapeString( static_cast<FOOTPRINT*>( front )->GetValue() );
-            break;
-
-        case PCB_FIELD_T:
-        case PCB_TEXT_T:
-            findString = UnescapeString( static_cast<PCB_TEXT*>( front )->GetText() );
-
-            if( findString.Contains( wxT( "\n" ) ) )
-                findString = findString.Before( '\n' );
-
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    m_findDialog->Preload( findString );
-
-    m_findDialog->Show( true );
-}
-
-
-void PCB_EDIT_FRAME::FindNext( bool reverse )
-{
-    if( !m_findDialog )
-        ShowFindDialog();
-
-    m_findDialog->FindNext( reverse );
-}
-
-
 int PCB_EDIT_FRAME::TestStandalone()
 {
     if( Kiface().IsSingle() )
@@ -2034,7 +1787,7 @@ int PCB_EDIT_FRAME::TestStandalone()
     if( !frame )
         return -1;
 
-    if( !frame->IsShownOnScreen() )
+    if( !TOOLKIT::IsShownOnScreen( frame ) )
     {
         EVENT_BLOCKER blocker( this );
         wxFileName fn( Prj().GetProjectPath(), Prj().GetProjectName(),
@@ -2145,82 +1898,6 @@ void PCB_EDIT_FRAME::PythonSyncProjectName()
     // Because PROJECT_VAR_NAME can be modified by the python scripts (rewritten in UTF8),
     // regenerate it (in Unicode) for our normal environment
     wxSetEnv( PROJECT_VAR_NAME, evValue );
-}
-
-
-void PCB_EDIT_FRAME::ShowFootprintPropertiesDialog( FOOTPRINT* aFootprint )
-{
-    if( aFootprint == nullptr )
-        return;
-
-    DIALOG_FOOTPRINT_PROPERTIES::FP_PROPS_RETVALUE retvalue;
-
-    /*
-     * Make sure dlg is destroyed before GetCanvas->Refresh is called
-     * later or the refresh will try to modify its properties since
-     * they share a GL context.
-     */
-    {
-        DIALOG_FOOTPRINT_PROPERTIES dlg( this, aFootprint );
-
-        dlg.ShowQuasiModal();
-        retvalue = dlg.GetReturnValue();
-    }
-
-    /*
-     * retvalue =
-     *   FP_PROPS_UPDATE_FP to show Update Footprints dialog
-     *   FP_PROPS_CHANGE_FP to show Change Footprints dialog
-     *   FP_PROPS_OK for normal edit
-     *   FP_PROPS_CANCEL if aborted
-     *   FP_PROPS_EDIT_BOARD_FP to load board footprint into Footprint Editor
-     *   FP_PROPS_EDIT_LIBRARY_FP to load library footprint into Footprint Editor
-     */
-
-    if( retvalue == DIALOG_FOOTPRINT_PROPERTIES::FP_PROPS_OK )
-    {
-        // If something edited, push a refresh request
-        GetCanvas()->Refresh();
-    }
-    else if( retvalue == DIALOG_FOOTPRINT_PROPERTIES::FP_PROPS_EDIT_BOARD_FP )
-    {
-        if( KIWAY_PLAYER* frame = Kiway().Player( FRAME_FOOTPRINT_EDITOR, true ) )
-        {
-            FOOTPRINT_EDIT_FRAME* fp_editor = static_cast<FOOTPRINT_EDIT_FRAME*>( frame );
-
-            fp_editor->LoadFootprintFromBoard( aFootprint );
-            fp_editor->Show( true );
-            fp_editor->Raise();        // Iconize( false );
-        }
-    }
-    else if( retvalue == DIALOG_FOOTPRINT_PROPERTIES::FP_PROPS_EDIT_LIBRARY_FP )
-    {
-        if( KIWAY_PLAYER* frame = Kiway().Player( FRAME_FOOTPRINT_EDITOR, true ) )
-        {
-            FOOTPRINT_EDIT_FRAME* fp_editor = static_cast<FOOTPRINT_EDIT_FRAME*>( frame );
-
-            fp_editor->LoadFootprintFromLibrary( aFootprint->GetFPID() );
-            fp_editor->Show( true );
-            fp_editor->Raise();        // Iconize( false );
-        }
-    }
-    else if( retvalue == DIALOG_FOOTPRINT_PROPERTIES::FP_PROPS_UPDATE_FP )
-    {
-        ShowExchangeFootprintsDialog( aFootprint, true, true );
-    }
-    else if( retvalue == DIALOG_FOOTPRINT_PROPERTIES::FP_PROPS_CHANGE_FP )
-    {
-        ShowExchangeFootprintsDialog( aFootprint, false, true );
-    }
-}
-
-
-int PCB_EDIT_FRAME::ShowExchangeFootprintsDialog( FOOTPRINT* aFootprint, bool aUpdateMode,
-                                                  bool aSelectedMode )
-{
-    DIALOG_EXCHANGE_FOOTPRINTS dialog( this, aFootprint, aUpdateMode, aSelectedMode );
-
-    return dialog.ShowQuasiModal();
 }
 
 
@@ -2876,8 +2553,7 @@ void PCB_EDIT_FRAME::CommonSettingsChanged( int aFlags )
     if( aFlags & ENVVARS_CHANGED )
         PythonSyncEnvironmentVariables();
 
-    Layout();
-    SendSizeEvent();
+    TOOLKIT::Relayout( this );
 }
 
 
@@ -3003,100 +2679,6 @@ void PCB_EDIT_FRAME::onSize()
 }
 
 
-DIALOG_BOOK_REPORTER* PCB_EDIT_FRAME::GetInspectDrcErrorDialog()
-{
-    if( !m_inspectDrcErrorDlg )
-    {
-        m_inspectDrcErrorDlg = new DIALOG_BOOK_REPORTER( this, INSPECT_DRC_ERROR_DIALOG_NAME,
-                                                         _( "Violation Report" ) );
-    }
-
-    return m_inspectDrcErrorDlg;
-}
-
-
-DIALOG_BOOK_REPORTER* PCB_EDIT_FRAME::GetInspectClearanceDialog()
-{
-    if( !m_inspectClearanceDlg )
-    {
-        m_inspectClearanceDlg = new DIALOG_BOOK_REPORTER( this, INSPECT_CLEARANCE_DIALOG_NAME,
-                                                          _( "Clearance Report" ) );
-    }
-
-    return m_inspectClearanceDlg;
-}
-
-
-DIALOG_BOOK_REPORTER* PCB_EDIT_FRAME::GetInspectConstraintsDialog()
-{
-    if( !m_inspectConstraintsDlg )
-    {
-        m_inspectConstraintsDlg = new DIALOG_BOOK_REPORTER( this, INSPECT_CONSTRAINTS_DIALOG_NAME,
-                                                            _( "Constraints Report" ) );
-    }
-
-    return m_inspectConstraintsDlg;
-}
-
-
-DIALOG_BOOK_REPORTER* PCB_EDIT_FRAME::GetFootprintDiffDialog()
-{
-    if( !m_footprintDiffDlg )
-    {
-        m_footprintDiffDlg = new DIALOG_BOOK_REPORTER( this, FOOTPRINT_DIFF_DIALOG_NAME,
-                                                       _( "Compare Footprint with Library" ) );
-
-        m_footprintDiffDlg->ShowApplyButton( _( "Update Footprint from Library..." ) );
-    }
-
-    return m_footprintDiffDlg;
-}
-
-
-void PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs( const wxString& aDialogName, int aId )
-{
-    if( m_inspectDrcErrorDlg && aDialogName == INSPECT_DRC_ERROR_DIALOG_NAME )
-    {
-        m_inspectDrcErrorDlg->Destroy();
-        m_inspectDrcErrorDlg = nullptr;
-    }
-    else if( m_inspectClearanceDlg && aDialogName == INSPECT_CLEARANCE_DIALOG_NAME )
-    {
-        m_inspectClearanceDlg->Destroy();
-        m_inspectClearanceDlg = nullptr;
-    }
-    else if( m_inspectConstraintsDlg && aDialogName == INSPECT_CONSTRAINTS_DIALOG_NAME )
-    {
-        m_inspectConstraintsDlg->Destroy();
-        m_inspectConstraintsDlg = nullptr;
-    }
-    else if( m_footprintDiffDlg && aDialogName == FOOTPRINT_DIFF_DIALOG_NAME )
-    {
-        if( aId == wxID_APPLY )
-        {
-            KIID fpUUID = m_footprintDiffDlg->GetUserItemID();
-
-            CallAfter(
-                    [this, fpUUID]()
-                    {
-                        BOARD_ITEM* item = m_pcb->ResolveItem( fpUUID );
-
-                        if( FOOTPRINT* footprint = dynamic_cast<FOOTPRINT*>( item ) )
-                        {
-                            m_toolManager->RunAction<EDA_ITEM*>( ACTIONS::selectItem, footprint );
-
-                            DIALOG_EXCHANGE_FOOTPRINTS dialog( this, footprint, true, true );
-                            dialog.ShowQuasiModal();
-                        }
-                    } );
-        }
-
-        m_footprintDiffDlg->Destroy();
-        m_footprintDiffDlg = nullptr;
-    }
-}
-
-
 #ifdef KICAD_IPC_API
 void PCB_EDIT_FRAME::onPluginAvailabilityChanged()
 {
@@ -3130,90 +2712,6 @@ void PCB_EDIT_FRAME::SwitchLayer( PCB_LAYER_ID layer )
 
     if( displ_opts.m_ContrastModeDisplay != HIGH_CONTRAST_MODE::NORMAL )
         GetCanvas()->Refresh();
-}
-
-
-void PCB_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
-{
-    switch( aItem->Type() )
-    {
-    case PCB_REFERENCE_IMAGE_T:
-        ShowReferenceImagePropertiesDialog( aItem );
-        break;
-
-    case PCB_BARCODE_T:
-        ShowBarcodePropertiesDialog( static_cast<PCB_BARCODE*>( aItem ) );
-        break;
-
-    case PCB_FIELD_T:
-    case PCB_TEXT_T:
-        ShowTextPropertiesDialog( static_cast<PCB_TEXT*>( aItem ) );
-        break;
-
-    case PCB_TEXTBOX_T:
-        ShowTextBoxPropertiesDialog( static_cast<PCB_TEXTBOX*>( aItem ) );
-        break;
-
-    case PCB_TABLE_T:
-    {
-        DIALOG_TABLE_PROPERTIES dlg( this, static_cast<PCB_TABLE*>( aItem ) );
-
-        //QuasiModal required for Scintilla auto-complete
-        dlg.ShowQuasiModal();
-        break;
-    }
-
-    case PCB_PAD_T:
-        ShowPadPropertiesDialog( static_cast<PAD*>( aItem ) );
-        break;
-
-    case PCB_FOOTPRINT_T:
-        ShowFootprintPropertiesDialog( static_cast<FOOTPRINT*>( aItem ) );
-        break;
-
-    case PCB_TARGET_T:
-        ShowTargetOptionsDialog( static_cast<PCB_TARGET*>( aItem ) );
-        break;
-
-    case PCB_DIM_ALIGNED_T:
-    case PCB_DIM_CENTER_T:
-    case PCB_DIM_RADIAL_T:
-    case PCB_DIM_ORTHOGONAL_T:
-    case PCB_DIM_LEADER_T:
-    {
-        DIALOG_DIMENSION_PROPERTIES dlg( this, static_cast<PCB_DIMENSION_BASE*>( aItem ) );
-
-        dlg.ShowModal();
-        break;
-    }
-
-    case PCB_SHAPE_T:
-        ShowGraphicItemPropertiesDialog( static_cast<PCB_SHAPE*>( aItem ) );
-        break;
-
-    case PCB_ZONE_T:
-        Edit_Zone_Params( static_cast<ZONE*>( aItem ) );
-        break;
-
-    case PCB_GROUP_T:
-        m_toolManager->RunAction( ACTIONS::groupProperties,
-                                  static_cast<EDA_GROUP*>( static_cast<PCB_GROUP*>( aItem ) ) );
-        break;
-
-    case PCB_GENERATOR_T:
-        static_cast<PCB_GENERATOR*>( aItem )->ShowPropertiesDialog( this );
-        break;
-
-    case PCB_MARKER_T:
-        m_toolManager->GetTool<DRC_TOOL>()->CrossProbe( static_cast<PCB_MARKER*>( aItem ) );
-        break;
-
-    case PCB_POINT_T:
-        break;
-
-    default:
-        break;
-    }
 }
 
 

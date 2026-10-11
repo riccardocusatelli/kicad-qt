@@ -22,6 +22,7 @@
  */
 
 #include "tools/board_inspection_tool.h"
+#include <dialogs/dialog_book_reporter.h>
 
 #include <bitmaps.h>
 #include <collectors.h>
