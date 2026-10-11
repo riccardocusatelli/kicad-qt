@@ -180,6 +180,13 @@ protected:
      */
     void connectStandardButton( QPushButton* aButton, int aId );
 
+    /**
+     * What a standard button does without handler (its code is its "kicadStandardButtonId"
+     * property): the default of the handlers of the standard buttons of the dialogs generated
+     * from wxFormBuilder files, as the skipped events of wxWidgets.
+     */
+    void standardButtonClicked( QWidget* aSource );
+
     /// The key of the dialog in the settings (the title, or m_hash_key).
     std::string dialogKey() const;
 

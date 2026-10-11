@@ -362,9 +362,13 @@ void DIALOG_SHIM::EndQuasiModal( int retCode )
 
 void DIALOG_SHIM::connectStandardButton( QPushButton* aButton, int aId )
 {
-    // The button is connected once (SetupStandardButtons() can be called after)
-    if( aButton->property( "kicadStandardButton" ).isValid() )
+    // The button is connected once (SetupStandardButtons() can be called after), and not if it
+    // has a handler: the handler does it (standardButtonClicked())
+    if( aButton->property( "kicadStandardButton" ).isValid()
+            || aButton->property( "kicadStandardButtonId" ).isValid() )
+    {
         return;
+    }
 
     aButton->setProperty( "kicadStandardButton", aId );
 
@@ -386,6 +390,27 @@ void DIALOG_SHIM::connectStandardButton( QPushButton* aButton, int aId )
                           {
                               EndModal( aId );
                           } );
+    }
+}
+
+
+void DIALOG_SHIM::standardButtonClicked( QWidget* aSource )
+{
+    QVariant id = aSource ? aSource->property( "kicadStandardButtonId" ) : QVariant();
+
+    if( !id.isValid() )
+        return;
+
+    if( id.toInt() == wxID_APPLY )
+    {
+        // Dialogs that provide Apply buttons should make sure data is valid before allowing a
+        // transfer
+        if( Validate() )
+            TransferDataFromWindow();
+    }
+    else if( id.toInt() != wxID_HELP && id.toInt() != wxID_CONTEXT_HELP )
+    {
+        EndModal( id.toInt() );
     }
 }
 

@@ -93,6 +93,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/pcb_grid_helper.cpp
     tools/pcb_selection.cpp
     tools/pcb_selection_conditions.cpp
+    tools/pcb_selection_tool.cpp
     tools/pcb_tool_base.cpp
     tools/pcb_tool_utils.cpp
     tools/tool_event_utils.cpp
@@ -111,6 +112,7 @@ set( KIQT_PCBNEW_GUI_SRCS
 list( TRANSFORM KIQT_PCBNEW_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/ )
 
 kiqt_generate_fbp( KIQT_PCBNEW_GUI_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_filter_selection_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_move_exact_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/widgets/appearance_controls_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/widgets/panel_selection_filter_base.fbp
@@ -120,6 +122,7 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
+    dialogs/dialog_filter_selection.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
     pcb_edit_frame_qt.cpp
@@ -142,8 +145,10 @@ target_compile_definitions( pcbnew_gui_qt PRIVATE QT_NO_KEYWORDS )
 # bases of the panels generated from the wxFormBuilder files) first
 target_include_directories( pcbnew_gui_qt BEFORE PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/dialogs
     ${CMAKE_SOURCE_DIR}/qt/3d-viewer
     ${KIQT_FBP_DIR}/pcbnew
+    ${KIQT_FBP_DIR}/pcbnew/dialogs
     ${KIQT_FBP_DIR}/3d-viewer
     )
 target_include_directories( pcbnew_gui_qt PRIVATE

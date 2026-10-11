@@ -62,8 +62,6 @@ using namespace std::placeholders;
 #include <ratsnest/ratsnest_data.h>
 #include <geometry/geometry_utils.h>
 #include <toolkit/gui_services.h>
-#include <wx/event.h>
-#include <wx/timer.h>
 #include <wx/log.h>
 #include <wx/debug.h>
 #include <core/profile.h>
@@ -1595,9 +1593,8 @@ void PCB_SELECTION_TOOL::SelectMultiple( KIGFX::PREVIEW::SELECTION_AREA& aArea, 
 
 int PCB_SELECTION_TOOL::disambiguateCursor( const TOOL_EVENT& aEvent )
 {
-    wxMouseState keyboardState = wxGetMouseState();
-
-    setModifiersState( keyboardState.ShiftDown(), keyboardState.ControlDown(), keyboardState.AltDown() );
+    setModifiersState( TOOLKIT::IsKeyDown( WXK_SHIFT ), TOOLKIT::IsKeyDown( WXK_CONTROL ),
+                       TOOLKIT::IsKeyDown( WXK_ALT ) );
 
     m_skip_heuristics = true;
     selectPoint( m_originalCursor, false, &m_canceledMenu );

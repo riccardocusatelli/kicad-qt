@@ -288,6 +288,7 @@ class FormClass:
         self.name = self.p['name']
         self.members = []           # (permission, type, name)
         self.handlers = {}          # name -> parameters
+        self.stdHandlers = set()    # the handlers of standard buttons (OK, Cancel...)
         self.code = []              # lines of the constructor
         self.counter = 0
         self.overrides = []         # extra declarations (overrides of events of the form)
@@ -1200,7 +1201,11 @@ class FormClass:
                     handler = ev[evName]
 
             if handler:
+                # As the handlers of wxFormBuilder (that skip the event), the default handler
+                # does what the button does without handler: standardButtonClicked()
                 self.handler( handler, SOURCE )
+                self.stdHandlers.add( handler )
+                self.code.append( '    %s->setProperty( "kicadStandardButtonId", %s );' % ( button, wxId ) )
                 self.code.append( '    QObject::connect( %s, &QPushButton::clicked, this, [this, src = static_cast<QWidget*>( %s )]() { %s( src ); } );'
                                   % ( button, button, handler ) )
             else:
@@ -1287,7 +1292,11 @@ class FormClass:
                 decl.append( '    // The event handlers: override them in the derived class' )
 
                 for name in sorted( self.handlers ):
-                    decl.append( '    virtual void %s( %s ) {}' % ( name, self.handlers[name] ) )
+                    if name in self.stdHandlers:
+                        decl.append( '    virtual void %s( %s ) { standardButtonClicked( aSource ); }'
+                                     % ( name, self.handlers[name] ) )
+                    else:
+                        decl.append( '    virtual void %s( %s ) {}' % ( name, self.handlers[name] ) )
 
             decl.append( '' )
 
