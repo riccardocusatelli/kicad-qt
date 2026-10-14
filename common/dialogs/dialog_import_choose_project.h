@@ -20,7 +20,7 @@
 #ifndef DIALOG_IMPORT_CHOOSE_PROJECT_H
 #define DIALOG_IMPORT_CHOOSE_PROJECT_H
 
-#include <dialog_import_choose_project_base.h>
+#include <dialogs/dialog_import_choose_project_base.h>
 #include <io/common/plugin_common_choose_project.h>
 
 

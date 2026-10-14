@@ -98,6 +98,7 @@ enum wxEventTypeCompat
     wxEVT_ACTIVATE,
     wxEVT_IDLE,
     wxEVT_HTML_LINK_CLICKED,
+    wxEVT_HELP,
     wxEVT_USER_FIRST = 10000
 };
 
@@ -433,6 +434,19 @@ public:
 
 private:
     wxHtmlLinkInfo m_link;
+};
+
+
+/// The help asked for a window (the context help of a dialog).
+class wxHelpEvent : public wxCommandEvent
+{
+public:
+    explicit wxHelpEvent( int aId = 0 ) :
+            wxCommandEvent( wxEVT_HELP, aId )
+    {
+    }
+
+    wxPoint GetPosition() const { return wxPoint(); }
 };
 
 

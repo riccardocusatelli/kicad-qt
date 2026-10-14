@@ -28,7 +28,7 @@
 
 #include <widgets/unit_binder.h>
 
-#include <dialog_pns_diff_pair_dimensions_base.h>
+#include <dialogs/dialog_pns_diff_pair_dimensions_base.h>
 
 namespace PNS {
 

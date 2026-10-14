@@ -27,7 +27,7 @@
 #include <vector>
 
 #include <embedded_files.h>
-#include <panel_embedded_files_base.h>
+#include <dialogs/panel_embedded_files_base.h>
 
 #include "grid_tricks.h"
 

@@ -25,7 +25,7 @@
 #ifndef DIALOG_GENERATORS_H_
 #define DIALOG_GENERATORS_H_
 
-#include <dialog_generators_base.h>
+#include <dialogs/dialog_generators_base.h>
 #include <widgets/progress_reporter_base.h>
 #include <board.h>
 

@@ -18,7 +18,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <panel_display_options_base.h>
+#include <dialogs/panel_display_options_base.h>
 
 class PCBNEW_SETTINGS;
 class APP_SETTINGS_BASE;

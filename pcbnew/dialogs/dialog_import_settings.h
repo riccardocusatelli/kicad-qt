@@ -25,7 +25,7 @@
 #ifndef KICAD_DIALOG_IMPORT_SETTINGS_H
 #define KICAD_DIALOG_IMPORT_SETTINGS_H
 
-#include <dialog_import_settings_base.h>
+#include <dialogs/dialog_import_settings_base.h>
 
 
 class PCB_EDIT_FRAME;

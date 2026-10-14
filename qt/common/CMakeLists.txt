@@ -220,6 +220,7 @@ add_library( kiqt_common STATIC
 
     background_jobs_list_qt.cpp
     dialog_shim.cpp
+    widgets/ui_common_qt.cpp
     eda_dde_qt.cpp
     notifications_list_qt.cpp
     pgm_gui_qt.cpp

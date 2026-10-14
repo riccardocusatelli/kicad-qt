@@ -18,7 +18,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <panel_pcbnew_action_plugins_base.h>
+#include <dialogs/panel_pcbnew_action_plugins_base.h>
 
 class PLUGINS_GRID_TRICKS;
 class DIALOG_HTML_REPORTER;

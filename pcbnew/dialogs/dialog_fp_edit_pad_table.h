@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <dialog_fp_edit_pad_table_base.h>
+#include <dialogs/dialog_fp_edit_pad_table_base.h>
 #include "string_utils.h"
 
 #include <memory>

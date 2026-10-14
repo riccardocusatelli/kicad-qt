@@ -25,7 +25,7 @@
 /*
  * Edit properties of Lines, Circles, Arcs and Polygons for PCBNew and Footprint Editor
  */
-#include <dialog_shape_properties_base.h>
+#include <dialogs/dialog_shape_properties_base.h>
 
 #include <wx/valnum.h>
 

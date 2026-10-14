@@ -38,7 +38,7 @@
 #include <pcb_layer_box_selector.h>
 #include <tool/tool_manager.h>
 #include <tools/global_edit_tool.h>
-#include <dialog_global_edit_teardrops_base.h>
+#include <dialogs/dialog_global_edit_teardrops_base.h>
 
 // Globals to remember filters during a session
 static wxString     g_netclassFilter;

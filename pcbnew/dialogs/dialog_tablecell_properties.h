@@ -28,7 +28,7 @@
 #include <widgets/unit_binder.h>
 #include <wx/valnum.h>
 
-#include <dialog_tablecell_properties_base.h>
+#include <dialogs/dialog_tablecell_properties_base.h>
 
 
 class PCB_BASE_EDIT_FRAME;

@@ -26,7 +26,7 @@
 #define PANEL_PCBNEW_DISPLAY_ORIGIN_H 1
 
 #include <frame_type.h>
-#include <panel_pcbnew_display_origin_base.h>
+#include <dialogs/panel_pcbnew_display_origin_base.h>
 
 
 class PANEL_PCBNEW_DISPLAY_ORIGIN : public PANEL_PCBNEW_DISPLAY_ORIGIN_BASE

@@ -229,6 +229,9 @@ public:
     bool IsShown() const { return !this->isHidden(); }
     bool IsShownOnScreen() const { return this->isVisible(); }
 
+    void SetFont( const QFont& aFont ) { this->setFont( aFont ); }
+    QFont GetFont() const { return this->font(); }
+
     void SetToolTip( const wxString& aTip ) { this->setToolTip( ToQString( aTip ) ); }
     void UnsetToolTip() { this->setToolTip( QString() ); }
     wxString GetToolTipText() const { return ToWxString( this->toolTip() ); }
@@ -332,6 +335,15 @@ public:
     explicit wxPanel( QWidget* aParent = nullptr, int aId = wxID_ANY,
                       const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                       long aStyle = 0, const wxString& aName = wxEmptyString );
+
+    /// Fill the controls of the panel from its data (wxWindow::TransferDataToWindow()).
+    virtual bool TransferDataToWindow() { return true; }
+
+    /// Copy the values of the controls to the data of the panel.
+    virtual bool TransferDataFromWindow() { return true; }
+
+    /// Check the values of the controls.
+    virtual bool Validate() { return true; }
 };
 
 
@@ -553,6 +565,7 @@ public:
     bool IsEmpty() const { return GetCount() == 0; }
 
     int Append( const wxString& aItem ) { return Insert( aItem, GetCount(), nullptr ); }
+    int AppendString( const wxString& aItem ) { return Append( aItem ); }
     int Append( const wxString& aItem, void* aClientData )
     {
         return Insert( aItem, GetCount(), aClientData );

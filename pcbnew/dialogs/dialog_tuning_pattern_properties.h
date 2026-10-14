@@ -20,7 +20,7 @@
 #ifndef DIALOG_TUNING_PATTERN_PROPERTIES_H
 #define DIALOG_TUNING_PATTERN_PROPERTIES_H
 
-#include <dialog_tuning_pattern_properties_base.h>
+#include <dialogs/dialog_tuning_pattern_properties_base.h>
 
 #include <widgets/unit_binder.h>
 

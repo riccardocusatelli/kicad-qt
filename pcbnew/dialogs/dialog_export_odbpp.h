@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <dialog_export_odbpp_base.h>
+#include <dialogs/dialog_export_odbpp_base.h>
 
 class PCB_EDIT_FRAME;
 class JOB_EXPORT_PCB_ODB;

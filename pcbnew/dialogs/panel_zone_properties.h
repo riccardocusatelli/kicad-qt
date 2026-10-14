@@ -28,7 +28,7 @@
 #include <widgets/unit_binder.h>
 #include <memory>
 #include <zone_settings.h>
-#include <panel_zone_properties_base.h>
+#include <dialogs/panel_zone_properties_base.h>
 
 wxDECLARE_EVENT( EVT_ZONE_NAME_UPDATE, wxCommandEvent );
 wxDECLARE_EVENT( EVT_ZONE_NET_UPDATE, wxCommandEvent );

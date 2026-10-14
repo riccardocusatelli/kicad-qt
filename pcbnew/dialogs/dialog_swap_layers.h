@@ -24,7 +24,7 @@
 #ifndef DIALOG_SWAP_LAYERS_H
 #define DIALOG_SWAP_LAYERS_H
 
-#include <dialog_swap_layers_base.h>
+#include <dialogs/dialog_swap_layers_base.h>
 
 class PCB_EDIT_FRAME;
 class LAYER_GRID_TABLE;

@@ -1053,7 +1053,8 @@ class FormClass:
 
         elif cls == 'wxGrid':
             # A table (WX_GRID of the Qt build), its rows and columns set by the code
-            var, t = make( 'QTableWidget' )
+            qt = 'QTableWidget'
+            var, t = make( qt )
             self.code.append( '    %s->setRowCount( %d );' % ( var, parse_int( p.get( 'rows' ), 0 ) ) )
             self.code.append( '    %s->setColumnCount( %d );' % ( var, parse_int( p.get( 'cols' ), 0 ) ) )
 
