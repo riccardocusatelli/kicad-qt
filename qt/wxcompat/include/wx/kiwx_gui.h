@@ -74,6 +74,7 @@
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
 #include <wx/kiwx_menu.h>
+#include <wx/kiwx_window.h>
 #include <wx/kiwx_validators.h>
 
 #include <qt_strings.h>
@@ -84,14 +85,12 @@
 #define wxCHK_3STATE 0x1000
 #endif
 
-/// The ids of the windows (wxID_ANY gets a new negative id, as with wxWidgets).
-KIQT_API int wxWindowIDNew();
 
 /// Block the events (the signals) of a window while it lives (wxEventBlocker).
 class wxEventBlocker
 {
 public:
-    explicit wxEventBlocker( QWidget* aWindow, int aType = -1 ) :
+    explicit wxEventBlocker( wxWidgetArgCompat aWindow, int aType = -1 ) :
             m_window( aWindow ),
             m_blocked( aWindow ? aWindow->blockSignals( true ) : false )
     {
@@ -111,420 +110,37 @@ private:
 #define wxEVT_ANY -1
 
 
-/// The id of a window (wxID_ANY if it has none).
-KIQT_API int wxGetWindowIdCompat( const QObject* aWindow );
 
-/// Give an id to a window (a new one for wxID_ANY).
-KIQT_API void wxSetWindowIdCompat( QObject* aWindow, int aId );
-
-/// Center a window on its parent, or on the screen.
-KIQT_API void wxCentreWindow( QWidget* aWindow, int aDirection );
 
 /// The label of a control without its mnemonics ('&').
 KIQT_API wxString wxStripMenuCodes( const wxString& aLabel );
 
 
-class wxSizerProxy;
 class DIALOG_SHIM;
 
 /// The dialogs of KiCad derive from DIALOG_SHIM (a QDialog with the API of wxDialog).
 using wxDialog = DIALOG_SHIM;
 
 
-/**
- * The children of a window (wxWindow::GetChildren()): a list of the widgets, with the nodes of
- * wxList (GetFirst(), GetNext(), GetData()) and the iterators of the standard library.
- */
-class wxWindowList
+class KIQT_API wxPanel : public wxWindowCompat<QWidget>
 {
 public:
-    class Node
-    {
-    public:
-        QWidget* GetData() const { return m_data; }
-        Node* GetNext() const { return m_next; }
-
-    private:
-        friend class wxWindowList;
-
-        QWidget* m_data = nullptr;
-        Node*    m_next = nullptr;
-    };
-
-    using compatibility_iterator = Node*;
-
-    explicit wxWindowList( const QWidget* aParent )
-    {
-        for( QObject* child : aParent->children() )
-        {
-            if( child->isWidgetType() )
-                m_widgets.push_back( static_cast<QWidget*>( child ) );
-        }
-
-        m_nodes.resize( m_widgets.size() );
-
-        for( size_t i = 0; i < m_nodes.size(); ++i )
-        {
-            m_nodes[i].m_data = m_widgets[i];
-            m_nodes[i].m_next = i + 1 < m_nodes.size() ? &m_nodes[i + 1] : nullptr;
-        }
-    }
-
-    // The nodes point to each other: no copy
-    wxWindowList( const wxWindowList& ) = delete;
-    wxWindowList& operator=( const wxWindowList& ) = delete;
-
-    Node* GetFirst() const { return m_nodes.empty() ? nullptr : const_cast<Node*>( &m_nodes.front() ); }
-    size_t GetCount() const { return m_widgets.size(); }
-    size_t size() const { return m_widgets.size(); }
-    bool IsEmpty() const { return m_widgets.empty(); }
-
-    std::vector<QWidget*>::const_iterator begin() const { return m_widgets.begin(); }
-    std::vector<QWidget*>::const_iterator end() const { return m_widgets.end(); }
-
-private:
-    std::vector<QWidget*> m_widgets;
-    std::vector<Node>     m_nodes;
-};
-
-
-/**
- * The sizer of a window (wxWindow::GetSizer()): the layout of the widget, with the API of
- * wxSizer the dialogs use on it.
- */
-class KIQT_API wxSizerProxy
-{
-public:
-    explicit wxSizerProxy( QWidget* aWindow ) :
-            m_window( aWindow )
-    {
-    }
-
-    void Layout();
-    wxSize Fit( QWidget* aWindow );
-    void FitInside( QWidget* aWindow ) { Fit( aWindow ); }
-    void SetSizeHints( QWidget* aWindow );
-    wxSize GetMinSize() const;
-    bool Show( QWidget* aWindow, bool aShow = true, bool aRecursive = false );
-    bool Hide( QWidget* aWindow, bool aRecursive = false ) { return Show( aWindow, false ); }
-    bool IsShown( QWidget* aWindow ) const;
-
-    /// The layout of the window.
-    QLayout* GetLayout() const;
-
-private:
-    QWidget* m_window;
-};
-
-
-/**
- * The API of wxWindow on a widget of Qt: the base of the controls of the compatibility layer.
- */
-template <class QT>
-class wxWindowCompat : public QT, public wxEvtHandler
-{
-public:
-    template <typename... ARGS>
-    explicit wxWindowCompat( ARGS&&... aArgs ) :
-            QT( std::forward<ARGS>( aArgs )... ),
-            m_clientData( nullptr ),
-            m_sizerProxy( this )
-    {
-        wxRegisterEvtHandlerCompat( this, this );
-    }
-
-    /// The id of the window (a property of the widget, so that the events find it).
-    int GetId() const { return wxGetWindowIdCompat( this ); }
-    void SetId( int aId ) { wxSetWindowIdCompat( this, aId ); }
-
-    bool Enable( bool aEnable = true )
-    {
-        bool changed = this->isEnabled() != aEnable;
-        this->setEnabled( aEnable );
-        return changed;
-    }
-
-    bool Disable() { return Enable( false ); }
-    bool IsEnabled() const { return this->isEnabled(); }
-    bool IsThisEnabled() const { return this->isEnabledTo( this->parentWidget() ); }
-
-    bool Show( bool aShow = true )
-    {
-        bool changed = this->isHidden() == aShow;
-        this->setVisible( aShow );
-        return changed;
-    }
-
-    bool Hide() { return Show( false ); }
-    bool IsShown() const { return !this->isHidden(); }
-    bool IsShownOnScreen() const { return this->isVisible(); }
-
-    void SetFont( const QFont& aFont ) { this->setFont( aFont ); }
-    wxFont GetFont() const { return this->font(); }
-
-    void SetForegroundColour( const wxColour& aColour )
-    {
-        QPalette palette = this->palette();
-        palette.setColor( this->foregroundRole(), aColour );
-        this->setPalette( palette );
-    }
-
-    void SetBackgroundColour( const wxColour& aColour )
-    {
-        QPalette palette = this->palette();
-        palette.setColor( this->backgroundRole(), aColour );
-        this->setPalette( palette );
-        this->setAutoFillBackground( aColour.IsOk() );
-    }
-
-    wxColour GetForegroundColour() const { return this->palette().color( this->foregroundRole() ); }
-    wxColour GetBackgroundColour() const { return this->palette().color( this->backgroundRole() ); }
-
-    void SetToolTip( const wxString& aTip ) { this->setToolTip( ToQString( aTip ) ); }
-    void UnsetToolTip() { this->setToolTip( QString() ); }
-    wxString GetToolTipText() const { return ToWxString( this->toolTip() ); }
-
-    void SetFocus() { this->setFocus(); }
-    bool HasFocus() const { return this->hasFocus(); }
-
-    QWidget* GetParent() const { return this->parentWidget(); }
-
-    /// The child windows (the widgets that are children of this one).
-    wxWindowList GetChildren() const { return wxWindowList( this ); }
-
-    wxString GetName() const { return ToWxString( this->objectName() ); }
-    void SetName( const wxString& aName ) { this->setObjectName( ToQString( aName ) ); }
-
-    void SetMinSize( const wxSize& aSize )
-    {
-        this->setMinimumSize( std::max( aSize.x, 0 ), std::max( aSize.y, 0 ) );
-    }
-
-    void SetMaxSize( const wxSize& aSize )
-    {
-        this->setMaximumSize( aSize.x < 0 ? QWIDGETSIZE_MAX : aSize.x,
-                              aSize.y < 0 ? QWIDGETSIZE_MAX : aSize.y );
-    }
-
-    void SetInitialSize( const wxSize& aSize = wxDefaultSize ) { SetMinSize( aSize ); }
-
-    wxSize GetMinSize() const { return wxSize( this->minimumWidth(), this->minimumHeight() ); }
-    wxSize GetSize() const { return wxSize( this->width(), this->height() ); }
-    wxSize GetClientSize() const { return GetSize(); }
-    wxSize GetBestSize() const { return wxSize( this->sizeHint().width(), this->sizeHint().height() ); }
-    wxPoint GetPosition() const { return wxPoint( this->x(), this->y() ); }
-
-    void SetSize( const wxSize& aSize ) { this->resize( aSize.x, aSize.y ); }
-
-    /// The size of a text in the font of the widget.
-    wxSize GetTextExtent( const wxString& aText ) const
-    {
-        QSize size = this->fontMetrics().size( 0, ToQString( aText ) );
-        return wxSize( size.width(), size.height() );
-    }
-
-    int GetCharWidth() const { return this->fontMetrics().averageCharWidth(); }
-    int GetCharHeight() const { return this->fontMetrics().height(); }
-
-    /// Sizes in the logical pixels of Qt: already independent of the DPI.
-    wxSize FromDIP( const wxSize& aSize ) const { return aSize; }
-    int FromDIP( int aValue ) const { return aValue; }
-    wxSize ToDIP( const wxSize& aSize ) const { return aSize; }
-    int ToDIP( int aValue ) const { return aValue; }
-
-    void Refresh( bool aEraseBackground = true, const wxRect* aRect = nullptr ) { this->update(); }
-    void Update() { this->repaint(); }
-    bool Layout()
-    {
-        if( this->layout() )
-            this->layout()->activate();
-
-        return true;
-    }
-
-    void Fit() { this->adjustSize(); }
-    void FitInside() { this->adjustSize(); }
-
-    /// The layout of the window, as a sizer (nullptr if it has none).
-    wxSizerProxy* GetSizer() { return this->layout() ? &m_sizerProxy : nullptr; }
-
-    void SetSizer( QLayout* aSizer, bool aDeleteOld = true ) { this->setLayout( aSizer ); }
-
-    void SetSizerAndFit( QLayout* aSizer, bool aDeleteOld = true )
-    {
-        this->setLayout( aSizer );
-        this->adjustSize();
-    }
-
-    /// Center a window on its parent (or the screen).
-    void Centre( int aDirection = wxBOTH ) { wxCentreWindow( this, aDirection ); }
-    void Center( int aDirection = wxBOTH ) { Centre( aDirection ); }
-    void CentreOnParent( int aDirection = wxBOTH ) { Centre( aDirection ); }
-    void CenterOnParent( int aDirection = wxBOTH ) { Centre( aDirection ); }
-    void CentreOnScreen( int aDirection = wxBOTH ) { Centre( aDirection ); }
-
-    void Raise() { this->raise(); }
-
-    /// Call a function later, on the event loop (wxEvtHandler::CallAfter()).
-    template <typename FUNCTOR>
-    void CallAfter( FUNCTOR aFunctor )
-    {
-        QMetaObject::invokeMethod( this, std::move( aFunctor ), Qt::QueuedConnection );
-    }
-
-    template <typename CLASS>
-    void CallAfter( void ( CLASS::*aMethod )() )
-    {
-        CLASS* self = static_cast<CLASS*>( this );
-        QMetaObject::invokeMethod( this, [self, aMethod]() { ( self->*aMethod )(); },
-                                   Qt::QueuedConnection );
-    }
-
-    void* GetClientData() const { return m_clientData; }
-    void SetClientData( void* aData ) { m_clientData = aData; }
-
-    /// The validator of the window (a copy of @a aValidator).
-    void SetValidator( const wxValidator& aValidator ) { wxSetValidatorCompat( this, aValidator ); }
-    wxValidator* GetValidator() const { return wxGetValidatorCompat( this ); }
-
-    /// No events from the widget and its handlers.
-    void SetEvtHandlerEnabled( bool aEnable )
-    {
-        this->blockSignals( !aEnable );
-        wxEvtHandler::SetEvtHandlerEnabled( aEnable );
-    }
-
-    // The handlers of the events (wxEvtHandler::Bind(), Connect()) ------------------------
-
-    // The handlers of the events: Bind(), Connect()... of wxEvtHandler
-
-    /// The first handler of the chain of the window (the last pushed, or the window).
-    wxEvtHandler* GetEventHandler() { return GetEventHandlerCompat(); }
-
-    void PushEventHandler( wxEvtHandler* aHandler ) { PushEventHandlerCompat( aHandler ); }
-    wxEvtHandler* PopEventHandler( bool aDeleteHandler = false )
-    {
-        return PopEventHandlerCompat( aDeleteHandler );
-    }
-
-    bool RemoveEventHandler( wxEvtHandler* aHandler ) { return RemoveEventHandlerCompat( aHandler ); }
-
-    /// Show a popup menu and give the event of the chosen item to the window (wxWindow::PopupMenu()).
-    bool PopupMenu( wxMenu* aMenu, const wxPoint& aPos = wxDefaultPosition )
-    {
-        wxCommandEvent event;
-
-        if( wxPopupMenuCompat( this, aMenu, aPos, event ) )
-            ProcessEvent( event );
-
-        return true;
-    }
-
-    bool PopupMenu( wxMenu* aMenu, int aX, int aY ) { return PopupMenu( aMenu, wxPoint( aX, aY ) ); }
-
-    /// Give an event to the handlers pushed on the window, then to the ones of the window.
-    bool ProcessEvent( wxEvent& aEvent ) override
-    {
-        return ProcessChainCompat( GetEventHandlerCompat(), aEvent );
-    }
-
-    bool ProcessWindowEvent( wxEvent& aEvent ) { return ProcessEvent( aEvent ); }
-    bool HandleWindowEvent( wxEvent& aEvent ) { return ProcessEvent( aEvent ); }
-
-    /// The handlers of the window.
-    wxCompatEventSink& GetEventSink() { return m_eventsCompat; }
-
-protected:
-    /// The handlers also get the events made from the signals of the Qt widget.
-    void bindHandlerCompat( wxEventType aType, wxCompatEventSink::HANDLER aHandler,
-                            const void* aKey, int aId, int aLastId ) override
-    {
-        m_eventsCompat.Add( aType, std::move( aHandler ), aKey, aId, aLastId );
-        wxConnectQtEventsCompat( this, aType, &m_eventsCompat );
-    }
-
-private:
-    void*        m_clientData;
-    wxSizerProxy m_sizerProxy;
-};
-
-
-/**
- * The windows with data transfers (wxWindow::TransferDataToWindow()...): the panels and the
- * dialogs.
- */
-class KIQT_API wxTransferableCompat
-{
-public:
-    virtual ~wxTransferableCompat() = default;
-
-    virtual bool TransferDataToWindow() = 0;
-    virtual bool TransferDataFromWindow() = 0;
-    virtual bool Validate() = 0;
-};
-
-
-/**
- * The data transfers of the windows (wxWindow::TransferDataToWindow()...): the ones of the panels
- * (wxPanel) and dialogs (DIALOG_SHIM) of @a aWindow, recursively (as with
- * wxWS_EX_VALIDATE_RECURSIVELY).  The window itself, if it is a panel or a dialog, is included.
- */
-KIQT_API bool wxTransferDataToWindowCompat( QWidget* aWindow );
-KIQT_API bool wxTransferDataFromWindowCompat( QWidget* aWindow );
-KIQT_API bool wxValidateCompat( QWidget* aWindow );
-
-/// The same transfers, for the children of @a aWindow only.
-KIQT_API bool wxTransferDataToChildrenCompat( QWidget* aWindow );
-KIQT_API bool wxTransferDataFromChildrenCompat( QWidget* aWindow );
-KIQT_API bool wxValidateChildrenCompat( QWidget* aWindow );
-
-/// The child of @a aWindow with an id (wxWindow::FindWindow( id )), or nullptr.
-KIQT_API QWidget* wxFindWindowByIdCompat( QWidget* aWindow, int aId );
-
-/// The child of @a aWindow with a name (wxWindow::FindWindow( name )), or nullptr.
-KIQT_API QWidget* wxFindWindowByNameCompat( QWidget* aWindow, const wxString& aName );
-
-
-class KIQT_API wxPanel : public wxWindowCompat<QWidget>, public wxTransferableCompat
-{
-public:
-    explicit wxPanel( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxPanel( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                       const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                       long aStyle = 0, const wxString& aName = wxEmptyString );
-
-    /// Fill the controls of the panel from its data (wxWindow::TransferDataToWindow()): by
-    /// default, the ones of its child panels.
-    bool TransferDataToWindow() override { return wxTransferDataToChildrenCompat( this ); }
-
-    /// Copy the values of the controls to the data of the panel.
-    bool TransferDataFromWindow() override { return wxTransferDataFromChildrenCompat( this ); }
-
-    /// Check the values of the controls.
-    bool Validate() override { return wxValidateChildrenCompat( this ); }
 
     /// The help of the panel at a point (the tooltip of the reset button of the paged dialogs).
     virtual wxString GetHelpTextAtPoint( const wxPoint& aPt, wxHelpEvent::Origin aOrigin ) const
     {
         return wxString();
     }
-
-    long GetWindowStyle() const { return m_style; }
-    long GetWindowStyleFlag() const { return m_style; }
-    void SetWindowStyleFlag( long aStyle ) { m_style = aStyle; }
-    void SetWindowStyle( long aStyle ) { m_style = aStyle; }
-
-    QWidget* FindWindow( int aId ) { return wxFindWindowByIdCompat( this, aId ); }
-    QWidget* FindWindow( const wxString& aName ) { return wxFindWindowByNameCompat( this, aName ); }
-
-private:
-    long m_style;
 };
 
 
 class KIQT_API wxStaticText : public wxWindowCompat<QLabel>
 {
 public:
-    explicit wxStaticText( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxStaticText( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                            const wxString& aLabel = wxEmptyString,
                            const wxPoint& aPos = wxDefaultPosition,
                            const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
@@ -542,7 +158,7 @@ public:
 class KIQT_API wxStaticLine : public wxWindowCompat<QFrame>
 {
 public:
-    explicit wxStaticLine( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxStaticLine( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                            const wxPoint& aPos = wxDefaultPosition,
                            const wxSize& aSize = wxDefaultSize, long aStyle = wxLI_HORIZONTAL );
 };
@@ -551,7 +167,7 @@ public:
 class KIQT_API wxStaticBitmap : public wxWindowCompat<QLabel>
 {
 public:
-    explicit wxStaticBitmap( QWidget* aParent = nullptr, int aId = wxID_ANY );
+    explicit wxStaticBitmap( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY );
 
     void SetBitmap( const QIcon& aBitmap );
     void SetBitmap( const QPixmap& aBitmap );
@@ -561,7 +177,7 @@ public:
 class KIQT_API wxTextCtrl : public wxWindowCompat<QLineEdit>
 {
 public:
-    explicit wxTextCtrl( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxTextCtrl( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                          const wxString& aValue = wxEmptyString,
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
@@ -611,7 +227,7 @@ public:
 class KIQT_API wxTextCtrlMultiLine : public wxWindowCompat<QPlainTextEdit>
 {
 public:
-    explicit wxTextCtrlMultiLine( QWidget* aParent = nullptr );
+    explicit wxTextCtrlMultiLine( wxWidgetArgCompat aParent = nullptr );
 
     wxString GetValue() const { return ToWxString( toPlainText() ); }
     void SetValue( const wxString& aValue );
@@ -640,7 +256,7 @@ public:
 class KIQT_API wxButton : public wxWindowCompat<QPushButton>
 {
 public:
-    explicit wxButton( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxButton( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                        const wxString& aLabel = wxEmptyString,
                        const wxPoint& aPos = wxDefaultPosition,
                        const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
@@ -661,7 +277,7 @@ public:
 class KIQT_API wxToggleButton : public wxButton
 {
 public:
-    explicit wxToggleButton( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxToggleButton( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                              const wxString& aLabel = wxEmptyString );
 
     bool GetValue() const { return isChecked(); }
@@ -672,7 +288,7 @@ public:
 class KIQT_API wxBitmapButton : public wxButton
 {
 public:
-    explicit wxBitmapButton( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxBitmapButton( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                              const QIcon& aBitmap = QIcon() );
 };
 
@@ -680,7 +296,7 @@ public:
 class KIQT_API wxCheckBox : public wxWindowCompat<QCheckBox>
 {
 public:
-    explicit wxCheckBox( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxCheckBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                          const wxString& aLabel = wxEmptyString,
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
@@ -705,7 +321,7 @@ public:
 class KIQT_API wxRadioButton : public wxWindowCompat<QRadioButton>
 {
 public:
-    explicit wxRadioButton( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxRadioButton( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                             const wxString& aLabel = wxEmptyString,
                             const wxPoint& aPos = wxDefaultPosition,
                             const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
@@ -823,7 +439,7 @@ public:
 class KIQT_API wxChoice : public wxItemContainerCompat<QComboBox>
 {
 public:
-    explicit wxChoice( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxChoice( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                        const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                        const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
 
@@ -851,7 +467,7 @@ public:
 class KIQT_API wxComboBox : public wxChoice
 {
 public:
-    explicit wxComboBox( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxComboBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                          const wxString& aValue = wxEmptyString,
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize,
@@ -876,7 +492,7 @@ using wxBitmapComboBox = wxComboBox;
 class KIQT_API wxListBox : public wxItemContainerCompat<QListWidget>
 {
 public:
-    explicit wxListBox( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxListBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                         const wxPoint& aPos = wxDefaultPosition,
                         const wxSize& aSize = wxDefaultSize,
                         const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
@@ -909,7 +525,7 @@ public:
 class KIQT_API wxCheckListBox : public wxListBox
 {
 public:
-    explicit wxCheckListBox( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxCheckListBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                              const wxPoint& aPos = wxDefaultPosition,
                              const wxSize& aSize = wxDefaultSize,
                              const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
@@ -926,7 +542,7 @@ public:
 class KIQT_API wxSpinCtrl : public wxWindowCompat<QSpinBox>
 {
 public:
-    explicit wxSpinCtrl( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxSpinCtrl( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                          const wxString& aValue = wxEmptyString,
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize, long aStyle = 0, int aMin = 0,
@@ -949,7 +565,7 @@ public:
 class KIQT_API wxSpinCtrlDouble : public wxWindowCompat<QDoubleSpinBox>
 {
 public:
-    explicit wxSpinCtrlDouble( QWidget* aParent = nullptr, int aId = wxID_ANY );
+    explicit wxSpinCtrlDouble( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY );
 
     double GetValue() const { return value(); }
     void SetValue( double aValue );
@@ -968,7 +584,7 @@ public:
 class KIQT_API wxSlider : public wxWindowCompat<QSlider>
 {
 public:
-    explicit wxSlider( QWidget* aParent = nullptr, int aId = wxID_ANY, int aValue = 0,
+    explicit wxSlider( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY, int aValue = 0,
                        int aMin = 0, int aMax = 100 );
 
     int GetValue() const { return value(); }
@@ -982,7 +598,7 @@ public:
 class KIQT_API wxGauge : public wxWindowCompat<QProgressBar>
 {
 public:
-    explicit wxGauge( QWidget* aParent = nullptr, int aId = wxID_ANY, int aRange = 100 );
+    explicit wxGauge( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY, int aRange = 100 );
 
     int GetValue() const { return value(); }
     void SetValue( int aValue ) { setValue( aValue ); }
@@ -995,10 +611,10 @@ public:
 class KIQT_API wxStaticBox : public wxWindowCompat<QGroupBox>
 {
 public:
-    explicit wxStaticBox( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxStaticBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                           const wxString& aLabel = wxEmptyString );
 
-    wxStaticBox( QWidget* aParent, int aId, const QString& aLabel );
+    wxStaticBox( wxWidgetArgCompat aParent, int aId, const QString& aLabel );
 
     void SetLabel( const wxString& aLabel ) { setTitle( ToQString( aLabel ) ); }
     wxString GetLabel() const { return ToWxString( title() ); }
@@ -1013,7 +629,7 @@ public:
 class KIQT_API wxRadioBox : public wxWindowCompat<QGroupBox>
 {
 public:
-    wxRadioBox( QWidget* aParent, int aId, const wxString& aLabel,
+    wxRadioBox( wxWidgetArgCompat aParent, int aId, const wxString& aLabel,
                 const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                 const wxArrayString& aChoices = wxArrayString(), int aMajorDimension = 0,
                 long aStyle = wxRA_SPECIFY_COLS );
@@ -1058,21 +674,21 @@ private:
 class KIQT_API wxTreebook : public wxWindowCompat<QWidget>
 {
 public:
-    explicit wxTreebook( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxTreebook( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize, long aStyle = 0,
                          const wxString& aName = wxEmptyString );
 
     /// Add a top level page.
-    bool AddPage( QWidget* aPage, const wxString& aText, bool aSelect = false, int aImage = -1 );
+    bool AddPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect = false, int aImage = -1 );
 
     /// Add a page under the last top level page.
-    bool AddSubPage( QWidget* aPage, const wxString& aText, bool aSelect = false,
+    bool AddSubPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect = false,
                      int aImage = -1 );
 
     size_t GetPageCount() const { return m_pages.size(); }
-    QWidget* GetPage( size_t aPage ) const;
-    QWidget* GetCurrentPage() const;
+    wxWindow* GetPage( size_t aPage ) const;
+    wxWindow* GetCurrentPage() const;
     int GetSelection() const { return m_selection; }
 
     /// Select a page, with the page changing (vetoable) and changed events.
@@ -1107,7 +723,7 @@ private:
         int              m_parent;
     };
 
-    bool insertPage( QWidget* aPage, const wxString& aText, int aParent, bool aSelect );
+    bool insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect );
 
     /// The page of an item of the tree.
     int pageOf( QTreeWidgetItem* aItem ) const;
@@ -1126,13 +742,13 @@ private:
 class KIQT_API wxNotebook : public wxWindowCompat<QTabWidget>
 {
 public:
-    explicit wxNotebook( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    explicit wxNotebook( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
 
     size_t GetPageCount() const { return size_t( count() ); }
-    QWidget* GetPage( size_t aPage ) const { return widget( int( aPage ) ); }
-    QWidget* GetCurrentPage() const { return currentWidget(); }
+    wxWindow* GetPage( size_t aPage ) const { return wxWindowFromQt( widget( int( aPage ) ) ); }
+    wxWindow* GetCurrentPage() const { return wxWindowFromQt( currentWidget() ); }
     int GetSelection() const { return currentIndex(); }
 
     /// Select a page (with the page changed signal).
@@ -1144,13 +760,13 @@ public:
     wxString GetPageText( size_t aPage ) const { return ToWxString( tabText( int( aPage ) ) ); }
     bool SetPageText( size_t aPage, const wxString& aText );
 
-    bool AddPage( QWidget* aPage, const wxString& aText, bool aSelect = false, int aImage = -1 );
-    bool InsertPage( size_t aIndex, QWidget* aPage, const wxString& aText, bool aSelect = false,
+    bool AddPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect = false, int aImage = -1 );
+    bool InsertPage( size_t aIndex, wxWidgetArgCompat aPage, const wxString& aText, bool aSelect = false,
                      int aImage = -1 );
     bool RemovePage( size_t aPage );
     bool DeletePage( size_t aPage );
     bool DeleteAllPages();
-    int FindPage( const QWidget* aPage ) const { return indexOf( const_cast<QWidget*>( aPage ) ); }
+    int FindPage( wxWidgetArgCompat aPage ) const { return indexOf( aPage ); }
 };
 
 using wxBookCtrlBase = wxNotebook;
@@ -1164,7 +780,7 @@ using wxAuiNotebook = wxNotebook;
 class KIQT_API wxStdDialogButtonSizer : public QDialogButtonBox
 {
 public:
-    explicit wxStdDialogButtonSizer( QWidget* aParent = nullptr );
+    explicit wxStdDialogButtonSizer( wxWidgetArgCompat aParent = nullptr );
 
     /// Add a standard button (QDialogButtonBox::Ok...) with the code of KiCad (wxID_OK...).
     wxButton* AddStandardButton( QDialogButtonBox::StandardButton aButton, int aId );
@@ -1204,7 +820,7 @@ public:
     }
 
     /// Resize @a aWindow to the size of the layout; return the size.
-    wxSize Fit( QWidget* aWindow )
+    wxSize Fit( wxWidgetArgCompat aWindow )
     {
         this->activate();
 
@@ -1217,10 +833,10 @@ public:
         return wxSize();
     }
 
-    void FitInside( QWidget* aWindow ) { Fit( aWindow ); }
+    void FitInside( wxWidgetArgCompat aWindow ) { Fit( aWindow ); }
 
     /// The minimum size of @a aWindow is the minimum size of the layout.
-    void SetSizeHints( QWidget* aWindow )
+    void SetSizeHints( wxWidgetArgCompat aWindow )
     {
         if( aWindow )
         {
@@ -1240,7 +856,7 @@ public:
     void SetMinSize( int, int ) {}
 
     /// Show or hide an item (a widget or a layout).
-    bool Show( QWidget* aWindow, bool aShow = true, bool aRecursive = false )
+    bool Show( wxWidgetArgCompat aWindow, bool aShow = true, bool aRecursive = false )
     {
         if( !aWindow || this->indexOf( aWindow ) < 0 )
             return false;
@@ -1261,13 +877,13 @@ public:
     /// Show or hide all the items.
     void ShowItems( bool aShow ) { showLayout( this, aShow ); }
 
-    bool Hide( QWidget* aWindow, bool aRecursive = false ) { return Show( aWindow, false ); }
+    bool Hide( wxWidgetArgCompat aWindow, bool aRecursive = false ) { return Show( aWindow, false ); }
     bool Hide( QLayout* aLayout, bool aRecursive = false ) { return Show( aLayout, false ); }
 
-    bool IsShown( QWidget* aWindow ) const { return aWindow && !aWindow->isHidden(); }
+    bool IsShown( wxWidgetArgCompat aWindow ) const { return aWindow && !aWindow->isHidden(); }
 
     /// Remove a widget from the layout (it stays a child of its parent).
-    bool Detach( QWidget* aWindow )
+    bool Detach( wxWidgetArgCompat aWindow )
     {
         if( !aWindow || this->indexOf( aWindow ) < 0 )
             return false;
@@ -1321,7 +937,7 @@ public:
     int GetOrientation() const;
 
     /// Add a widget (proportion, wx flags, border).
-    void Add( QWidget* aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0,
+    void Add( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0,
               void* aUserData = nullptr );
 
     /// Add a layout (a sizer).
@@ -1331,12 +947,12 @@ public:
     /// Add a spacer.
     void Add( int aWidth, int aHeight, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
 
-    void Insert( size_t aIndex, QWidget* aWindow, int aProportion = 0, int aFlag = 0,
+    void Insert( size_t aIndex, wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0,
                  int aBorder = 0 );
     void Insert( size_t aIndex, QLayout* aSizer, int aProportion = 0, int aFlag = 0,
                  int aBorder = 0 );
 
-    void Prepend( QWidget* aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0 )
+    void Prepend( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0 )
     {
         Insert( 0, aWindow, aProportion, aFlag, aBorder );
     }
@@ -1353,7 +969,7 @@ public:
     wxStaticBoxSizer( wxStaticBox* aBox, int aOrient );
 
     /// The sizer of a new box of @a aParent.
-    wxStaticBoxSizer( int aOrient, QWidget* aParent, const wxString& aLabel = wxEmptyString );
+    wxStaticBoxSizer( int aOrient, wxWidgetArgCompat aParent, const wxString& aLabel = wxEmptyString );
 
     wxStaticBox* GetStaticBox() const { return m_box; }
 
@@ -1385,7 +1001,7 @@ public:
     void SetNonFlexibleGrowMode( int ) {}
 
     /// Add a widget in the next cell.
-    void Add( QWidget* aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
+    void Add( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
     void Add( QLayout* aSizer, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
     void Add( int aWidth, int aHeight, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
 
@@ -1407,7 +1023,7 @@ using wxWrapSizer = wxBoxSizer;
 
 /// The message boxes of wxWidgets (wxOK, wxYES_NO, wxCANCEL, wxICON_...).
 KIQT_API int wxMessageBox( const wxString& aMessage, const wxString& aCaption = wxS( "Message" ),
-                           long aStyle = wxOK | wxCENTRE, QWidget* aParent = nullptr, int aX = -1,
+                           long aStyle = wxOK | wxCENTRE, wxWidgetArgCompat aParent = nullptr, int aX = -1,
                            int aY = -1 );
 
 /// The window under the mouse, the focused window (the windows of Qt).
@@ -1431,7 +1047,7 @@ public:
 class wxWindowUpdateLocker
 {
 public:
-    explicit wxWindowUpdateLocker( QWidget* aWindow = nullptr ) { Lock( aWindow ); }
+    explicit wxWindowUpdateLocker( wxWidgetArgCompat aWindow = nullptr ) { Lock( aWindow ); }
 
     ~wxWindowUpdateLocker()
     {
@@ -1439,7 +1055,7 @@ public:
             m_window->setUpdatesEnabled( m_wasEnabled );
     }
 
-    void Lock( QWidget* aWindow )
+    void Lock( wxWidgetArgCompat aWindow )
     {
         m_window = aWindow;
 
@@ -1456,10 +1072,6 @@ private:
 };
 
 
-/// The top level window of a window (its dialog or its frame).
-inline QWidget* wxGetTopLevelParent( QWidget* aWindow )
-{
-    return aWindow ? aWindow->window() : nullptr;
-}
+
 
 #endif // KIWX_GUI_H

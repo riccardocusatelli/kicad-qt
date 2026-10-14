@@ -36,109 +36,6 @@
 #include <qt_strings.h>
 
 
-bool wxWindowRefCompat::IsEnabled() const
-{
-    return m_window && m_window->isEnabled();
-}
-
-
-bool wxWindowRefCompat::IsShown() const
-{
-    return m_window && !m_window->isHidden();
-}
-
-
-void wxWindowRefCompat::SetFocus() const
-{
-    if( m_window )
-        m_window->setFocus();
-}
-
-
-wxString wxWindowRefCompat::GetName() const
-{
-    return m_window ? ToWxString( m_window->objectName() ) : wxString();
-}
-
-
-void wxWindowRefCompat::Refresh() const
-{
-    if( m_window )
-        m_window->update();
-}
-
-
-wxColour wxWindowRefCompat::GetBackgroundColour() const
-{
-    return m_window ? m_window->palette().color( m_window->backgroundRole() ) : QColor();
-}
-
-
-wxColour wxWindowRefCompat::GetForegroundColour() const
-{
-    return m_window ? m_window->palette().color( m_window->foregroundRole() ) : QColor();
-}
-
-
-int wxWindowRefCompat::GetId() const
-{
-    return m_window ? wxGetWindowIdCompat( m_window ) : wxID_ANY;
-}
-
-
-void wxWindowRefCompat::SetToolTip( const wxString& aTip ) const
-{
-    if( m_window )
-        m_window->setToolTip( ToQString( aTip ) );
-}
-
-
-bool wxWindowRefCompat::ProcessEvent( wxEvent& aEvent ) const
-{
-    if( !m_window )
-        return false;
-
-    wxEvtHandler* handler = wxEvtHandlerCompat( m_window );
-    return wxEvtHandler::ProcessChainCompat( handler->GetEventHandlerCompat(), aEvent );
-}
-
-
-wxEvtHandler* wxWindowRefCompat::GetEventHandler() const
-{
-    return m_window ? wxEvtHandlerCompat( m_window )->GetEventHandlerCompat() : nullptr;
-}
-
-
-void wxWindowRefCompat::PushEventHandler( wxEvtHandler* aHandler ) const
-{
-    if( m_window )
-        wxEvtHandlerCompat( m_window )->PushEventHandlerCompat( aHandler );
-}
-
-
-wxEvtHandler* wxWindowRefCompat::PopEventHandler( bool aDeleteHandler ) const
-{
-    return m_window ? wxEvtHandlerCompat( m_window )->PopEventHandlerCompat( aDeleteHandler )
-                    : nullptr;
-}
-
-
-wxWindowRefCompat wxWindowRefCompat::GetParent() const
-{
-    return wxWindowRefCompat( m_window ? m_window->parentWidget() : nullptr );
-}
-
-
-void wxWindowRefCompat::bindHandler( wxEventType aType, wxCompatEventSink::HANDLER aHandler,
-                                     const void* aKey, int aId, int aLastId ) const
-{
-    if( !m_window )
-        return;
-
-    wxCompatEventSink* sink = wxEventSinkCompat( m_window );
-    sink->Add( aType, std::move( aHandler ), aKey, aId, aLastId );
-    wxConnectQtEventsCompat( m_window, aType, sink );
-}
 
 
 const wxValidator wxDefaultValidator;
@@ -155,7 +52,7 @@ wxTextValidator::wxTextValidator( long aStyle, wxString* aValue ) :
 
 wxTextCtrl* wxTextValidator::GetTextEntry()
 {
-    return dynamic_cast<wxTextCtrl*>( static_cast<QWidget*>( m_validatorWindow ) );
+    return dynamic_cast<wxTextCtrl*>( m_validatorWindow );
 }
 
 
@@ -254,19 +151,19 @@ wxString wxTextValidator::IsValid( const wxString& aValue ) const
 }
 
 
-bool wxTextValidator::Validate( QWidget* aParent )
+bool wxTextValidator::Validate( wxWindow* aParent )
 {
     // A disabled window is valid
     if( !m_validatorWindow || !m_validatorWindow->IsEnabled() )
         return true;
 
-    wxString error = IsValid( ToWxString( windowText( m_validatorWindow ) ) );
+    wxString error = IsValid( ToWxString( windowText( m_validatorWindow->GetHandle() ) ) );
 
     if( error.IsEmpty() )
         return true;
 
     m_validatorWindow->SetFocus();
-    QMessageBox::warning( aParent, ToQString( _( "Validation conflict" ) ), ToQString( error ) );
+    QMessageBox::warning( aParent ? aParent->GetHandle() : nullptr, ToQString( _( "Validation conflict" ) ), ToQString( error ) );
     return false;
 }
 
@@ -274,7 +171,7 @@ bool wxTextValidator::Validate( QWidget* aParent )
 bool wxTextValidator::TransferToWindow()
 {
     if( m_stringValue && m_validatorWindow )
-        setWindowText( m_validatorWindow, ToQString( *m_stringValue ) );
+        setWindowText( m_validatorWindow->GetHandle(), ToQString( *m_stringValue ) );
 
     return true;
 }
@@ -283,7 +180,7 @@ bool wxTextValidator::TransferToWindow()
 bool wxTextValidator::TransferFromWindow()
 {
     if( m_stringValue && m_validatorWindow )
-        *m_stringValue = ToWxString( windowText( m_validatorWindow ) );
+        *m_stringValue = ToWxString( windowText( m_validatorWindow->GetHandle() ) );
 
     return true;
 }
@@ -298,7 +195,7 @@ wxGenericValidator::wxGenericValidator( int* aValue ) : m_int( aValue ) {}
 
 bool wxGenericValidator::TransferToWindow()
 {
-    QWidget* window = m_validatorWindow;
+    QWidget* window = m_validatorWindow ? m_validatorWindow->GetHandle() : nullptr;
 
     if( !window )
         return false;
@@ -320,7 +217,7 @@ bool wxGenericValidator::TransferToWindow()
 
 bool wxGenericValidator::TransferFromWindow()
 {
-    QWidget* window = m_validatorWindow;
+    QWidget* window = m_validatorWindow ? m_validatorWindow->GetHandle() : nullptr;
 
     if( !window )
         return false;
@@ -387,7 +284,7 @@ void wxSetValidatorCompat( QWidget* aWindow, const wxValidator& aValidator )
     if( !validator )
         return;
 
-    validator->SetWindow( aWindow );
+    validator->SetWindow( wxWindowFromQt( aWindow ) );
 
     // The events of the window the validator handles
     for( wxEventType type : validator->GetEventTypesCompat() )

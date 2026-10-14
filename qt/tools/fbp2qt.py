@@ -1681,10 +1681,10 @@ class FormClass:
 
             if self.gen.compat:
                 # The parameters of the bases of wxFormBuilder
-                ctorDecl = ( 'QWidget* aParent, int aId = wxID_ANY, const wxString& aTitle = _( %s ), '
+                ctorDecl = ( 'wxWidgetArgCompat aParent, int aId = wxID_ANY, const wxString& aTitle = _( %s ), '
                              'const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize, '
                              'long aStyle = 0' % cstr( p.get( 'title', '' ) ) )
-                ctorImpl = ( 'QWidget* aParent, int aId, const wxString& aTitle, const wxPoint& aPos, '
+                ctorImpl = ( 'wxWidgetArgCompat aParent, int aId, const wxString& aTitle, const wxPoint& aPos, '
                              'const wxSize& aSize, long aStyle' )
         elif self.kind == 'Panel':
             if sub:
@@ -1703,10 +1703,10 @@ class FormClass:
 
             if self.gen.compat:
                 # The parameters of the bases of wxFormBuilder
-                ctorDecl = ( 'QWidget* aParent, int aId = wxID_ANY, const wxPoint& aPos = wxDefaultPosition, '
+                ctorDecl = ( 'wxWidgetArgCompat aParent, int aId = wxID_ANY, const wxPoint& aPos = wxDefaultPosition, '
                              'const wxSize& aSize = wxDefaultSize, long aStyle = 0, '
                              'const wxString& aName = wxEmptyString' )
-                ctorImpl = ( 'QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize, '
+                ctorImpl = ( 'wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize, '
                              'long aStyle, const wxString& aName' )
         else:
             raise FbpError( 'form %s not supported' % self.kind )

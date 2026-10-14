@@ -29,6 +29,7 @@
  */
 
 #include <widgets/ui_common.h>
+#include <wx/kiwx_window.h>
 
 #include <QAbstractSpinBox>
 #include <QAbstractButton>
@@ -60,8 +61,10 @@ int KIUI::GetStdMargin()
 }
 
 
-wxSize KIUI::GetTextSize( const wxString& aSingleLine, QWidget* aWindow )
+wxSize KIUI::GetTextSize( const wxString& aSingleLine, wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     QFontMetrics metrics( aWindow ? aWindow->font() : QApplication::font() );
     QSize        size = metrics.size( Qt::TextSingleLine, ToQString( aSingleLine ) );
 
@@ -75,20 +78,26 @@ wxFont KIUI::GetMonospacedUIFont()
 }
 
 
-wxFont KIUI::GetControlFont( QWidget* aWindow )
+wxFont KIUI::GetControlFont( wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     return aWindow ? aWindow->font() : QApplication::font();
 }
 
 
-wxFont KIUI::GetInfoFont( QWidget* aWindow )
+wxFont KIUI::GetInfoFont( wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     return KIQT::InfoFont( aWindow );
 }
 
 
-wxFont KIUI::GetSmallInfoFont( QWidget* aWindow )
+wxFont KIUI::GetSmallInfoFont( wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     QFont font = KIQT::InfoFont( aWindow );
 
     if( font.pointSizeF() > 1 )
@@ -98,14 +107,18 @@ wxFont KIUI::GetSmallInfoFont( QWidget* aWindow )
 }
 
 
-wxFont KIUI::GetDockedPaneFont( QWidget* aWindow )
+wxFont KIUI::GetDockedPaneFont( wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     return KIQT::DockedPaneFont( aWindow );
 }
 
 
-wxFont KIUI::GetStatusFont( QWidget* aWindow )
+wxFont KIUI::GetStatusFont( wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     return KIQT::InfoFont( aWindow );
 }
 
@@ -114,7 +127,7 @@ bool KIUI::EnsureTextCtrlWidth( wxTextCtrl* aCtrl, const wxString* aString )
 {
     QWidget* window = aCtrl->parentWidget() ? aCtrl->parentWidget() : aCtrl;
     wxString ctrlText = aString ? *aString : aCtrl->GetValue();
-    wxSize   textSize = GetTextSize( ctrlText, window );
+    wxSize   textSize = GetTextSize( ctrlText, wxWindowFromQt( window ) );
 
     if( aCtrl->width() < textSize.x + 10 )
     {
@@ -126,8 +139,10 @@ bool KIUI::EnsureTextCtrlWidth( wxTextCtrl* aCtrl, const wxString* aString )
 }
 
 
-wxString KIUI::EllipsizeStatusText( QWidget* aWindow, const wxString& aString )
+wxString KIUI::EllipsizeStatusText( wxWindow* aWindowCompat, const wxString& aString )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     wxString msg = UnescapeString( aString );
 
     msg.Replace( wxT( "\n" ), wxT( " " ) );
@@ -179,8 +194,10 @@ void KIUI::SelectReferenceNumber( wxTextCtrl* aTextEntry )
 }
 
 
-bool KIUI::IsInputControlFocused( QWidget* aFocus )
+bool KIUI::IsInputControlFocused( wxWindow* aFocusCompat )
 {
+    QWidget* aFocus = aFocusCompat ? aFocusCompat->GetHandle() : nullptr;
+
     if( aFocus == nullptr )
         aFocus = QApplication::focusWidget();
 
@@ -199,8 +216,10 @@ bool KIUI::IsInputControlFocused( QWidget* aFocus )
 }
 
 
-bool KIUI::IsInputControlEditable( QWidget* aControl )
+bool KIUI::IsInputControlEditable( wxWindow* aControlCompat )
 {
+    QWidget* aControl = aControlCompat ? aControlCompat->GetHandle() : nullptr;
+
     if( QLineEdit* lineEdit = qobject_cast<QLineEdit*>( aControl ) )
         return !lineEdit->isReadOnly();
 
@@ -221,8 +240,10 @@ bool KIUI::IsModalDialogFocused()
 }
 
 
-void KIUI::FocusNextWindow( QWidget* aWindow )
+void KIUI::FocusNextWindow( wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     // The focus chain of Qt, after the children of the window
     for( QWidget* test = aWindow->nextInFocusChain(); test && test != aWindow;
          test = test->nextInFocusChain() )
@@ -239,8 +260,10 @@ void KIUI::FocusNextWindow( QWidget* aWindow )
 }
 
 
-void KIUI::Disable( QWidget* aWindow )
+void KIUI::Disable( wxWindow* aWindowCompat )
 {
+    QWidget* aWindow = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+
     if( QTableWidget* grid = qobject_cast<QTableWidget*>( aWindow ) )
     {
         // The cells are read only, the grid can still be scrolled
@@ -254,7 +277,7 @@ void KIUI::Disable( QWidget* aWindow )
              && !qobject_cast<QAbstractItemView*>( aWindow ) )
     {
         for( QWidget* child : aWindow->findChildren<QWidget*>( Qt::FindDirectChildrenOnly ) )
-            Disable( child );
+            Disable( wxWindowFromQt( child ) );
     }
     else if( aWindow->findChildren<QWidget*>( Qt::FindDirectChildrenOnly ).isEmpty()
              || qobject_cast<QAbstractItemView*>( aWindow ) || qobject_cast<QComboBox*>( aWindow )
@@ -266,6 +289,6 @@ void KIUI::Disable( QWidget* aWindow )
     else
     {
         for( QWidget* child : aWindow->findChildren<QWidget*>( Qt::FindDirectChildrenOnly ) )
-            Disable( child );
+            Disable( wxWindowFromQt( child ) );
     }
 }

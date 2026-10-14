@@ -1000,13 +1000,7 @@ inline void wxPostEvent( wxEvtHandler* aHandler, const EVENT& aEvent )
 }
 
 
-/// Record @a aHandler as the handler of the window @a aWidget (the compatible windows).
-KIQT_API void wxRegisterEvtHandlerCompat( QWidget* aWidget, wxEvtHandler* aHandler );
-
-/**
- * The handler of the window @a aWidget: a compatible window, or a handler that the widget keeps
- * for the plain Qt widgets (the grid window of a grid...).
- */
+/// The handler of the widget @a aWidget: its window (see wxWindowFromQt()).
 KIQT_API wxEvtHandler* wxEvtHandlerCompat( QWidget* aWidget );
 
 /// The handlers of the window @a aWidget (the ones of wxEvtHandlerCompat()).

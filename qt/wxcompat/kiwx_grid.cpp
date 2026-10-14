@@ -1627,15 +1627,15 @@ wxGrid::wxGrid( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aS
     setModel( m_model );
     setItemDelegate( m_delegate );
 
-    m_gridWin = viewport();
-    m_colLabelWin = horizontalHeader();
-    m_rowLabelWin = verticalHeader();
+    m_gridWin = wxWindowFromQt( viewport() );
+    m_colLabelWin = wxWindowFromQt( horizontalHeader() );
+    m_rowLabelWin = wxWindowFromQt( verticalHeader() );
 
     if( QAbstractButton* corner = findChild<QAbstractButton*>( QString(),
                                                                Qt::FindDirectChildrenOnly ) )
     {
         corner->installEventFilter( new KIWX_GRID_CORNER_FILTER( this ) );
-        m_cornerLabelWin = corner;
+        m_cornerLabelWin = wxWindowFromQt( corner );
     }
 
     setEditTriggers( QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed
@@ -2942,25 +2942,25 @@ void wxGrid::SaveEditControlValue()
 }
 
 
-wxWindowRefCompat wxGrid::GetGridWindow() const
+wxWindow* wxGrid::GetGridWindow() const
 {
-    return viewport();
+    return wxWindowFromQt( viewport() );
 }
 
 
-wxWindowRefCompat wxGrid::GetGridColLabelWindow() const
+wxWindow* wxGrid::GetGridColLabelWindow() const
 {
-    return horizontalHeader();
+    return wxWindowFromQt( horizontalHeader() );
 }
 
 
-wxWindowRefCompat wxGrid::GetGridRowLabelWindow() const
+wxWindow* wxGrid::GetGridRowLabelWindow() const
 {
-    return verticalHeader();
+    return wxWindowFromQt( verticalHeader() );
 }
 
 
-wxWindowRefCompat wxGrid::GetGridCornerLabelWindow() const
+wxWindow* wxGrid::GetGridCornerLabelWindow() const
 {
     return m_cornerLabelWin;
 }

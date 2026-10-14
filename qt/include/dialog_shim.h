@@ -62,11 +62,10 @@ class UNIT_BINDER;
  * the quasi-modal mode of KiCad, and remembers the geometry of the dialog (with the same
  * settings as the wxWidgets build).
  */
-class KICOMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HOLDER,
-                                 public wxTransferableCompat
+class KICOMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HOLDER
 {
 public:
-    DIALOG_SHIM( QWidget* aParent, const wxString& aTitle );
+    DIALOG_SHIM( wxWidgetArgCompat aParent, const wxString& aTitle );
 
     ~DIALOG_SHIM();
 
@@ -74,7 +73,7 @@ public:
      * Set the window (usually a QLineEdit) that should be focused when the dialog is
      * shown.
      */
-    void SetInitialFocus( QWidget* aWindow )
+    void SetInitialFocus( wxWidgetArgCompat aWindow )
     {
         m_initialFocusTarget = aWindow;
     }
@@ -136,34 +135,20 @@ public:
      *
      * @param aWindow is the control to not save the state of.
      */
-    void OptOut( QWidget* aWindow );
+    void OptOut( wxWidgetArgCompat aWindow );
 
     /**
      * Register a UNIT_BINDER so that it can handle units in control state save/restore.
      */
-    void RegisterUnitBinder( UNIT_BINDER* aUnitBinder, QWidget* aWindow );
+    void RegisterUnitBinder( UNIT_BINDER* aUnitBinder, wxWidgetArgCompat aWindow );
 
     void UnregisterUnitBinder( UNIT_BINDER* aUnitBinder );
 
-    /**
-     * Fill the controls of the dialog from its data: called each time the dialog is shown.  By
-     * default, the panels of the dialog fill theirs (as wxWS_EX_VALIDATE_RECURSIVELY).
+    /*
+     * The data transfers of the dialog (TransferDataToWindow() each time the dialog is shown,
+     * Validate() and TransferDataFromWindow() for OK and Apply) are the ones of wxWindow: by
+     * default, the ones of the validators and of the panels of the dialog.
      */
-    bool TransferDataToWindow() override { return wxTransferDataToChildrenCompat( this ); }
-
-    /**
-     * Copy the values of the controls to the data of the dialog: called by OK and Apply.
-     *
-     * @return false to keep the dialog open (invalid values).
-     */
-    bool TransferDataFromWindow() override { return wxTransferDataFromChildrenCompat( this ); }
-
-    /// Check the values of the controls before TransferDataFromWindow().
-    bool Validate() override { return wxValidateChildrenCompat( this ); }
-
-    /// The child window with an id or a name, or nullptr.
-    QWidget* FindWindow( int aId ) { return wxFindWindowByIdCompat( this, aId ); }
-    QWidget* FindWindow( const wxString& aName ) { return wxFindWindowByNameCompat( this, aName ); }
 
     /**
      * Register a function updating the state of controls (enabled, shown, label): it is

@@ -29,6 +29,7 @@
  */
 
 #include <widgets/paged_dialog.h>
+#include <wx/grid.h>
 
 #include <algorithm>
 #include <map>
@@ -57,7 +58,7 @@ static std::map<wxString, wxString> g_lastPage;
 static std::map<wxString, wxString> g_lastParentPage;
 
 
-PAGED_DIALOG::PAGED_DIALOG( QWidget* aParent, const wxString& aTitle, bool aShowReset,
+PAGED_DIALOG::PAGED_DIALOG( wxWindow* aParent, const wxString& aTitle, bool aShowReset,
                             bool aShowOpenFolder, const wxString& aAuxiliaryAction,
                             const wxSize& aInitialSize ) :
         DIALOG_SHIM( aParent, aTitle ),
@@ -230,14 +231,13 @@ bool PAGED_DIALOG::TransferDataFromWindow()
 }
 
 
-PAGED_DIALOG* PAGED_DIALOG::GetDialog( QWidget* aParent )
+PAGED_DIALOG* PAGED_DIALOG::GetDialog( wxWindow* aWindow )
 {
-    while( aParent )
+    for( QWidget* parent = aWindow ? aWindow->GetHandle() : nullptr; parent;
+         parent = parent->parentWidget() )
     {
-        if( PAGED_DIALOG* parentDialog = dynamic_cast<PAGED_DIALOG*>( aParent ) )
+        if( PAGED_DIALOG* parentDialog = dynamic_cast<PAGED_DIALOG*>( parent ) )
             return parentDialog;
-
-        aParent = aParent->parentWidget();
     }
 
     return nullptr;
@@ -251,7 +251,7 @@ void PAGED_DIALOG::SetError( const wxString& aMessage, const wxString& aPageName
 }
 
 
-void PAGED_DIALOG::SetError( const wxString& aMessage, QWidget* aPage, QWidget* aCtrl,
+void PAGED_DIALOG::SetError( const wxString& aMessage, wxWindow* aPage, wxWindow* aCtrl,
                              int aRow, int aCol )
 {
     m_infoBar->ShowMessageFor( aMessage, 10000, wxICON_WARNING );
@@ -263,7 +263,7 @@ void PAGED_DIALOG::SetError( const wxString& aMessage, QWidget* aPage, QWidget* 
         return;
     }
 
-    if( QPlainTextEdit* text = qobject_cast<QPlainTextEdit*>( aCtrl ) )
+    if( QPlainTextEdit* text = qobject_cast<QPlainTextEdit*>( aCtrl ? aCtrl->GetHandle() : nullptr ) )
     {
         if( aRow > 0 )
         {
@@ -276,17 +276,13 @@ void PAGED_DIALOG::SetError( const wxString& aMessage, QWidget* aPage, QWidget* 
         return;
     }
 
-    if( QTableWidget* grid = qobject_cast<QTableWidget*>( aCtrl ) )
+    if( wxGrid* grid = dynamic_cast<wxGrid*>( aCtrl ) )
     {
-        grid->setFocus();
-
-        if( QTableWidgetItem* item = grid->item( aRow, aCol ) )
-        {
-            grid->scrollToItem( item );
-            grid->setCurrentItem( item );
-            grid->editItem( item );
-        }
-
+        grid->SetFocus();
+        grid->MakeCellVisible( aRow, aCol );
+        grid->SetGridCursor( aRow, aCol );
+        grid->EnableCellEditControl( true );
+        grid->ShowCellEditControl();
         return;
     }
 }
@@ -338,9 +334,9 @@ void PAGED_DIALOG::onCharHook( wxKeyEvent& aEvent )
 
         if( page >= 1 )
         {
-            QWidget* prevPage = m_treebook->GetPage( page - 1 );
+            wxWindow* prevPage = m_treebook->GetPage( page - 1 );
 
-            if( !prevPage || prevPage->findChildren<QWidget*>().isEmpty() )
+            if( !prevPage || prevPage->GetChildren().empty() )
                 m_treebook->SetSelection( std::max( page - 2, 0 ) );
             else
                 m_treebook->SetSelection( page - 1 );
@@ -374,9 +370,9 @@ void PAGED_DIALOG::onPageChanged( wxBookCtrlEvent& event )
 
     // Use the first sub-page when a tree level node is selected, but only if the node is
     // expanded.
-    QWidget* currentPage = m_treebook->GetCurrentPage();
+    wxWindow* currentPage = m_treebook->GetCurrentPage();
 
-    if( currentPage && currentPage->findChildren<QWidget*>().isEmpty()
+    if( currentPage && currentPage->GetChildren().empty()
             && page + 1 < m_treebook->GetPageCount()
             && m_treebook->IsNodeExpanded( page ) )
     {
@@ -409,7 +405,7 @@ void PAGED_DIALOG::onPageChanging( wxBookCtrlEvent& aEvent )
     if( currentPage == wxNOT_FOUND )
         return;
 
-    QWidget* page = m_treebook->GetPage( currentPage );
+    wxWindow* page = m_treebook->GetPage( currentPage );
 
     if( !page )
         return;

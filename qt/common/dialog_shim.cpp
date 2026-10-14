@@ -75,8 +75,8 @@ static std::string getDialogKeyFromTitle( const wxString& aTitle )
 }
 
 
-DIALOG_SHIM::DIALOG_SHIM( QWidget* aParent, const wxString& aTitle ) :
-        wxWindowCompat<QDialog>( aParent ),
+DIALOG_SHIM::DIALOG_SHIM( wxWidgetArgCompat aParent, const wxString& aTitle ) :
+        wxWindowCompat<QDialog>( aParent.get() ),
         KIWAY_HOLDER( nullptr, KIWAY_HOLDER::DIALOG ),
         m_units( EDA_UNITS::MM ),
         m_initialFocusTarget( nullptr ),
@@ -479,15 +479,15 @@ void DIALOG_SHIM::SetupStandardButtons( std::map<int, wxString> aLabels )
 }
 
 
-void DIALOG_SHIM::OptOut( QWidget* aWindow )
+void DIALOG_SHIM::OptOut( wxWidgetArgCompat aWindow )
 {
-    m_optOut.insert( aWindow );
+    m_optOut.insert( aWindow.get() );
 }
 
 
-void DIALOG_SHIM::RegisterUnitBinder( UNIT_BINDER* aUnitBinder, QWidget* aWindow )
+void DIALOG_SHIM::RegisterUnitBinder( UNIT_BINDER* aUnitBinder, wxWidgetArgCompat aWindow )
 {
-    m_unitBinders[aWindow] = aUnitBinder;
+    m_unitBinders[aWindow.get()] = aUnitBinder;
 }
 
 

@@ -227,7 +227,7 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxSt
                                 const wxPoint& aPos, const wxSize& aSize, long aStyle,
                                 const wxString& aFrameName, KIWAY* aKiway,
                                 const EDA_IU_SCALE& aIuScale ) :
-        QMainWindow( aParent ),
+        wxWindowCompat<QMainWindow>( aParent ),
         TOOLS_HOLDER(),
         KIWAY_HOLDER( aKiway, KIWAY_HOLDER::FRAME ),
         UNITS_PROVIDER( aIuScale, EDA_UNITS::MM ),

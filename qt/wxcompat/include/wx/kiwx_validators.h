@@ -43,100 +43,9 @@
 
 class QWidget;
 class wxTextCtrl;
+class wxWindow;
 
 
-/**
- * A reference to a window: a QWidget with the part of the API of wxWindow the code of KiCad uses
- * on the windows it keeps as wxWindow* (m_validatorWindow->IsEnabled(),
- * m_colLabelWin->GetBackgroundColour()...).  Converts to QWidget*.
- */
-class KIQT_API wxWindowRefCompat
-{
-public:
-    wxWindowRefCompat( QWidget* aWindow = nullptr ) : m_window( aWindow ) {}
-
-    operator QWidget*() const { return m_window; }
-    explicit operator bool() const { return m_window != nullptr; }
-    const wxWindowRefCompat* operator->() const { return this; }
-
-    bool IsEnabled() const;
-    bool IsShown() const;
-    void SetFocus() const;
-    void Refresh() const;
-    wxString GetName() const;
-    class wxColour GetBackgroundColour() const;
-    class wxColour GetForegroundColour() const;
-    int GetId() const;
-    void SetToolTip( const wxString& aTip ) const;
-    void UnsetToolTip() const { SetToolTip( wxEmptyString ); }
-
-    // The handlers of the events of the window (wxEvtHandler::Bind(), Connect())
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    void Bind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
-               int aId = wxID_ANY, int aLastId = wxID_ANY ) const
-    {
-        bindHandler( aType,
-                     [aMethod, aObject]( wxEvent& aEvent )
-                     {
-                         ( static_cast<CLASS*>( aObject )->*aMethod )( static_cast<EVENT&>( aEvent ) );
-                     },
-                     aObject, aId, aLastId );
-    }
-
-    template <typename FUNCTOR>
-    void Bind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY,
-               int aLastId = wxID_ANY ) const
-    {
-        using EVENT = KIWX_DETAIL::EVENT_OF<FUNCTOR>;
-
-        bindHandler( aType,
-                     [aFunctor]( wxEvent& aEvent ) mutable
-                     {
-                         aFunctor( static_cast<EVENT&>( aEvent ) );
-                     },
-                     nullptr, aId, aLastId );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    void Connect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), void* aUserData = nullptr,
-                  OBJECT* aSink = nullptr ) const
-    {
-        if( aSink )
-            Bind( aType, aMethod, aSink );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    bool Unbind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
-                 int aId = wxID_ANY, int aLastId = wxID_ANY ) const
-    {
-        return m_window && wxEventSinkCompat( m_window )->Remove( aType, aObject );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    bool Disconnect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
-                     void* aUserData = nullptr, OBJECT* aSink = nullptr ) const
-    {
-        return m_window && wxEventSinkCompat( m_window )->Remove( aType, aSink );
-    }
-
-    bool ProcessEvent( wxEvent& aEvent ) const;
-
-    /// The handlers pushed on the window (wxWindow::PushEventHandler()...).
-    wxEvtHandler* GetEventHandler() const;
-    void PushEventHandler( wxEvtHandler* aHandler ) const;
-    wxEvtHandler* PopEventHandler( bool aDeleteHandler = false ) const;
-
-    wxWindowRefCompat GetParent() const;
-    wxWindowRefCompat GetGrandParent() const { return GetParent().GetParent(); }
-
-private:
-    void bindHandler( wxEventType aType, wxCompatEventSink::HANDLER aHandler, const void* aKey,
-                      int aId, int aLastId ) const;
-
-    QWidget* m_window;
-};
-
-using wxValidatorWindowCompat = wxWindowRefCompat;
 
 
 class KIQT_API wxValidator : public wxObject
@@ -177,13 +86,13 @@ public:
     wxCompatEventSink* GetEventSinkCompat() const { return m_events.get(); }
 
     /// Check the value of the window (and show an error to the user).
-    virtual bool Validate( QWidget* aParent ) { return true; }
+    virtual bool Validate( wxWindow* aParent ) { return true; }
 
     virtual bool TransferToWindow() { return true; }
     virtual bool TransferFromWindow() { return true; }
 
-    void SetWindow( QWidget* aWindow ) { m_validatorWindow = aWindow; }
-    QWidget* GetWindow() const { return m_validatorWindow; }
+    void SetWindow( wxWindow* aWindow ) { m_validatorWindow = aWindow; }
+    wxWindow* GetWindow() const { return m_validatorWindow; }
 
     static void SuppressBellOnError( bool = true ) {}
     static bool IsSilent() { return true; }
@@ -194,7 +103,7 @@ public:
 protected:
     void Copy( const wxValidator& aOther ) { m_validatorWindow = aOther.m_validatorWindow; }
 
-    wxValidatorWindowCompat m_validatorWindow;
+    wxWindow* m_validatorWindow = nullptr;
 
 private:
     // Not copied: the handlers of a copy are connected by its own constructor
@@ -231,7 +140,7 @@ public:
 
     wxObject* Clone() const override { return new wxTextValidator( *this ); }
 
-    bool Validate( QWidget* aParent ) override;
+    bool Validate( wxWindow* aParent ) override;
     bool TransferToWindow() override;
     bool TransferFromWindow() override;
 

@@ -122,10 +122,10 @@ bool WX_TREEBOOK::AddLazySubPage( std::function<QWidget*( QWidget* aParent )> aL
 
 QWidget* WX_TREEBOOK::ResolvePage( size_t aPage )
 {
-    QWidget* page = GetPage( aPage );
+    wxWindow* page = GetPage( aPage );
 
     if( LAZY_PAGE* lazyPage = dynamic_cast<LAZY_PAGE*>( page ) )
         return lazyPage->Resolve();
 
-    return page;
+    return page ? page->GetHandle() : nullptr;
 }

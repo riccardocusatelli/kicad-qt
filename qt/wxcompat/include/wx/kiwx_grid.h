@@ -470,8 +470,8 @@ public:
         return static_cast<T*>( data() );
     }
 
-    /// The API of wxWindow on the control (m_control->Bind(), GetEventHandler()...).
-    wxWindowRefCompat operator->() const { return wxWindowRefCompat( data() ); }
+    /// The window of the control (m_control->Bind(), GetEventHandler()...).
+    wxWindow* operator->() const { return wxWindowFromQt( data() ); }
 };
 
 
@@ -913,10 +913,10 @@ public:
     void SaveEditControlValue();
 
     // The windows of the grid
-    wxWindowRefCompat GetGridWindow() const;
-    wxWindowRefCompat GetGridColLabelWindow() const;
-    wxWindowRefCompat GetGridRowLabelWindow() const;
-    wxWindowRefCompat GetGridCornerLabelWindow() const;
+    wxWindow* GetGridWindow() const;
+    wxWindow* GetGridColLabelWindow() const;
+    wxWindow* GetGridRowLabelWindow() const;
+    wxWindow* GetGridCornerLabelWindow() const;
 
     // The geometry
     wxRect CellToRect( int aRow, int aCol ) const;
@@ -982,10 +982,10 @@ protected:
     int              m_colLabelHeight = 0;
     int              m_rowLabelWidth = 0;
     wxGridCellCoords m_currentCellCoords;
-    wxWindowRefCompat m_gridWin;
-    wxWindowRefCompat m_colLabelWin;
-    wxWindowRefCompat m_rowLabelWin;
-    wxWindowRefCompat m_cornerLabelWin;
+    wxWindow*        m_gridWin = nullptr;
+    wxWindow*        m_colLabelWin = nullptr;
+    wxWindow*        m_rowLabelWin = nullptr;
+    wxWindow*        m_cornerLabelWin = nullptr;
 
 public:
 

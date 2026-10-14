@@ -177,100 +177,6 @@ wxString wxStripMenuCodes( const wxString& aLabel )
 }
 
 
-void wxCentreWindow( QWidget* aWindow, int aDirection )
-{
-    QWidget* parent = aWindow->parentWidget() ? aWindow->parentWidget()->window() : nullptr;
-    QRect    area;
-
-    if( parent && parent != aWindow )
-        area = parent->frameGeometry();
-    else if( QScreen* screen = aWindow->screen() )
-        area = screen->availableGeometry();
-    else
-        return;
-
-    QPoint pos = aWindow->pos();
-    QSize  size = aWindow->frameGeometry().size();
-
-    if( aDirection & wxHORIZONTAL )
-        pos.setX( area.x() + ( area.width() - size.width() ) / 2 );
-
-    if( aDirection & wxVERTICAL )
-        pos.setY( area.y() + ( area.height() - size.height() ) / 2 );
-
-    aWindow->move( pos );
-}
-
-
-// The sizer of a window --------------------------------------------------------------------
-
-QLayout* wxSizerProxy::GetLayout() const
-{
-    return m_window ? m_window->layout() : nullptr;
-}
-
-
-void wxSizerProxy::Layout()
-{
-    if( QLayout* layout = GetLayout() )
-    {
-        layout->invalidate();
-        layout->activate();
-    }
-}
-
-
-wxSize wxSizerProxy::Fit( QWidget* aWindow )
-{
-    Layout();
-
-    if( !aWindow )
-        return wxSize();
-
-    aWindow->adjustSize();
-    return wxSize( aWindow->width(), aWindow->height() );
-}
-
-
-void wxSizerProxy::SetSizeHints( QWidget* aWindow )
-{
-    if( QLayout* layout = GetLayout(); layout && aWindow )
-    {
-        layout->activate();
-        aWindow->setMinimumSize( layout->minimumSize() );
-        aWindow->adjustSize();
-    }
-}
-
-
-wxSize wxSizerProxy::GetMinSize() const
-{
-    QLayout* layout = GetLayout();
-
-    if( !layout )
-        return wxSize();
-
-    QSize size = layout->minimumSize();
-    return wxSize( size.width(), size.height() );
-}
-
-
-bool wxSizerProxy::Show( QWidget* aWindow, bool aShow, bool aRecursive )
-{
-    if( !aWindow )
-        return false;
-
-    aWindow->setVisible( aShow );
-    return true;
-}
-
-
-bool wxSizerProxy::IsShown( QWidget* aWindow ) const
-{
-    return aWindow && !aWindow->isHidden();
-}
-
-
 void wxUpdateUIEvent::Enable( bool aEnable )
 {
     if( QWidget* widget = qobject_cast<QWidget*>( GetEventObject() ) )
@@ -508,36 +414,6 @@ bool wxEvtHandler::RemoveEventHandlerCompat( wxEvtHandler* aHandler )
     }
 
     return false;
-}
-
-
-namespace
-{
-/// The handler of a plain Qt widget (a child object of the widget, deleted with it).
-class KIWX_EVT_HANDLER_HOLDER : public QObject, public wxEvtHandler
-{
-public:
-    explicit KIWX_EVT_HANDLER_HOLDER( QWidget* aWidget ) : QObject( aWidget ) {}
-};
-} // namespace
-
-
-void wxRegisterEvtHandlerCompat( QWidget* aWidget, wxEvtHandler* aHandler )
-{
-    aWidget->setProperty( "kiwxEvtHandler", QVariant::fromValue( static_cast<void*>( aHandler ) ) );
-}
-
-
-wxEvtHandler* wxEvtHandlerCompat( QWidget* aWidget )
-{
-    QVariant handler = aWidget->property( "kiwxEvtHandler" );
-
-    if( handler.isValid() )
-        return static_cast<wxEvtHandler*>( handler.value<void*>() );
-
-    KIWX_EVT_HANDLER_HOLDER* holder = new KIWX_EVT_HANDLER_HOLDER( aWidget );
-    wxRegisterEvtHandlerCompat( aWidget, holder );
-    return holder;
 }
 
 
@@ -905,11 +781,12 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
 
 // Controls ---------------------------------------------------------------------------------
 
-wxPanel::wxPanel( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize, long aStyle,
-                  const wxString& aName ) :
-        wxWindowCompat<QWidget>( aParent ),
-        m_style( aStyle )
+wxPanel::wxPanel( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+                  long aStyle, const wxString& aName ) :
+        wxWindowCompat<QWidget>( aParent.get() )
 {
+    SetWindowStyleFlag( aStyle );
+
     SetId( aId );
 
     if( !aName.IsEmpty() )
@@ -920,133 +797,7 @@ wxPanel::wxPanel( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& 
 }
 
 
-// The data transfers ----------------------------------------------------------------------
-
-namespace
-{
-
-enum class TRANSFER
-{
-    TO_WINDOW,
-    FROM_WINDOW,
-    VALIDATE
-};
-
-
-/**
- * A transfer of the descendants of @a aWindow: the ones of their validators, and the ones of the
- * panels and dialogs (not below them: their own transfers go to their children).
- */
-bool transferChildren( QWidget* aWindow, TRANSFER aTransfer )
-{
-    bool result = true;
-
-    for( QWidget* child : aWindow->findChildren<QWidget*>( Qt::FindDirectChildrenOnly ) )
-    {
-        // A dialog of its own is not part of the transfers of its parent
-        if( child->isWindow() )
-            continue;
-
-        if( wxValidator* validator = wxGetValidatorCompat( child ) )
-        {
-            switch( aTransfer )
-            {
-            case TRANSFER::TO_WINDOW:   result &= validator->TransferToWindow();     break;
-            case TRANSFER::FROM_WINDOW: result &= validator->TransferFromWindow();   break;
-            case TRANSFER::VALIDATE:    result &= validator->Validate( aWindow );    break;
-            }
-        }
-
-        if( wxTransferableCompat* transferable = dynamic_cast<wxTransferableCompat*>( child ) )
-        {
-            switch( aTransfer )
-            {
-            case TRANSFER::TO_WINDOW:   result &= transferable->TransferDataToWindow();   break;
-            case TRANSFER::FROM_WINDOW: result &= transferable->TransferDataFromWindow(); break;
-            case TRANSFER::VALIDATE:    result &= transferable->Validate();               break;
-            }
-        }
-        else
-        {
-            result &= transferChildren( child, aTransfer );
-        }
-    }
-
-    return result;
-}
-
-} // namespace
-
-
-bool wxTransferDataToChildrenCompat( QWidget* aWindow )
-{
-    return transferChildren( aWindow, TRANSFER::TO_WINDOW );
-}
-
-
-bool wxTransferDataFromChildrenCompat( QWidget* aWindow )
-{
-    return transferChildren( aWindow, TRANSFER::FROM_WINDOW );
-}
-
-
-bool wxValidateChildrenCompat( QWidget* aWindow )
-{
-    return transferChildren( aWindow, TRANSFER::VALIDATE );
-}
-
-
-bool wxTransferDataToWindowCompat( QWidget* aWindow )
-{
-    if( wxTransferableCompat* window = dynamic_cast<wxTransferableCompat*>( aWindow ) )
-        return window->TransferDataToWindow();
-
-    return aWindow ? wxTransferDataToChildrenCompat( aWindow ) : true;
-}
-
-
-bool wxTransferDataFromWindowCompat( QWidget* aWindow )
-{
-    if( wxTransferableCompat* window = dynamic_cast<wxTransferableCompat*>( aWindow ) )
-        return window->TransferDataFromWindow();
-
-    return aWindow ? wxTransferDataFromChildrenCompat( aWindow ) : true;
-}
-
-
-bool wxValidateCompat( QWidget* aWindow )
-{
-    if( wxTransferableCompat* window = dynamic_cast<wxTransferableCompat*>( aWindow ) )
-        return window->Validate();
-
-    return aWindow ? wxValidateChildrenCompat( aWindow ) : true;
-}
-
-
-QWidget* wxFindWindowByIdCompat( QWidget* aWindow, int aId )
-{
-    if( !aWindow )
-        return nullptr;
-
-    for( QWidget* child : aWindow->findChildren<QWidget*>() )
-    {
-        QVariant id = child->property( WINDOW_ID_PROPERTY );
-
-        if( id.isValid() && id.toInt() == aId )
-            return child;
-    }
-
-    return nullptr;
-}
-
-
-QWidget* wxFindWindowByNameCompat( QWidget* aWindow, const wxString& aName )
-{
-    return aWindow ? aWindow->findChild<QWidget*>( ToQString( aName ) ) : nullptr;
-}
-
-
-wxStaticText::wxStaticText( QWidget* aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
+wxStaticText::wxStaticText( wxWidgetArgCompat aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
                             const wxSize& aSize, long aStyle ) :
         wxWindowCompat<QLabel>( aParent )
 {
@@ -1082,7 +833,7 @@ void wxStaticText::Wrap( int aWidth )
 }
 
 
-wxStaticLine::wxStaticLine( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+wxStaticLine::wxStaticLine( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
                             long aStyle ) :
         wxWindowCompat<QFrame>( aParent )
 {
@@ -1092,7 +843,7 @@ wxStaticLine::wxStaticLine( QWidget* aParent, int aId, const wxPoint& aPos, cons
 }
 
 
-wxStaticBitmap::wxStaticBitmap( QWidget* aParent, int aId ) :
+wxStaticBitmap::wxStaticBitmap( wxWidgetArgCompat aParent, int aId ) :
         wxWindowCompat<QLabel>( aParent )
 {
     SetId( aId );
@@ -1113,7 +864,7 @@ void wxStaticBitmap::SetBitmap( const QPixmap& aBitmap )
 }
 
 
-wxTextCtrl::wxTextCtrl( QWidget* aParent, int aId, const wxString& aValue, const wxPoint& aPos,
+wxTextCtrl::wxTextCtrl( wxWidgetArgCompat aParent, int aId, const wxString& aValue, const wxPoint& aPos,
                         const wxSize& aSize, long aStyle ) :
         wxWindowCompat<QLineEdit>( aParent )
 {
@@ -1193,7 +944,7 @@ wxString wxTextCtrl::GetRange( long aFrom, long aTo ) const
 }
 
 
-wxTextCtrlMultiLine::wxTextCtrlMultiLine( QWidget* aParent ) :
+wxTextCtrlMultiLine::wxTextCtrlMultiLine( wxWidgetArgCompat aParent ) :
         wxWindowCompat<QPlainTextEdit>( aParent )
 {
 }
@@ -1236,7 +987,7 @@ wxString wxTextCtrlMultiLine::GetLineText( long aLine ) const
 }
 
 
-wxButton::wxButton( QWidget* aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
+wxButton::wxButton( wxWidgetArgCompat aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
                     const wxSize& aSize, long aStyle ) :
         wxWindowCompat<QPushButton>( aParent )
 {
@@ -1246,7 +997,7 @@ wxButton::wxButton( QWidget* aParent, int aId, const wxString& aLabel, const wxP
 }
 
 
-wxToggleButton::wxToggleButton( QWidget* aParent, int aId, const wxString& aLabel ) :
+wxToggleButton::wxToggleButton( wxWidgetArgCompat aParent, int aId, const wxString& aLabel ) :
         wxButton( aParent, aId, aLabel )
 {
     setCheckable( true );
@@ -1260,7 +1011,7 @@ void wxToggleButton::SetValue( bool aValue )
 }
 
 
-wxBitmapButton::wxBitmapButton( QWidget* aParent, int aId, const QIcon& aBitmap ) :
+wxBitmapButton::wxBitmapButton( wxWidgetArgCompat aParent, int aId, const QIcon& aBitmap ) :
         wxButton( aParent, aId )
 {
     if( !aBitmap.isNull() )
@@ -1268,7 +1019,7 @@ wxBitmapButton::wxBitmapButton( QWidget* aParent, int aId, const QIcon& aBitmap 
 }
 
 
-wxCheckBox::wxCheckBox( QWidget* aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
+wxCheckBox::wxCheckBox( wxWidgetArgCompat aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
                         const wxSize& aSize, long aStyle ) :
         wxWindowCompat<QCheckBox>( aParent )
 {
@@ -1320,7 +1071,7 @@ void wxCheckBox::Set3StateValue( wxCheckBoxState aState )
 }
 
 
-wxRadioButton::wxRadioButton( QWidget* aParent, int aId, const wxString& aLabel,
+wxRadioButton::wxRadioButton( wxWidgetArgCompat aParent, int aId, const wxString& aLabel,
                               const wxPoint& aPos, const wxSize& aSize, long aStyle ) :
         wxWindowCompat<QRadioButton>( aParent )
 {
@@ -1340,7 +1091,7 @@ void wxRadioButton::SetValue( bool aValue )
 static const int CLIENT_DATA_ROLE = Qt::UserRole + 100;
 
 
-wxChoice::wxChoice( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+wxChoice::wxChoice( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
                     const wxArrayString& aChoices, long aStyle ) :
         wxItemContainerCompat<QComboBox>( aParent )
 {
@@ -1407,7 +1158,7 @@ void wxChoice::SetClientData( unsigned int aIndex, void* aData )
 }
 
 
-wxComboBox::wxComboBox( QWidget* aParent, int aId, const wxString& aValue, const wxPoint& aPos,
+wxComboBox::wxComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue, const wxPoint& aPos,
                         const wxSize& aSize, const wxArrayString& aChoices, long aStyle ) :
         wxChoice( aParent, aId, aPos, aSize, aChoices, aStyle )
 {
@@ -1468,7 +1219,7 @@ void wxComboBox::SetSelection( long aFrom, long aTo )
 }
 
 
-wxListBox::wxListBox( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+wxListBox::wxListBox( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
                       const wxArrayString& aChoices, long aStyle ) :
         wxItemContainerCompat<QListWidget>( aParent )
 {
@@ -1611,7 +1362,7 @@ void wxListBox::EnsureVisible( int aIndex )
 }
 
 
-wxCheckListBox::wxCheckListBox( QWidget* aParent, int aId, const wxPoint& aPos,
+wxCheckListBox::wxCheckListBox( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
                                 const wxSize& aSize, const wxArrayString& aChoices, long aStyle ) :
         wxListBox( aParent, aId, aPos, aSize, wxArrayString(), aStyle )
 {
@@ -1647,7 +1398,7 @@ int wxCheckListBox::Insert( const wxString& aItem, unsigned int aPos, void* aCli
 }
 
 
-wxSpinCtrl::wxSpinCtrl( QWidget* aParent, int aId, const wxString& aValue, const wxPoint& aPos,
+wxSpinCtrl::wxSpinCtrl( wxWidgetArgCompat aParent, int aId, const wxString& aValue, const wxPoint& aPos,
                         const wxSize& aSize, long aStyle, int aMin, int aMax, int aInitial ) :
         wxWindowCompat<QSpinBox>( aParent )
 {
@@ -1676,7 +1427,7 @@ void wxSpinCtrl::SetValue( const wxString& aValue )
 }
 
 
-wxSpinCtrlDouble::wxSpinCtrlDouble( QWidget* aParent, int aId ) :
+wxSpinCtrlDouble::wxSpinCtrlDouble( wxWidgetArgCompat aParent, int aId ) :
         wxWindowCompat<QDoubleSpinBox>( aParent )
 {
     SetId( aId );
@@ -1699,7 +1450,7 @@ void wxSpinCtrlDouble::SetValue( const wxString& aValue )
 }
 
 
-wxSlider::wxSlider( QWidget* aParent, int aId, int aValue, int aMin, int aMax ) :
+wxSlider::wxSlider( wxWidgetArgCompat aParent, int aId, int aValue, int aMin, int aMax ) :
         wxWindowCompat<QSlider>( Qt::Horizontal, aParent )
 {
     SetId( aId );
@@ -1715,7 +1466,7 @@ void wxSlider::SetValue( int aValue )
 }
 
 
-wxGauge::wxGauge( QWidget* aParent, int aId, int aRange ) :
+wxGauge::wxGauge( wxWidgetArgCompat aParent, int aId, int aRange ) :
         wxWindowCompat<QProgressBar>( aParent )
 {
     SetId( aId );
@@ -1724,7 +1475,7 @@ wxGauge::wxGauge( QWidget* aParent, int aId, int aRange ) :
 }
 
 
-wxStaticBox::wxStaticBox( QWidget* aParent, int aId, const wxString& aLabel ) :
+wxStaticBox::wxStaticBox( wxWidgetArgCompat aParent, int aId, const wxString& aLabel ) :
         wxWindowCompat<QGroupBox>( aParent )
 {
     SetId( aId );
@@ -1732,7 +1483,7 @@ wxStaticBox::wxStaticBox( QWidget* aParent, int aId, const wxString& aLabel ) :
 }
 
 
-wxStaticBox::wxStaticBox( QWidget* aParent, int aId, const QString& aLabel ) :
+wxStaticBox::wxStaticBox( wxWidgetArgCompat aParent, int aId, const QString& aLabel ) :
         wxWindowCompat<QGroupBox>( aParent )
 {
     SetId( aId );
@@ -1740,7 +1491,7 @@ wxStaticBox::wxStaticBox( QWidget* aParent, int aId, const QString& aLabel ) :
 }
 
 
-wxRadioBox::wxRadioBox( QWidget* aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
+wxRadioBox::wxRadioBox( wxWidgetArgCompat aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
                         const wxSize& aSize, const wxArrayString& aChoices, int aMajorDimension,
                         long aStyle ) :
         wxWindowCompat<QGroupBox>( aParent )
@@ -1887,7 +1638,7 @@ void wxRadioBox::OnSelected( std::function<void( int aIndex )> aHandler )
 }
 
 
-wxTreebook::wxTreebook( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+wxTreebook::wxTreebook( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
                         long aStyle, const wxString& aName ) :
         wxWindowCompat<QWidget>( aParent ),
         m_selection( wxNOT_FOUND ),
@@ -1912,7 +1663,7 @@ wxTreebook::wxTreebook( QWidget* aParent, int aId, const wxPoint& aPos, const wx
 }
 
 
-bool wxTreebook::insertPage( QWidget* aPage, const wxString& aText, int aParent, bool aSelect )
+bool wxTreebook::insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect )
 {
     if( !aPage )
         return false;
@@ -1943,13 +1694,13 @@ bool wxTreebook::insertPage( QWidget* aPage, const wxString& aText, int aParent,
 }
 
 
-bool wxTreebook::AddPage( QWidget* aPage, const wxString& aText, bool aSelect, int aImage )
+bool wxTreebook::AddPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect, int aImage )
 {
     return insertPage( aPage, aText, -1, aSelect );
 }
 
 
-bool wxTreebook::AddSubPage( QWidget* aPage, const wxString& aText, bool aSelect, int aImage )
+bool wxTreebook::AddSubPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect, int aImage )
 {
     // The last top level page
     int parent = wxNOT_FOUND;
@@ -1967,13 +1718,13 @@ bool wxTreebook::AddSubPage( QWidget* aPage, const wxString& aText, bool aSelect
 }
 
 
-QWidget* wxTreebook::GetPage( size_t aPage ) const
+wxWindow* wxTreebook::GetPage( size_t aPage ) const
 {
-    return aPage < m_pages.size() ? m_pages[aPage].m_window : nullptr;
+    return aPage < m_pages.size() ? wxWindowFromQt( m_pages[aPage].m_window ) : nullptr;
 }
 
 
-QWidget* wxTreebook::GetCurrentPage() const
+wxWindow* wxTreebook::GetCurrentPage() const
 {
     return m_selection >= 0 ? GetPage( m_selection ) : nullptr;
 }
@@ -2097,7 +1848,9 @@ bool wxTreebook::DeletePage( size_t aPage )
     while( last < m_pages.size() && m_pages[last].m_parent >= int( aPage ) )
         last++;
 
-    QWidget* current = GetCurrentPage();
+    QWidget* current = m_selection >= 0 && size_t( m_selection ) < m_pages.size()
+                               ? m_pages[m_selection].m_window
+                               : nullptr;
 
     {
         QSignalBlocker blocker( m_tree );
@@ -2156,7 +1909,7 @@ bool wxTreebook::DeleteAllPages()
 }
 
 
-wxNotebook::wxNotebook( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+wxNotebook::wxNotebook( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
                         long aStyle ) :
         wxWindowCompat<QTabWidget>( aParent )
 {
@@ -2189,13 +1942,13 @@ bool wxNotebook::SetPageText( size_t aPage, const wxString& aText )
 }
 
 
-bool wxNotebook::AddPage( QWidget* aPage, const wxString& aText, bool aSelect, int aImage )
+bool wxNotebook::AddPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect, int aImage )
 {
     return InsertPage( count(), aPage, aText, aSelect, aImage );
 }
 
 
-bool wxNotebook::InsertPage( size_t aIndex, QWidget* aPage, const wxString& aText, bool aSelect,
+bool wxNotebook::InsertPage( size_t aIndex, wxWidgetArgCompat aPage, const wxString& aText, bool aSelect,
                              int aImage )
 {
     int index = insertTab( int( aIndex ), aPage, ToQString( aText ) );
@@ -2243,7 +1996,7 @@ bool wxNotebook::DeleteAllPages()
 static const char* STANDARD_BUTTON_PROPERTY = "kiqtStandardButton";
 
 
-wxStdDialogButtonSizer::wxStdDialogButtonSizer( QWidget* aParent ) :
+wxStdDialogButtonSizer::wxStdDialogButtonSizer( wxWidgetArgCompat aParent ) :
         QDialogButtonBox( aParent )
 {
 }
@@ -2360,7 +2113,7 @@ int wxBoxSizer::GetOrientation() const
 }
 
 
-void wxBoxSizer::Add( QWidget* aWindow, int aProportion, int aFlag, int aBorder, void* aUserData )
+void wxBoxSizer::Add( wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder, void* aUserData )
 {
     Insert( count(), aWindow, aProportion, aFlag, aBorder );
 }
@@ -2381,7 +2134,7 @@ void wxBoxSizer::Add( int aWidth, int aHeight, int aProportion, int aFlag, int a
 }
 
 
-void wxBoxSizer::Insert( size_t aIndex, QWidget* aWindow, int aProportion, int aFlag, int aBorder )
+void wxBoxSizer::Insert( size_t aIndex, wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder )
 {
     if( !aWindow )
         return;
@@ -2409,7 +2162,7 @@ wxStaticBoxSizer::wxStaticBoxSizer( wxStaticBox* aBox, int aOrient ) :
 }
 
 
-wxStaticBoxSizer::wxStaticBoxSizer( int aOrient, QWidget* aParent, const wxString& aLabel ) :
+wxStaticBoxSizer::wxStaticBoxSizer( int aOrient, wxWidgetArgCompat aParent, const wxString& aLabel ) :
         wxStaticBoxSizer( new wxStaticBox( aParent, wxID_ANY, aLabel ), aOrient )
 {
 }
@@ -2446,7 +2199,7 @@ void wxFlexGridSizer::nextCell( int& aRow, int& aCol )
 }
 
 
-void wxFlexGridSizer::Add( QWidget* aWindow, int aProportion, int aFlag, int aBorder )
+void wxFlexGridSizer::Add( wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder )
 {
     int row, col;
     nextCell( row, col );
@@ -2491,7 +2244,7 @@ void wxFlexGridSizer::Add( int aWidth, int aHeight, int aProportion, int aFlag, 
 // Dialogs and messages ---------------------------------------------------------------------
 
 int wxMessageBox( const wxString& aMessage, const wxString& aCaption, long aStyle,
-                  QWidget* aParent, int aX, int aY )
+                  wxWidgetArgCompat aParent, int aX, int aY )
 {
     QMessageBox::Icon icon = QMessageBox::Information;
 

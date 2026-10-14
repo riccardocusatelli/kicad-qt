@@ -43,6 +43,8 @@
 #include <kiqt.h>
 #include <QMainWindow>
 
+#include <wx/kiwx_window.h>     // the wxWidgets API of the windows (wxcompat)
+
 #include <wx/datetime.h>
 #include <wx/filename.h>
 #include <wx/gdicmn.h>
@@ -115,8 +117,8 @@ class APPEARANCE_CONTROLS_3D;
  * In the Qt build the frame is a QMainWindow: the menu bar, the tool bars and the panes are
  * those of the main window; the tools find the same interface as in the wxWidgets build.
  */
-class EDA_BASE_FRAME : public QMainWindow, public TOOLS_HOLDER, public KIWAY_HOLDER,
-                       public UNITS_PROVIDER
+class EDA_BASE_FRAME : public wxWindowCompat<QMainWindow>, public TOOLS_HOLDER,
+                       public KIWAY_HOLDER, public UNITS_PROVIDER
 {
 public:
     /**
