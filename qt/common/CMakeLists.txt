@@ -66,6 +66,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_textentry.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_filedlg.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_stc.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_msgdlg.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_clipboard.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
@@ -189,18 +190,31 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_color_picker_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/widgets/search_pane_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     )
 
 # The dialogs and widgets of KiCad built unchanged on the wxWidgets compatibility layer
 # (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
     )
 
 set( KIQT_COMMON_COMPAT_SRCS
+    dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
+    grid_tricks.cpp
+    scintilla_tricks.cpp
     validators.cpp
+    widgets/grid_bitmap_toggle.cpp
+    widgets/grid_button.cpp
+    widgets/grid_checkbox.cpp
+    widgets/grid_color_swatch_helpers.cpp
+    widgets/grid_combobox.cpp
+    widgets/grid_icon_text_helpers.cpp
+    widgets/grid_text_button_helpers.cpp
+    widgets/grid_text_helpers.cpp
+    widgets/indicator_icon.cpp
+    widgets/wx_grid.cpp
     )
 
 list( TRANSFORM KIQT_COMMON_COMPAT_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/ )
@@ -237,7 +251,6 @@ add_library( kiqt_common STATIC
     # the design blocks panes: what they do, toolkit-independent, and their Qt widgets
     ${CMAKE_SOURCE_DIR}/common/widgets/design_block_pane.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/panel_design_block_chooser.cpp
-    dialogs/dialog_design_block_properties_qt.cpp
     widgets/design_block_pane_qt.cpp
     widgets/panel_design_block_chooser_qt.cpp
 

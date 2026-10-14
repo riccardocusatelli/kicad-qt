@@ -464,6 +464,9 @@ public:
     wxSize GetPreferredBitmapSizeAtScale( double aScale ) const;
     wxSize GetPreferredBitmapSizeFor( const QWidget* aWindow ) const;
 
+    /// The size of the image best for a window, in logical pixels.
+    wxSize GetPreferredLogicalSizeFor( const QWidget* aWindow ) const { return GetDefaultSize(); }
+
     /// The image of the icon at a size (in physical pixels).
     wxBitmap GetBitmap( const wxSize& aSize ) const;
     wxBitmap GetBitmapFor( const QWidget* aWindow ) const;

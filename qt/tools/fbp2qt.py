@@ -813,6 +813,12 @@ class FormClass:
             args = aArgs if aArgs is not None else aParent
             qtType = aQtClass
 
+            # Without the compatibility layer, a grid is a QTableWidget (WX_GRID is the grid of
+            # the layer)
+            if sub == 'WX_GRID' and not self.gen.compat:
+                self.qt( aQtClass )
+                return self.var( aObj, qtType, 'new %s( %s )' % ( qtType, args ) ), qtType
+
             if sub:
                 qtType = sub
 
@@ -1050,6 +1056,68 @@ class FormClass:
 
             if 'wxLC_SINGLE_SEL' not in style:
                 self.code.append( '    %s->setSelectionMode( QAbstractItemView::ExtendedSelection );' % var )
+
+        elif cls == 'wxGrid' and self.gen.compat:
+            # The grid of the compatibility layer (or WX_GRID), set up as wxFormBuilder does
+            qt = 'QTableView'
+            self.include( '<wx/grid.h>' )
+            var, t = make( qt, '%s, wxID_ANY' % aParent )
+
+            def bool_prop( aName, aDefault ):
+                return 'true' if parse_int( p.get( aName ), aDefault ) else 'false'
+
+            def align( aName, aDefault ):
+                value = ( p.get( aName ) or aDefault ).strip()
+                return value if value.startswith( 'wxALIGN_' ) else aDefault
+
+            self.code.append( '    %s->CreateGrid( %d, %d );'
+                              % ( var, parse_int( p.get( 'rows' ), 0 ), parse_int( p.get( 'cols' ), 0 ) ) )
+            self.code.append( '    %s->EnableEditing( %s );' % ( var, bool_prop( 'editing', 1 ) ) )
+            self.code.append( '    %s->EnableGridLines( %s );' % ( var, bool_prop( 'grid_lines', 1 ) ) )
+            self.code.append( '    %s->EnableDragGridSize( %s );' % ( var, bool_prop( 'drag_grid_size', 0 ) ) )
+            self.code.append( '    %s->SetMargins( %d, %d );'
+                              % ( var, parse_int( p.get( 'margin_width' ), 0 ),
+                                  parse_int( p.get( 'margin_height' ), 0 ) ) )
+
+            # The columns
+            for col, size in enumerate( ( p.get( 'column_sizes' ) or '' ).split( ',' ) ):
+                if size.strip():
+                    self.code.append( '    %s->SetColSize( %d, %d );' % ( var, col, parse_int( size, 80 ) ) )
+
+            if parse_int( p.get( 'autosize_cols' ), 0 ):
+                self.code.append( '    %s->AutoSizeColumns();' % var )
+
+            self.code.append( '    %s->EnableDragColMove( %s );' % ( var, bool_prop( 'drag_col_move', 0 ) ) )
+            self.code.append( '    %s->EnableDragColSize( %s );' % ( var, bool_prop( 'drag_col_size', 1 ) ) )
+
+            for col, label in enumerate( parse_choices( p.get( 'col_label_values' ) ) ):
+                self.code.append( '    %s->SetColLabelValue( %d, _( %s ) );' % ( var, col, cstr( label ) ) )
+
+            if p.get( 'col_label_size' ) not in ( None, '', 'wxGRID_AUTOSIZE' ):
+                self.code.append( '    %s->SetColLabelSize( %d );' % ( var, parse_int( p.get( 'col_label_size' ), 30 ) ) )
+
+            self.code.append( '    %s->SetColLabelAlignment( %s, %s );'
+                              % ( var, align( 'col_label_horiz_alignment', 'wxALIGN_CENTER' ),
+                                  align( 'col_label_vert_alignment', 'wxALIGN_CENTER' ) ) )
+
+            # The rows
+            for row, size in enumerate( ( p.get( 'row_sizes' ) or '' ).split( ',' ) ):
+                if size.strip():
+                    self.code.append( '    %s->SetRowSize( %d, %d );' % ( var, row, parse_int( size, 20 ) ) )
+
+            self.code.append( '    %s->EnableDragRowSize( %s );' % ( var, bool_prop( 'drag_row_size', 1 ) ) )
+
+            if p.get( 'row_label_size' ) not in ( None, '', 'wxGRID_AUTOSIZE' ):
+                self.code.append( '    %s->SetRowLabelSize( %d );' % ( var, parse_int( p.get( 'row_label_size' ), 80 ) ) )
+
+            self.code.append( '    %s->SetRowLabelAlignment( %s, %s );'
+                              % ( var, align( 'row_label_horiz_alignment', 'wxALIGN_CENTER' ),
+                                  align( 'row_label_vert_alignment', 'wxALIGN_CENTER' ) ) )
+
+            # The cells
+            self.code.append( '    %s->SetDefaultCellAlignment( %s, %s );'
+                              % ( var, align( 'cell_horiz_alignment', 'wxALIGN_LEFT' ),
+                                  align( 'cell_vert_alignment', 'wxALIGN_TOP' ) ) )
 
         elif cls == 'wxGrid':
             # A table (WX_GRID of the Qt build), its rows and columns set by the code

@@ -79,7 +79,7 @@
 #include <widgets/bitmap_toggle.h>
 #include <widgets/color_swatch.h>
 #include <widgets/ui_common.h>
-#include <widgets/wx_grid.h>
+#include <QTableWidget>
 #include <widgets/wx_infobar.h>
 
 #include <algorithm>

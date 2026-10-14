@@ -48,6 +48,7 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QTableView>
 #include <QTimer>
 #include <QWheelEvent>
 #include <QWindow>
@@ -58,6 +59,8 @@
 
 #include <board.h>
 #include <class_draw_panel_gal.h>
+#include <design_block.h>
+#include <dialogs/dialog_design_block_properties.h>
 #include <dialogs/dialog_unit_entry.h>
 #include <eda_draw_frame.h>
 #include <gal/graphics_abstraction_layer.h>
@@ -85,6 +88,7 @@
 #include <tool/tool_menu.h>
 #include <tool/zoom_tool.h>
 #include <view/view_controls.h>
+#include <widgets/wx_grid.h>
 #include <widgets/wx_infobar.h>
 #include <ui_hooks.h>
 #include <zoom_defines.h>
@@ -858,6 +862,43 @@ int main( int argc, char** argv )
             unitsButton->menu()->actions().at( 0 )->trigger();
             settle();
             check( frame.GetUserUnits() == EDA_UNITS::MM, "an action of the palette of a group" );
+        }
+
+        std::printf( "Dialog of KiCad with a grid (WX_GRID on the compatibility layer)\n" );
+
+        {
+            DESIGN_BLOCK block;
+            block.SetLibId( LIB_ID( wxT( "lib" ), wxT( "block" ) ) );
+            block.GetFields()[wxT( "Field1" )] = wxT( "Value1" );
+            block.GetFields()[wxT( "Field2" )] = wxT( "Value2" );
+
+            DIALOG_DESIGN_BLOCK_PROPERTIES dialog( &frame, &block );
+            check( dialog.TransferDataToWindow(), "the data of the dialog goes to its controls" );
+
+            WX_GRID* grid = nullptr;
+
+            for( QTableView* view : dialog.findChildren<QTableView*>() )
+            {
+                if( WX_GRID* candidate = dynamic_cast<WX_GRID*>( view ) )
+                    grid = candidate;
+            }
+
+            check( grid && grid->GetNumberRows() == 2 && grid->GetNumberCols() == 2,
+                   "the grid has a row per field" );
+            check( grid && grid->GetCellValue( 1, 0 ) == wxT( "Field2" )
+                           && grid->GetCellValue( 1, 1 ) == wxT( "Value2" ),
+                   "the cells show the fields" );
+            check( grid && grid->GetColLabelValue( 0 ) == wxT( "Name" ),
+                   "the labels of the columns" );
+
+            if( grid )
+            {
+                grid->SetCellValue( 0, 1, wxT( "Changed" ) );
+
+                check( dialog.TransferDataFromWindow()
+                               && block.GetFields()[wxT( "Field1" )] == wxT( "Changed" ),
+                       "the edited cell goes to the data" );
+            }
         }
 
         std::printf( "Info bar (WX_INFOBAR)\n" );
