@@ -28,7 +28,7 @@
 
 #include <widgets/unit_binder.h>
 
-#include "dialog_track_via_size_base.h"
+#include <dialog_track_via_size_base.h>
 
 class BOARD_DESIGN_SETTINGS;
 

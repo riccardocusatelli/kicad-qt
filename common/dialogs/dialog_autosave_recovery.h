@@ -29,7 +29,7 @@
 #include <wx/listctrl.h>
 #include <wx/string.h>
 
-#include "dialog_autosave_recovery_base.h"
+#include <dialog_autosave_recovery_base.h>
 
 
 enum class AUTOSAVE_RECOVERY_CHOICE

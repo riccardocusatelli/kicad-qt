@@ -24,7 +24,7 @@
 #include <widgets/unit_binder.h>
 #include <wx/valnum.h>
 
-#include "dialog_dimension_properties_base.h"
+#include <dialog_dimension_properties_base.h>
 
 
 class BOARD_ITEM;

@@ -22,7 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include "dialog_global_edit_tracks_and_vias_base.h"
+#include <dialog_global_edit_tracks_and_vias_base.h>
 
 #include <widgets/unit_binder.h>
 #include <tools/pcb_selection.h>

@@ -278,6 +278,19 @@ COMPAT_EVENTS = {
     'OnGridCellLeftDClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_DCLICK', 'gridcell:QTableWidget::cellDoubleClicked' ),
     'OnGridCellChange':     ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGED', 'gridcell:QTableWidget::cellChanged' ),
     'OnGridCellRightClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_RIGHT_CLICK', 'gridright' ),
+    'OnRadioBox':           ( 'wxCommandEvent', 'wxEVT_RADIOBOX', 'radiobox' ),
+    'OnClose':              ( 'wxCloseEvent', 'wxEVT_CLOSE_WINDOW', 'close' ),
+    'OnInitDialog':         ( 'wxInitDialogEvent', 'wxEVT_INIT_DIALOG', 'initdialog' ),
+    'OnActivate':           ( 'wxActivateEvent', 'wxEVT_ACTIVATE', 'activate' ),
+    'OnIdle':               ( 'wxIdleEvent', 'wxEVT_IDLE', 'idle' ),
+    'OnSpinUp':             ( 'wxSpinEvent', 'wxEVT_SPIN_UP', 'spinup' ),
+    'OnSpinDown':           ( 'wxSpinEvent', 'wxEVT_SPIN_DOWN', 'spindown' ),
+    'OnSearchButton':       ( 'wxCommandEvent', 'wxEVT_TEXT_ENTER', 'textenter' ),
+    'OnCancelButton':       ( 'wxCommandEvent', 'wxEVT_BUTTON', 'searchcancel' ),
+    'OnKeyUp':              ( 'wxKeyEvent', 'wxEVT_KEY_DOWN', 'key:QEvent::KeyRelease' ),
+    'OnChar':               ( 'wxKeyEvent', 'wxEVT_KEY_DOWN', 'key:QEvent::KeyPress' ),
+    'OnNotebookPageChanging': ( 'wxNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGING', 'page' ),
+    'OnHtmlLinkClicked':    ( 'wxHtmlLinkEvent', 'wxEVT_HTML_LINK_CLICKED', 'htmllink' ),
     'OnOKButtonClick':      ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Ok' ),
     'OnCancelButtonClick':  ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Cancel' ),
     'OnApplyButtonClick':   ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Apply' ),
@@ -681,6 +694,47 @@ class FormClass:
                                   'evt.SetEventObject( grid ); %s( evt ); } } );'
                                   % ( aVar, aVar, evClass, evType, handler ) )
 
+            elif way == 'radiobox':
+                self.code.append( '    %s->OnSelected( %s );'
+                                  % ( aVar, call( 'evt.SetInt( aIndex ); evt.SetString( w->GetString( aIndex ) ); ', 'int aIndex' ) ) )
+
+            elif way == 'close':
+                # The window stays open if the handler doesn't skip the event (as wxWidgets)
+                self.code.append( '    KIQT::FilterEvents( %s, [this]( QEvent* aQtEvent ) { '
+                                  'if( aQtEvent->type() != QEvent::Close ) return false; '
+                                  'wxCloseEvent evt( wxEVT_CLOSE_WINDOW, GetId() ); evt.SetEventObject( this ); '
+                                  '%s( evt ); return !evt.GetSkipped(); } );' % ( aVar, handler ) )
+
+            elif way == 'initdialog':
+                # Before the dialog is shown the first time
+                self.code.append( '    KIQT::OnEvent( %s, QEvent::Show, [this, done = false]( QEvent* ) mutable { '
+                                  'if( done ) return; done = true; wxInitDialogEvent evt( GetId() ); '
+                                  'evt.SetEventObject( this ); %s( evt ); } );' % ( aVar, handler ) )
+
+            elif way == 'activate':
+                for qtType, active in ( ( 'QEvent::WindowActivate', 'true' ), ( 'QEvent::WindowDeactivate', 'false' ) ):
+                    self.code.append( '    KIQT::OnEvent( %s, %s, [this]( QEvent* ) { '
+                                      'wxActivateEvent evt( wxEVT_ACTIVATE, %s, GetId() ); evt.SetEventObject( this ); %s( evt ); } );'
+                                      % ( aVar, qtType, active, handler ) )
+
+            elif way == 'idle':
+                self.code.append( '    KIQT::RegisterUpdateUI( this, [this]() { wxIdleEvent evt; evt.SetEventObject( this ); %s( evt ); } );'
+                                  % handler )
+
+            elif way in ( 'spinup', 'spindown' ):
+                setter = 'SetUpCallback' if way == 'spinup' else 'SetDownCallback'
+                self.code.append( '    %s->%s( %s );' % ( aVar, setter, call() ) )
+
+            elif way == 'searchcancel':
+                self.code.append( '    QObject::connect( %s, &QLineEdit::textChanged, this, [this, w = %s]( const QString& aText ) { '
+                                  'if( !aText.isEmpty() ) return; %s evt( %s ); evt.SetEventObject( w ); %s( evt ); } );'
+                                  % ( aVar, aVar, evClass, evType, handler ) )
+
+            elif way == 'htmllink':
+                self.code.append( '    QObject::connect( %s, &QTextBrowser::anchorClicked, this, [this, w = %s]( const QUrl& aUrl ) { '
+                                  'wxHtmlLinkEvent evt( 0, wxHtmlLinkInfo( ToWxString( aUrl.toString() ) ) ); evt.SetEventObject( w ); %s( evt ); } );'
+                                  % ( aVar, aVar, handler ) )
+
             elif way.startswith( 'stdbutton:' ):
                 # Connected by the button box (see the wxStdDialogButtonSizer)
                 pass
@@ -906,6 +960,26 @@ class FormClass:
                               % ( var, parse_float( p.get( 'min' ), 0 ), parse_float( p.get( 'max' ), 100 ) ) )
             self.code.append( '    %s->setSingleStep( %s );' % ( var, parse_float( p.get( 'inc' ), 1 ) ) )
             self.code.append( '    %s->setValue( %s );' % ( var, parse_float( p.get( 'initial' ), 0 ) ) )
+
+        elif cls == 'wxRadioBox' and self.gen.compat:
+            # The box of radio buttons of the compatibility layer
+            qt = 'wxRadioBox'
+            self.include( '<wx/kiwx_gui.h>' )
+            choices = parse_choices( p.get( 'choices' ) )
+            spec = 'wxRA_SPECIFY_ROWS' if 'wxRA_SPECIFY_ROWS' in style else 'wxRA_SPECIFY_COLS'
+            items = self.tmp( 'radioChoices' )
+            self.code.append( '    wxArrayString %s;' % items )
+
+            for c in choices:
+                self.code.append( '    %s.Add( _( %s ) );' % ( items, cstr( c ) ) )
+
+            var = self.var( aObj, qt, 'new wxRadioBox( %s, wxID_ANY, _( %s ), wxDefaultPosition, wxDefaultSize, %s, %d, %s )'
+                            % ( aParent, cstr( p.get( 'label', '' ) ), items,
+                                parse_int( p.get( 'majorDimension' ), 1 ), spec ) )
+            sel = parse_int( p.get( 'selection' ), 0 )
+
+            if choices and sel > 0:
+                self.code.append( '    %s->SetSelection( %d );' % ( var, sel ) )
 
         elif cls == 'wxSpinButton':
             # The arrows of a spin control, without text

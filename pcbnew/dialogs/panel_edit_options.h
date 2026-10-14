@@ -26,7 +26,7 @@
 #define PANEL_EDIT_OPTIONS_H
 
 #include <widgets/unit_binder.h>
-#include "panel_edit_options_base.h"
+#include <panel_edit_options_base.h>
 
 
 class FOOTPRINT_EDITOR_SETTINGS;

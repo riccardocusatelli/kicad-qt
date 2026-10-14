@@ -26,7 +26,7 @@
 #ifndef __dialog_remove_unused_pads__
 #define __dialog_remove_unused_pads__
 
-#include "dialog_unused_pad_layers_base.h"
+#include <dialog_unused_pad_layers_base.h>
 
 class COMMIT;
 class PCB_BASE_FRAME;

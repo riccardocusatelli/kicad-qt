@@ -22,7 +22,7 @@
 #ifndef DIALOG_PNS_SETTINGS_H
 #define DIALOG_PNS_SETTINGS_H
 
-#include "dialog_pns_settings_base.h"
+#include <dialog_pns_settings_base.h>
 
 namespace PNS {
 class ROUTING_SETTINGS;

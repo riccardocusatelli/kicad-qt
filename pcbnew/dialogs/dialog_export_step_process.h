@@ -23,7 +23,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include "dialog_export_step_process_base.h"
+#include <dialog_export_step_process_base.h>
 #include <wx/process.h>
 #include <wx/msgqueue.h>
 

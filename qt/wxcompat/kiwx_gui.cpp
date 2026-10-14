@@ -1014,6 +1014,153 @@ wxStaticBox::wxStaticBox( QWidget* aParent, int aId, const QString& aLabel ) :
 }
 
 
+wxRadioBox::wxRadioBox( QWidget* aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
+                        const wxSize& aSize, const wxArrayString& aChoices, int aMajorDimension,
+                        long aStyle ) :
+        wxWindowCompat<QGroupBox>( aParent )
+{
+    SetId( aId );
+    SetLabel( aLabel );
+
+    // wxRA_SPECIFY_COLS: aMajorDimension columns, wxRA_SPECIFY_ROWS: aMajorDimension rows
+    int  major = std::max( aMajorDimension, 1 );
+    bool byRows = aStyle & wxRA_SPECIFY_ROWS;
+
+    QGridLayout* layout = new QGridLayout( this );
+
+    for( size_t i = 0; i < aChoices.size(); ++i )
+    {
+        QRadioButton* button = new QRadioButton( ToQString( aChoices[i] ), this );
+        int           n = int( i );
+
+        if( byRows )
+            layout->addWidget( button, n % major, n / major );
+        else
+            layout->addWidget( button, n / major, n % major );
+
+        m_buttons.push_back( button );
+    }
+
+    if( !m_buttons.empty() )
+        m_buttons.front()->setChecked( true );
+}
+
+
+int wxRadioBox::GetSelection() const
+{
+    for( size_t i = 0; i < m_buttons.size(); ++i )
+    {
+        if( m_buttons[i]->isChecked() )
+            return int( i );
+    }
+
+    return wxNOT_FOUND;
+}
+
+
+void wxRadioBox::SetSelection( int aIndex )
+{
+    if( aIndex < 0 || aIndex >= int( m_buttons.size() ) )
+        return;
+
+    QSignalBlocker blocker( m_buttons[aIndex] );
+    m_buttons[aIndex]->setChecked( true );
+}
+
+
+wxString wxRadioBox::GetString( unsigned int aIndex ) const
+{
+    return aIndex < m_buttons.size() ? ToWxString( m_buttons[aIndex]->text() ) : wxString();
+}
+
+
+void wxRadioBox::SetString( unsigned int aIndex, const wxString& aLabel )
+{
+    if( aIndex < m_buttons.size() )
+        m_buttons[aIndex]->setText( ToQString( aLabel ) );
+}
+
+
+wxString wxRadioBox::GetStringSelection() const
+{
+    int sel = GetSelection();
+    return sel >= 0 ? GetString( sel ) : wxString();
+}
+
+
+bool wxRadioBox::SetStringSelection( const wxString& aString )
+{
+    int index = FindString( aString );
+
+    if( index == wxNOT_FOUND )
+        return false;
+
+    SetSelection( index );
+    return true;
+}
+
+
+int wxRadioBox::FindString( const wxString& aString, bool aCaseSensitive ) const
+{
+    for( size_t i = 0; i < m_buttons.size(); ++i )
+    {
+        if( GetString( i ).IsSameAs( aString, aCaseSensitive ) )
+            return int( i );
+    }
+
+    return wxNOT_FOUND;
+}
+
+
+bool wxRadioBox::Enable( unsigned int aIndex, bool aEnable )
+{
+    if( aIndex >= m_buttons.size() )
+        return false;
+
+    m_buttons[aIndex]->setEnabled( aEnable );
+    return true;
+}
+
+
+bool wxRadioBox::Show( unsigned int aIndex, bool aShow )
+{
+    if( aIndex >= m_buttons.size() )
+        return false;
+
+    m_buttons[aIndex]->setVisible( aShow );
+    return true;
+}
+
+
+bool wxRadioBox::IsItemEnabled( unsigned int aIndex ) const
+{
+    return aIndex < m_buttons.size() && m_buttons[aIndex]->isEnabled();
+}
+
+
+bool wxRadioBox::IsItemShown( unsigned int aIndex ) const
+{
+    return aIndex < m_buttons.size() && !m_buttons[aIndex]->isHidden();
+}
+
+
+void wxRadioBox::SetItemToolTip( unsigned int aIndex, const wxString& aTip )
+{
+    if( aIndex < m_buttons.size() )
+        m_buttons[aIndex]->setToolTip( ToQString( aTip ) );
+}
+
+
+void wxRadioBox::OnSelected( std::function<void( int aIndex )> aHandler )
+{
+    for( size_t i = 0; i < m_buttons.size(); ++i )
+    {
+        QObject::connect( m_buttons[i], &QAbstractButton::clicked, this,
+                          [aHandler, i]() { aHandler( int( i ) ); } );
+    }
+}
+
+
 wxNotebook::wxNotebook( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
                         long aStyle ) :
         wxWindowCompat<QTabWidget>( aParent )

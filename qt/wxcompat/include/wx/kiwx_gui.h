@@ -39,6 +39,7 @@
 #ifndef KIWX_GUI_H
 #define KIWX_GUI_H
 
+#include <functional>
 #include <vector>
 
 #include <kiqt.h>
@@ -812,6 +813,50 @@ public:
     void SetLabel( const wxString& aLabel ) { setTitle( ToQString( aLabel ) ); }
     wxString GetLabel() const { return ToWxString( title() ); }
     void SetLabelText( const wxString& aLabel ) { SetLabel( aLabel ); }
+};
+
+
+/**
+ * A box of radio buttons (wxRadioBox): a QGroupBox with a grid of QRadioButtons, the
+ * selection is the index of the checked one.
+ */
+class KIQT_API wxRadioBox : public wxWindowCompat<QGroupBox>
+{
+public:
+    wxRadioBox( QWidget* aParent, int aId, const wxString& aLabel,
+                const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+                const wxArrayString& aChoices = wxArrayString(), int aMajorDimension = 0,
+                long aStyle = wxRA_SPECIFY_COLS );
+
+    int GetSelection() const;
+
+    /// Select an item without the selection signal (as wxWidgets).
+    void SetSelection( int aIndex );
+
+    unsigned int GetCount() const { return unsigned( m_buttons.size() ); }
+    wxString GetString( unsigned int aIndex ) const;
+    void SetString( unsigned int aIndex, const wxString& aLabel );
+    wxString GetStringSelection() const;
+    bool SetStringSelection( const wxString& aString );
+    int FindString( const wxString& aString, bool aCaseSensitive = false ) const;
+
+    using wxWindowCompat<QGroupBox>::Enable;
+    using wxWindowCompat<QGroupBox>::Show;
+
+    bool Enable( unsigned int aIndex, bool aEnable = true );
+    bool Show( unsigned int aIndex, bool aShow = true );
+    bool IsItemEnabled( unsigned int aIndex ) const;
+    bool IsItemShown( unsigned int aIndex ) const;
+    void SetItemToolTip( unsigned int aIndex, const wxString& aTip );
+
+    void SetLabel( const wxString& aLabel ) { setTitle( ToQString( aLabel ) ); }
+    wxString GetLabel() const { return ToWxString( title() ); }
+
+    /// Call @a aHandler with the index of the item the user selects.
+    void OnSelected( std::function<void( int aIndex )> aHandler );
+
+private:
+    std::vector<QRadioButton*> m_buttons;
 };
 
 

@@ -94,6 +94,10 @@ enum wxEventTypeCompat
     wxEVT_GRID_CELL_CHANGED,
     wxEVT_GRID_LABEL_LEFT_CLICK,
     wxEVT_GRID_COL_SIZE,
+    wxEVT_NOTEBOOK_PAGE_CHANGING,
+    wxEVT_ACTIVATE,
+    wxEVT_IDLE,
+    wxEVT_HTML_LINK_CLICKED,
     wxEVT_USER_FIRST = 10000
 };
 
@@ -366,6 +370,69 @@ public:
 private:
     bool m_canVeto;
     bool m_veto;
+};
+
+
+class wxActivateEvent : public wxEvent
+{
+public:
+    explicit wxActivateEvent( wxEventType aType = wxEVT_ACTIVATE, bool aActive = true,
+                              int aId = 0 ) :
+            wxEvent( aId, aType ),
+            m_active( aActive )
+    {
+    }
+
+    bool GetActive() const { return m_active; }
+
+private:
+    bool m_active;
+};
+
+
+class wxIdleEvent : public wxEvent
+{
+public:
+    wxIdleEvent() :
+            wxEvent( 0, wxEVT_IDLE )
+    {
+    }
+
+    void RequestMore( bool = true ) {}
+};
+
+
+/// The link of a wxHtmlLinkEvent.
+class wxHtmlLinkInfo
+{
+public:
+    explicit wxHtmlLinkInfo( const wxString& aHref = wxString() ) :
+            m_href( aHref )
+    {
+    }
+
+    const wxString& GetHref() const { return m_href; }
+    wxString GetTarget() const { return wxString(); }
+
+private:
+    wxString m_href;
+};
+
+
+class wxHtmlLinkEvent : public wxCommandEvent
+{
+public:
+    explicit wxHtmlLinkEvent( int aId = 0, const wxHtmlLinkInfo& aLink = wxHtmlLinkInfo() ) :
+            wxCommandEvent( wxEVT_HTML_LINK_CLICKED, aId ),
+            m_link( aLink )
+    {
+    }
+
+    const wxHtmlLinkInfo& GetLinkInfo() const { return m_link; }
+    void SetLinkInfo( const wxHtmlLinkInfo& aLink ) { m_link = aLink; }
+
+private:
+    wxHtmlLinkInfo m_link;
 };
 
 

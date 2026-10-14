@@ -19,7 +19,7 @@
 
 #ifndef IPC2581_EXPORT_DIALOG_H
 #define IPC2581_EXPORT_DIALOG_H
-#include "dialog_export_2581_base.h"
+#include <dialog_export_2581_base.h>
 
 class BOARD;
 class PCB_EDIT_FRAME;
