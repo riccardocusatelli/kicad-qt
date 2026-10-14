@@ -62,7 +62,8 @@ class UNIT_BINDER;
  * the quasi-modal mode of KiCad, and remembers the geometry of the dialog (with the same
  * settings as the wxWidgets build).
  */
-class KICOMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HOLDER
+class KICOMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HOLDER,
+                                 public wxTransferableCompat
 {
 public:
     DIALOG_SHIM( QWidget* aParent, const wxString& aTitle );
@@ -145,19 +146,24 @@ public:
     void UnregisterUnitBinder( UNIT_BINDER* aUnitBinder );
 
     /**
-     * Fill the controls of the dialog from its data: called each time the dialog is shown.
+     * Fill the controls of the dialog from its data: called each time the dialog is shown.  By
+     * default, the panels of the dialog fill theirs (as wxWS_EX_VALIDATE_RECURSIVELY).
      */
-    virtual bool TransferDataToWindow() { return true; }
+    bool TransferDataToWindow() override { return wxTransferDataToChildrenCompat( this ); }
 
     /**
      * Copy the values of the controls to the data of the dialog: called by OK and Apply.
      *
      * @return false to keep the dialog open (invalid values).
      */
-    virtual bool TransferDataFromWindow() { return true; }
+    bool TransferDataFromWindow() override { return wxTransferDataFromChildrenCompat( this ); }
 
     /// Check the values of the controls before TransferDataFromWindow().
-    virtual bool Validate() { return true; }
+    bool Validate() override { return wxValidateChildrenCompat( this ); }
+
+    /// The child window with an id or a name, or nullptr.
+    QWidget* FindWindow( int aId ) { return wxFindWindowByIdCompat( this, aId ); }
+    QWidget* FindWindow( const wxString& aName ) { return wxFindWindowByNameCompat( this, aName ); }
 
     /**
      * Register a function updating the state of controls (enabled, shown, label): it is
@@ -220,6 +226,9 @@ protected:
      * the dialog is shown).
      */
     std::vector<QWidget*>             m_tabOrder;
+
+    ///< The data of the dialog was modified (the m_modified of the windows of wxWidgets).
+    bool                              m_modified = false;
 
     std::set<QWidget*>                m_optOut;
     std::map<QWidget*, UNIT_BINDER*>  m_unitBinders;

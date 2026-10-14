@@ -62,7 +62,9 @@
 #include <QRadioButton>
 #include <QSlider>
 #include <QSpinBox>
+#include <QStackedWidget>
 #include <QTabWidget>
+#include <QTreeWidget>
 #include <QWidget>
 
 #include <wx/arrstr.h>
@@ -425,21 +427,75 @@ private:
 };
 
 
-class KIQT_API wxPanel : public wxWindowCompat<QWidget>
+/**
+ * The windows with data transfers (wxWindow::TransferDataToWindow()...): the panels and the
+ * dialogs.
+ */
+class KIQT_API wxTransferableCompat
+{
+public:
+    virtual ~wxTransferableCompat() = default;
+
+    virtual bool TransferDataToWindow() = 0;
+    virtual bool TransferDataFromWindow() = 0;
+    virtual bool Validate() = 0;
+};
+
+
+/**
+ * The data transfers of the windows (wxWindow::TransferDataToWindow()...): the ones of the panels
+ * (wxPanel) and dialogs (DIALOG_SHIM) of @a aWindow, recursively (as with
+ * wxWS_EX_VALIDATE_RECURSIVELY).  The window itself, if it is a panel or a dialog, is included.
+ */
+KIQT_API bool wxTransferDataToWindowCompat( QWidget* aWindow );
+KIQT_API bool wxTransferDataFromWindowCompat( QWidget* aWindow );
+KIQT_API bool wxValidateCompat( QWidget* aWindow );
+
+/// The same transfers, for the children of @a aWindow only.
+KIQT_API bool wxTransferDataToChildrenCompat( QWidget* aWindow );
+KIQT_API bool wxTransferDataFromChildrenCompat( QWidget* aWindow );
+KIQT_API bool wxValidateChildrenCompat( QWidget* aWindow );
+
+/// The child of @a aWindow with an id (wxWindow::FindWindow( id )), or nullptr.
+KIQT_API QWidget* wxFindWindowByIdCompat( QWidget* aWindow, int aId );
+
+/// The child of @a aWindow with a name (wxWindow::FindWindow( name )), or nullptr.
+KIQT_API QWidget* wxFindWindowByNameCompat( QWidget* aWindow, const wxString& aName );
+
+
+class KIQT_API wxPanel : public wxWindowCompat<QWidget>, public wxTransferableCompat
 {
 public:
     explicit wxPanel( QWidget* aParent = nullptr, int aId = wxID_ANY,
                       const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                       long aStyle = 0, const wxString& aName = wxEmptyString );
 
-    /// Fill the controls of the panel from its data (wxWindow::TransferDataToWindow()).
-    virtual bool TransferDataToWindow() { return true; }
+    /// Fill the controls of the panel from its data (wxWindow::TransferDataToWindow()): by
+    /// default, the ones of its child panels.
+    bool TransferDataToWindow() override { return wxTransferDataToChildrenCompat( this ); }
 
     /// Copy the values of the controls to the data of the panel.
-    virtual bool TransferDataFromWindow() { return true; }
+    bool TransferDataFromWindow() override { return wxTransferDataFromChildrenCompat( this ); }
 
     /// Check the values of the controls.
-    virtual bool Validate() { return true; }
+    bool Validate() override { return wxValidateChildrenCompat( this ); }
+
+    /// The help of the panel at a point (the tooltip of the reset button of the paged dialogs).
+    virtual wxString GetHelpTextAtPoint( const wxPoint& aPt, wxHelpEvent::Origin aOrigin ) const
+    {
+        return wxString();
+    }
+
+    long GetWindowStyle() const { return m_style; }
+    long GetWindowStyleFlag() const { return m_style; }
+    void SetWindowStyleFlag( long aStyle ) { m_style = aStyle; }
+    void SetWindowStyle( long aStyle ) { m_style = aStyle; }
+
+    QWidget* FindWindow( int aId ) { return wxFindWindowByIdCompat( this, aId ); }
+    QWidget* FindWindow( const wxString& aName ) { return wxFindWindowByNameCompat( this, aName ); }
+
+private:
+    long m_style;
 };
 
 
@@ -966,6 +1022,79 @@ public:
 
 private:
     std::vector<QRadioButton*> m_buttons;
+};
+
+
+/**
+ * A book of pages in a tree (wxTreebook): a QTreeWidget of the titles and a QStackedWidget of
+ * the pages.  The selection of a page by the user sends wxEVT_TREEBOOK_PAGE_CHANGING (that the
+ * handlers can veto) and wxEVT_TREEBOOK_PAGE_CHANGED.
+ */
+class KIQT_API wxTreebook : public wxWindowCompat<QWidget>
+{
+public:
+    explicit wxTreebook( QWidget* aParent = nullptr, int aId = wxID_ANY,
+                         const wxPoint& aPos = wxDefaultPosition,
+                         const wxSize& aSize = wxDefaultSize, long aStyle = 0,
+                         const wxString& aName = wxEmptyString );
+
+    /// Add a top level page.
+    bool AddPage( QWidget* aPage, const wxString& aText, bool aSelect = false, int aImage = -1 );
+
+    /// Add a page under the last top level page.
+    bool AddSubPage( QWidget* aPage, const wxString& aText, bool aSelect = false,
+                     int aImage = -1 );
+
+    size_t GetPageCount() const { return m_pages.size(); }
+    QWidget* GetPage( size_t aPage ) const;
+    QWidget* GetCurrentPage() const;
+    int GetSelection() const { return m_selection; }
+
+    /// Select a page, with the page changing (vetoable) and changed events.
+    int SetSelection( size_t aPage );
+
+    /// Select a page without the events.
+    int ChangeSelection( size_t aPage );
+
+    wxString GetPageText( size_t aPage ) const;
+    bool SetPageText( size_t aPage, const wxString& aText );
+
+    /// The parent page of a page, or wxNOT_FOUND.
+    int GetPageParent( size_t aPage ) const;
+
+    bool IsNodeExpanded( size_t aPage ) const;
+    bool ExpandNode( size_t aPage, bool aExpand = true );
+    bool CollapseNode( size_t aPage ) { return ExpandNode( aPage, false ); }
+
+    bool DeletePage( size_t aPage );
+    bool DeleteAllPages();
+
+    QTreeWidget* GetTreeCtrl() const { return m_tree; }
+
+    void SetFitToCurrentPage( bool ) {}
+    void InvalidateBestSize() {}
+
+private:
+    struct PAGE
+    {
+        QWidget*         m_window;
+        QTreeWidgetItem* m_item;
+        int              m_parent;
+    };
+
+    bool insertPage( QWidget* aPage, const wxString& aText, int aParent, bool aSelect );
+
+    /// The page of an item of the tree.
+    int pageOf( QTreeWidgetItem* aItem ) const;
+
+    /// The user selected an item.
+    void onItemSelected( QTreeWidgetItem* aItem );
+
+    QTreeWidget*      m_tree;
+    QStackedWidget*   m_stack;
+    std::vector<PAGE> m_pages;
+    int               m_selection;
+    bool              m_changing;
 };
 
 

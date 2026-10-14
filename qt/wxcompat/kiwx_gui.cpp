@@ -740,7 +740,8 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
 
 wxPanel::wxPanel( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize, long aStyle,
                   const wxString& aName ) :
-        wxWindowCompat<QWidget>( aParent )
+        wxWindowCompat<QWidget>( aParent ),
+        m_style( aStyle )
 {
     SetId( aId );
 
@@ -749,6 +750,103 @@ wxPanel::wxPanel( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& 
 
     if( aSize.x > 0 || aSize.y > 0 )
         SetMinSize( aSize );
+}
+
+
+// The data transfers ----------------------------------------------------------------------
+
+namespace
+{
+
+/// Apply @a aFunc to the panels and dialogs among the descendants of @a aWindow (not below them:
+/// their own transfers go to their children).
+bool forPanels( QWidget* aWindow, const std::function<bool( QWidget* )>& aFunc )
+{
+    bool result = true;
+
+    for( QWidget* child : aWindow->findChildren<QWidget*>( Qt::FindDirectChildrenOnly ) )
+    {
+        // A dialog of its own is not part of the transfers of its parent
+        if( child->isWindow() )
+            continue;
+
+        if( dynamic_cast<wxTransferableCompat*>( child ) )
+            result &= aFunc( child );
+        else
+            result &= forPanels( child, aFunc );
+    }
+
+    return result;
+}
+
+} // namespace
+
+
+bool wxTransferDataToChildrenCompat( QWidget* aWindow )
+{
+    return forPanels( aWindow, []( QWidget* aPanel ) { return wxTransferDataToWindowCompat( aPanel ); } );
+}
+
+
+bool wxTransferDataFromChildrenCompat( QWidget* aWindow )
+{
+    return forPanels( aWindow, []( QWidget* aPanel ) { return wxTransferDataFromWindowCompat( aPanel ); } );
+}
+
+
+bool wxValidateChildrenCompat( QWidget* aWindow )
+{
+    return forPanels( aWindow, []( QWidget* aPanel ) { return wxValidateCompat( aPanel ); } );
+}
+
+
+bool wxTransferDataToWindowCompat( QWidget* aWindow )
+{
+    if( wxTransferableCompat* window = dynamic_cast<wxTransferableCompat*>( aWindow ) )
+        return window->TransferDataToWindow();
+
+    return aWindow ? wxTransferDataToChildrenCompat( aWindow ) : true;
+}
+
+
+bool wxTransferDataFromWindowCompat( QWidget* aWindow )
+{
+    if( wxTransferableCompat* window = dynamic_cast<wxTransferableCompat*>( aWindow ) )
+        return window->TransferDataFromWindow();
+
+    return aWindow ? wxTransferDataFromChildrenCompat( aWindow ) : true;
+}
+
+
+bool wxValidateCompat( QWidget* aWindow )
+{
+    if( wxTransferableCompat* window = dynamic_cast<wxTransferableCompat*>( aWindow ) )
+        return window->Validate();
+
+    return aWindow ? wxValidateChildrenCompat( aWindow ) : true;
+}
+
+
+QWidget* wxFindWindowByIdCompat( QWidget* aWindow, int aId )
+{
+    if( !aWindow )
+        return nullptr;
+
+    for( QWidget* child : aWindow->findChildren<QWidget*>() )
+    {
+        QVariant id = child->property( WINDOW_ID_PROPERTY );
+
+        if( id.isValid() && id.toInt() == aId )
+            return child;
+    }
+
+    return nullptr;
+}
+
+
+QWidget* wxFindWindowByNameCompat( QWidget* aWindow, const wxString& aName )
+{
+    return aWindow ? aWindow->findChild<QWidget*>( ToQString( aName ) ) : nullptr;
 }
 
 
@@ -1590,6 +1688,275 @@ void wxRadioBox::OnSelected( std::function<void( int aIndex )> aHandler )
         QObject::connect( m_buttons[i], &QAbstractButton::clicked, this,
                           [aHandler, i]() { aHandler( int( i ) ); } );
     }
+}
+
+
+wxTreebook::wxTreebook( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+                        long aStyle, const wxString& aName ) :
+        wxWindowCompat<QWidget>( aParent ),
+        m_selection( wxNOT_FOUND ),
+        m_changing( false )
+{
+    SetId( aId );
+
+    m_tree = new QTreeWidget( this );
+    m_tree->setHeaderHidden( true );
+    m_tree->setColumnCount( 1 );
+    m_tree->setSizePolicy( QSizePolicy::Preferred, QSizePolicy::Expanding );
+
+    m_stack = new QStackedWidget( this );
+
+    QHBoxLayout* layout = new QHBoxLayout( this );
+    layout->setContentsMargins( 0, 0, 0, 0 );
+    layout->addWidget( m_tree, 0 );
+    layout->addWidget( m_stack, 1 );
+
+    QObject::connect( m_tree, &QTreeWidget::currentItemChanged, this,
+                      [this]( QTreeWidgetItem* aItem, QTreeWidgetItem* ) { onItemSelected( aItem ); } );
+}
+
+
+bool wxTreebook::insertPage( QWidget* aPage, const wxString& aText, int aParent, bool aSelect )
+{
+    if( !aPage )
+        return false;
+
+    QTreeWidgetItem* item = nullptr;
+
+    {
+        QSignalBlocker blocker( m_tree );
+
+        if( aParent >= 0 )
+            item = new QTreeWidgetItem( m_pages[aParent].m_item, { ToQString( aText ) } );
+        else
+            item = new QTreeWidgetItem( m_tree, { ToQString( aText ) } );
+
+        // The pages are expanded, as with wxWidgets
+        if( aParent >= 0 )
+            m_pages[aParent].m_item->setExpanded( true );
+    }
+
+    m_stack->addWidget( aPage );
+    m_pages.push_back( { aPage, item, aParent } );
+
+    if( aSelect || m_selection == wxNOT_FOUND )
+        ChangeSelection( m_pages.size() - 1 );
+
+    m_tree->resizeColumnToContents( 0 );
+    return true;
+}
+
+
+bool wxTreebook::AddPage( QWidget* aPage, const wxString& aText, bool aSelect, int aImage )
+{
+    return insertPage( aPage, aText, -1, aSelect );
+}
+
+
+bool wxTreebook::AddSubPage( QWidget* aPage, const wxString& aText, bool aSelect, int aImage )
+{
+    // The last top level page
+    int parent = wxNOT_FOUND;
+
+    for( int i = int( m_pages.size() ) - 1; i >= 0; --i )
+    {
+        if( m_pages[i].m_parent < 0 )
+        {
+            parent = i;
+            break;
+        }
+    }
+
+    return insertPage( aPage, aText, parent, aSelect );
+}
+
+
+QWidget* wxTreebook::GetPage( size_t aPage ) const
+{
+    return aPage < m_pages.size() ? m_pages[aPage].m_window : nullptr;
+}
+
+
+QWidget* wxTreebook::GetCurrentPage() const
+{
+    return m_selection >= 0 ? GetPage( m_selection ) : nullptr;
+}
+
+
+int wxTreebook::ChangeSelection( size_t aPage )
+{
+    int old = m_selection;
+
+    if( aPage >= m_pages.size() )
+        return old;
+
+    m_selection = int( aPage );
+    m_stack->setCurrentWidget( m_pages[aPage].m_window );
+
+    QSignalBlocker blocker( m_tree );
+    m_tree->setCurrentItem( m_pages[aPage].m_item );
+    return old;
+}
+
+
+int wxTreebook::SetSelection( size_t aPage )
+{
+    int old = m_selection;
+
+    if( aPage >= m_pages.size() || int( aPage ) == m_selection )
+        return old;
+
+    wxBookCtrlEvent changing( wxEVT_TREEBOOK_PAGE_CHANGING, GetId(), int( aPage ), old );
+    changing.SetEventObject( this );
+    ProcessEvent( changing );
+
+    if( !changing.IsAllowed() )
+    {
+        // The current page stays selected in the tree
+        QSignalBlocker blocker( m_tree );
+
+        if( old >= 0 )
+            m_tree->setCurrentItem( m_pages[old].m_item );
+
+        return old;
+    }
+
+    ChangeSelection( aPage );
+
+    wxBookCtrlEvent changed( wxEVT_TREEBOOK_PAGE_CHANGED, GetId(), int( aPage ), old );
+    changed.SetEventObject( this );
+    ProcessEvent( changed );
+
+    return old;
+}
+
+
+void wxTreebook::onItemSelected( QTreeWidgetItem* aItem )
+{
+    int page = pageOf( aItem );
+
+    if( page >= 0 )
+        SetSelection( page );
+}
+
+
+int wxTreebook::pageOf( QTreeWidgetItem* aItem ) const
+{
+    for( size_t i = 0; i < m_pages.size(); ++i )
+    {
+        if( m_pages[i].m_item == aItem )
+            return int( i );
+    }
+
+    return wxNOT_FOUND;
+}
+
+
+wxString wxTreebook::GetPageText( size_t aPage ) const
+{
+    return aPage < m_pages.size() ? ToWxString( m_pages[aPage].m_item->text( 0 ) ) : wxString();
+}
+
+
+bool wxTreebook::SetPageText( size_t aPage, const wxString& aText )
+{
+    if( aPage >= m_pages.size() )
+        return false;
+
+    m_pages[aPage].m_item->setText( 0, ToQString( aText ) );
+    return true;
+}
+
+
+int wxTreebook::GetPageParent( size_t aPage ) const
+{
+    return aPage < m_pages.size() ? m_pages[aPage].m_parent : wxNOT_FOUND;
+}
+
+
+bool wxTreebook::IsNodeExpanded( size_t aPage ) const
+{
+    return aPage < m_pages.size() && m_pages[aPage].m_item->isExpanded();
+}
+
+
+bool wxTreebook::ExpandNode( size_t aPage, bool aExpand )
+{
+    if( aPage >= m_pages.size() )
+        return false;
+
+    m_pages[aPage].m_item->setExpanded( aExpand );
+    return true;
+}
+
+
+bool wxTreebook::DeletePage( size_t aPage )
+{
+    if( aPage >= m_pages.size() )
+        return false;
+
+    // The page and its sub pages (they follow it)
+    size_t last = aPage + 1;
+
+    while( last < m_pages.size() && m_pages[last].m_parent >= int( aPage ) )
+        last++;
+
+    QWidget* current = GetCurrentPage();
+
+    {
+        QSignalBlocker blocker( m_tree );
+
+        for( size_t i = aPage; i < last; ++i )
+        {
+            m_stack->removeWidget( m_pages[i].m_window );
+            m_pages[i].m_window->deleteLater();
+        }
+
+        // Deleting the item of the page deletes the items of its sub pages
+        delete m_pages[aPage].m_item;
+    }
+
+    size_t count = last - aPage;
+    m_pages.erase( m_pages.begin() + aPage, m_pages.begin() + last );
+
+    for( PAGE& page : m_pages )
+    {
+        if( page.m_parent >= int( last ) )
+            page.m_parent -= int( count );
+    }
+
+    // The selection follows its page, or goes to the first page
+    m_selection = wxNOT_FOUND;
+
+    for( size_t i = 0; i < m_pages.size(); ++i )
+    {
+        if( m_pages[i].m_window == current )
+            m_selection = int( i );
+    }
+
+    if( m_selection == wxNOT_FOUND && !m_pages.empty() )
+        ChangeSelection( 0 );
+
+    return true;
+}
+
+
+bool wxTreebook::DeleteAllPages()
+{
+    {
+        QSignalBlocker blocker( m_tree );
+        m_tree->clear();
+    }
+
+    for( PAGE& page : m_pages )
+    {
+        m_stack->removeWidget( page.m_window );
+        page.m_window->deleteLater();
+    }
+
+    m_pages.clear();
+    m_selection = wxNOT_FOUND;
+    return true;
 }
 
 

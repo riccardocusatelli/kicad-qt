@@ -470,6 +470,14 @@ private:
 class wxHelpEvent : public wxCommandEvent
 {
 public:
+    /// Where the help request comes from.
+    enum Origin
+    {
+        Origin_Unknown,
+        Origin_Keyboard,
+        Origin_HelpButton
+    };
+
     explicit wxHelpEvent( int aId = 0 ) :
             wxCommandEvent( wxEVT_HELP, aId )
     {
