@@ -36,28 +36,78 @@
 #include <qt_strings.h>
 
 
-bool wxValidatorWindowCompat::IsEnabled() const
+bool wxWindowRefCompat::IsEnabled() const
 {
     return m_window && m_window->isEnabled();
 }
 
 
-bool wxValidatorWindowCompat::IsShown() const
+bool wxWindowRefCompat::IsShown() const
 {
     return m_window && !m_window->isHidden();
 }
 
 
-void wxValidatorWindowCompat::SetFocus() const
+void wxWindowRefCompat::SetFocus() const
 {
     if( m_window )
         m_window->setFocus();
 }
 
 
-wxString wxValidatorWindowCompat::GetName() const
+wxString wxWindowRefCompat::GetName() const
 {
     return m_window ? ToWxString( m_window->objectName() ) : wxString();
+}
+
+
+void wxWindowRefCompat::Refresh() const
+{
+    if( m_window )
+        m_window->update();
+}
+
+
+wxColour wxWindowRefCompat::GetBackgroundColour() const
+{
+    return m_window ? m_window->palette().color( m_window->backgroundRole() ) : QColor();
+}
+
+
+wxColour wxWindowRefCompat::GetForegroundColour() const
+{
+    return m_window ? m_window->palette().color( m_window->foregroundRole() ) : QColor();
+}
+
+
+int wxWindowRefCompat::GetId() const
+{
+    return m_window ? wxGetWindowIdCompat( m_window ) : wxID_ANY;
+}
+
+
+void wxWindowRefCompat::SetToolTip( const wxString& aTip ) const
+{
+    if( m_window )
+        m_window->setToolTip( ToQString( aTip ) );
+}
+
+
+bool wxWindowRefCompat::ProcessEvent( wxEvent& aEvent ) const
+{
+    return m_window && wxEventSinkCompat( m_window )->Process( aEvent );
+}
+
+
+void wxWindowRefCompat::bindHandler( wxEventType aType, wxCompatEventSink::HANDLER aHandler,
+                                     const void* aKey, int aId, int aLastId ) const
+{
+    if( !m_window )
+        return;
+
+    wxCompatEventSink* sink = wxEventSinkCompat( m_window );
+    sink->Add( aType, std::move( aHandler ), aKey, aId, aLastId );
+    wxConnectQtEventsCompat( m_window, aType, sink );
 }
 
 

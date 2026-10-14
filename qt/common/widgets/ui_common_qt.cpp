@@ -221,6 +221,24 @@ bool KIUI::IsModalDialogFocused()
 }
 
 
+void KIUI::FocusNextWindow( QWidget* aWindow )
+{
+    // The focus chain of Qt, after the children of the window
+    for( QWidget* test = aWindow->nextInFocusChain(); test && test != aWindow;
+         test = test->nextInFocusChain() )
+    {
+        if( aWindow->isAncestorOf( test ) || test->window() != aWindow->window() )
+            continue;
+
+        if( test->isVisible() && test->isEnabled() && ( test->focusPolicy() & Qt::TabFocus ) )
+        {
+            test->setFocus( Qt::TabFocusReason );
+            return;
+        }
+    }
+}
+
+
 void KIUI::Disable( QWidget* aWindow )
 {
     if( QTableWidget* grid = qobject_cast<QTableWidget*>( aWindow ) )

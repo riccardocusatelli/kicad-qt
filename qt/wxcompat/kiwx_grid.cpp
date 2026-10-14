@@ -29,10 +29,12 @@
 #include <wx/kiwx_grid.h>
 
 #include <QAbstractTableModel>
+#include <QAbstractButton>
 #include <QApplication>
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QPainter>
+#include <QScreen>
 #include <QScrollBar>
 #include <QStyledItemDelegate>
 
@@ -1221,6 +1223,8 @@ public:
 
     void setColLabelAlignment( Qt::Alignment aAlignment ) { m_colLabelAlignment = aAlignment; }
     void setRowLabelAlignment( Qt::Alignment aAlignment ) { m_rowLabelAlignment = aAlignment; }
+    Qt::Alignment colLabelAlignment() const { return m_colLabelAlignment; }
+    Qt::Alignment rowLabelAlignment() const { return m_rowLabelAlignment; }
 
     void reset()
     {
@@ -1357,6 +1361,7 @@ public:
         attr->DecRef();
 
         m_grid->SendGridEvent( wxEVT_GRID_EDITOR_SHOWN, row, col );
+        m_grid->m_cellEditCtrlEnabled = true;
         editor->Show( true );
         return editor->GetControl();
     }
@@ -1367,7 +1372,12 @@ public:
         if( m_editor && aEditor == m_editor->GetControl() )
         {
             aEditor->hide();
-            m_grid->SendGridEvent( wxEVT_GRID_EDITOR_HIDDEN, m_row, m_col );
+            m_grid->m_cellEditCtrlEnabled = false;
+
+            // wxGrid::HideCellEditControl() sends no event (its callers do)
+            if( !m_quietClose )
+                m_grid->SendGridEvent( wxEVT_GRID_EDITOR_HIDDEN, m_row, m_col );
+
             m_grid->setFocus();
             return;
         }
@@ -1429,6 +1439,9 @@ public:
 
     wxGridCellEditor* currentEditor() const { return m_editor; }
 
+    /// Close the editors without the events of the end of the edition.
+    void setQuietClose( bool aQuiet ) { m_quietClose = aQuiet; }
+
 private:
     wxGrid*                   m_grid;
     mutable wxGridCellEditor* m_editor;
@@ -1436,6 +1449,75 @@ private:
     mutable int               m_col;
     mutable wxString          m_oldValue;
     mutable bool              m_began = false;
+    bool                      m_quietClose = false;
+};
+
+
+/// The headers of a grid: the labels are drawn by wxGrid::DrawColLabel() and DrawRowLabel().
+class KIWX_GRID_HEADER : public QHeaderView
+{
+public:
+    KIWX_GRID_HEADER( Qt::Orientation aOrientation, wxGrid* aGrid ) :
+            QHeaderView( aOrientation, aGrid ),
+            m_grid( aGrid )
+    {
+    }
+
+    /// The painting of Qt (the native labels of wxGrid).
+    void paintDefaultSection( QPainter* aPainter, const QRect& aRect, int aSection ) const
+    {
+        QHeaderView::paintSection( aPainter, aRect, aSection );
+    }
+
+protected:
+    void paintSection( QPainter* aPainter, const QRect& aRect, int aSection ) const override
+    {
+        m_grid->updateLabelSizes();
+
+        // wxGrid draws the labels in the unscrolled coordinates of the grid
+        aPainter->save();
+
+        if( orientation() == Qt::Horizontal )
+            aPainter->translate( aRect.x() - m_grid->GetColLeft( aSection ), aRect.y() );
+        else
+            aPainter->translate( aRect.x(), aRect.y() - m_grid->GetRowTop( aSection ) );
+
+        wxDC dc( aPainter, const_cast<KIWX_GRID_HEADER*>( this ) );
+        dc.SetFont( font() );
+
+        if( orientation() == Qt::Horizontal )
+            m_grid->DrawColLabel( dc, aSection );
+        else
+            m_grid->DrawRowLabel( dc, aSection );
+
+        aPainter->restore();
+    }
+
+private:
+    wxGrid* m_grid;
+};
+
+
+/// The corner of a grid (the button of the corner of QTableView): wxGrid::DrawCornerLabel().
+class KIWX_GRID_CORNER_FILTER : public QObject
+{
+public:
+    explicit KIWX_GRID_CORNER_FILTER( wxGrid* aGrid ) : QObject( aGrid ), m_grid( aGrid ) {}
+
+    bool eventFilter( QObject* aObject, QEvent* aEvent ) override
+    {
+        if( aEvent->type() != QEvent::Paint )
+            return false;
+
+        QWidget* corner = static_cast<QWidget*>( aObject );
+        QPainter painter( corner );
+        wxDC     dc( &painter, corner );
+        m_grid->DrawCornerLabel( dc );
+        return true;
+    }
+
+private:
+    wxGrid* m_grid;
 };
 
 
@@ -1481,8 +1563,21 @@ wxGrid::wxGrid( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aS
 
     m_model = new KIWX_GRID_MODEL( this );
     m_delegate = new KIWX_GRID_DELEGATE( this );
+    setHorizontalHeader( new KIWX_GRID_HEADER( Qt::Horizontal, this ) );
+    setVerticalHeader( new KIWX_GRID_HEADER( Qt::Vertical, this ) );
     setModel( m_model );
     setItemDelegate( m_delegate );
+
+    m_gridWin = viewport();
+    m_colLabelWin = horizontalHeader();
+    m_rowLabelWin = verticalHeader();
+
+    if( QAbstractButton* corner = findChild<QAbstractButton*>( QString(),
+                                                               Qt::FindDirectChildrenOnly ) )
+    {
+        corner->installEventFilter( new KIWX_GRID_CORNER_FILTER( this ) );
+        m_cornerLabelWin = corner;
+    }
 
     setEditTriggers( QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed
                      | QAbstractItemView::AnyKeyPressed | QAbstractItemView::SelectedClicked );
@@ -1541,6 +1636,11 @@ wxGrid::wxGrid( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aS
     QObject::connect( selectionModel(), &QItemSelectionModel::currentChanged, this,
                       [this]( const QModelIndex& aCurrent, const QModelIndex& )
                       {
+                          m_currentCellCoords = aCurrent.isValid()
+                                                        ? wxGridCellCoords( aCurrent.row(),
+                                                                            aCurrent.column() )
+                                                        : wxGridCellCoords();
+
                           if( aCurrent.isValid() )
                               SendGridEvent( wxEVT_GRID_SELECT_CELL, aCurrent.row(), aCurrent.column() );
                       } );
@@ -1578,7 +1678,13 @@ wxGrid::~wxGrid()
 
 bool wxGrid::SendGridEvent( wxEventType aType, int aRow, int aCol )
 {
-    int modifiers = 0;
+    return SendEvent( aType, aRow, aCol ) != -1;
+}
+
+
+static int modifiersCompat()
+{
+    int                   modifiers = 0;
     Qt::KeyboardModifiers qtModifiers = QApplication::keyboardModifiers();
 
     if( qtModifiers & Qt::ShiftModifier )
@@ -1590,12 +1696,38 @@ bool wxGrid::SendGridEvent( wxEventType aType, int aRow, int aCol )
     if( qtModifiers & Qt::AltModifier )
         modifiers |= wxMOD_ALT;
 
+    return modifiers;
+}
+
+
+int wxGrid::SendEvent( wxEventType aType, int aRow, int aCol )
+{
     QPoint pos = viewport()->mapFromGlobal( QCursor::pos() );
 
-    wxGridEvent event( aType, GetId(), aRow, aCol, pos.x(), pos.y(), true, modifiers );
-    event.SetEventObject( this );
-    ProcessEvent( event );
-    return event.IsAllowed();
+    wxGridEvent event( GetId(), aType, this, aRow, aCol, pos.x(), pos.y(), true,
+                       modifiersCompat() );
+    bool processed = ProcessEvent( event );
+
+    if( !event.IsAllowed() )
+        return -1;
+
+    return processed ? 1 : 0;
+}
+
+
+int wxGrid::SendEvent( wxEventType aType, const wxString& aString )
+{
+    QPoint pos = viewport()->mapFromGlobal( QCursor::pos() );
+
+    wxGridEvent event( GetId(), aType, this, m_currentCellCoords.GetRow(),
+                       m_currentCellCoords.GetCol(), pos.x(), pos.y(), true, modifiersCompat() );
+    event.SetString( aString );
+    bool processed = ProcessEvent( event );
+
+    if( !event.IsAllowed() )
+        return -1;
+
+    return processed ? 1 : 0;
 }
 
 
@@ -1878,6 +2010,13 @@ void wxGrid::SetColLabelSize( int aHeight )
 }
 
 
+void wxGrid::updateLabelSizes()
+{
+    m_colLabelHeight = GetColLabelSize();
+    m_rowLabelWidth = GetRowLabelSize();
+}
+
+
 int wxGrid::GetColLabelSize() const
 {
     return horizontalHeader()->isVisible() ? horizontalHeader()->height() : 0;
@@ -1908,6 +2047,145 @@ void wxGrid::SetColLabelAlignment( int aHAlign, int aVAlign )
 void wxGrid::SetRowLabelAlignment( int aHAlign, int aVAlign )
 {
     m_model->setRowLabelAlignment( qtAlignment( aHAlign, aVAlign ) );
+}
+
+
+static void wxAlignment( Qt::Alignment aAlignment, int* aHAlign, int* aVAlign )
+{
+    if( aHAlign )
+    {
+        if( aAlignment & Qt::AlignRight )
+            *aHAlign = wxALIGN_RIGHT;
+        else if( aAlignment & Qt::AlignHCenter )
+            *aHAlign = wxALIGN_CENTER;
+        else
+            *aHAlign = wxALIGN_LEFT;
+    }
+
+    if( aVAlign )
+    {
+        if( aAlignment & Qt::AlignBottom )
+            *aVAlign = wxALIGN_BOTTOM;
+        else if( aAlignment & Qt::AlignTop )
+            *aVAlign = wxALIGN_TOP;
+        else
+            *aVAlign = wxALIGN_CENTER;
+    }
+}
+
+
+void wxGrid::GetColLabelAlignment( int* aHAlign, int* aVAlign ) const
+{
+    wxAlignment( m_model->colLabelAlignment(), aHAlign, aVAlign );
+}
+
+
+void wxGrid::GetRowLabelAlignment( int* aHAlign, int* aVAlign ) const
+{
+    wxAlignment( m_model->rowLabelAlignment(), aHAlign, aVAlign );
+}
+
+
+int wxGrid::GetColLeft( int aCol ) const
+{
+    return horizontalHeader()->sectionPosition( aCol );
+}
+
+
+int wxGrid::GetColRight( int aCol ) const
+{
+    return GetColLeft( aCol ) + GetColWidth( aCol ) - 1;
+}
+
+
+int wxGrid::GetRowTop( int aRow ) const
+{
+    return verticalHeader()->sectionPosition( aRow );
+}
+
+
+int wxGrid::GetRowBottom( int aRow ) const
+{
+    return GetRowTop( aRow ) + GetRowHeight( aRow ) - 1;
+}
+
+
+wxSize wxGrid::DoGetBestSize() const
+{
+    // All the cells and the labels, as wxGrid::DoGetBestSize()
+    int width = 2 * frameWidth() + horizontalHeader()->length() + GetRowLabelSize();
+    int height = 2 * frameWidth() + verticalHeader()->length() + GetColLabelSize();
+    return wxSize( width, height );
+}
+
+
+QSize wxGrid::sizeHint() const
+{
+    wxSize size = DoGetBestSize();
+
+    if( size.x <= 0 || size.y <= 0 )
+        return wxWindowCompat<QTableView>::sizeHint();
+
+    // The large grids stay in the screen
+    if( QScreen* screen = this->screen() )
+    {
+        QSize available = screen->availableSize() * 2 / 3;
+        size.x = std::min( size.x, available.width() );
+        size.y = std::min( size.y, available.height() );
+    }
+
+    return QSize( size.x, size.y );
+}
+
+
+void wxGrid::DrawColLabel( wxDC& aDC, int aCol )
+{
+    if( GetColWidth( aCol ) <= 0 || m_colLabelHeight <= 0 )
+        return;
+
+    QRect rect( GetColLeft( aCol ), 0, GetColWidth( aCol ), m_colLabelHeight );
+    static_cast<KIWX_GRID_HEADER*>( horizontalHeader() )->paintDefaultSection( aDC.GetPainter(),
+                                                                              rect, aCol );
+}
+
+
+void wxGrid::DrawRowLabel( wxDC& aDC, int aRow )
+{
+    if( GetRowHeight( aRow ) <= 0 || m_rowLabelWidth <= 0 )
+        return;
+
+    QRect rect( 0, GetRowTop( aRow ), m_rowLabelWidth, GetRowHeight( aRow ) );
+    static_cast<KIWX_GRID_HEADER*>( verticalHeader() )->paintDefaultSection( aDC.GetPainter(),
+                                                                            rect, aRow );
+}
+
+
+void wxGrid::DrawCornerLabel( wxDC& aDC )
+{
+    QPainter* painter = aDC.GetPainter();
+    QRect     rect( 0, 0, m_rowLabelWidth, m_colLabelHeight );
+
+    painter->fillRect( rect, horizontalHeader()->palette().color( QPalette::Button ) );
+}
+
+
+void wxGridHeaderLabelsRenderer::DrawBorder( const wxGrid& aGrid, wxDC& aDC, wxRect& aRect ) const
+{
+    QPainter* painter = aDC.GetPainter();
+    painter->save();
+    painter->setPen( aGrid.palette().color( QPalette::Mid ) );
+    painter->drawLine( aRect.GetRight(), aRect.GetTop(), aRect.GetRight(), aRect.GetBottom() );
+    painter->drawLine( aRect.GetLeft(), aRect.GetBottom(), aRect.GetRight(), aRect.GetBottom() );
+    painter->restore();
+}
+
+
+void wxGridHeaderLabelsRenderer::DrawLabel( const wxGrid& aGrid, wxDC& aDC, const wxString& aValue,
+                                            const wxRect& aRect, int aHAlign, int aVAlign,
+                                            int aTextOrientation ) const
+{
+    aDC.SetTextForeground( aGrid.palette().color( QPalette::ButtonText ) );
+    aDC.DrawLabel( aValue, aRect, aHAlign | aVAlign );
 }
 
 
@@ -2279,7 +2557,7 @@ void wxGrid::EnableEditing( bool aEdit )
     m_editable = aEdit;
 
     if( !aEdit )
-        HideCellEditControl();
+        DisableCellEditControl();
 }
 
 
@@ -2382,10 +2660,10 @@ bool wxGrid::IsInSelection( int aRow, int aCol ) const
 }
 
 
-std::vector<int> wxGrid::GetSelectedRows() const
+wxArrayInt wxGrid::GetSelectedRows() const
 {
     // The rows selected entirely
-    std::vector<int> rows;
+    wxArrayInt rows;
 
     for( const QModelIndex& index : selectionModel()->selectedRows() )
         rows.push_back( index.row() );
@@ -2395,9 +2673,9 @@ std::vector<int> wxGrid::GetSelectedRows() const
 }
 
 
-std::vector<int> wxGrid::GetSelectedCols() const
+wxArrayInt wxGrid::GetSelectedCols() const
 {
-    std::vector<int> cols;
+    wxArrayInt cols;
 
     for( const QModelIndex& index : selectionModel()->selectedColumns() )
         cols.push_back( index.column() );
@@ -2548,9 +2826,21 @@ bool wxGrid::CanEnableCellControl() const
 void wxGrid::EnableCellEditControl( bool aEnable )
 {
     if( aEnable )
+    {
         ShowCellEditControl();
-    else
-        HideCellEditControl();
+    }
+    else if( IsCellEditControlEnabled() )
+    {
+        // The end of the edition: the value is saved (wxGrid::DisableCellEditControl())
+        if( wxGridCellEditor* editor = m_delegate->currentEditor() )
+        {
+            if( QWidget* control = editor->GetControl() )
+            {
+                commitData( control );
+                closeEditor( control, QAbstractItemDelegate::NoHint );
+            }
+        }
+    }
 }
 
 
@@ -2563,15 +2853,17 @@ void wxGrid::ShowCellEditControl()
 
 void wxGrid::HideCellEditControl()
 {
-    // The value of the editor is saved, as wxWidgets does when the edition ends
+    // The editor is hidden without saving its value and without events: the callers end
+    // the edition themselves (as wxGrid::HideCellEditControl())
     if( IsCellEditControlEnabled() )
     {
         if( wxGridCellEditor* editor = m_delegate->currentEditor() )
         {
             if( QWidget* control = editor->GetControl() )
             {
-                commitData( control );
+                m_delegate->setQuietClose( true );
                 closeEditor( control, QAbstractItemDelegate::NoHint );
+                m_delegate->setQuietClose( false );
             }
         }
     }
@@ -2591,27 +2883,27 @@ void wxGrid::SaveEditControlValue()
 }
 
 
-QWidget* wxGrid::GetGridWindow() const
+wxWindowRefCompat wxGrid::GetGridWindow() const
 {
     return viewport();
 }
 
 
-QWidget* wxGrid::GetGridColLabelWindow() const
+wxWindowRefCompat wxGrid::GetGridColLabelWindow() const
 {
     return horizontalHeader();
 }
 
 
-QWidget* wxGrid::GetGridRowLabelWindow() const
+wxWindowRefCompat wxGrid::GetGridRowLabelWindow() const
 {
     return verticalHeader();
 }
 
 
-QWidget* wxGrid::GetGridCornerLabelWindow() const
+wxWindowRefCompat wxGrid::GetGridCornerLabelWindow() const
 {
-    return const_cast<wxGrid*>( this );
+    return m_cornerLabelWin;
 }
 
 
@@ -2647,6 +2939,16 @@ int wxGrid::YToRow( int aY, bool aClipToMinMax ) const
 wxGridCellCoords wxGrid::XYToCell( int aX, int aY ) const
 {
     return wxGridCellCoords( YToRow( aY ), XToCol( aX ) );
+}
+
+
+void wxGrid::CalcScrolledPosition( int aX, int aY, int* aXX, int* aYY ) const
+{
+    if( aXX )
+        *aXX = aX - horizontalScrollBar()->value();
+
+    if( aYY )
+        *aYY = aY - verticalScrollBar()->value();
 }
 
 

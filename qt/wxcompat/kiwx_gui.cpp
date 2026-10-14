@@ -31,6 +31,7 @@
 #include <atomic>
 
 #include <QAbstractButton>
+#include <QAction>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QResizeEvent>
@@ -274,6 +275,8 @@ void wxUpdateUIEvent::Enable( bool aEnable )
 {
     if( QWidget* widget = qobject_cast<QWidget*>( GetEventObject() ) )
         widget->setEnabled( aEnable );
+    else if( QAction* action = qobject_cast<QAction*>( GetEventObject() ) )
+        action->setEnabled( aEnable );
 }
 
 
@@ -284,6 +287,11 @@ void wxUpdateUIEvent::Check( bool aCheck )
         QSignalBlocker blocker( button );
         button->setChecked( aCheck );
     }
+    else if( QAction* action = qobject_cast<QAction*>( GetEventObject() ) )
+    {
+        QSignalBlocker blocker( action );
+        action->setChecked( aCheck );
+    }
 }
 
 
@@ -291,6 +299,8 @@ void wxUpdateUIEvent::Show( bool aShow )
 {
     if( QWidget* widget = qobject_cast<QWidget*>( GetEventObject() ) )
         widget->setVisible( aShow );
+    else if( QAction* action = qobject_cast<QAction*>( GetEventObject() ) )
+        action->setVisible( aShow );
 }
 
 
@@ -302,6 +312,8 @@ void wxUpdateUIEvent::SetText( const wxString& aText )
         button->setText( ToQString( aText ) );
     else if( QLabel* label = qobject_cast<QLabel*>( object ) )
         label->setText( ToQString( aText ) );
+    else if( QAction* action = qobject_cast<QAction*>( object ) )
+        action->setText( ToQString( aText ).section( '\t', 0, 0 ) );
 }
 
 
@@ -385,6 +397,38 @@ void sendCompat( QWidget* aWidget, wxCompatEventSink* aSink, wxEventType aType,
 }
 
 } // namespace
+
+
+namespace
+{
+/// The handlers of a plain Qt widget (a child object of the widget, deleted with it).
+class KIWX_EVENT_SINK_HOLDER : public QObject
+{
+public:
+    explicit KIWX_EVENT_SINK_HOLDER( QWidget* aWidget ) : QObject( aWidget ) {}
+
+    wxCompatEventSink m_sink;
+};
+} // namespace
+
+
+void wxRegisterEventSinkCompat( QWidget* aWidget, wxCompatEventSink* aSink )
+{
+    aWidget->setProperty( "kiwxEventSink", QVariant::fromValue( static_cast<void*>( aSink ) ) );
+}
+
+
+wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget )
+{
+    QVariant sink = aWidget->property( "kiwxEventSink" );
+
+    if( sink.isValid() )
+        return static_cast<wxCompatEventSink*>( sink.value<void*>() );
+
+    KIWX_EVENT_SINK_HOLDER* holder = new KIWX_EVENT_SINK_HOLDER( aWidget );
+    wxRegisterEventSinkCompat( aWidget, &holder->m_sink );
+    return &holder->m_sink;
+}
 
 
 void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEventSink* aSink )

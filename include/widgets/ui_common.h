@@ -120,6 +120,12 @@ KICOMMON_API bool IsModalDialogFocused();
  */
 KICOMMON_API void Disable( wxWindow* aWindow );
 
+/**
+ * Move the focus to the first window after @a aWindow and its children that takes it (Ctrl+Tab
+ * out of a grid, where Tab moves between the cells).
+ */
+KICOMMON_API void FocusNextWindow( wxWindow* aWindow );
+
 KICOMMON_API extern const wxString s_FocusStealableInputName;
 
 

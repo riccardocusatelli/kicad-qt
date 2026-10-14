@@ -293,6 +293,49 @@ bool KIUI::IsModalDialogFocused()
 }
 
 
+void KIUI::FocusNextWindow( wxWindow* aWindow )
+{
+    wxWindow* test = aWindow->GetNextSibling();
+
+    if( !test )
+        test = aWindow->GetParent()->GetNextSibling();
+
+    while( test && !test->IsTopLevel() )
+    {
+        test->SetFocus();
+
+        if( test->HasFocus() )
+            break;
+
+        if( !test->GetChildren().empty() )
+        {
+            test = test->GetChildren().front();
+        }
+        else if( test->GetNextSibling() )
+        {
+            test = test->GetNextSibling();
+        }
+        else
+        {
+            while( test )
+            {
+                test = test->GetParent();
+
+                if( test && test->IsTopLevel() )
+                {
+                    break;
+                }
+                else if( test && test->GetNextSibling() )
+                {
+                    test = test->GetNextSibling();
+                    break;
+                }
+            }
+        }
+    }
+}
+
+
 void KIUI::Disable( wxWindow* aWindow )
 {
     wxScrollBar*      scrollBar = dynamic_cast<wxScrollBar*>( aWindow );

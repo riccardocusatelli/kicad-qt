@@ -223,6 +223,8 @@ private:
     bool   m_ok;
 };
 
+using wxColor = wxColour;
+
 #define wxC2S_NAME          1
 #define wxC2S_CSS_SYNTAX    2
 #define wxC2S_HTML_SYNTAX   4
@@ -376,7 +378,9 @@ public:
     void SetScaleFactor( double aScale ) { setDevicePixelRatio( aScale ); }
 };
 
-KIQT_API extern const wxBitmap wxNullBitmap;
+/// The null bitmap (wxNullBitmap), made on its first use: a pixmap needs the application of Qt.
+KIQT_API const wxBitmap& wxNullBitmapCompat();
+#define wxNullBitmap ( wxNullBitmapCompat() )
 
 
 /// The images of an icon at the scales of the screens: a QIcon with the API of wxWidgets.
@@ -405,10 +409,40 @@ public:
 
 
 /// The colours of the system.
+/// The metrics of the system (wxSystemMetric of wxWidgets).
+enum wxSystemMetric
+{
+    wxSYS_BORDER_X = 1,
+    wxSYS_BORDER_Y,
+    wxSYS_EDGE_X,
+    wxSYS_EDGE_Y,
+    wxSYS_ICON_X,
+    wxSYS_ICON_Y,
+    wxSYS_SMALLICON_X,
+    wxSYS_SMALLICON_Y,
+    wxSYS_HSCROLL_Y,
+    wxSYS_VSCROLL_X,
+    wxSYS_HSCROLL_ARROW_X,
+    wxSYS_VSCROLL_ARROW_Y,
+    wxSYS_SCREEN_X,
+    wxSYS_SCREEN_Y,
+    wxSYS_DCLICK_X,
+    wxSYS_DCLICK_Y,
+    wxSYS_DRAG_X,
+    wxSYS_DRAG_Y,
+    wxSYS_CARET_ON_MSEC,
+    wxSYS_CARET_OFF_MSEC,
+    wxSYS_DCLICK_MSEC
+};
+
+
 class KIQT_API wxSystemSettings
 {
 public:
     static wxColour GetColour( wxSystemColour aIndex );
+
+    /// A metric of the style of Qt (in logical pixels), -1 if unknown.
+    static int GetMetric( wxSystemMetric aIndex, const QWidget* aWindow = nullptr );
 };
 
 
@@ -427,6 +461,8 @@ public:
 
     void SetPen( const wxPen& aPen );
     void SetBrush( const wxBrush& aBrush );
+    const wxPen& GetPen() const { return m_pen; }
+    const wxBrush& GetBrush() const { return m_brush; }
     void SetFont( const wxFont& aFont );
     const wxFont& GetFont() const { return m_font; }
     void SetTextForeground( const wxColour& aColour ) { m_textForeground = aColour; }
@@ -474,6 +510,8 @@ public:
 private:
     QPainter* m_painter;
     QWidget*  m_window;
+    wxPen     m_pen;
+    wxBrush   m_brush;
     wxFont    m_font;
     wxColour  m_textForeground;
     wxColour  m_textBackground;
@@ -481,6 +519,42 @@ private:
 };
 
 using wxGCDC = wxDC;
+using wxPaintDC = wxDC;
+using wxClientDC = wxDC;
+
+
+/// The pen of a DC while the changer lives (wxDCPenChanger).
+class wxDCPenChanger
+{
+public:
+    wxDCPenChanger( wxDC& aDC, const wxPen& aPen ) : m_dc( aDC ), m_old( aDC.GetPen() )
+    {
+        aDC.SetPen( aPen );
+    }
+
+    ~wxDCPenChanger() { m_dc.SetPen( m_old ); }
+
+private:
+    wxDC& m_dc;
+    wxPen m_old;
+};
+
+
+/// The brush of a DC while the changer lives (wxDCBrushChanger).
+class wxDCBrushChanger
+{
+public:
+    wxDCBrushChanger( wxDC& aDC, const wxBrush& aBrush ) : m_dc( aDC ), m_old( aDC.GetBrush() )
+    {
+        aDC.SetBrush( aBrush );
+    }
+
+    ~wxDCBrushChanger() { m_dc.SetBrush( m_old ); }
+
+private:
+    wxDC&   m_dc;
+    wxBrush m_old;
+};
 
 
 /**

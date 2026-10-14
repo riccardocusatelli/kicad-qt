@@ -283,7 +283,12 @@ wxSize wxBitmap::GetLogicalSize() const
 }
 
 
-const wxBitmap wxNullBitmap;
+const wxBitmap& wxNullBitmapCompat()
+{
+    // Made on the first use: a pixmap needs the application of Qt
+    static const wxBitmap s_nullBitmap;
+    return s_nullBitmap;
+}
 
 
 wxSize wxBitmapBundle::GetDefaultSize() const
@@ -336,6 +341,34 @@ wxBitmap wxBitmapBundle::GetBitmapFor( const QWidget* aWindow ) const
 
 
 // The colours of the system ----------------------------------------------------------------
+
+int wxSystemSettings::GetMetric( wxSystemMetric aIndex, const QWidget* aWindow )
+{
+    QStyle* style = aWindow ? aWindow->style() : QApplication::style();
+
+    switch( aIndex )
+    {
+    case wxSYS_HSCROLL_Y:
+    case wxSYS_VSCROLL_X:       return style->pixelMetric( QStyle::PM_ScrollBarExtent, nullptr, aWindow );
+    case wxSYS_HSCROLL_ARROW_X:
+    case wxSYS_VSCROLL_ARROW_Y: return style->pixelMetric( QStyle::PM_ScrollBarSliderMin, nullptr, aWindow );
+    case wxSYS_BORDER_X:
+    case wxSYS_BORDER_Y:        return 1;
+    case wxSYS_EDGE_X:
+    case wxSYS_EDGE_Y:          return style->pixelMetric( QStyle::PM_DefaultFrameWidth, nullptr, aWindow );
+    case wxSYS_ICON_X:
+    case wxSYS_ICON_Y:          return style->pixelMetric( QStyle::PM_LargeIconSize, nullptr, aWindow );
+    case wxSYS_SMALLICON_X:
+    case wxSYS_SMALLICON_Y:     return style->pixelMetric( QStyle::PM_SmallIconSize, nullptr, aWindow );
+    case wxSYS_DRAG_X:
+    case wxSYS_DRAG_Y:          return QApplication::startDragDistance();
+    case wxSYS_DCLICK_MSEC:     return QApplication::doubleClickInterval();
+    case wxSYS_CARET_ON_MSEC:
+    case wxSYS_CARET_OFF_MSEC:  return QApplication::cursorFlashTime() / 2;
+    default:                    return -1;
+    }
+}
+
 
 wxColour wxSystemSettings::GetColour( wxSystemColour aIndex )
 {
@@ -413,6 +446,8 @@ wxDC::wxDC( QPainter* aPainter, QWidget* aWindow ) :
 
 void wxDC::SetPen( const wxPen& aPen )
 {
+    m_pen = aPen;
+
     if( !aPen.IsOk() || aPen.GetStyle() == wxPENSTYLE_TRANSPARENT )
     {
         m_painter->setPen( Qt::NoPen );
@@ -437,6 +472,8 @@ void wxDC::SetPen( const wxPen& aPen )
 
 void wxDC::SetBrush( const wxBrush& aBrush )
 {
+    m_brush = aBrush;
+
     if( !aBrush.IsOk() || aBrush.IsTransparent() )
         m_painter->setBrush( Qt::NoBrush );
     else

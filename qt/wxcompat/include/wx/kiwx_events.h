@@ -127,12 +127,18 @@ enum wxEventTypeCompat
     wxEVT_ENTER_WINDOW,
     wxEVT_SYS_COLOUR_CHANGED,
     wxEVT_SHOW,
+    wxEVT_DPI_CHANGED,
+    wxEVT_MENU,
+    wxEVT_MENU_OPEN,
+    wxEVT_MENU_CLOSE,
+    wxEVT_MENU_HIGHLIGHT,
     wxEVT_USER_FIRST = 10000
 };
 
 using wxEventType = int;
 
 #define wxEVT_COMMAND_BUTTON_CLICKED       wxEVT_BUTTON
+#define wxEVT_COMMAND_MENU_SELECTED        wxEVT_MENU
 #define wxEVT_COMMAND_CHECKBOX_CLICKED     wxEVT_CHECKBOX
 #define wxEVT_COMMAND_CHOICE_SELECTED      wxEVT_CHOICE
 #define wxEVT_COMMAND_COMBOBOX_SELECTED    wxEVT_COMBOBOX
@@ -492,6 +498,22 @@ private:
 };
 
 
+/// The resolution of the screen of a window changed.
+class wxDPIChangedEvent : public wxEvent
+{
+public:
+    wxDPIChangedEvent() : wxEvent( 0, wxEVT_DPI_CHANGED ) {}
+
+    wxSize GetOldDPI() const { return wxSize( 96, 96 ); }
+    wxSize GetNewDPI() const { return wxSize( 96, 96 ); }
+    wxSize Scale( const wxSize& aSize ) const { return aSize; }
+    int ScaleX( int aX ) const { return aX; }
+    int ScaleY( int aY ) const { return aY; }
+};
+
+#define wxDPIChangedEventHandler( func ) ( &func )
+
+
 /// The help asked for a window (the context help of a dialog).
 class wxHelpEvent : public wxCommandEvent
 {
@@ -589,9 +611,20 @@ private:
 class wxGridEvent : public wxNotifyEvent
 {
 public:
-    explicit wxGridEvent( wxEventType aType = wxEVT_NULL, int aId = 0, int aRow = -1,
-                          int aCol = -1, int aX = -1, int aY = -1, bool aSelecting = true,
-                          int aModifiers = 0 ) :
+    wxGridEvent() :
+            wxNotifyEvent( wxEVT_NULL, 0 ),
+            m_row( -1 ),
+            m_col( -1 ),
+            m_x( -1 ),
+            m_y( -1 ),
+            m_selecting( true ),
+            m_modifiers( 0 )
+    {
+    }
+
+    /// The constructor of wxWidgets (the id first, then the type and the object of the event).
+    wxGridEvent( int aId, wxEventType aType, QObject* aObject, int aRow = -1, int aCol = -1,
+                 int aX = -1, int aY = -1, bool aSelecting = true, int aModifiers = 0 ) :
             wxNotifyEvent( aType, aId ),
             m_row( aRow ),
             m_col( aCol ),
@@ -600,6 +633,7 @@ public:
             m_selecting( aSelecting ),
             m_modifiers( aModifiers )
     {
+        SetEventObject( aObject );
     }
 
     int GetRow() const { return m_row; }
@@ -610,6 +644,10 @@ public:
     bool CmdDown() const { return m_modifiers & wxMOD_CMD; }
     bool ShiftDown() const { return m_modifiers & wxMOD_SHIFT; }
     bool AltDown() const { return m_modifiers & wxMOD_ALT; }
+    bool MetaDown() const { return m_modifiers & wxMOD_META; }
+    bool RawControlDown() const { return m_modifiers & wxMOD_RAW_CONTROL; }
+    int GetModifiers() const { return m_modifiers; }
+    bool HasModifiers() const { return ( m_modifiers & ~wxMOD_SHIFT ) != 0; }
 
 private:
     int  m_row;
@@ -763,6 +801,15 @@ class QWidget;
 KIQT_API void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType,
                                        wxCompatEventSink* aSink );
 
+/// Record @a aSink as the handlers of the window @a aWidget (the compatible windows).
+KIQT_API void wxRegisterEventSinkCompat( QWidget* aWidget, wxCompatEventSink* aSink );
+
+/**
+ * The handlers of the window @a aWidget: the ones of a compatible window, or handlers that the
+ * widget keeps for the plain Qt widgets (the grid window of a grid...).
+ */
+KIQT_API wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget );
+
 #define wxEventHandler( func ) ( &func )
 #define wxCommandEventHandler( func ) ( &func )
 #define wxUpdateUIEventHandler( func ) ( &func )
@@ -770,6 +817,7 @@ KIQT_API void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType,
 #define wxSizeEventHandler( func ) ( &func )
 #define wxMouseEventHandler( func ) ( &func )
 #define wxKeyEventHandler( func ) ( &func )
+#define wxCharEventHandler( func ) ( &func )
 #define wxCloseEventHandler( func ) ( &func )
 #define wxInitDialogEventHandler( func ) ( &func )
 #define wxSpinEventHandler( func ) ( &func )
@@ -781,6 +829,7 @@ KIQT_API void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType,
 #define wxScrollEventHandler( func ) ( &func )
 #define wxListEventHandler( func ) ( &func )
 #define wxGridEventHandler( func ) ( &func )
+#define wxMenuEventHandler( func ) ( &func )
 #define wxActivateEventHandler( func ) ( &func )
 #define wxHtmlLinkEventHandler( func ) ( &func )
 #define wxTimerEventHandler( func ) ( &func )

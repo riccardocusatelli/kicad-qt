@@ -73,6 +73,7 @@
 #include <wx/string.h>
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
+#include <wx/kiwx_menu.h>
 #include <wx/kiwx_validators.h>
 
 #include <qt_strings.h>
@@ -229,6 +230,7 @@ public:
             m_clientData( nullptr ),
             m_sizerProxy( this )
     {
+        wxRegisterEventSinkCompat( this, &m_events );
     }
 
     /// The id of the window (a property of the widget, so that the events find it).
@@ -363,6 +365,21 @@ public:
 
     void Raise() { this->raise(); }
 
+    /// Call a function later, on the event loop (wxEvtHandler::CallAfter()).
+    template <typename FUNCTOR>
+    void CallAfter( FUNCTOR aFunctor )
+    {
+        QMetaObject::invokeMethod( this, std::move( aFunctor ), Qt::QueuedConnection );
+    }
+
+    template <typename CLASS>
+    void CallAfter( void ( CLASS::*aMethod )() )
+    {
+        CLASS* self = static_cast<CLASS*>( this );
+        QMetaObject::invokeMethod( this, [self, aMethod]() { ( self->*aMethod )(); },
+                                   Qt::QueuedConnection );
+    }
+
     void* GetClientData() const { return m_clientData; }
     void SetClientData( void* aData ) { m_clientData = aData; }
 
@@ -424,6 +441,14 @@ public:
     }
 
     template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    void Connect( int aId, int aLastId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        if( aSink )
+            Bind( aType, aMethod, aSink, aId, aLastId );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
     void Connect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
                   void* aUserData = nullptr, OBJECT* aSink = nullptr )
     {
@@ -449,6 +474,22 @@ public:
     {
         return m_events.Remove( aType, aSink );
     }
+
+    /// The handler of the events of the window: the window itself (no handler is pushed).
+    wxWindowCompat* GetEventHandler() { return this; }
+
+    /// Show a popup menu and give the event of the chosen item to the window (wxWindow::PopupMenu()).
+    bool PopupMenu( wxMenu* aMenu, const wxPoint& aPos = wxDefaultPosition )
+    {
+        wxCommandEvent event;
+
+        if( wxPopupMenuCompat( this, aMenu, aPos, event ) )
+            m_events.Process( event );
+
+        return true;
+    }
+
+    bool PopupMenu( wxMenu* aMenu, int aX, int aY ) { return PopupMenu( aMenu, wxPoint( aX, aY ) ); }
 
     /// Give an event to the handlers of this window (wxEvtHandler::ProcessEvent()).
     bool ProcessEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
@@ -623,6 +664,7 @@ public:
     void SelectNone() { deselect(); }
     void SetSelection( long aFrom, long aTo );
     void GetSelection( long* aFrom, long* aTo ) const;
+    wxString GetStringSelection() const { return ToWxString( selectedText() ); }
 
     void SetInsertionPoint( long aPos ) { setCursorPosition( int( aPos ) ); }
     void SetInsertionPointEnd() { end( false ); }
@@ -635,6 +677,8 @@ public:
     wxString GetRange( long aFrom, long aTo ) const;
 
     bool SetHint( const wxString& aHint ) { setPlaceholderText( ToQString( aHint ) ); return true; }
+    bool SetMargins( int aLeft, int aTop = -1 ) { setTextMargins( std::max( aLeft, 0 ), 0, 0, 0 ); return true; }
+    bool SetMargins( const wxPoint& aPt ) { return SetMargins( aPt.x, aPt.y ); }
     wxString GetHint() const { return ToWxString( placeholderText() ); }
 
     bool IsModified() const { return isModified(); }
@@ -1451,5 +1495,51 @@ KIQT_API QWidget* wxFindFocusCompat();
 
 /// Ring the bell.
 KIQT_API void wxBell();
+
+/// The tooltips of the application (wxToolTip): Qt shows them always.
+class wxToolTip
+{
+public:
+    static void Enable( bool aEnable ) {}
+    static void SetDelay( long aMilliseconds ) {}
+    static void SetAutoPop( long aMilliseconds ) {}
+    static void SetReshow( long aMilliseconds ) {}
+};
+
+
+/// No painting of a window while the locker lives (wxWindowUpdateLocker).
+class wxWindowUpdateLocker
+{
+public:
+    explicit wxWindowUpdateLocker( QWidget* aWindow = nullptr ) { Lock( aWindow ); }
+
+    ~wxWindowUpdateLocker()
+    {
+        if( m_window )
+            m_window->setUpdatesEnabled( m_wasEnabled );
+    }
+
+    void Lock( QWidget* aWindow )
+    {
+        m_window = aWindow;
+
+        if( m_window )
+        {
+            m_wasEnabled = m_window->updatesEnabled();
+            m_window->setUpdatesEnabled( false );
+        }
+    }
+
+private:
+    QWidget* m_window = nullptr;
+    bool     m_wasEnabled = true;
+};
+
+
+/// The top level window of a window (its dialog or its frame).
+inline QWidget* wxGetTopLevelParent( QWidget* aWindow )
+{
+    return aWindow ? aWindow->window() : nullptr;
+}
 
 #endif // KIWX_GUI_H

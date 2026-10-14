@@ -40,6 +40,7 @@
 #include <QPointer>
 #include <QTableView>
 
+#include <wx/arrstr.h>
 #include <wx/kiwx_gui.h>
 
 class wxGrid;
@@ -185,6 +186,11 @@ private:
     wxGridCellEditor*   m_editor;
     wxAttrKind          m_kind;
 };
+
+
+using wxGridCellAttrPtr = wxObjectDataPtr<wxGridCellAttr>;
+using wxGridCellRendererPtr = wxObjectDataPtr<wxGridCellRenderer>;
+using wxGridCellEditorPtr = wxObjectDataPtr<wxGridCellEditor>;
 
 
 /// The attributes of the cells, rows and columns of a table.
@@ -419,6 +425,27 @@ public:
 };
 
 
+/// The drawing of the labels of a grid (the renderers of the headers of wxWidgets).
+class KIQT_API wxGridHeaderLabelsRenderer
+{
+public:
+    virtual ~wxGridHeaderLabelsRenderer() = default;
+
+    virtual void DrawBorder( const wxGrid& aGrid, wxDC& aDC, wxRect& aRect ) const;
+    virtual void DrawLabel( const wxGrid& aGrid, wxDC& aDC, const wxString& aValue,
+                            const wxRect& aRect, int aHAlign, int aVAlign,
+                            int aTextOrientation ) const;
+};
+
+class KIQT_API wxGridColumnHeaderRendererDefault : public wxGridHeaderLabelsRenderer {};
+class KIQT_API wxGridRowHeaderRendererDefault : public wxGridHeaderLabelsRenderer {};
+class KIQT_API wxGridCornerHeaderRendererDefault : public wxGridHeaderLabelsRenderer {};
+
+using wxGridColumnHeaderRenderer = wxGridHeaderLabelsRenderer;
+using wxGridRowHeaderRenderer = wxGridHeaderLabelsRenderer;
+using wxGridCornerHeaderRenderer = wxGridHeaderLabelsRenderer;
+
+
 /// The handler of the events of an editor (the editors of KiCad derive from it).
 class KIQT_API wxEvtHandler
 {
@@ -431,6 +458,30 @@ public:
  * The edition of cells (wxGridCellEditor): its control, created once by Create(), is the editor
  * of the cell in the grid.
  */
+/**
+ * The control of an editor (wxGridCellEditor::m_control): a guarded pointer that the editors
+ * of KiCad cast to their control classes.
+ */
+class wxControlPtrCompat : public QPointer<QWidget>
+{
+public:
+    using QPointer<QWidget>::QPointer;
+
+    wxControlPtrCompat& operator=( QWidget* aWidget )
+    {
+        QPointer<QWidget>::operator=( aWidget );
+        return *this;
+    }
+
+    template <typename T, typename = std::enable_if_t<std::is_base_of_v<QWidget, T>
+                                                      && !std::is_same_v<T, QWidget>>>
+    explicit operator T*() const
+    {
+        return static_cast<T*>( data() );
+    }
+};
+
+
 class KIQT_API wxGridCellEditor : public wxGridRefCounted
 {
 public:
@@ -470,12 +521,12 @@ public:
     virtual wxGridCellEditor* Clone() const = 0;
     virtual wxString GetValue() const = 0;
 
-    virtual void SetValidator( const wxString& ) {}
+    virtual void SetValidator( const wxValidator& aValidator ) {}
 
 protected:
     ~wxGridCellEditor() override;
 
-    QPointer<QWidget> m_control;
+    wxControlPtrCompat m_control;
     wxGridCellAttr*   m_attr;
 };
 
@@ -587,7 +638,21 @@ private:
     int m_col;
 };
 
-using wxGridCellCoordsArray = std::vector<wxGridCellCoords>;
+/// An array of cells (wxGridCellCoordsArray of wxWidgets).
+class wxGridCellCoordsArray : public std::vector<wxGridCellCoords>
+{
+public:
+    using std::vector<wxGridCellCoords>::vector;
+
+    size_t GetCount() const { return size(); }
+    size_t Count() const { return size(); }
+    bool   IsEmpty() const { return empty(); }
+    void   Add( const wxGridCellCoords& aCoords ) { push_back( aCoords ); }
+    void   Clear() { clear(); }
+
+    wxGridCellCoords&       Item( size_t aIndex ) { return ( *this )[aIndex]; }
+    const wxGridCellCoords& Item( size_t aIndex ) const { return ( *this )[aIndex]; }
+};
 
 
 /// A block of selected cells.
@@ -787,8 +852,8 @@ public:
     void ClearSelection();
     bool IsSelection() const;
     bool IsInSelection( int aRow, int aCol ) const;
-    std::vector<int> GetSelectedRows() const;
-    std::vector<int> GetSelectedCols() const;
+    wxArrayInt GetSelectedRows() const;
+    wxArrayInt GetSelectedCols() const;
     wxGridCellCoordsArray GetSelectedCells() const;
     wxGridCellCoordsArray GetSelectionBlockTopLeft() const;
     wxGridCellCoordsArray GetSelectionBlockBottomRight() const;
@@ -821,10 +886,10 @@ public:
     void SaveEditControlValue();
 
     // The windows of the grid
-    QWidget* GetGridWindow() const;
-    QWidget* GetGridColLabelWindow() const;
-    QWidget* GetGridRowLabelWindow() const;
-    QWidget* GetGridCornerLabelWindow() const;
+    wxWindowRefCompat GetGridWindow() const;
+    wxWindowRefCompat GetGridColLabelWindow() const;
+    wxWindowRefCompat GetGridRowLabelWindow() const;
+    wxWindowRefCompat GetGridCornerLabelWindow() const;
 
     // The geometry
     wxRect CellToRect( int aRow, int aCol ) const;
@@ -832,9 +897,70 @@ public:
     int YToRow( int aY, bool aClipToMinMax = false ) const;
     wxGridCellCoords XYToCell( int aX, int aY ) const;
     void CalcUnscrolledPosition( int aX, int aY, int* aXX, int* aYY ) const;
+    void CalcScrolledPosition( int aX, int aY, int* aXX, int* aYY ) const;
+
+    wxPoint CalcUnscrolledPosition( const wxPoint& aPt ) const
+    {
+        wxPoint pt;
+        CalcUnscrolledPosition( aPt.x, aPt.y, &pt.x, &pt.y );
+        return pt;
+    }
+
+    wxPoint CalcScrolledPosition( const wxPoint& aPt ) const
+    {
+        wxPoint pt;
+        CalcScrolledPosition( aPt.x, aPt.y, &pt.x, &pt.y );
+        return pt;
+    }
 
     /// Send a grid event to the handlers of the grid; return false if it was vetoed.
     bool SendGridEvent( wxEventType aType, int aRow, int aCol );
+
+    // The geometry of the columns and rows (unscrolled)
+    int GetColLeft( int aCol ) const;
+    int GetColRight( int aCol ) const;
+    int GetColWidth( int aCol ) const { return GetColSize( aCol ); }
+    int GetRowTop( int aRow ) const;
+    int GetRowBottom( int aRow ) const;
+    int GetRowHeight( int aRow ) const { return GetRowSize( aRow ); }
+
+    void GetColLabelAlignment( int* aHAlign, int* aVAlign ) const;
+    void GetRowLabelAlignment( int* aHAlign, int* aVAlign ) const;
+    int GetColLabelTextOrientation() const { return wxHORIZONTAL; }
+    void SetDefaultCellOverflow( bool aAllow ) { m_defaultAttr->SetOverflow( aAllow ); }
+
+    /// The best size of the grid (its size hint).
+    virtual wxSize DoGetBestSize() const;
+
+    /// Draw the labels (the headers of the view call them).
+    virtual void DrawColLabel( wxDC& aDC, int aCol );
+    virtual void DrawRowLabel( wxDC& aDC, int aRow );
+    virtual void DrawCornerLabel( wxDC& aDC );
+
+    QSize sizeHint() const override;
+
+protected:
+    /**
+     * Send a grid event about the current cell.
+     *
+     * @return -1 if vetoed, 1 if processed, 0 if not processed (as wxGrid::SendEvent()).
+     */
+    int SendEvent( wxEventType aType, int aRow, int aCol );
+    int SendEvent( wxEventType aType, const wxString& aString = wxEmptyString );
+
+    // The state of wxGrid that the derived classes of KiCad use
+    bool             m_waitForSlowClick = false;
+    bool             m_nativeColumnLabels = false;
+    bool             m_cellEditCtrlEnabled = false;
+    int              m_colLabelHeight = 0;
+    int              m_rowLabelWidth = 0;
+    wxGridCellCoords m_currentCellCoords;
+    wxWindowRefCompat m_gridWin;
+    wxWindowRefCompat m_colLabelWin;
+    wxWindowRefCompat m_rowLabelWin;
+    wxWindowRefCompat m_cornerLabelWin;
+
+public:
 
     /// The model of the view (for the delegate and the tables).
     KIWX_GRID_MODEL* GetModelCompat() const { return m_model; }
@@ -842,6 +968,10 @@ public:
 private:
     friend class KIWX_GRID_DELEGATE;
     friend class KIWX_GRID_MODEL;
+    friend class KIWX_GRID_HEADER;
+
+    /// The sizes of the labels (m_colLabelHeight, m_rowLabelWidth).
+    void updateLabelSizes();
 
     QItemSelectionModel::SelectionFlags selectionFlags() const;
 

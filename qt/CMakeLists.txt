@@ -92,6 +92,7 @@ function( kiqt_gui_target aTarget )
     target_compile_definitions( ${aTarget} PRIVATE
         wxWindow=QWidget
         wxTextEntry=wxTextCtrl
+        wxTextEntryBase=wxTextCtrl
         )
 endfunction()
 

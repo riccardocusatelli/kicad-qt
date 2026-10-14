@@ -32,6 +32,7 @@
 #include <widgets/grid_text_helpers.h>
 #include <widgets/grid_icon_text_helpers.h>
 #include <widgets/grid_combobox.h>
+#include <widgets/ui_common.h>
 #include <search_stack.h>
 #include <widgets/grid_text_button_helpers.h>
 
@@ -715,45 +716,7 @@ void GRID_TRICKS::onKeyDown( wxKeyEvent& ev )
 
     if( ctrl && ev.GetKeyCode() == WXK_TAB )
     {
-        wxWindow* test = m_grid->GetNextSibling();
-
-        if( !test )
-            test = m_grid->GetParent()->GetNextSibling();
-
-        while( test && !test->IsTopLevel() )
-        {
-            test->SetFocus();
-
-            if( test->HasFocus() )
-                break;
-
-            if( !test->GetChildren().empty() )
-            {
-                test = test->GetChildren().front();
-            }
-            else if( test->GetNextSibling() )
-            {
-                test = test->GetNextSibling();
-            }
-            else
-            {
-                while( test )
-                {
-                    test = test->GetParent();
-
-                    if( test && test->IsTopLevel() )
-                    {
-                        break;
-                    }
-                    else if( test && test->GetNextSibling() )
-                    {
-                        test = test->GetNextSibling();
-                        break;
-                    }
-                }
-            }
-        }
-
+        KIUI::FocusNextWindow( m_grid );
         return;
     }
 
