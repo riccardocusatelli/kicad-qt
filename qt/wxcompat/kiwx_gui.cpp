@@ -882,68 +882,6 @@ wxTextCtrl::wxTextCtrl( wxWidgetArgCompat aParent, int aId, const wxString& aVal
 }
 
 
-void wxTextCtrl::SetValue( const wxString& aValue )
-{
-    setText( ToQString( aValue ) );
-    setModified( false );
-}
-
-
-void wxTextCtrl::ChangeValue( const wxString& aValue )
-{
-    QSignalBlocker blocker( this );
-    SetValue( aValue );
-}
-
-
-void wxTextCtrl::SetSelection( long aFrom, long aTo )
-{
-    // (-1, -1) selects all the text
-    if( aFrom == -1 && aTo == -1 )
-    {
-        selectAll();
-        return;
-    }
-
-    long length = text().size();
-    long to = aTo < 0 ? length : std::min( aTo, length );
-    long from = std::clamp( aFrom, 0L, to );
-    setSelection( int( from ), int( to - from ) );
-}
-
-
-void wxTextCtrl::GetSelection( long* aFrom, long* aTo ) const
-{
-    long start = hasSelectedText() ? selectionStart() : cursorPosition();
-    long length = hasSelectedText() ? selectedText().size() : 0;
-
-    if( aFrom )
-        *aFrom = start;
-
-    if( aTo )
-        *aTo = start + length;
-}
-
-
-void wxTextCtrl::Replace( long aFrom, long aTo, const wxString& aText )
-{
-    QString value = text();
-    long    to = std::min<long>( aTo, value.size() );
-    long    from = std::clamp( aFrom, 0L, to );
-    value.replace( int( from ), int( to - from ), ToQString( aText ) );
-    setText( value );
-}
-
-
-wxString wxTextCtrl::GetRange( long aFrom, long aTo ) const
-{
-    QString value = text();
-    long    to = std::min<long>( aTo, value.size() );
-    long    from = std::clamp( aFrom, 0L, to );
-    return ToWxString( value.mid( int( from ), int( to - from ) ) );
-}
-
-
 wxTextCtrlMultiLine::wxTextCtrlMultiLine( wxWidgetArgCompat aParent ) :
         wxWindowCompat<QPlainTextEdit>( aParent )
 {
@@ -964,19 +902,52 @@ void wxTextCtrlMultiLine::ChangeValue( const wxString& aValue )
 }
 
 
-void wxTextCtrlMultiLine::AppendText( const wxString& aText )
+void wxTextCtrlMultiLine::Replace( long aFrom, long aTo, const wxString& aText )
 {
+    SetSelection( aFrom, aTo );
+
     QTextCursor cursor = textCursor();
-    cursor.movePosition( QTextCursor::End );
     cursor.insertText( ToQString( aText ) );
     setTextCursor( cursor );
 }
 
 
-void wxTextCtrlMultiLine::SetInsertionPointEnd()
+void wxTextCtrlMultiLine::SetSelection( long aFrom, long aTo )
+{
+    long        length = GetLastPosition();
+    QTextCursor cursor = textCursor();
+
+    if( aFrom == -1 && aTo == -1 )
+    {
+        aFrom = 0;
+        aTo = length;
+    }
+
+    long to = aTo < 0 ? length : std::min( aTo, length );
+    long from = std::clamp( aFrom, 0L, to );
+
+    cursor.setPosition( int( from ) );
+    cursor.setPosition( int( to ), QTextCursor::KeepAnchor );
+    setTextCursor( cursor );
+}
+
+
+void wxTextCtrlMultiLine::GetSelection( long* aFrom, long* aTo ) const
 {
     QTextCursor cursor = textCursor();
-    cursor.movePosition( QTextCursor::End );
+
+    if( aFrom )
+        *aFrom = cursor.selectionStart();
+
+    if( aTo )
+        *aTo = cursor.selectionEnd();
+}
+
+
+void wxTextCtrlMultiLine::SetInsertionPoint( long aPos )
+{
+    QTextCursor cursor = textCursor();
+    cursor.setPosition( int( std::clamp( aPos, 0L, GetLastPosition() ) ) );
     setTextCursor( cursor );
 }
 
@@ -1193,29 +1164,32 @@ void wxComboBox::ChangeValue( const wxString& aValue )
 }
 
 
-void wxComboBox::SelectAll()
+void wxComboBox::Clear()
 {
+    wxChoice::Clear();
+
     if( lineEdit() )
-        lineEdit()->selectAll();
+        lineEdit()->clear();
 }
 
 
-void wxComboBox::SetInsertionPointEnd()
+void wxComboBox::showPopup()
 {
-    if( lineEdit() )
-        lineEdit()->end( false );
+    wxCommandEvent event( wxEVT_COMBOBOX_DROPDOWN, GetId() );
+    event.SetEventObject( this );
+    ProcessEvent( event );
+
+    QComboBox::showPopup();
 }
 
 
-void wxComboBox::SetSelection( long aFrom, long aTo )
+void wxComboBox::hidePopup()
 {
-    if( !lineEdit() )
-        return;
+    QComboBox::hidePopup();
 
-    if( aFrom == -1 && aTo == -1 )
-        lineEdit()->selectAll();
-    else
-        lineEdit()->setSelection( int( aFrom ), int( aTo - aFrom ) );
+    wxCommandEvent event( wxEVT_COMBOBOX_CLOSEUP, GetId() );
+    event.SetEventObject( this );
+    ProcessEvent( event );
 }
 
 

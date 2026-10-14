@@ -513,8 +513,11 @@ public:
 
     bool IsCreated() const { return m_control != nullptr; }
 
-    QWidget* GetControl() const { return m_control; }
-    void SetControl( QWidget* aControl ) { m_control = aControl; }
+    wxWindow* GetControl() const { return m_control ? wxWindowFromQt( m_control.data() ) : nullptr; }
+    void SetControl( wxWidgetArgCompat aControl ) { m_control = aControl.get(); }
+
+    /// The widget of the control.
+    QWidget* GetControlWidgetCompat() const { return m_control.data(); }
 
     wxGridCellAttr* GetCellAttr() const { return m_attr; }
     void SetCellAttr( wxGridCellAttr* aAttr ) { m_attr = aAttr; }
@@ -523,7 +526,7 @@ public:
      * Create the control of the editor, child of @a aParent.  The derived editors make their
      * control, then call this one: it pushes @a aEventHandler on the control.
      */
-    virtual void Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler ) = 0;
+    virtual void Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler ) = 0;
 
     virtual void SetSize( const wxRect& aRect );
     virtual void Show( bool aShow, wxGridCellAttr* aAttr = nullptr );
@@ -563,7 +566,7 @@ class KIQT_API wxGridCellTextEditor : public wxGridCellEditor
 public:
     explicit wxGridCellTextEditor( size_t aMaxChars = 0 ) : m_maxChars( aMaxChars ) {}
 
-    void Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler ) override;
+    void Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler ) override;
     void BeginEdit( int aRow, int aCol, wxGrid* aGrid ) override;
     bool EndEdit( int aRow, int aCol, const wxGrid* aGrid, const wxString& aOldVal,
                   wxString* aNewVal ) override;
@@ -604,7 +607,7 @@ public:
                             bool aAllowOthers = false );
     wxGridCellChoiceEditor( size_t aCount, const wxString aChoices[], bool aAllowOthers = false );
 
-    void Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler ) override;
+    void Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler ) override;
     void BeginEdit( int aRow, int aCol, wxGrid* aGrid ) override;
     bool EndEdit( int aRow, int aCol, const wxGrid* aGrid, const wxString& aOldVal,
                   wxString* aNewVal ) override;
@@ -625,7 +628,7 @@ protected:
 class KIQT_API wxGridCellBoolEditor : public wxGridCellEditor
 {
 public:
-    void Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler ) override;
+    void Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler ) override;
     void BeginEdit( int aRow, int aCol, wxGrid* aGrid ) override;
     bool EndEdit( int aRow, int aCol, const wxGrid* aGrid, const wxString& aOldVal,
                   wxString* aNewVal ) override;
@@ -725,7 +728,7 @@ public:
         Tab_Leave
     };
 
-    wxGrid( QWidget* aParent = nullptr, int aId = wxID_ANY, const wxPoint& aPos = wxDefaultPosition,
+    wxGrid( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY, const wxPoint& aPos = wxDefaultPosition,
             const wxSize& aSize = wxDefaultSize, long aStyle = 0,
             const wxString& aName = wxGridNameStr );
     ~wxGrid() override;

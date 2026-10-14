@@ -47,6 +47,7 @@
 
 class QObject;
 class QWidget;
+class wxWindow;
 
 
 /// The types of the events (the event tables of wxWidgets aren't used: the types identify the
@@ -130,6 +131,8 @@ enum wxEventTypeCompat
     wxEVT_SHOW,
     wxEVT_DPI_CHANGED,
     wxEVT_MENU,
+    wxEVT_COMBOBOX_DROPDOWN,
+    wxEVT_COMBOBOX_CLOSEUP,
     wxEVT_MENU_OPEN,
     wxEVT_MENU_CLOSE,
     wxEVT_MENU_HIGHLIGHT,
@@ -688,7 +691,7 @@ class wxGridEditorCreatedEvent : public wxCommandEvent
 {
 public:
     explicit wxGridEditorCreatedEvent( int aId = 0, int aRow = -1, int aCol = -1,
-                                       QWidget* aControl = nullptr ) :
+                                       wxWindow* aControl = nullptr ) :
             wxCommandEvent( wxEVT_GRID_EDITOR_CREATED, aId ),
             m_row( aRow ), m_col( aCol ), m_control( aControl )
     {
@@ -696,12 +699,12 @@ public:
 
     int GetRow() const { return m_row; }
     int GetCol() const { return m_col; }
-    QWidget* GetControl() const { return m_control; }
+    wxWindow* GetControl() const { return m_control; }
 
 private:
-    int      m_row;
-    int      m_col;
-    QWidget* m_control;
+    int       m_row;
+    int       m_col;
+    wxWindow* m_control;
 };
 
 

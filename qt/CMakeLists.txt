@@ -85,14 +85,9 @@ include_directories( BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include
 set( KIQT_WXCOMPAT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wxcompat/include )
 include_directories( ${KIQT_WXCOMPAT_INCLUDE_DIR} )
 
-# kiqt_gui_target( <target> ): a library of the GUI of the Qt build: wxTextEntry (of the code of
-# KiCad) is the text control of the compatibility layer.  wxWindow is the window of the layer
-# (wx/kiwx_window.h).
+# kiqt_gui_target( <target> ): a library of the GUI of the Qt build, on the wxWidgets
+# compatibility layer (wxWindow, wxTextEntry... of wx/kiwx_gui.h).
 function( kiqt_gui_target aTarget )
-    target_compile_definitions( ${aTarget} PRIVATE
-        wxTextEntry=wxTextCtrl
-        wxTextEntryBase=wxTextCtrl
-        )
 endfunction()
 
 # Sources of the model the documents use, besides the ones kicad-cli links

@@ -32,6 +32,7 @@
 #define KIWX_COMBO_H
 
 #include <wx/kiwx_gui.h>
+#include <wx/kiwx_textentry.h>
 
 class QFrame;
 class QToolButton;
@@ -66,10 +67,10 @@ public:
     virtual void Init() {}
 
     /// Create the control of the popup, child of @a aParent.
-    virtual bool Create( QWidget* aParent ) = 0;
+    virtual bool Create( wxWindow* aParent ) = 0;
     virtual void DestroyPopup() {}
 
-    virtual QWidget* GetControl() = 0;
+    virtual wxWindow* GetControl() = 0;
 
     virtual void SetStringValue( const wxString& aValue ) {}
     virtual wxString GetStringValue() const = 0;
@@ -100,10 +101,10 @@ protected:
 };
 
 
-class KIQT_API wxComboCtrl : public wxWindowCompat<QWidget>
+class KIQT_API wxComboCtrl : public wxWindowCompat<QWidget>, public wxLineEditTextEntryCompat
 {
 public:
-    wxComboCtrl( QWidget* aParent = nullptr, int aId = wxID_ANY,
+    wxComboCtrl( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                  const wxString& aValue = wxEmptyString, const wxPoint& aPos = wxDefaultPosition,
                  const wxSize& aSize = wxDefaultSize, long aStyle = 0,
                  const wxValidator& aValidator = wxDefaultValidator,
@@ -119,7 +120,7 @@ public:
     void ShowPopup() { Popup(); }
     void HidePopup( bool aGenerateEvent = false ) { Dismiss(); }
     bool IsPopupShown() const;
-    QWidget* GetPopupWindow() const;
+    wxWindow* GetPopupWindow() const;
 
     void SetPopupMinWidth( int aWidth ) { m_popupMinWidth = aWidth; }
     void SetPopupMaxHeight( int aHeight ) { m_popupMaxHeight = aHeight; }
@@ -135,27 +136,17 @@ public:
 
     wxTextCtrl* GetTextCtrl() const { return m_text; }
 
-    wxString GetValue() const;
-    void SetValue( const wxString& aValue );
-    void ChangeValue( const wxString& aValue );
+    // The text: the API of wxTextEntry on the text control of the combo control
     void SetText( const wxString& aValue ) { ChangeValue( aValue ); }
     void SetValueByUser( const wxString& aValue ) { SetValue( aValue ); }
-    void Clear() { SetValue( wxEmptyString ); }
-    void SelectAll();
-    void SetInsertionPointEnd();
-    void SetSelection( long aFrom, long aTo );
-    bool SetHint( const wxString& aHint );
-    void SetEditable( bool aEditable );
-    bool IsEditable() const;
-
-    bool SetMargins( const wxPoint& ) { return true; }
-    bool SetMargins( int, int = -1 ) { return true; }
 
     /// The button was clicked: shows the popup (or an action of the derived class).
     virtual void OnButtonClick();
 
 protected:
     virtual void DoSetPopupControl( wxComboPopup* aPopup );
+
+    QLineEdit* lineEditCompat() const override;
 
     wxComboPopup* m_popup;
 

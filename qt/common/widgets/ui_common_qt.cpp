@@ -159,7 +159,7 @@ wxString KIUI::EllipsizeStatusText( wxWindow* aWindowCompat, const wxString& aSt
 }
 
 
-void KIUI::SelectReferenceNumber( wxTextCtrl* aTextEntry )
+void KIUI::SelectReferenceNumber( wxTextEntry* aTextEntry )
 {
     wxString ref = aTextEntry->GetValue();
 

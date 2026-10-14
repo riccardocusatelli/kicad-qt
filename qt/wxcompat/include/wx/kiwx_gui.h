@@ -74,6 +74,7 @@
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
 #include <wx/kiwx_menu.h>
+#include <wx/kiwx_textentry.h>
 #include <wx/kiwx_window.h>
 #include <wx/kiwx_validators.h>
 
@@ -174,7 +175,7 @@ public:
 };
 
 
-class KIQT_API wxTextCtrl : public wxWindowCompat<QLineEdit>
+class KIQT_API wxTextCtrl : public wxWindowCompat<QLineEdit>, public wxLineEditTextEntryCompat
 {
 public:
     explicit wxTextCtrl( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
@@ -182,73 +183,57 @@ public:
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
 
-    wxString GetValue() const { return ToWxString( text() ); }
-    void SetValue( const wxString& aValue );
-
-    /// Set the text without the change signal.
-    void ChangeValue( const wxString& aValue );
-
-    void Clear() { SetValue( wxEmptyString ); }
-    bool IsEmpty() const { return text().isEmpty(); }
-
-    void SetEditable( bool aEditable ) { setReadOnly( !aEditable ); }
-    bool IsEditable() const { return !isReadOnly(); }
-
-    void SetMaxLength( unsigned long aLength ) { setMaxLength( aLength ? int( aLength ) : 32767 ); }
-
-    void SelectAll() { selectAll(); }
-    void SelectNone() { deselect(); }
-    void SetSelection( long aFrom, long aTo );
-    void GetSelection( long* aFrom, long* aTo ) const;
-    wxString GetStringSelection() const { return ToWxString( selectedText() ); }
-
-    void SetInsertionPoint( long aPos ) { setCursorPosition( int( aPos ) ); }
-    void SetInsertionPointEnd() { end( false ); }
-    long GetInsertionPoint() const { return cursorPosition(); }
-    long GetLastPosition() const { return text().size(); }
-
-    void AppendText( const wxString& aText ) { SetValue( GetValue() + aText ); }
-    void WriteText( const wxString& aText ) { insert( ToQString( aText ) ); }
-    void Replace( long aFrom, long aTo, const wxString& aText );
-    wxString GetRange( long aFrom, long aTo ) const;
-
-    bool SetHint( const wxString& aHint ) { setPlaceholderText( ToQString( aHint ) ); return true; }
-    bool SetMargins( int aLeft, int aTop = -1 ) { setTextMargins( std::max( aLeft, 0 ), 0, 0, 0 ); return true; }
-    bool SetMargins( const wxPoint& aPt ) { return SetMargins( aPt.x, aPt.y ); }
-    wxString GetHint() const { return ToWxString( placeholderText() ); }
-
     bool IsModified() const { return isModified(); }
     void SetModified( bool aModified ) { setModified( aModified ); }
+    void MarkDirty() { setModified( true ); }
     void DiscardEdits() { setModified( false ); }
+
+protected:
+    QLineEdit* lineEditCompat() const override { return const_cast<wxTextCtrl*>( this ); }
 };
 
 
 /// A multi-line wxTextCtrl (wxTE_MULTILINE): a QPlainTextEdit.
-class KIQT_API wxTextCtrlMultiLine : public wxWindowCompat<QPlainTextEdit>
+class KIQT_API wxTextCtrlMultiLine : public wxWindowCompat<QPlainTextEdit>, public wxTextEntry
 {
 public:
     explicit wxTextCtrlMultiLine( wxWidgetArgCompat aParent = nullptr );
 
-    wxString GetValue() const { return ToWxString( toPlainText() ); }
-    void SetValue( const wxString& aValue );
-    void ChangeValue( const wxString& aValue );
-    void Clear() { SetValue( wxEmptyString ); }
-    bool IsEmpty() const { return toPlainText().isEmpty(); }
+    wxString GetValue() const override { return ToWxString( toPlainText() ); }
+    void SetValue( const wxString& aValue ) override;
+    void ChangeValue( const wxString& aValue ) override;
+    void WriteText( const wxString& aText ) override { insertPlainText( ToQString( aText ) ); }
+    void Replace( long aFrom, long aTo, const wxString& aText ) override;
+    void SetSelection( long aFrom, long aTo ) override;
+    void GetSelection( long* aFrom, long* aTo ) const override;
+    long GetInsertionPoint() const override { return textCursor().position(); }
+    void SetInsertionPoint( long aPos ) override;
+    long GetLastPosition() const override { return long( toPlainText().size() ); }
 
-    void SetEditable( bool aEditable ) { setReadOnly( !aEditable ); }
-    bool IsEditable() const { return !isReadOnly(); }
+    void SetEditable( bool aEditable ) override { setReadOnly( !aEditable ); }
+    bool IsEditable() const override { return !isReadOnly(); }
 
-    void AppendText( const wxString& aText );
-    void WriteText( const wxString& aText ) { insertPlainText( ToQString( aText ) ); }
+    bool SetHint( const wxString& aHint ) override
+    {
+        setPlaceholderText( ToQString( aHint ) );
+        return true;
+    }
 
-    void SetInsertionPointEnd();
+    void Undo() override { undo(); }
+    void Redo() override { redo(); }
+    void Cut() override { cut(); }
+    void Copy() override { copy(); }
+    void Paste() override { paste(); }
+
     void ShowPosition( long ) { ensureCursorVisible(); }
 
     int GetNumberOfLines() const { return blockCount(); }
     wxString GetLineText( long aLine ) const;
+    int GetLineLength( long aLine ) const { return int( GetLineText( aLine ).length() ); }
 
     bool IsModified() const { return document()->isModified(); }
     void SetModified( bool aModified ) { document()->setModified( aModified ); }
+    void MarkDirty() { SetModified( true ); }
     void DiscardEdits() { SetModified( false ); }
 };
 
@@ -464,7 +449,7 @@ public:
 };
 
 
-class KIQT_API wxComboBox : public wxChoice
+class KIQT_API wxComboBox : public wxChoice, public wxLineEditTextEntryCompat
 {
 public:
     explicit wxComboBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
@@ -474,16 +459,33 @@ public:
                          const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
 
     /// The text of an editable combo box (or of its selected item).
-    wxString GetValue() const { return ToWxString( currentText() ); }
-    void SetValue( const wxString& aValue );
-    void ChangeValue( const wxString& aValue );
+    wxString GetValue() const override { return ToWxString( currentText() ); }
+    void SetValue( const wxString& aValue ) override;
+    void ChangeValue( const wxString& aValue ) override;
 
-    void SetEditable( bool aEditable ) { setEditable( aEditable ); }
-    void SelectAll();
-    void SetInsertionPointEnd();
+    void SetEditable( bool aEditable ) override { setEditable( aEditable ); }
+    bool IsEditable() const override { return isEditable(); }
 
+    /// The items and the text.
+    void Clear() override;
+
+    bool IsListEmpty() const { return count() == 0; }
+    bool IsTextEmpty() const { return currentText().isEmpty(); }
+
+    using wxChoice::GetSelection;
+    using wxLineEditTextEntryCompat::GetSelection;
     using wxChoice::SetSelection;
-    void SetSelection( long aFrom, long aTo );
+    using wxLineEditTextEntryCompat::SetSelection;
+
+    void Popup() { showPopup(); }
+    void Dismiss() { hidePopup(); }
+
+    /// The popup of the list (wxEVT_COMBOBOX_DROPDOWN and wxEVT_COMBOBOX_CLOSEUP).
+    void showPopup() override;
+    void hidePopup() override;
+
+protected:
+    QLineEdit* lineEditCompat() const override { return lineEdit(); }
 };
 
 using wxBitmapComboBox = wxComboBox;

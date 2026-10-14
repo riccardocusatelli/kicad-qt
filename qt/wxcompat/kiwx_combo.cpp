@@ -48,7 +48,7 @@ void wxComboPopup::Dismiss()
 }
 
 
-wxComboCtrl::wxComboCtrl( QWidget* aParent, int aId, const wxString& aValue, const wxPoint& aPos,
+wxComboCtrl::wxComboCtrl( wxWidgetArgCompat aParent, int aId, const wxString& aValue, const wxPoint& aPos,
                           const wxSize& aSize, long aStyle, const wxValidator& aValidator,
                           const wxString& aName ) :
         wxWindowCompat<QWidget>( aParent ),
@@ -89,6 +89,12 @@ wxComboCtrl::~wxComboCtrl()
 }
 
 
+QLineEdit* wxComboCtrl::lineEditCompat() const
+{
+    return m_text;
+}
+
+
 void wxComboCtrl::DoSetPopupControl( wxComboPopup* aPopup )
 {
     m_popup = aPopup;
@@ -110,9 +116,9 @@ void wxComboCtrl::SetPopupControl( wxComboPopup* aPopup )
 }
 
 
-QWidget* wxComboCtrl::GetPopupWindow() const
+wxWindow* wxComboCtrl::GetPopupWindow() const
 {
-    return m_popupWindow;
+    return wxWindowFromQt( m_popupWindow );
 }
 
 
@@ -137,11 +143,11 @@ void wxComboCtrl::Popup()
 
     if( !m_popup->m_created )
     {
-        m_popup->Create( m_popupWindow );
+        m_popup->Create( wxWindowFromQt( m_popupWindow ) );
         m_popup->m_created = true;
 
-        if( QWidget* control = m_popup->GetControl() )
-            m_popupWindow->layout()->addWidget( control );
+        if( wxWindow* control = m_popup->GetControl() )
+            m_popupWindow->layout()->addWidget( control->GetHandle() );
     }
 
     m_popup->SetStringValue( GetValue() );
@@ -167,8 +173,8 @@ void wxComboCtrl::Popup()
     m_popup->OnPopup();
     m_popupWindow->show();
 
-    if( QWidget* control = m_popup->GetControl() )
-        control->setFocus();
+    if( wxWindow* control = m_popup->GetControl() )
+        control->SetFocus();
 }
 
 
@@ -214,55 +220,3 @@ void wxComboCtrl::SetButtonBitmaps( const wxBitmapBundle& aNormal, bool aPushBut
 }
 
 
-wxString wxComboCtrl::GetValue() const
-{
-    return m_text->GetValue();
-}
-
-
-void wxComboCtrl::SetValue( const wxString& aValue )
-{
-    m_text->SetValue( aValue );
-}
-
-
-void wxComboCtrl::ChangeValue( const wxString& aValue )
-{
-    m_text->ChangeValue( aValue );
-}
-
-
-void wxComboCtrl::SelectAll()
-{
-    m_text->SelectAll();
-}
-
-
-void wxComboCtrl::SetInsertionPointEnd()
-{
-    m_text->SetInsertionPointEnd();
-}
-
-
-void wxComboCtrl::SetSelection( long aFrom, long aTo )
-{
-    m_text->SetSelection( aFrom, aTo );
-}
-
-
-bool wxComboCtrl::SetHint( const wxString& aHint )
-{
-    return m_text->SetHint( aHint );
-}
-
-
-void wxComboCtrl::SetEditable( bool aEditable )
-{
-    m_text->SetEditable( aEditable );
-}
-
-
-bool wxComboCtrl::IsEditable() const
-{
-    return m_text->IsEditable();
-}

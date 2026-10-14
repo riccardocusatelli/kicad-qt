@@ -822,7 +822,7 @@ wxGridCellEditor::~wxGridCellEditor()
 }
 
 
-void wxGridCellEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler )
+void wxGridCellEditor::Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler )
 {
     if( m_control )
     {
@@ -898,7 +898,7 @@ void wxGridCellEditorEvtHandler::DismissEditor()
 }
 
 
-void wxGridCellTextEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler )
+void wxGridCellTextEditor::Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler )
 {
     wxTextCtrl* text = new wxTextCtrl( aParent, aId );
     text->setFrame( false );
@@ -984,7 +984,7 @@ wxGridCellChoiceEditor::wxGridCellChoiceEditor( size_t aCount, const wxString aC
 }
 
 
-void wxGridCellChoiceEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler )
+void wxGridCellChoiceEditor::Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler )
 {
     wxComboBox* combo = new wxComboBox( aParent, aId, wxEmptyString, wxDefaultPosition,
                                         wxDefaultSize, m_choices,
@@ -1067,7 +1067,7 @@ void wxGridCellBoolEditor::UseStringValues( const wxString& aTrue, const wxStrin
 }
 
 
-void wxGridCellBoolEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler )
+void wxGridCellBoolEditor::Create( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler )
 {
     m_control = new wxCheckBox( aParent, aId );
 
@@ -1399,15 +1399,16 @@ public:
 
         if( !editor->IsCreated() )
         {
-            editor->Create( aParent, wxID_ANY, new wxGridCellEditorEvtHandler( m_grid, editor ) );
+            editor->Create( wxWindowFromQt( aParent ), wxID_ANY,
+                            new wxGridCellEditorEvtHandler( m_grid, editor ) );
 
             wxGridEditorCreatedEvent created( m_grid->GetId(), row, col, editor->GetControl() );
             created.SetEventObject( m_grid );
             m_grid->ProcessEvent( created );
         }
-        else if( editor->GetControl()->parentWidget() != aParent )
+        else if( editor->GetControlWidgetCompat()->parentWidget() != aParent )
         {
-            editor->GetControl()->setParent( aParent );
+            editor->GetControlWidgetCompat()->setParent( aParent );
         }
 
         wxSafeDecRef( m_editor );
@@ -1422,13 +1423,13 @@ public:
         m_grid->SendGridEvent( wxEVT_GRID_EDITOR_SHOWN, row, col );
         m_grid->m_cellEditCtrlEnabled = true;
         editor->Show( true );
-        return editor->GetControl();
+        return editor->GetControlWidgetCompat();
     }
 
     void destroyEditor( QWidget* aEditor, const QModelIndex& aIndex ) const override
     {
         // The control belongs to its editor (reused by the next editions)
-        if( m_editor && aEditor == m_editor->GetControl() )
+        if( m_editor && aEditor == m_editor->GetControlWidgetCompat() )
         {
             aEditor->hide();
             m_grid->m_cellEditCtrlEnabled = false;
@@ -1490,7 +1491,7 @@ public:
     {
         QRect r = aOption.rect;
 
-        if( m_editor && aEditor == m_editor->GetControl() )
+        if( m_editor && aEditor == m_editor->GetControlWidgetCompat() )
             m_editor->SetSize( wxRect( r.x(), r.y(), r.width(), r.height() ) );
         else
             aEditor->setGeometry( r );
@@ -1604,7 +1605,7 @@ static Qt::Alignment qtAlignment( int aHAlign, int aVAlign )
 }
 
 
-wxGrid::wxGrid( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize, long aStyle,
+wxGrid::wxGrid( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize, long aStyle,
                 const wxString& aName ) :
         wxWindowCompat<QTableView>( aParent ),
         m_table( nullptr ),
@@ -2893,7 +2894,7 @@ void wxGrid::EnableCellEditControl( bool aEnable )
         // The end of the edition: the value is saved (wxGrid::DisableCellEditControl())
         if( wxGridCellEditor* editor = m_delegate->currentEditor() )
         {
-            if( QWidget* control = editor->GetControl() )
+            if( QWidget* control = editor->GetControlWidgetCompat() )
             {
                 commitData( control );
                 closeEditor( control, QAbstractItemDelegate::NoHint );
@@ -2918,7 +2919,7 @@ void wxGrid::HideCellEditControl()
     {
         if( wxGridCellEditor* editor = m_delegate->currentEditor() )
         {
-            if( QWidget* control = editor->GetControl() )
+            if( QWidget* control = editor->GetControlWidgetCompat() )
             {
                 m_delegate->setQuietClose( true );
                 closeEditor( control, QAbstractItemDelegate::NoHint );
@@ -2935,7 +2936,7 @@ void wxGrid::SaveEditControlValue()
     {
         if( wxGridCellEditor* editor = m_delegate->currentEditor() )
         {
-            if( QWidget* control = editor->GetControl() )
+            if( QWidget* control = editor->GetControlWidgetCompat() )
                 commitData( control );
         }
     }
