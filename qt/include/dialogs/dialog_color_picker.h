@@ -35,6 +35,7 @@
 #include <gal/color4d.h>
 #include <custom_color_item.h>
 #include <dialogs/dialog_color_picker_base.h>
+#include <wx/kiwx_window.h>
 
 class QMouseEvent;
 
@@ -71,7 +72,7 @@ public:
      *        predefined colors
      * @param aDefaultColor: if not null the color of the "Reset to Default" button
      */
-    DIALOG_COLOR_PICKER( QWidget* aParent, const KIGFX::COLOR4D& aCurrentColor,
+    DIALOG_COLOR_PICKER( wxWidgetArgCompat aParent, const KIGFX::COLOR4D& aCurrentColor,
                          bool aAllowOpacityControl, CUSTOM_COLORS_LIST* aUserColors = nullptr,
                          const KIGFX::COLOR4D& aDefaultColor = KIGFX::COLOR4D::UNSPECIFIED );
     ~DIALOG_COLOR_PICKER() override;

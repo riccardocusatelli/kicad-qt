@@ -113,6 +113,13 @@ public:
 
     bool IsQuasiModal() const { return m_qmodal_loop != nullptr; }
 
+    /**
+     * A modal dialog (a file dialog...) shown over a quasi-modal one: the windows of Qt
+     * handle the modality of both, nothing to do.
+     */
+    void PrepareForModalSubDialog() {}
+    void CleanupAfterModalSubDialog() {}
+
     /// The code the dialog was ended with.
     int GetReturnCode() const { return m_returnCode; }
 

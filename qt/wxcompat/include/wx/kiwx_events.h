@@ -375,20 +375,30 @@ class wxKeyEvent : public wxEvent
 public:
     explicit wxKeyEvent( wxEventType aType = wxEVT_NULL ) :
             wxEvent( 0, aType ),
-            m_keyCode( 0 ), m_modifiers( 0 )
+            m_keyCode( 0 ), m_modifiers( 0 ), m_uniChar( 0 )
     {
     }
 
     int GetKeyCode() const { return m_keyCode; }
+
+    /// The character of the key (WXK_NONE for the keys without one).
+    wxChar GetUnicodeKey() const { return m_uniChar; }
+    int GetRawKeyCode() const { return m_keyCode; }
+
     int GetModifiers() const { return m_modifiers; }
     bool HasAnyModifiers() const { return m_modifiers != 0; }
+    bool HasModifiers() const { return ( m_modifiers & ~wxMOD_SHIFT ) != 0; }
     bool ShiftDown() const { return m_modifiers & wxMOD_SHIFT; }
     bool ControlDown() const { return m_modifiers & wxMOD_CONTROL; }
+    bool RawControlDown() const { return m_modifiers & wxMOD_RAW_CONTROL; }
     bool CmdDown() const { return m_modifiers & wxMOD_CMD; }
     bool AltDown() const { return m_modifiers & wxMOD_ALT; }
+    bool MetaDown() const { return m_modifiers & wxMOD_META; }
+    bool IsKeyInCategory( int aCategory ) const { return false; }
 
-    int m_keyCode;
-    int m_modifiers;
+    int    m_keyCode;
+    int    m_modifiers;
+    wxChar m_uniChar;
 };
 
 

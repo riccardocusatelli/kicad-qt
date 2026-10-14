@@ -28,6 +28,8 @@
 
 #include <wx/kiwx_gdi.h>
 
+#include <map>
+
 #include <QApplication>
 #include <QFontMetrics>
 #include <QPainter>
@@ -270,6 +272,145 @@ const wxFont wxNullFont;
 
 // Bitmaps ----------------------------------------------------------------------------------
 
+// Images -----------------------------------------------------------------------------------
+
+wxImage::wxImage( int aWidth, int aHeight, bool aClear ) :
+        QImage( std::max( aWidth, 0 ), std::max( aHeight, 0 ), QImage::Format_RGB32 )
+{
+    // A new image of wxWidgets is black
+    fill( Qt::black );
+}
+
+
+void wxImage::InitAlpha()
+{
+    if( !hasAlphaChannel() )
+        *this = wxImage( convertToFormat( QImage::Format_ARGB32 ) );
+}
+
+
+void wxImage::SetRGB( int aX, int aY, unsigned char aRed, unsigned char aGreen,
+                      unsigned char aBlue )
+{
+    if( !valid( aX, aY ) )
+        return;
+
+    setPixel( aX, aY, qRgba( aRed, aGreen, aBlue, qAlpha( pixel( aX, aY ) ) ) );
+}
+
+
+void wxImage::SetAlpha( int aX, int aY, unsigned char aAlpha )
+{
+    InitAlpha();
+
+    if( !valid( aX, aY ) )
+        return;
+
+    QRgb rgb = pixel( aX, aY );
+    setPixel( aX, aY, qRgba( qRed( rgb ), qGreen( rgb ), qBlue( rgb ), aAlpha ) );
+}
+
+
+wxImage wxImage::Rotate90( bool aClockwise ) const
+{
+    return wxImage( transformed( QTransform().rotate( aClockwise ? 90 : -90 ) ) );
+}
+
+
+wxImage wxImage::Rotate180() const
+{
+    return wxImage( transformed( QTransform().rotate( 180 ) ) );
+}
+
+
+wxImage wxImage::Mirror( bool aHorizontally ) const
+{
+    return wxImage( mirrored( aHorizontally, !aHorizontally ) );
+}
+
+
+wxImage wxImage::Scale( int aWidth, int aHeight, wxImageResizeQuality aQuality ) const
+{
+    return wxImage( scaled( aWidth, aHeight, Qt::IgnoreAspectRatio,
+                            aQuality == wxIMAGE_QUALITY_NEAREST ? Qt::FastTransformation
+                                                                : Qt::SmoothTransformation ) );
+}
+
+
+wxImage& wxImage::Rescale( int aWidth, int aHeight, wxImageResizeQuality aQuality )
+{
+    *this = Scale( aWidth, aHeight, aQuality );
+    return *this;
+}
+
+
+wxImage wxImage::GetSubImage( const wxRect& aRect ) const
+{
+    return wxImage( copy( aRect.x, aRect.y, aRect.width, aRect.height ) );
+}
+
+
+wxImage wxImage::ConvertToGreyscale() const
+{
+    wxImage grey( convertToFormat( QImage::Format_ARGB32 ) );
+
+    for( int y = 0; y < grey.height(); ++y )
+    {
+        for( int x = 0; x < grey.width(); ++x )
+        {
+            QRgb rgb = grey.pixel( x, y );
+            int  value = qGray( rgb );
+            grey.setPixel( x, y, qRgba( value, value, value, qAlpha( rgb ) ) );
+        }
+    }
+
+    return grey;
+}
+
+
+wxImage wxImage::ConvertToDisabled( unsigned char aBrightness ) const
+{
+    wxImage disabled = ConvertToGreyscale();
+
+    for( int y = 0; y < disabled.height(); ++y )
+    {
+        for( int x = 0; x < disabled.width(); ++x )
+        {
+            QRgb rgb = disabled.pixel( x, y );
+            int  value = ( qRed( rgb ) + aBrightness ) / 2;
+            disabled.setPixel( x, y, qRgba( value, value, value, qAlpha( rgb ) ) );
+        }
+    }
+
+    return disabled;
+}
+
+
+void wxImage::Clear( unsigned char aValue )
+{
+    fill( qRgba( aValue, aValue, aValue, hasAlphaChannel() ? aValue : 255 ) );
+}
+
+
+bool wxImage::LoadFile( const wxString& aName, int aType )
+{
+    return load( ToQString( aName ) );
+}
+
+
+bool wxImage::SaveFile( const wxString& aName, int aType ) const
+{
+    return save( ToQString( aName ) );
+}
+
+
+wxBitmap::wxBitmap( const wxImage& aImage, int aDepth, double aScale ) :
+        QPixmap( QPixmap::fromImage( aImage ) )
+{
+    setDevicePixelRatio( aScale );
+}
+
+
 wxBitmap::wxBitmap( int aWidth, int aHeight, int aDepth ) :
         QPixmap( std::max( aWidth, 0 ), std::max( aHeight, 0 ) )
 {
@@ -341,6 +482,105 @@ wxBitmap wxBitmapBundle::GetBitmapFor( const QWidget* aWindow ) const
 
 
 // The colours of the system ----------------------------------------------------------------
+
+// The standard icons ------------------------------------------------------------------------
+
+static QStyle::StandardPixmap standardPixmap( const wxArtID& aId )
+{
+    static const std::map<wxString, QStyle::StandardPixmap> s_pixmaps = {
+        { wxART_ERROR,       QStyle::SP_MessageBoxCritical },
+        { wxART_QUESTION,    QStyle::SP_MessageBoxQuestion },
+        { wxART_WARNING,     QStyle::SP_MessageBoxWarning },
+        { wxART_INFORMATION, QStyle::SP_MessageBoxInformation },
+        { wxART_HELP,        QStyle::SP_DialogHelpButton },
+        { wxART_TIP,         QStyle::SP_MessageBoxInformation },
+        { wxART_GO_BACK,     QStyle::SP_ArrowBack },
+        { wxART_GO_FORWARD,  QStyle::SP_ArrowForward },
+        { wxART_GO_UP,       QStyle::SP_ArrowUp },
+        { wxART_GO_DOWN,     QStyle::SP_ArrowDown },
+        { wxART_GO_HOME,     QStyle::SP_DirHomeIcon },
+        { wxART_FILE_OPEN,   QStyle::SP_DialogOpenButton },
+        { wxART_FILE_SAVE,   QStyle::SP_DialogSaveButton },
+        { wxART_FOLDER,      QStyle::SP_DirClosedIcon },
+        { wxART_FOLDER_OPEN, QStyle::SP_DirOpenIcon },
+        { wxART_NORMAL_FILE, QStyle::SP_FileIcon },
+        { wxART_NEW,         QStyle::SP_FileIcon },
+        { wxART_DELETE,      QStyle::SP_TrashIcon },
+        { wxART_CLOSE,       QStyle::SP_DialogCloseButton },
+        { wxART_CROSS_MARK,  QStyle::SP_DialogCancelButton },
+        { wxART_TICK_MARK,   QStyle::SP_DialogApplyButton },
+        { wxART_FIND,        QStyle::SP_FileDialogContentsView },
+        { wxART_UNDO,        QStyle::SP_ArrowBack },
+        { wxART_REDO,        QStyle::SP_ArrowForward }
+    };
+
+    auto it = s_pixmaps.find( aId );
+    return it != s_pixmaps.end() ? it->second : QStyle::SP_CustomBase;
+}
+
+
+wxBitmapBundle wxArtProvider::GetBitmapBundle( const wxArtID& aId, const wxArtClient& aClient,
+                                               const wxSize& aSize )
+{
+    QStyle::StandardPixmap pixmap = standardPixmap( aId );
+
+    if( pixmap == QStyle::SP_CustomBase )
+        return wxBitmapBundle();
+
+    return wxBitmapBundle( QApplication::style()->standardIcon( pixmap ) );
+}
+
+
+wxBitmap wxArtProvider::GetBitmap( const wxArtID& aId, const wxArtClient& aClient,
+                                   const wxSize& aSize )
+{
+    wxBitmapBundle bundle = GetBitmapBundle( aId, aClient, aSize );
+
+    if( !bundle.IsOk() )
+        return wxBitmap();
+
+    wxSize size = aSize.x > 0 && aSize.y > 0 ? aSize : GetSizeHint( aClient );
+    return wxBitmap( bundle.pixmap( QSize( size.x, size.y ) ) );
+}
+
+
+wxIcon wxArtProvider::GetIcon( const wxArtID& aId, const wxArtClient& aClient, const wxSize& aSize )
+{
+    return GetBitmap( aId, aClient, aSize );
+}
+
+
+wxArtID wxArtProvider::GetMessageBoxIconId( int aFlags )
+{
+    switch( aFlags & wxICON_MASK )
+    {
+    case wxICON_ERROR:       return wxART_ERROR;
+    case wxICON_WARNING:     return wxART_WARNING;
+    case wxICON_QUESTION:    return wxART_QUESTION;
+    case wxICON_INFORMATION: return wxART_INFORMATION;
+    default:                 return wxArtID();
+    }
+}
+
+
+wxSize wxArtProvider::GetSizeHint( const wxArtClient& aClient, QWidget* aWindow )
+{
+    QStyle*            style = aWindow ? aWindow->style() : QApplication::style();
+    QStyle::PixelMetric metric = QStyle::PM_SmallIconSize;
+
+    if( aClient == wxART_TOOLBAR )
+        metric = QStyle::PM_ToolBarIconSize;
+    else if( aClient == wxART_MESSAGE_BOX )
+        metric = QStyle::PM_MessageBoxIconSize;
+    else if( aClient == wxART_BUTTON )
+        metric = QStyle::PM_ButtonIconSize;
+    else if( aClient == wxART_CMN_DIALOG || aClient == wxART_FRAME_ICON )
+        metric = QStyle::PM_LargeIconSize;
+
+    int size = style->pixelMetric( metric, nullptr, aWindow );
+    return wxSize( size, size );
+}
+
 
 int wxSystemSettings::GetMetric( wxSystemMetric aIndex, const QWidget* aWindow )
 {

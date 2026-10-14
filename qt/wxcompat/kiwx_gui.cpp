@@ -126,6 +126,11 @@ void wxFillKeyEventCompat( wxKeyEvent& aEvent, QEvent* aQtEvent )
 
     aEvent.m_keyCode = TOOLKIT::KeyCodeFromQt( *key );
     aEvent.m_modifiers = 0;
+    aEvent.m_uniChar = key->text().isEmpty() ? 0 : wxChar( key->text().front().unicode() );
+
+    // The letters are the upper case ones, as the codes of the keys of wxWidgets
+    if( aEvent.m_uniChar >= 'a' && aEvent.m_uniChar <= 'z' )
+        aEvent.m_uniChar -= 'a' - 'A';
 
     if( key->modifiers() & Qt::ShiftModifier )
         aEvent.m_modifiers |= wxMOD_SHIFT;
@@ -135,6 +140,9 @@ void wxFillKeyEventCompat( wxKeyEvent& aEvent, QEvent* aQtEvent )
 
     if( key->modifiers() & Qt::AltModifier )
         aEvent.m_modifiers |= wxMOD_ALT;
+
+    if( key->modifiers() & Qt::MetaModifier )
+        aEvent.m_modifiers |= wxMOD_META;
 }
 
 
@@ -850,6 +858,22 @@ wxStaticBitmap::wxStaticBitmap( wxWidgetArgCompat aParent, int aId ) :
 }
 
 
+wxStaticBitmap::wxStaticBitmap( wxWidgetArgCompat aParent, int aId, const wxBitmapBundle& aBitmap,
+                                const wxPoint& aPos, const wxSize& aSize, long aStyle,
+                                const wxString& aName ) :
+        wxWindowCompat<QLabel>( aParent )
+{
+    SetId( aId );
+    SetBitmap( aBitmap );
+
+    if( !aName.IsEmpty() )
+        SetName( aName );
+
+    if( aSize.x > 0 && aSize.y > 0 )
+        setFixedSize( aSize.x, aSize.y );
+}
+
+
 void wxStaticBitmap::SetBitmap( const QIcon& aBitmap )
 {
     QList<QSize> sizes = aBitmap.availableSizes();
@@ -1190,6 +1214,61 @@ void wxComboBox::hidePopup()
     wxCommandEvent event( wxEVT_COMBOBOX_CLOSEUP, GetId() );
     event.SetEventObject( this );
     ProcessEvent( event );
+}
+
+
+wxBitmapComboBox::wxBitmapComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue,
+                                    const wxPoint& aPos, const wxSize& aSize,
+                                    const wxArrayString& aChoices, long aStyle ) :
+        wxComboBox( aParent, aId, aValue, aPos, aSize, aChoices, aStyle )
+{
+}
+
+
+wxBitmapComboBox::wxBitmapComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue,
+                                    const wxPoint& aPos, const wxSize& aSize, int aCount,
+                                    const wxString aChoices[], long aStyle ) :
+        wxComboBox( aParent, aId, aValue, aPos, aSize,
+                    aChoices ? wxArrayString( size_t( std::max( aCount, 0 ) ), aChoices )
+                             : wxArrayString(),
+                    aStyle )
+{
+}
+
+
+int wxBitmapComboBox::Append( const wxString& aItem, const wxBitmapBundle& aBitmap )
+{
+    return Insert( aItem, aBitmap, GetCount() );
+}
+
+
+int wxBitmapComboBox::Append( const wxString& aItem, const wxBitmapBundle& aBitmap,
+                              void* aClientData )
+{
+    int index = Append( aItem, aBitmap );
+    SetClientData( index, aClientData );
+    return index;
+}
+
+
+int wxBitmapComboBox::Insert( const wxString& aItem, const wxBitmapBundle& aBitmap,
+                              unsigned int aPos )
+{
+    int index = wxComboBox::Insert( aItem, aPos );
+    SetItemBitmap( index, aBitmap );
+    return index;
+}
+
+
+void wxBitmapComboBox::SetItemBitmap( unsigned int aIndex, const wxBitmapBundle& aBitmap )
+{
+    setItemIcon( int( aIndex ), aBitmap );
+}
+
+
+wxBitmap wxBitmapComboBox::GetItemBitmap( unsigned int aIndex ) const
+{
+    return wxBitmap( itemIcon( int( aIndex ) ).pixmap( iconSize() ) );
 }
 
 

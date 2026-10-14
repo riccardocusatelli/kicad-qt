@@ -2170,6 +2170,29 @@ int wxGrid::GetRowBottom( int aRow ) const
 }
 
 
+void wxGrid::DrawTextRectangle( wxDC& aDC, const wxString& aText, const wxRect& aRect,
+                                int aHAlign, int aVAlign, int aTextOrientation ) const
+{
+    if( aRect.width <= 0 || aRect.height <= 0 )
+        return;
+
+    QPainter* painter = aDC.GetPainter();
+
+    painter->save();
+    painter->setClipRect( aRect.x, aRect.y, aRect.width, aRect.height, Qt::IntersectClip );
+    aDC.DrawLabel( aText, aRect, aHAlign | aVAlign );
+    painter->restore();
+}
+
+
+void wxGrid::DrawTextRectangle( wxDC& aDC, const wxArrayString& aLines, const wxRect& aRect,
+                                int aHAlign, int aVAlign, int aTextOrientation ) const
+{
+    DrawTextRectangle( aDC, wxJoin( aLines, '\n', '\0' ), aRect, aHAlign, aVAlign,
+                       aTextOrientation );
+}
+
+
 wxSize wxGrid::DoGetBestSize() const
 {
     // All the cells and the labels, as wxGrid::DoGetBestSize()

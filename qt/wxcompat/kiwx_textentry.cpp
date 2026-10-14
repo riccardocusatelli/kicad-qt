@@ -31,16 +31,16 @@
 #include <qt_strings.h>
 
 
-// wxTextEntry ------------------------------------------------------------------------------
+// wxTextEntryBase ------------------------------------------------------------------------------
 
-void wxTextEntry::AppendText( const wxString& aText )
+void wxTextEntryBase::AppendText( const wxString& aText )
 {
     SetInsertionPointEnd();
     WriteText( aText );
 }
 
 
-void wxTextEntry::Replace( long aFrom, long aTo, const wxString& aText )
+void wxTextEntryBase::Replace( long aFrom, long aTo, const wxString& aText )
 {
     wxString value = GetValue();
     long     to = std::clamp<long>( aTo, 0, long( value.length() ) );
@@ -52,7 +52,7 @@ void wxTextEntry::Replace( long aFrom, long aTo, const wxString& aText )
 }
 
 
-wxString wxTextEntry::GetRange( long aFrom, long aTo ) const
+wxString wxTextEntryBase::GetRange( long aFrom, long aTo ) const
 {
     wxString value = GetValue();
     long     to = std::clamp<long>( aTo, 0, long( value.length() ) );
@@ -62,14 +62,14 @@ wxString wxTextEntry::GetRange( long aFrom, long aTo ) const
 }
 
 
-void wxTextEntry::SelectNone()
+void wxTextEntryBase::SelectNone()
 {
     long pos = GetInsertionPoint();
     SetSelection( pos, pos );
 }
 
 
-wxString wxTextEntry::GetStringSelection() const
+wxString wxTextEntryBase::GetStringSelection() const
 {
     long from = 0;
     long to = 0;
@@ -78,7 +78,7 @@ wxString wxTextEntry::GetStringSelection() const
 }
 
 
-bool wxTextEntry::HasSelection() const
+bool wxTextEntryBase::HasSelection() const
 {
     long from = 0;
     long to = 0;

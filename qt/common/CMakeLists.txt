@@ -64,6 +64,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_menu.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_window.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_textentry.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_filedlg.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_clipboard.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the

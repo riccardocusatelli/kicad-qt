@@ -57,6 +57,11 @@ namespace KIPLATFORM
         void ForceFocus( QWidget* aWindow );
 
         /**
+         * Let a file dialog show the network file systems (GTK): the dialogs of Qt show them.
+         */
+        inline void AllowNetworkFileSystems( const void* aDialog ) {}
+
+        /**
          * Return the background and foreground colors for info bars and the popups of
          * information in the current UI theme (the info colors of the desktop).
          */

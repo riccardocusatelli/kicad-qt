@@ -39,6 +39,7 @@
 #include <QColor>
 #include <QFont>
 #include <QIcon>
+#include <QImage>
 #include <QPixmap>
 
 #include <wx/gdicmn.h>
@@ -353,12 +354,72 @@ private:
 KIQT_API extern const wxFont wxNullFont;
 
 
+#define wxIMAGE_ALPHA_TRANSPARENT 0
+#define wxIMAGE_ALPHA_THRESHOLD 0x80
+#define wxIMAGE_ALPHA_OPAQUE 0xff
+
+enum wxImageResizeQuality
+{
+    wxIMAGE_QUALITY_NEAREST = 0,
+    wxIMAGE_QUALITY_BILINEAR,
+    wxIMAGE_QUALITY_BICUBIC,
+    wxIMAGE_QUALITY_BOX_AVERAGE,
+    wxIMAGE_QUALITY_NORMAL = wxIMAGE_QUALITY_NEAREST,
+    wxIMAGE_QUALITY_HIGH = 4
+};
+
+
+/// An image (wxImage): a QImage with the API of wxWidgets, RGB with an optional alpha.
+class KIQT_API wxImage : public QImage
+{
+public:
+    wxImage() = default;
+    wxImage( const QImage& aImage ) : QImage( aImage ) {}
+    wxImage( int aWidth, int aHeight, bool aClear = true );
+    wxImage( const wxSize& aSize, bool aClear = true ) : wxImage( aSize.x, aSize.y, aClear ) {}
+
+    bool IsOk() const { return !isNull(); }
+    int GetWidth() const { return width(); }
+    int GetHeight() const { return height(); }
+    wxSize GetSize() const { return wxSize( width(), height() ); }
+
+    bool HasAlpha() const { return hasAlphaChannel(); }
+
+    /// Add an alpha channel (opaque).
+    void InitAlpha();
+
+    void SetRGB( int aX, int aY, unsigned char aRed, unsigned char aGreen, unsigned char aBlue );
+    void SetAlpha( int aX, int aY, unsigned char aAlpha );
+    unsigned char GetRed( int aX, int aY ) const { return qRed( pixel( aX, aY ) ); }
+    unsigned char GetGreen( int aX, int aY ) const { return qGreen( pixel( aX, aY ) ); }
+    unsigned char GetBlue( int aX, int aY ) const { return qBlue( pixel( aX, aY ) ); }
+    unsigned char GetAlpha( int aX, int aY ) const { return qAlpha( pixel( aX, aY ) ); }
+
+    wxImage Rotate90( bool aClockwise = true ) const;
+    wxImage Rotate180() const;
+    wxImage Mirror( bool aHorizontally = true ) const;
+    wxImage Scale( int aWidth, int aHeight,
+                   wxImageResizeQuality aQuality = wxIMAGE_QUALITY_NORMAL ) const;
+    wxImage& Rescale( int aWidth, int aHeight,
+                      wxImageResizeQuality aQuality = wxIMAGE_QUALITY_NORMAL );
+    wxImage Copy() const { return wxImage( copy() ); }
+    wxImage GetSubImage( const wxRect& aRect ) const;
+    wxImage ConvertToGreyscale() const;
+    wxImage ConvertToDisabled( unsigned char aBrightness = 255 ) const;
+    void Clear( unsigned char aValue = 0 );
+
+    bool LoadFile( const wxString& aName, int aType = -1 );
+    bool SaveFile( const wxString& aName, int aType = -1 ) const;
+};
+
+
 /// A bitmap: a QPixmap with the API of wxWidgets.
 class KIQT_API wxBitmap : public QPixmap
 {
 public:
     wxBitmap() = default;
     wxBitmap( const QPixmap& aPixmap ) : QPixmap( aPixmap ) {}
+    wxBitmap( const wxImage& aImage, int aDepth = -1, double aScale = 1.0 );
     wxBitmap( int aWidth, int aHeight, int aDepth = -1 );
     wxBitmap( const wxSize& aSize, int aDepth = -1 ) : wxBitmap( aSize.x, aSize.y, aDepth ) {}
 
@@ -376,6 +437,9 @@ public:
 
     double GetScaleFactor() const { return devicePixelRatio(); }
     void SetScaleFactor( double aScale ) { setDevicePixelRatio( aScale ); }
+
+    wxImage ConvertToImage() const { return wxImage( toImage() ); }
+    bool HasAlpha() const { return hasAlphaChannel(); }
 };
 
 /// The null bitmap (wxNullBitmap), made on its first use: a pixmap needs the application of Qt.
@@ -405,6 +469,75 @@ public:
     wxBitmap GetBitmapFor( const QWidget* aWindow ) const;
 
     static wxBitmapBundle FromBitmap( const wxBitmap& aBitmap ) { return wxBitmapBundle( aBitmap ); }
+};
+
+
+using wxIcon = wxBitmap;
+
+using wxArtID = wxString;
+using wxArtClient = wxString;
+
+#define wxART_TOOLBAR      wxString( "wxART_TOOLBAR_C" )
+#define wxART_MENU         wxString( "wxART_MENU_C" )
+#define wxART_FRAME_ICON   wxString( "wxART_FRAME_ICON_C" )
+#define wxART_CMN_DIALOG   wxString( "wxART_CMN_DIALOG_C" )
+#define wxART_HELP_BROWSER wxString( "wxART_HELP_BROWSER_C" )
+#define wxART_MESSAGE_BOX  wxString( "wxART_MESSAGE_BOX_C" )
+#define wxART_BUTTON       wxString( "wxART_BUTTON_C" )
+#define wxART_LIST         wxString( "wxART_LIST_C" )
+#define wxART_OTHER        wxString( "wxART_OTHER_C" )
+
+#define wxART_ERROR        wxString( "wxART_ERROR" )
+#define wxART_QUESTION     wxString( "wxART_QUESTION" )
+#define wxART_WARNING      wxString( "wxART_WARNING" )
+#define wxART_INFORMATION  wxString( "wxART_INFORMATION" )
+#define wxART_HELP         wxString( "wxART_HELP" )
+#define wxART_TIP          wxString( "wxART_TIP" )
+#define wxART_GO_BACK      wxString( "wxART_GO_BACK" )
+#define wxART_GO_FORWARD   wxString( "wxART_GO_FORWARD" )
+#define wxART_GO_UP        wxString( "wxART_GO_UP" )
+#define wxART_GO_DOWN      wxString( "wxART_GO_DOWN" )
+#define wxART_GO_HOME      wxString( "wxART_GO_HOME" )
+#define wxART_FILE_OPEN    wxString( "wxART_FILE_OPEN" )
+#define wxART_FILE_SAVE    wxString( "wxART_FILE_SAVE" )
+#define wxART_FOLDER       wxString( "wxART_FOLDER" )
+#define wxART_FOLDER_OPEN  wxString( "wxART_FOLDER_OPEN" )
+#define wxART_NORMAL_FILE  wxString( "wxART_NORMAL_FILE" )
+#define wxART_NEW          wxString( "wxART_NEW" )
+#define wxART_DELETE       wxString( "wxART_DELETE" )
+#define wxART_CLOSE        wxString( "wxART_CLOSE" )
+#define wxART_CROSS_MARK   wxString( "wxART_CROSS_MARK" )
+#define wxART_TICK_MARK    wxString( "wxART_TICK_MARK" )
+#define wxART_FIND         wxString( "wxART_FIND" )
+#define wxART_COPY         wxString( "wxART_COPY" )
+#define wxART_PASTE        wxString( "wxART_PASTE" )
+#define wxART_UNDO         wxString( "wxART_UNDO" )
+#define wxART_REDO         wxString( "wxART_REDO" )
+#define wxART_PLUS         wxString( "wxART_PLUS" )
+#define wxART_MINUS        wxString( "wxART_MINUS" )
+
+
+/// The standard icons of the system (wxArtProvider): the ones of the style of Qt.
+class KIQT_API wxArtProvider
+{
+public:
+    static wxBitmap GetBitmap( const wxArtID& aId, const wxArtClient& aClient = wxART_OTHER,
+                               const wxSize& aSize = wxDefaultSize );
+    static wxBitmapBundle GetBitmapBundle( const wxArtID& aId,
+                                           const wxArtClient& aClient = wxART_OTHER,
+                                           const wxSize& aSize = wxDefaultSize );
+    static wxIcon GetIcon( const wxArtID& aId, const wxArtClient& aClient = wxART_OTHER,
+                           const wxSize& aSize = wxDefaultSize );
+
+    /// The icon of a message box style (wxICON_ERROR...).
+    static wxArtID GetMessageBoxIconId( int aFlags );
+
+    /// The size of the icons of a client (in logical pixels).
+    static wxSize GetSizeHint( const wxArtClient& aClient, QWidget* aWindow = nullptr );
+    static wxSize GetNativeSizeHint( const wxArtClient& aClient, QWidget* aWindow = nullptr )
+    {
+        return GetSizeHint( aClient, aWindow );
+    }
 };
 
 

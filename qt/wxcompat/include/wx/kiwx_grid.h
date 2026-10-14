@@ -959,6 +959,14 @@ public:
     int GetColLabelTextOrientation() const { return wxHORIZONTAL; }
     void SetDefaultCellOverflow( bool aAllow ) { m_defaultAttr->SetOverflow( aAllow ); }
 
+    /// Draw a text (its lines) in a rectangle of the grid.
+    void DrawTextRectangle( wxDC& aDC, const wxString& aText, const wxRect& aRect,
+                            int aHAlign = wxALIGN_LEFT, int aVAlign = wxALIGN_TOP,
+                            int aTextOrientation = wxHORIZONTAL ) const;
+    void DrawTextRectangle( wxDC& aDC, const wxArrayString& aLines, const wxRect& aRect,
+                            int aHAlign = wxALIGN_LEFT, int aVAlign = wxALIGN_TOP,
+                            int aTextOrientation = wxHORIZONTAL ) const;
+
     /// The best size of the grid (its size hint).
     virtual wxSize DoGetBestSize() const;
 

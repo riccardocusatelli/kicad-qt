@@ -40,11 +40,11 @@
 class QLineEdit;
 
 
-/// The API of the controls with a text (wxTextEntry).
-class KIQT_API wxTextEntry
+/// The API of the controls with a text (wxTextEntryBase).
+class KIQT_API wxTextEntryBase
 {
 public:
-    virtual ~wxTextEntry() = default;
+    virtual ~wxTextEntryBase() = default;
 
     virtual wxString GetValue() const = 0;
     virtual void SetValue( const wxString& aValue ) = 0;
@@ -99,7 +99,10 @@ public:
     bool AutoComplete( const wxArrayString& aChoices ) { return false; }
 };
 
-using wxTextEntryBase = wxTextEntry;
+/// The controls with a text (wxTextEntry).
+class KIQT_API wxTextEntry : public wxTextEntryBase
+{
+};
 
 
 /// The API of wxTextEntry on a QLineEdit (the one of a text control, of a combo box...).
@@ -121,7 +124,7 @@ public:
     bool SetHint( const wxString& aHint ) override;
     wxString GetHint() const override;
     bool SetMargins( int aLeft, int aTop = -1 ) override;
-    using wxTextEntry::SetMargins;
+    using wxTextEntryBase::SetMargins;
     void Undo() override;
     void Redo() override;
     void Cut() override;

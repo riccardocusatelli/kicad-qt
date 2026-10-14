@@ -31,6 +31,9 @@
 #include <vector>
 
 #include <QLabel>
+
+#include <wx/kiwx_gdi.h>
+#include <wx/kiwx_window.h>
 #include <QPixmap>
 
 #include <kiqt.h>
@@ -77,14 +80,14 @@ public:
      * @param aSwatchSize the size of the swatch
      * @param aTriggerWithSingleClick a single click opens the color picker
      */
-    COLOR_SWATCH( QWidget* aParent, const KIGFX::COLOR4D& aColor, int aID,
+    COLOR_SWATCH( wxWidgetArgCompat aParent, const KIGFX::COLOR4D& aColor, int aID,
                   const KIGFX::COLOR4D& aBackground, const KIGFX::COLOR4D& aDefault,
                   SWATCH_SIZE aSwatchSize, bool aTriggerWithSingleClick = false );
 
     /**
      * Constructor for wxFormBuilder
      */
-    COLOR_SWATCH( QWidget* aParent );
+    COLOR_SWATCH( wxWidgetArgCompat aParent );
 
     /**
      * Set the current swatch color directly.
@@ -142,6 +145,16 @@ public:
                                const wxSize& aSize, const wxSize& aCheckerboardSize,
                                const KIGFX::COLOR4D& aCheckerboardBackground, double aScale,
                                const std::vector<int>& aMargins = { 0, 0, 0, 0 } );
+
+    /// The image of a swatch at the scale 1 (the API of the wxWidgets build).
+    static wxBitmap MakeBitmap( const KIGFX::COLOR4D& aColor, const KIGFX::COLOR4D& aBackground,
+                                const wxSize& aSize, const wxSize& aCheckerboardSize,
+                                const KIGFX::COLOR4D& aCheckerboardBackground,
+                                const std::vector<int>& aMargins = { 0, 0, 0, 0 } )
+    {
+        return wxBitmap( MakeBitmap( aColor, aBackground, aSize, aCheckerboardSize,
+                                     aCheckerboardBackground, 1.0, aMargins ) );
+    }
 
     /// The size in pixels of a size in dialog units, for the font of @a aWidget.
     static wxSize DialogUnitsToPixels( const QWidget* aWidget, const wxSize& aSize );

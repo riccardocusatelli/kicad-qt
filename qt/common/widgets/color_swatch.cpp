@@ -133,10 +133,10 @@ QPixmap COLOR_SWATCH::MakeBitmap( const COLOR4D& aColor, const COLOR4D& aBackgro
 }
 
 
-COLOR_SWATCH::COLOR_SWATCH( QWidget* aParent, const COLOR4D& aColor, int aID,
+COLOR_SWATCH::COLOR_SWATCH( wxWidgetArgCompat aParent, const COLOR4D& aColor, int aID,
                             const COLOR4D& aBackground, const COLOR4D& aDefault,
                             SWATCH_SIZE aSwatchSize, bool aTriggerWithSingleClick ) :
-        QLabel( aParent ),
+        QLabel( aParent.get() ),
         m_id( aID ),
         m_color( aColor ),
         m_background( aBackground ),
@@ -160,8 +160,8 @@ COLOR_SWATCH::COLOR_SWATCH( QWidget* aParent, const COLOR4D& aColor, int aID,
 }
 
 
-COLOR_SWATCH::COLOR_SWATCH( QWidget* aParent ) :
-        QLabel( aParent ),
+COLOR_SWATCH::COLOR_SWATCH( wxWidgetArgCompat aParent ) :
+        QLabel( aParent.get() ),
         m_id( -1 ),
         m_userColors( nullptr ),
         m_readOnly( false ),

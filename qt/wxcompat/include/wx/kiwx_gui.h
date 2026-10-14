@@ -169,9 +169,13 @@ class KIQT_API wxStaticBitmap : public wxWindowCompat<QLabel>
 {
 public:
     explicit wxStaticBitmap( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY );
+    wxStaticBitmap( wxWidgetArgCompat aParent, int aId, const wxBitmapBundle& aBitmap,
+                    const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+                    long aStyle = 0, const wxString& aName = wxEmptyString );
 
     void SetBitmap( const QIcon& aBitmap );
     void SetBitmap( const QPixmap& aBitmap );
+    wxBitmap GetBitmap() const { return wxBitmap( pixmap() ); }
 };
 
 
@@ -488,7 +492,35 @@ protected:
     QLineEdit* lineEditCompat() const override { return lineEdit(); }
 };
 
-using wxBitmapComboBox = wxComboBox;
+/// A combo box with images (wxBitmapComboBox).
+class KIQT_API wxBitmapComboBox : public wxComboBox
+{
+public:
+    explicit wxBitmapComboBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                               const wxString& aValue = wxEmptyString,
+                               const wxPoint& aPos = wxDefaultPosition,
+                               const wxSize& aSize = wxDefaultSize,
+                               const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
+    wxBitmapComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue,
+                      const wxPoint& aPos, const wxSize& aSize, int aCount,
+                      const wxString aChoices[], long aStyle = 0 );
+
+    using wxComboBox::Append;
+    int Append( const wxString& aItem, const wxBitmapBundle& aBitmap );
+    int Append( const wxString& aItem, const wxBitmapBundle& aBitmap, void* aClientData );
+    int Insert( const wxString& aItem, const wxBitmapBundle& aBitmap, unsigned int aPos );
+    using wxComboBox::Insert;
+
+    void SetItemBitmap( unsigned int aIndex, const wxBitmapBundle& aBitmap );
+    wxBitmap GetItemBitmap( unsigned int aIndex ) const;
+    wxSize GetBitmapSize() const { return wxSize( iconSize().width(), iconSize().height() ); }
+
+    /// The button of the generic control of wxWidgets: the one of the combo box here.
+    void SetButtonPosition( int aWidth = -1, int aHeight = -1, int aSide = wxRIGHT,
+                            int aSpacingX = 0 )
+    {
+    }
+};
 
 
 class KIQT_API wxListBox : public wxItemContainerCompat<QListWidget>

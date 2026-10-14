@@ -48,11 +48,11 @@
 using KIGFX::COLOR4D;
 
 
-DIALOG_COLOR_PICKER::DIALOG_COLOR_PICKER( QWidget* aParent, const COLOR4D& aCurrentColor,
+DIALOG_COLOR_PICKER::DIALOG_COLOR_PICKER( wxWidgetArgCompat aParent, const COLOR4D& aCurrentColor,
                                           bool aAllowOpacityControl,
                                           CUSTOM_COLORS_LIST* aUserColors,
                                           const COLOR4D& aDefaultColor ) :
-        DIALOG_COLOR_PICKER_BASE( aParent )
+        DIALOG_COLOR_PICKER_BASE( aParent.get() )
 {
     m_allowMouseEvents = false;
     m_allowOpacityCtrl = aAllowOpacityControl;
