@@ -96,6 +96,14 @@ enum wxEventTypeCompat
     wxEVT_LIST_ITEM_SELECTED,
     wxEVT_LIST_ITEM_DESELECTED,
     wxEVT_LIST_ITEM_ACTIVATED,
+    wxEVT_LIST_ITEM_FOCUSED,
+    wxEVT_LIST_ITEM_CHECKED,
+    wxEVT_LIST_ITEM_UNCHECKED,
+    wxEVT_LIST_ITEM_RIGHT_CLICK,
+    wxEVT_LIST_COL_CLICK,
+    wxEVT_LIST_COL_RIGHT_CLICK,
+    wxEVT_LIST_KEY_DOWN,
+    wxEVT_LIST_BEGIN_DRAG,
     wxEVT_GRID_CELL_LEFT_CLICK,
     wxEVT_GRID_CELL_LEFT_DCLICK,
     wxEVT_GRID_CELL_RIGHT_CLICK,
@@ -134,6 +142,8 @@ enum wxEventTypeCompat
     wxEVT_COMBOBOX_DROPDOWN,
     wxEVT_COMBOBOX_CLOSEUP,
     wxEVT_NAVIGATION_KEY,
+    wxEVT_FILEPICKER_CHANGED,
+    wxEVT_DIRPICKER_CHANGED,
     wxEVT_STC_CHANGE,
     wxEVT_STC_MODIFIED,
     wxEVT_STC_UPDATEUI,
@@ -653,21 +663,6 @@ public:
 };
 
 
-class wxListEvent : public wxNotifyEvent
-{
-public:
-    explicit wxListEvent( wxEventType aType = wxEVT_NULL, int aId = 0, long aIndex = -1 ) :
-            wxNotifyEvent( aType, aId ),
-            m_index( aIndex )
-    {
-    }
-
-    long GetIndex() const { return m_index; }
-    void SetIndex( long aIndex ) { m_index = aIndex; }
-
-private:
-    long m_index;
-};
 
 
 class wxGridEvent : public wxNotifyEvent
@@ -1087,7 +1082,6 @@ inline wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget )
 #define wxBookCtrlEventHandler( func ) ( &func )
 #define wxHyperlinkEventHandler( func ) ( &func )
 #define wxScrollEventHandler( func ) ( &func )
-#define wxListEventHandler( func ) ( &func )
 #define wxGridEventHandler( func ) ( &func )
 #define wxMenuEventHandler( func ) ( &func )
 #define wxActivateEventHandler( func ) ( &func )

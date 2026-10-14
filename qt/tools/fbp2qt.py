@@ -222,6 +222,10 @@ COMPAT_CLASSES = {
     'wxStaticBitmap': 'wxStaticBitmap',
     'wxListBox': 'wxListBox',
     'wxCheckListBox': 'wxCheckListBox',
+    'wxHyperlinkCtrl': 'wxHyperlinkCtrl',
+    'wxFilePickerCtrl': 'wxFilePickerCtrl',
+    'wxDirPickerCtrl': 'wxDirPickerCtrl',
+    'wxListCtrl': 'wxListCtrl',
 }
 
 # The events of the compatibility mode: name -> (class of the event, type of the event, how it
@@ -271,7 +275,20 @@ COMPAT_EVENTS = {
     'OnCharHook':           ( 'wxKeyEvent', 'wxEVT_CHAR_HOOK', 'key:QEvent::KeyPress' ),
     'OnKeyDown':            ( 'wxKeyEvent', 'wxEVT_KEY_DOWN', 'key:QEvent::KeyPress' ),
     'OnUpdateUI':           ( 'wxUpdateUIEvent', 'wxEVT_UPDATE_UI', 'updateui' ),
-    'OnHyperlink':          ( 'wxHyperlinkEvent', 'wxEVT_HYPERLINK', 'link' ),
+    'OnHyperlink':          ( 'wxHyperlinkEvent', 'wxEVT_HYPERLINK', 'bind' ),
+    'OnListItemSelected':   ( 'wxListEvent', 'wxEVT_LIST_ITEM_SELECTED', 'bind' ),
+    'OnListItemDeselected': ( 'wxListEvent', 'wxEVT_LIST_ITEM_DESELECTED', 'bind' ),
+    'OnListItemActivated':  ( 'wxListEvent', 'wxEVT_LIST_ITEM_ACTIVATED', 'bind' ),
+    'OnListItemFocused':    ( 'wxListEvent', 'wxEVT_LIST_ITEM_FOCUSED', 'bind' ),
+    'OnListItemRightClick': ( 'wxListEvent', 'wxEVT_LIST_ITEM_RIGHT_CLICK', 'bind' ),
+    'OnListItemChecked':    ( 'wxListEvent', 'wxEVT_LIST_ITEM_CHECKED', 'bind' ),
+    'OnListItemUnchecked':  ( 'wxListEvent', 'wxEVT_LIST_ITEM_UNCHECKED', 'bind' ),
+    'OnListColClick':       ( 'wxListEvent', 'wxEVT_LIST_COL_CLICK', 'bind' ),
+    'OnListColRightClick':  ( 'wxListEvent', 'wxEVT_LIST_COL_RIGHT_CLICK', 'bind' ),
+    'OnListKeyDown':        ( 'wxListEvent', 'wxEVT_LIST_KEY_DOWN', 'bind' ),
+    'OnListBeginDrag':      ( 'wxListEvent', 'wxEVT_LIST_BEGIN_DRAG', 'bind' ),
+    'OnFileChanged':        ( 'wxFileDirPickerEvent', 'wxEVT_FILEPICKER_CHANGED', 'bind' ),
+    'OnDirChanged':         ( 'wxFileDirPickerEvent', 'wxEVT_DIRPICKER_CHANGED', 'bind' ),
     'OnNotebookPageChanged': ( 'wxNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
     'OnAuiNotebookPageChanged': ( 'wxAuiNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
     'OnGridCellLeftClick':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_CLICK', 'bind' ),
@@ -852,7 +869,10 @@ class FormClass:
 
                 self.include( '<wx/kiwx_gui.h>' )
                 self.qt( aQtClass )
-                args = aParent
+
+                # The arguments of the constructors of wxWidgets, for the controls made with them
+                if cls not in ( 'wxHyperlinkCtrl', 'wxFilePickerCtrl', 'wxDirPickerCtrl', 'wxListCtrl' ):
+                    args = aParent
             else:
                 self.qt( aQtClass )
 
@@ -1034,6 +1054,32 @@ class FormClass:
             qt = 'QLabel'
             var, t = make( qt )
 
+        elif cls == 'wxHyperlinkCtrl' and self.gen.compat:
+            qt = 'QLabel'
+            self.include( '<wx/kiwx_pickers.h>' )
+            var, t = make( qt, '%s, wxID_ANY, _( %s ), wxString::FromUTF8( %s ), wxDefaultPosition, '
+                               'wxDefaultSize, %s' % ( aParent, cstr( p.get( 'label', '' ) ),
+                                                       cstr( p.get( 'url', '' ) ),
+                                                       p.get( 'style' ) or 'wxHL_DEFAULT_STYLE' ) )
+
+        elif cls in ( 'wxFilePickerCtrl', 'wxDirPickerCtrl' ) and self.gen.compat:
+            qt = 'QWidget'
+            self.include( '<wx/kiwx_pickers.h>' )
+
+            if cls == 'wxFilePickerCtrl':
+                args = '%s, wxID_ANY, wxString::FromUTF8( %s ), _( %s ), wxString::FromUTF8( %s ), ' \
+                       'wxDefaultPosition, wxDefaultSize, %s' \
+                       % ( aParent, cstr( p.get( 'value', '' ) ), cstr( p.get( 'message', '' ) ),
+                           cstr( p.get( 'wildcard', '' ) or '*' ),
+                           p.get( 'style' ) or 'wxFLP_DEFAULT_STYLE' )
+            else:
+                args = '%s, wxID_ANY, wxString::FromUTF8( %s ), _( %s ), wxDefaultPosition, ' \
+                       'wxDefaultSize, %s' \
+                       % ( aParent, cstr( p.get( 'value', '' ) ), cstr( p.get( 'message', '' ) ),
+                           p.get( 'style' ) or 'wxDIRP_DEFAULT_STYLE' )
+
+            var, t = make( qt, args )
+
         elif cls == 'wxHyperlinkCtrl':
             qt = 'QLabel'
             var, t = make( qt )
@@ -1055,6 +1101,12 @@ class FormClass:
 
             if 'wxLB_MULTIPLE' in style or 'wxLB_EXTENDED' in style:
                 self.code.append( '    %s->setSelectionMode( QAbstractItemView::ExtendedSelection );' % var )
+
+        elif cls == 'wxListCtrl' and self.gen.compat:
+            qt = 'QTreeView'
+            self.include( '<wx/kiwx_listctrl.h>' )
+            var, t = make( qt, '%s, wxID_ANY, wxDefaultPosition, wxDefaultSize, %s'
+                               % ( aParent, p.get( 'style' ) or 'wxLC_REPORT' ) )
 
         elif cls == 'wxListCtrl':
             # The report view of a list (the columns are added by the code of the dialog)
