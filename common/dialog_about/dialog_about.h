@@ -31,7 +31,7 @@
 #include <wx/hyperlink.h>
 
 #include "aboutinfo.h"
-#include "dialog_about_base.h"
+#include <dialog_about/dialog_about_base.h>
 
 // Used for the notebook image list
 enum class IMAGES {

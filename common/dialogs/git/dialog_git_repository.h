@@ -24,7 +24,7 @@
 #ifndef DIALOG_GIT_REPOSITORY_H_
 #define DIALOG_GIT_REPOSITORY_H_
 
-#include "dialog_git_repository_base.h"
+#include <dialogs/git/dialog_git_repository_base.h>
 
 #include <git/kicad_git_common.h>
 #include <git2.h>

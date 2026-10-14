@@ -34,6 +34,10 @@
 #ifndef KIWX_EVENTS_H
 #define KIWX_EVENTS_H
 
+#include <functional>
+#include <type_traits>
+#include <vector>
+
 #include <kiqt.h>
 
 #include <wx/defs.h>
@@ -99,16 +103,41 @@ enum wxEventTypeCompat
     wxEVT_IDLE,
     wxEVT_HTML_LINK_CLICKED,
     wxEVT_HELP,
+    wxEVT_TREEBOOK_PAGE_CHANGED,
+    wxEVT_TREEBOOK_PAGE_CHANGING,
+    wxEVT_TREEBOOK_NODE_EXPANDED,
+    wxEVT_TREEBOOK_NODE_COLLAPSED,
+    wxEVT_LEAVE_WINDOW,
+    wxEVT_ENTER_WINDOW,
+    wxEVT_SYS_COLOUR_CHANGED,
+    wxEVT_SHOW,
     wxEVT_USER_FIRST = 10000
 };
 
 using wxEventType = int;
 
-#define wxEVT_COMMAND_BUTTON_CLICKED  wxEVT_BUTTON
-#define wxEVT_COMMAND_CHECKBOX_CLICKED wxEVT_CHECKBOX
-#define wxEVT_COMMAND_CHOICE_SELECTED wxEVT_CHOICE
-#define wxEVT_COMMAND_TEXT_UPDATED    wxEVT_TEXT
-#define wxEVT_COMMAND_TEXT_ENTER      wxEVT_TEXT_ENTER
+#define wxEVT_COMMAND_BUTTON_CLICKED       wxEVT_BUTTON
+#define wxEVT_COMMAND_CHECKBOX_CLICKED     wxEVT_CHECKBOX
+#define wxEVT_COMMAND_CHOICE_SELECTED      wxEVT_CHOICE
+#define wxEVT_COMMAND_COMBOBOX_SELECTED    wxEVT_COMBOBOX
+#define wxEVT_COMMAND_LISTBOX_SELECTED     wxEVT_LISTBOX
+#define wxEVT_COMMAND_LISTBOX_DOUBLECLICKED wxEVT_LISTBOX_DCLICK
+#define wxEVT_COMMAND_CHECKLISTBOX_TOGGLED wxEVT_CHECKLISTBOX
+#define wxEVT_COMMAND_RADIOBUTTON_SELECTED wxEVT_RADIOBUTTON
+#define wxEVT_COMMAND_RADIOBOX_SELECTED    wxEVT_RADIOBOX
+#define wxEVT_COMMAND_TOGGLEBUTTON_CLICKED wxEVT_TOGGLEBUTTON
+#define wxEVT_COMMAND_TEXT_UPDATED         wxEVT_TEXT
+#define wxEVT_COMMAND_TEXT_ENTER           wxEVT_TEXT_ENTER
+#define wxEVT_COMMAND_SLIDER_UPDATED       wxEVT_SLIDER
+#define wxEVT_COMMAND_SPINCTRL_UPDATED     wxEVT_SPINCTRL
+#define wxEVT_COMMAND_SPINCTRLDOUBLE_UPDATED wxEVT_SPINCTRLDOUBLE
+#define wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED wxEVT_NOTEBOOK_PAGE_CHANGED
+#define wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGING wxEVT_NOTEBOOK_PAGE_CHANGING
+#define wxEVT_COMMAND_HYPERLINK            wxEVT_HYPERLINK
+#define wxEVT_COMMAND_HTML_LINK_CLICKED    wxEVT_HTML_LINK_CLICKED
+#define wxEVT_COMMAND_LIST_ITEM_SELECTED   wxEVT_LIST_ITEM_SELECTED
+#define wxEVT_COMMAND_LIST_ITEM_DESELECTED wxEVT_LIST_ITEM_DESELECTED
+#define wxEVT_COMMAND_LIST_ITEM_ACTIVATED  wxEVT_LIST_ITEM_ACTIVATED
 
 
 /// A new type of event (wxNewEventType()).
@@ -557,6 +586,111 @@ public:
 private:
     int m_rowOrCol;
 };
+
+
+// Bind() and Connect() ----------------------------------------------------------------------
+
+namespace KIWX_DETAIL
+{
+template <typename T>
+struct FIRST_ARG;
+
+template <typename R, typename C, typename A>
+struct FIRST_ARG<R ( C::* )( A ) const>
+{
+    using type = std::remove_reference_t<A>;
+};
+
+template <typename R, typename C, typename A>
+struct FIRST_ARG<R ( C::* )( A )>
+{
+    using type = std::remove_reference_t<A>;
+};
+
+/// The class of the event a callable takes.
+template <typename F>
+using EVENT_OF = typename FIRST_ARG<decltype( &F::operator() )>::type;
+} // namespace KIWX_DETAIL
+
+
+/**
+ * The handlers of the events of a window (Bind(), Connect()): they get the events the window
+ * makes from the signals and events of its Qt widget (see wxConnectQtEventsCompat()).
+ */
+class KIQT_API wxCompatEventSink
+{
+public:
+    using HANDLER = std::function<void( wxEvent& )>;
+
+    wxCompatEventSink() = default;
+
+    // The handlers belong to their window
+    wxCompatEventSink( const wxCompatEventSink& ) = delete;
+    wxCompatEventSink& operator=( const wxCompatEventSink& ) = delete;
+
+    /// Add a handler of the events of @a aType (for the ids in [aId, aLastId], or any id).
+    void Add( wxEventType aType, HANDLER aHandler, const void* aKey, int aId = wxID_ANY,
+              int aLastId = wxID_ANY );
+
+    /// Remove the handlers of @a aType added with @a aKey (all of them if aKey is null).
+    bool Remove( wxEventType aType, const void* aKey );
+
+    bool Has( wxEventType aType ) const;
+
+    /**
+     * Give an event to its handlers, the last bound first (as wxWidgets), until one doesn't
+     * skip it.
+     *
+     * @return true if a handler processed the event (didn't skip it).
+     */
+    bool Process( wxEvent& aEvent );
+
+private:
+    struct ENTRY
+    {
+        wxEventType m_type;
+        HANDLER     m_handler;
+        const void* m_key;
+        int         m_id;
+        int         m_lastId;
+    };
+
+    std::vector<ENTRY> m_entries;
+};
+
+
+class QObject;
+class QWidget;
+
+/**
+ * Make the window @a aWidget give the events of @a aType to @a aSink, from the signals and the
+ * events of its Qt widget (clicked, textChanged, the focus, the mouse...).  Done once per type.
+ */
+KIQT_API void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType,
+                                       wxCompatEventSink* aSink );
+
+#define wxEventHandler( func ) ( &func )
+#define wxCommandEventHandler( func ) ( &func )
+#define wxUpdateUIEventHandler( func ) ( &func )
+#define wxFocusEventHandler( func ) ( &func )
+#define wxSizeEventHandler( func ) ( &func )
+#define wxMouseEventHandler( func ) ( &func )
+#define wxKeyEventHandler( func ) ( &func )
+#define wxCloseEventHandler( func ) ( &func )
+#define wxInitDialogEventHandler( func ) ( &func )
+#define wxSpinEventHandler( func ) ( &func )
+#define wxSpinDoubleEventHandler( func ) ( &func )
+#define wxIdleEventHandler( func ) ( &func )
+#define wxNotebookEventHandler( func ) ( &func )
+#define wxBookCtrlEventHandler( func ) ( &func )
+#define wxHyperlinkEventHandler( func ) ( &func )
+#define wxScrollEventHandler( func ) ( &func )
+#define wxListEventHandler( func ) ( &func )
+#define wxGridEventHandler( func ) ( &func )
+#define wxActivateEventHandler( func ) ( &func )
+#define wxHtmlLinkEventHandler( func ) ( &func )
+#define wxTimerEventHandler( func ) ( &func )
+#define wxObjectEventFunction auto
 
 
 class QEvent;

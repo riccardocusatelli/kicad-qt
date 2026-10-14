@@ -323,9 +323,105 @@ public:
     /// The events go to the handlers of the dialogs: there is no handler to push on a widget.
     void SetEvtHandlerEnabled( bool aEnable ) { this->blockSignals( !aEnable ); }
 
+    // The handlers of the events (wxEvtHandler::Bind(), Connect()) ------------------------
+
+    /// Bind a method of @a aObject to the events of @a aType.
+    template <typename EVENT, typename CLASS, typename OBJECT>
+    void Bind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
+               int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        bindHandler( aType,
+                     [aMethod, aObject]( wxEvent& aEvent )
+                     {
+                         ( static_cast<CLASS*>( aObject )->*aMethod )( static_cast<EVENT&>( aEvent ) );
+                     },
+                     aObject, aId, aLastId );
+    }
+
+    /// Bind a function (a lambda) to the events of @a aType.
+    template <typename FUNCTOR>
+    void Bind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        using EVENT = KIWX_DETAIL::EVENT_OF<FUNCTOR>;
+
+        bindHandler( aType,
+                     [aFunctor]( wxEvent& aEvent ) mutable
+                     {
+                         aFunctor( static_cast<EVENT&>( aEvent ) );
+                     },
+                     nullptr, aId, aLastId );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT>
+    bool Unbind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
+                 int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        return m_events.Remove( aType, aObject );
+    }
+
+    template <typename FUNCTOR>
+    bool Unbind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        return m_events.Remove( aType, nullptr );
+    }
+
+    /// Connect a method of @a aSink to the events of @a aType (the API of wxWidgets 2).
+    template <typename EVENT, typename CLASS, typename OBJECT>
+    void Connect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), void* aUserData = nullptr,
+                  OBJECT* aSink = nullptr )
+    {
+        Bind( aType, aMethod, aSink );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT>
+    void Connect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        Bind( aType, aMethod, aSink, aId );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT>
+    bool Disconnect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                     void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        return m_events.Remove( aType, aSink );
+    }
+
+    /// Give an event to the handlers of this window (wxEvtHandler::ProcessEvent()).
+    bool ProcessEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
+    bool ProcessWindowEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
+    bool HandleWindowEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
+
+    /// Process an event later (on the event loop).
+    template <typename EVENT>
+    void QueueEvent( EVENT* aEvent )
+    {
+        QMetaObject::invokeMethod( this,
+                                   [this, aEvent]()
+                                   {
+                                       m_events.Process( *aEvent );
+                                       delete aEvent;
+                                   },
+                                   Qt::QueuedConnection );
+    }
+
+    template <typename EVENT>
+    void AddPendingEvent( const EVENT& aEvent ) { QueueEvent( new EVENT( aEvent ) ); }
+
+    /// The handlers of the window.
+    wxCompatEventSink& GetEventSink() { return m_events; }
+
 private:
-    void*        m_clientData;
-    wxSizerProxy m_sizerProxy;
+    void bindHandler( wxEventType aType, wxCompatEventSink::HANDLER aHandler, const void* aKey,
+                      int aId, int aLastId )
+    {
+        m_events.Add( aType, std::move( aHandler ), aKey, aId, aLastId );
+        wxConnectQtEventsCompat( this, aType, &m_events );
+    }
+
+    void*             m_clientData;
+    wxSizerProxy      m_sizerProxy;
+    wxCompatEventSink m_events;
 };
 
 

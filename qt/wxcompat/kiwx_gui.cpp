@@ -44,6 +44,7 @@
 #include <QVariant>
 
 #include <toolkit/qt_keys.h>
+#include <ui_hooks.h>
 
 
 // Ids and events ---------------------------------------------------------------------------
@@ -301,6 +302,437 @@ void wxUpdateUIEvent::SetText( const wxString& aText )
         button->setText( ToQString( aText ) );
     else if( QLabel* label = qobject_cast<QLabel*>( object ) )
         label->setText( ToQString( aText ) );
+}
+
+
+// The handlers of the events -------------------------------------------------------------
+
+void wxCompatEventSink::Add( wxEventType aType, HANDLER aHandler, const void* aKey, int aId,
+                             int aLastId )
+{
+    m_entries.push_back( { aType, std::move( aHandler ), aKey, aId, aLastId } );
+}
+
+
+bool wxCompatEventSink::Remove( wxEventType aType, const void* aKey )
+{
+    size_t count = m_entries.size();
+
+    std::erase_if( m_entries,
+                   [&]( const ENTRY& aEntry )
+                   {
+                       return aEntry.m_type == aType && ( !aKey || aEntry.m_key == aKey );
+                   } );
+
+    return m_entries.size() != count;
+}
+
+
+bool wxCompatEventSink::Has( wxEventType aType ) const
+{
+    return std::any_of( m_entries.begin(), m_entries.end(),
+                        [&]( const ENTRY& aEntry ) { return aEntry.m_type == aType; } );
+}
+
+
+bool wxCompatEventSink::Process( wxEvent& aEvent )
+{
+    // A copy: a handler can bind or unbind handlers
+    std::vector<ENTRY> entries = m_entries;
+
+    // The handlers bound last are called first, as with wxWidgets
+    for( auto it = entries.rbegin(); it != entries.rend(); ++it )
+    {
+        if( it->m_type != aEvent.GetEventType() )
+            continue;
+
+        if( it->m_id != wxID_ANY )
+        {
+            int last = it->m_lastId == wxID_ANY ? it->m_id : it->m_lastId;
+
+            if( aEvent.GetId() < it->m_id || aEvent.GetId() > last )
+                continue;
+        }
+
+        aEvent.Skip( false );
+        it->m_handler( aEvent );
+
+        if( !aEvent.GetSkipped() )
+            return true;
+    }
+
+    // Not processed: the default processing happens
+    aEvent.Skip( true );
+    return false;
+}
+
+
+namespace
+{
+
+/// Give a command event of a widget to its sink.
+template <typename EVENT = wxCommandEvent>
+void sendCompat( QWidget* aWidget, wxCompatEventSink* aSink, wxEventType aType,
+                 const std::function<void( EVENT& )>& aFill = nullptr )
+{
+    EVENT event( aType, wxGetWindowIdCompat( aWidget ) );
+    event.SetEventObject( aWidget );
+
+    if( aFill )
+        aFill( event );
+
+    aSink->Process( event );
+}
+
+} // namespace
+
+
+void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEventSink* aSink )
+{
+    // Connected once per type
+    QByteArray property = "kiwxEvents" + QByteArray::number( aType );
+
+    if( aWidget->property( property.constData() ).isValid() )
+        return;
+
+    aWidget->setProperty( property.constData(), true );
+
+    QWidget* w = aWidget;
+
+    switch( aType )
+    {
+    case wxEVT_BUTTON:
+    case wxEVT_CHECKBOX:
+    case wxEVT_RADIOBUTTON:
+    case wxEVT_TOGGLEBUTTON:
+        if( QAbstractButton* button = qobject_cast<QAbstractButton*>( w ) )
+        {
+            QObject::connect( button, &QAbstractButton::clicked, button,
+                              [w, aSink, aType, button]()
+                              {
+                                  sendCompat( w, aSink, aType,
+                                              std::function<void( wxCommandEvent& )>(
+                                                      [button]( wxCommandEvent& e )
+                                                      {
+                                                          e.SetInt( button->isChecked() ? 1 : 0 );
+                                                      } ) );
+                              } );
+        }
+
+        break;
+
+    case wxEVT_TEXT:
+        if( QLineEdit* edit = qobject_cast<QLineEdit*>( w ) )
+        {
+            QObject::connect( edit, &QLineEdit::textChanged, edit,
+                              [w, aSink]( const QString& aText )
+                              {
+                                  sendCompat( w, aSink, wxEVT_TEXT,
+                                              std::function<void( wxCommandEvent& )>(
+                                                      [&]( wxCommandEvent& e ) { e.SetString( ToWxString( aText ) ); } ) );
+                              } );
+        }
+        else if( QPlainTextEdit* text = qobject_cast<QPlainTextEdit*>( w ) )
+        {
+            QObject::connect( text, &QPlainTextEdit::textChanged, text,
+                              [w, aSink]() { sendCompat( w, aSink, wxEVT_TEXT ); } );
+        }
+        else if( QComboBox* combo = qobject_cast<QComboBox*>( w ) )
+        {
+            QObject::connect( combo, &QComboBox::editTextChanged, combo,
+                              [w, aSink]( const QString& aText )
+                              {
+                                  sendCompat( w, aSink, wxEVT_TEXT,
+                                              std::function<void( wxCommandEvent& )>(
+                                                      [&]( wxCommandEvent& e ) { e.SetString( ToWxString( aText ) ); } ) );
+                              } );
+        }
+        else if( QAbstractSpinBox* spin = qobject_cast<QAbstractSpinBox*>( w ) )
+        {
+            QObject::connect( spin, &QAbstractSpinBox::editingFinished, spin,
+                              [w, aSink]() { sendCompat( w, aSink, wxEVT_TEXT ); } );
+        }
+
+        break;
+
+    case wxEVT_TEXT_ENTER:
+        if( QLineEdit* edit = qobject_cast<QLineEdit*>( w ) )
+        {
+            QObject::connect( edit, &QLineEdit::returnPressed, edit,
+                              [w, aSink]() { sendCompat( w, aSink, wxEVT_TEXT_ENTER ); } );
+        }
+        else if( QComboBox* combo = qobject_cast<QComboBox*>( w ); combo && combo->lineEdit() )
+        {
+            QObject::connect( combo->lineEdit(), &QLineEdit::returnPressed, combo,
+                              [w, aSink]() { sendCompat( w, aSink, wxEVT_TEXT_ENTER ); } );
+        }
+
+        break;
+
+    case wxEVT_CHOICE:
+    case wxEVT_COMBOBOX:
+        if( QComboBox* combo = qobject_cast<QComboBox*>( w ) )
+        {
+            QObject::connect( combo, &QComboBox::activated, combo,
+                              [w, aSink, aType, combo]( int aIndex )
+                              {
+                                  sendCompat( w, aSink, aType,
+                                              std::function<void( wxCommandEvent& )>(
+                                                      [&]( wxCommandEvent& e )
+                                                      {
+                                                          e.SetInt( aIndex );
+                                                          e.SetString( ToWxString( combo->itemText( aIndex ) ) );
+                                                      } ) );
+                              } );
+        }
+
+        break;
+
+    case wxEVT_LISTBOX:
+    case wxEVT_LISTBOX_DCLICK:
+    case wxEVT_CHECKLISTBOX:
+        if( QListWidget* list = qobject_cast<QListWidget*>( w ) )
+        {
+            auto send = [w, aSink, aType]( int aRow )
+                        {
+                            sendCompat( w, aSink, aType,
+                                        std::function<void( wxCommandEvent& )>(
+                                                [&]( wxCommandEvent& e ) { e.SetInt( aRow ); } ) );
+                        };
+
+            if( aType == wxEVT_LISTBOX )
+                QObject::connect( list, &QListWidget::currentRowChanged, list, send );
+            else if( aType == wxEVT_LISTBOX_DCLICK )
+                QObject::connect( list, &QListWidget::itemDoubleClicked, list,
+                                  [send, list]( QListWidgetItem* aItem ) { send( list->row( aItem ) ); } );
+            else
+                QObject::connect( list, &QListWidget::itemChanged, list,
+                                  [send, list]( QListWidgetItem* aItem ) { send( list->row( aItem ) ); } );
+        }
+
+        break;
+
+    case wxEVT_SPINCTRL:
+        if( QSpinBox* spin = qobject_cast<QSpinBox*>( w ) )
+        {
+            QObject::connect( spin, &QSpinBox::valueChanged, spin,
+                              [w, aSink]( int aValue )
+                              {
+                                  sendCompat<wxSpinEvent>( w, aSink, wxEVT_SPINCTRL,
+                                                           [&]( wxSpinEvent& e ) { e.SetPosition( aValue ); } );
+                              } );
+        }
+
+        break;
+
+    case wxEVT_SPINCTRLDOUBLE:
+        if( QDoubleSpinBox* spin = qobject_cast<QDoubleSpinBox*>( w ) )
+        {
+            QObject::connect( spin, &QDoubleSpinBox::valueChanged, spin,
+                              [w, aSink]( double aValue )
+                              {
+                                  sendCompat<wxSpinDoubleEvent>( w, aSink, wxEVT_SPINCTRLDOUBLE,
+                                                                 [&]( wxSpinDoubleEvent& e ) { e.SetValue( aValue ); } );
+                              } );
+        }
+
+        break;
+
+    case wxEVT_SLIDER:
+        if( QAbstractSlider* slider = qobject_cast<QAbstractSlider*>( w ) )
+        {
+            QObject::connect( slider, &QAbstractSlider::valueChanged, slider,
+                              [w, aSink]( int aValue )
+                              {
+                                  sendCompat( w, aSink, wxEVT_SLIDER,
+                                              std::function<void( wxCommandEvent& )>(
+                                                      [&]( wxCommandEvent& e ) { e.SetInt( aValue ); } ) );
+                              } );
+        }
+
+        break;
+
+    case wxEVT_NOTEBOOK_PAGE_CHANGED:
+        if( QTabWidget* tabs = qobject_cast<QTabWidget*>( w ) )
+        {
+            QObject::connect( tabs, &QTabWidget::currentChanged, tabs,
+                              [w, aSink]( int aPage )
+                              {
+                                  sendCompat<wxBookCtrlEvent>( w, aSink, wxEVT_NOTEBOOK_PAGE_CHANGED,
+                                                               [&]( wxBookCtrlEvent& e ) { e.SetSelection( aPage ); } );
+                              } );
+        }
+
+        break;
+
+    case wxEVT_RADIOBOX:
+        if( wxRadioBox* box = dynamic_cast<wxRadioBox*>( w ) )
+        {
+            box->OnSelected(
+                    [w, aSink, box]( int aIndex )
+                    {
+                        sendCompat( w, aSink, wxEVT_RADIOBOX,
+                                    std::function<void( wxCommandEvent& )>(
+                                            [&]( wxCommandEvent& e )
+                                            {
+                                                e.SetInt( aIndex );
+                                                e.SetString( box->GetString( aIndex ) );
+                                            } ) );
+                    } );
+        }
+
+        break;
+
+    case wxEVT_UPDATE_UI:
+        KIQT::RegisterUpdateUI( w,
+                                [w, aSink]()
+                                {
+                                    wxUpdateUIEvent event( wxGetWindowIdCompat( w ) );
+                                    event.SetEventObject( w );
+                                    aSink->Process( event );
+                                } );
+        break;
+
+    case wxEVT_IDLE:
+        KIQT::RegisterUpdateUI( w,
+                                [w, aSink]()
+                                {
+                                    wxIdleEvent event;
+                                    event.SetEventObject( w );
+                                    aSink->Process( event );
+                                } );
+        break;
+
+    case wxEVT_INIT_DIALOG:
+        KIQT::OnEvent( w, QEvent::Show,
+                       [w, aSink, done = false]( QEvent* ) mutable
+                       {
+                           if( done )
+                               return;
+
+                           done = true;
+                           wxInitDialogEvent event( wxGetWindowIdCompat( w ) );
+                           event.SetEventObject( w );
+                           aSink->Process( event );
+                       } );
+        break;
+
+    default:
+        // The events of the widget (the input events, the focus, the size...)
+        KIQT::FilterEvents( w,
+                [w, aSink, aType]( QEvent* aQtEvent ) -> bool
+                {
+                    QEvent::Type qtType = aQtEvent->type();
+                    int          id = wxGetWindowIdCompat( w );
+
+                    auto mouse =
+                            [&]( wxEventType aMouseType ) -> bool
+                            {
+                                wxMouseEvent event( aMouseType );
+                                event.SetId( id );
+                                event.SetEventObject( w );
+                                wxFillMouseEventCompat( event, aQtEvent );
+                                return aSink->Process( event );
+                            };
+
+                    auto mouseButton = [&]( Qt::MouseButton aButton )
+                                       {
+                                           QMouseEvent* m = dynamic_cast<QMouseEvent*>( aQtEvent );
+                                           return m && m->button() == aButton;
+                                       };
+
+                    switch( aType )
+                    {
+                    case wxEVT_SET_FOCUS:
+                    case wxEVT_KILL_FOCUS:
+                        if( qtType == ( aType == wxEVT_SET_FOCUS ? QEvent::FocusIn : QEvent::FocusOut ) )
+                        {
+                            wxFocusEvent event( aType, id );
+                            event.SetEventObject( w );
+                            aSink->Process( event );
+                        }
+
+                        return false;
+
+                    case wxEVT_SIZE:
+                        if( qtType == QEvent::Resize )
+                        {
+                            wxSizeEvent event( wxSizeOfEventCompat( aQtEvent ), id );
+                            event.SetEventObject( w );
+                            aSink->Process( event );
+                        }
+
+                        return false;
+
+                    case wxEVT_SHOW:
+                        return false;
+
+                    case wxEVT_LEFT_DOWN:
+                        return qtType == QEvent::MouseButtonPress && mouseButton( Qt::LeftButton ) && mouse( aType );
+
+                    case wxEVT_LEFT_UP:
+                        return qtType == QEvent::MouseButtonRelease && mouseButton( Qt::LeftButton ) && mouse( aType );
+
+                    case wxEVT_LEFT_DCLICK:
+                        return qtType == QEvent::MouseButtonDblClick && mouseButton( Qt::LeftButton ) && mouse( aType );
+
+                    case wxEVT_RIGHT_DOWN:
+                        return qtType == QEvent::MouseButtonPress && mouseButton( Qt::RightButton ) && mouse( aType );
+
+                    case wxEVT_RIGHT_UP:
+                        return qtType == QEvent::MouseButtonRelease && mouseButton( Qt::RightButton ) && mouse( aType );
+
+                    case wxEVT_MOTION:
+                        return qtType == QEvent::MouseMove && mouse( aType );
+
+                    case wxEVT_MOUSEWHEEL:
+                        return qtType == QEvent::Wheel && mouse( aType );
+
+                    case wxEVT_LEAVE_WINDOW:
+                        return qtType == QEvent::Leave && mouse( aType );
+
+                    case wxEVT_ENTER_WINDOW:
+                        return qtType == QEvent::Enter && mouse( aType );
+
+                    case wxEVT_CHAR_HOOK:
+                    case wxEVT_KEY_DOWN:
+                        if( qtType == QEvent::KeyPress || qtType == QEvent::ShortcutOverride )
+                        {
+                            // The key is not processed by the widget if a handler processes it
+                            if( qtType == QEvent::ShortcutOverride )
+                                return false;
+
+                            wxKeyEvent event( aType );
+                            event.SetId( id );
+                            event.SetEventObject( w );
+                            wxFillKeyEventCompat( event, aQtEvent );
+                            return aSink->Process( event );
+                        }
+
+                        return false;
+
+                    case wxEVT_CLOSE_WINDOW:
+                        if( qtType == QEvent::Close )
+                        {
+                            wxCloseEvent event( wxEVT_CLOSE_WINDOW, id );
+                            event.SetEventObject( w );
+
+                            // The window stays open if a handler processes the event
+                            if( aSink->Process( event ) )
+                            {
+                                aQtEvent->ignore();
+                                return true;
+                            }
+                        }
+
+                        return false;
+
+                    default:
+                        return false;
+                    }
+                } );
+        break;
+    }
 }
 
 
