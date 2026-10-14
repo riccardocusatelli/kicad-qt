@@ -31,6 +31,10 @@
 #include <atomic>
 
 #include <QAbstractButton>
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QResizeEvent>
+#include <QWheelEvent>
 #include <QApplication>
 #include <QMessageBox>
 #include <QScreen>
@@ -38,6 +42,8 @@
 #include <QSignalBlocker>
 #include <QTextBlock>
 #include <QVariant>
+
+#include <toolkit/qt_keys.h>
 
 
 // Ids and events ---------------------------------------------------------------------------
@@ -50,10 +56,92 @@ int wxWindowIDNew()
 }
 
 
+static const char* WINDOW_ID_PROPERTY = "kiwxWindowId";
+
+
+int wxGetWindowIdCompat( const QObject* aWindow )
+{
+    if( !aWindow )
+        return wxID_ANY;
+
+    QVariant id = aWindow->property( WINDOW_ID_PROPERTY );
+
+    if( !id.isValid() )
+    {
+        // A new id, as wxWidgets gives to the windows created with wxID_ANY
+        id = wxWindowIDNew();
+        const_cast<QObject*>( aWindow )->setProperty( WINDOW_ID_PROPERTY, id );
+    }
+
+    return id.toInt();
+}
+
+
+void wxSetWindowIdCompat( QObject* aWindow, int aId )
+{
+    if( aWindow )
+        aWindow->setProperty( WINDOW_ID_PROPERTY, aId == wxID_ANY ? wxWindowIDNew() : aId );
+}
+
+
 wxEventType wxNewEventType()
 {
     static std::atomic<int> s_next( wxEVT_USER_FIRST );
     return s_next++;
+}
+
+
+void wxFillMouseEventCompat( wxMouseEvent& aEvent, QEvent* aQtEvent )
+{
+    Qt::KeyboardModifiers modifiers;
+
+    if( QMouseEvent* mouse = dynamic_cast<QMouseEvent*>( aQtEvent ) )
+    {
+        aEvent.m_x = int( mouse->position().x() );
+        aEvent.m_y = int( mouse->position().y() );
+        modifiers = mouse->modifiers();
+    }
+    else if( QWheelEvent* wheel = dynamic_cast<QWheelEvent*>( aQtEvent ) )
+    {
+        aEvent.m_x = int( wheel->position().x() );
+        aEvent.m_y = int( wheel->position().y() );
+        aEvent.m_wheelRotation = wheel->angleDelta().y();
+        modifiers = wheel->modifiers();
+    }
+
+    aEvent.m_shift = modifiers & Qt::ShiftModifier;
+    aEvent.m_control = modifiers & Qt::ControlModifier;
+    aEvent.m_alt = modifiers & Qt::AltModifier;
+}
+
+
+void wxFillKeyEventCompat( wxKeyEvent& aEvent, QEvent* aQtEvent )
+{
+    QKeyEvent* key = dynamic_cast<QKeyEvent*>( aQtEvent );
+
+    if( !key )
+        return;
+
+    aEvent.m_keyCode = TOOLKIT::KeyCodeFromQt( *key );
+    aEvent.m_modifiers = 0;
+
+    if( key->modifiers() & Qt::ShiftModifier )
+        aEvent.m_modifiers |= wxMOD_SHIFT;
+
+    if( key->modifiers() & Qt::ControlModifier )
+        aEvent.m_modifiers |= wxMOD_CONTROL;
+
+    if( key->modifiers() & Qt::AltModifier )
+        aEvent.m_modifiers |= wxMOD_ALT;
+}
+
+
+wxSize wxSizeOfEventCompat( QEvent* aQtEvent )
+{
+    if( QResizeEvent* resize = dynamic_cast<QResizeEvent*>( aQtEvent ) )
+        return wxSize( resize->size().width(), resize->size().height() );
+
+    return wxSize();
 }
 
 

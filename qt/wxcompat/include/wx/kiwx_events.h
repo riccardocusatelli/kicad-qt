@@ -34,6 +34,8 @@
 #ifndef KIWX_EVENTS_H
 #define KIWX_EVENTS_H
 
+#include <kiqt.h>
+
 #include <wx/defs.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
@@ -105,7 +107,7 @@ using wxEventType = int;
 
 
 /// A new type of event (wxNewEventType()).
-wxEventType wxNewEventType();
+KIQT_API wxEventType wxNewEventType();
 
 
 class wxEvent
@@ -220,7 +222,7 @@ private:
  * The update of the state of a widget (enabled, checked, label), asked while the dialog is
  * shown: the changes are applied to the widget of the event.
  */
-class wxUpdateUIEvent : public wxCommandEvent
+class KIQT_API wxUpdateUIEvent : public wxCommandEvent
 {
 public:
     explicit wxUpdateUIEvent( int aId = 0 ) :
@@ -474,5 +476,17 @@ public:
 private:
     int m_rowOrCol;
 };
+
+
+class QEvent;
+
+/// The data of the mouse event of Qt @a aQtEvent (position, buttons, modifiers, wheel).
+KIQT_API void wxFillMouseEventCompat( wxMouseEvent& aEvent, QEvent* aQtEvent );
+
+/// The data of the key event of Qt @a aQtEvent (key code of KiCad, modifiers).
+KIQT_API void wxFillKeyEventCompat( wxKeyEvent& aEvent, QEvent* aQtEvent );
+
+/// The size of the resize event of Qt @a aQtEvent.
+KIQT_API wxSize wxSizeOfEventCompat( QEvent* aQtEvent );
 
 #endif // KIWX_EVENTS_H

@@ -81,6 +81,12 @@
 /// The ids of the windows (wxID_ANY gets a new negative id, as with wxWidgets).
 KIQT_API int wxWindowIDNew();
 
+/// The id of a window (wxID_ANY if it has none).
+KIQT_API int wxGetWindowIdCompat( const QObject* aWindow );
+
+/// Give an id to a window (a new one for wxID_ANY).
+KIQT_API void wxSetWindowIdCompat( QObject* aWindow, int aId );
+
 /// Center a window on its parent, or on the screen.
 KIQT_API void wxCentreWindow( QWidget* aWindow, int aDirection );
 
@@ -130,14 +136,14 @@ public:
     template <typename... ARGS>
     explicit wxWindowCompat( ARGS&&... aArgs ) :
             QT( std::forward<ARGS>( aArgs )... ),
-            m_id( wxWindowIDNew() ),
             m_clientData( nullptr ),
             m_sizerProxy( this )
     {
     }
 
-    int GetId() const { return m_id; }
-    void SetId( int aId ) { m_id = aId == wxID_ANY ? wxWindowIDNew() : aId; }
+    /// The id of the window (a property of the widget, so that the events find it).
+    int GetId() const { return wxGetWindowIdCompat( this ); }
+    void SetId( int aId ) { wxSetWindowIdCompat( this, aId ); }
 
     bool Enable( bool aEnable = true )
     {
@@ -250,7 +256,6 @@ public:
     void SetEvtHandlerEnabled( bool aEnable ) { this->blockSignals( !aEnable ); }
 
 private:
-    int          m_id;
     void*        m_clientData;
     wxSizerProxy m_sizerProxy;
 };

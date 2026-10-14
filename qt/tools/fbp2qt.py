@@ -195,6 +195,99 @@ EVENTS = {
     'OnNoButtonClick':      ( SOURCE, 'stdbutton:No' ),
 }
 
+# ---------------------------------------------------------------------------------------------
+# The wxWidgets compatibility mode (--wx-compat): the controls are the classes of the
+# compatibility layer (qt/wxcompat: wxCheckBox is a QCheckBox with the API of wxWidgets), and
+# the handlers get the events of wxWidgets (wxCommandEvent...), as the bases wxFormBuilder
+# writes: the code of the dialogs of KiCad builds on them unchanged.
+
+# The class of the compatibility layer of a class of wxWidgets
+COMPAT_CLASSES = {
+    'wxStaticText': 'wxStaticText',
+    'wxTextCtrl': 'wxTextCtrl',
+    'wxSearchCtrl': 'wxTextCtrl',
+    'wxButton': 'wxButton',
+    'wxToggleButton': 'wxToggleButton',
+    'wxBitmapButton': 'wxBitmapButton',
+    'wxCheckBox': 'wxCheckBox',
+    'wxRadioButton': 'wxRadioButton',
+    'wxChoice': 'wxChoice',
+    'wxComboBox': 'wxComboBox',
+    'wxBitmapComboBox': 'wxComboBox',
+    'wxSpinCtrl': 'wxSpinCtrl',
+    'wxSpinCtrlDouble': 'wxSpinCtrlDouble',
+    'wxSlider': 'wxSlider',
+    'wxGauge': 'wxGauge',
+    'wxStaticLine': 'wxStaticLine',
+    'wxStaticBitmap': 'wxStaticBitmap',
+    'wxListBox': 'wxListBox',
+    'wxCheckListBox': 'wxCheckListBox',
+}
+
+# The events of the compatibility mode: name -> (class of the event, type of the event, how it
+# is filled).  The ways:
+#   clicked, checked     the clicked signal of a button (checked: SetInt( isChecked ))
+#   text, textenter      the text changes, the Enter key
+#   choice               the activated signal of a combo box (SetInt( index ), SetString( text ))
+#   spin, spindouble     the value of a spin control
+#   spintext             the end of the edition of a spin control
+#   slider, sliderthumb  the value of a slider
+#   listbox, listdclick, checklist   the lists
+#   focusin, focusout, size, mouse:<QEvent::Type>, key:<QEvent::Type>   the events of a widget
+#   updateui             an update UI function
+#   link                 a hyperlink
+#   page                 the page of a notebook
+#   gridcell:<signal>, gridright    the cells of a grid
+#   stdbutton:<id>       a button of the standard button box
+COMPAT_EVENTS = {
+    'OnButtonClick':        ( 'wxCommandEvent', 'wxEVT_BUTTON', 'clicked' ),
+    'OnCheckBox':           ( 'wxCommandEvent', 'wxEVT_CHECKBOX', 'checked' ),
+    'OnRadioButton':        ( 'wxCommandEvent', 'wxEVT_RADIOBUTTON', 'checked' ),
+    'OnToggleButton':       ( 'wxCommandEvent', 'wxEVT_TOGGLEBUTTON', 'checked' ),
+    'OnText':               ( 'wxCommandEvent', 'wxEVT_TEXT', 'text' ),
+    'OnTextEnter':          ( 'wxCommandEvent', 'wxEVT_TEXT_ENTER', 'textenter' ),
+    'OnChoice':             ( 'wxCommandEvent', 'wxEVT_CHOICE', 'choice' ),
+    'OnCombobox':           ( 'wxCommandEvent', 'wxEVT_COMBOBOX', 'choice' ),
+    'OnSpinCtrl':           ( 'wxSpinEvent', 'wxEVT_SPINCTRL', 'spin' ),
+    'OnSpinCtrlDouble':     ( 'wxSpinDoubleEvent', 'wxEVT_SPINCTRLDOUBLE', 'spindouble' ),
+    'OnSpinCtrlText':       ( 'wxCommandEvent', 'wxEVT_TEXT', 'spintext' ),
+    'OnSlider':             ( 'wxCommandEvent', 'wxEVT_SLIDER', 'slider' ),
+    'OnScroll':             ( 'wxScrollEvent', 'wxEVT_SCROLL_CHANGED', 'slider' ),
+    'OnCommandScrollChanged': ( 'wxScrollEvent', 'wxEVT_SCROLL_CHANGED', 'slider' ),
+    'OnCommandScrollThumbTrack': ( 'wxScrollEvent', 'wxEVT_SCROLL_THUMBTRACK', 'sliderthumb' ),
+    'OnListBox':            ( 'wxCommandEvent', 'wxEVT_LISTBOX', 'listbox' ),
+    'OnListBoxDClick':      ( 'wxCommandEvent', 'wxEVT_LISTBOX_DCLICK', 'listdclick' ),
+    'OnCheckListBoxToggled': ( 'wxCommandEvent', 'wxEVT_CHECKLISTBOX', 'checklist' ),
+    'OnKillFocus':          ( 'wxFocusEvent', 'wxEVT_KILL_FOCUS', 'focusout' ),
+    'OnSetFocus':           ( 'wxFocusEvent', 'wxEVT_SET_FOCUS', 'focusin' ),
+    'OnSize':               ( 'wxSizeEvent', 'wxEVT_SIZE', 'size' ),
+    'OnLeftDown':           ( 'wxMouseEvent', 'wxEVT_LEFT_DOWN', 'mouse:QEvent::MouseButtonPress' ),
+    'OnLeftUp':             ( 'wxMouseEvent', 'wxEVT_LEFT_UP', 'mouse:QEvent::MouseButtonRelease' ),
+    'OnLeftDClick':         ( 'wxMouseEvent', 'wxEVT_LEFT_DCLICK', 'mouse:QEvent::MouseButtonDblClick' ),
+    'OnRightDown':          ( 'wxMouseEvent', 'wxEVT_RIGHT_DOWN', 'mouse:QEvent::MouseButtonPress' ),
+    'OnRightUp':            ( 'wxMouseEvent', 'wxEVT_RIGHT_UP', 'mouse:QEvent::MouseButtonRelease' ),
+    'OnMotion':             ( 'wxMouseEvent', 'wxEVT_MOTION', 'mouse:QEvent::MouseMove' ),
+    'OnMouseWheel':         ( 'wxMouseEvent', 'wxEVT_MOUSEWHEEL', 'mouse:QEvent::Wheel' ),
+    'OnCharHook':           ( 'wxKeyEvent', 'wxEVT_CHAR_HOOK', 'key:QEvent::KeyPress' ),
+    'OnKeyDown':            ( 'wxKeyEvent', 'wxEVT_KEY_DOWN', 'key:QEvent::KeyPress' ),
+    'OnUpdateUI':           ( 'wxUpdateUIEvent', 'wxEVT_UPDATE_UI', 'updateui' ),
+    'OnHyperlink':          ( 'wxHyperlinkEvent', 'wxEVT_HYPERLINK', 'link' ),
+    'OnNotebookPageChanged': ( 'wxNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
+    'OnAuiNotebookPageChanged': ( 'wxAuiNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
+    'OnGridCellLeftClick':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_CLICK', 'gridcell:QTableWidget::cellClicked' ),
+    'OnGridCellLeftDClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_DCLICK', 'gridcell:QTableWidget::cellDoubleClicked' ),
+    'OnGridCellChange':     ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGED', 'gridcell:QTableWidget::cellChanged' ),
+    'OnGridCellRightClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_RIGHT_CLICK', 'gridright' ),
+    'OnOKButtonClick':      ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Ok' ),
+    'OnCancelButtonClick':  ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Cancel' ),
+    'OnApplyButtonClick':   ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Apply' ),
+    'OnHelpButtonClick':    ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Help' ),
+    'OnSaveButtonClick':    ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Save' ),
+    'OnYesButtonClick':     ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:Yes' ),
+    'OnNoButtonClick':      ( 'wxCommandEvent', 'wxEVT_BUTTON', 'stdbutton:No' ),
+}
+
+
 # The classes of wxWidgets used as custom controls, and their Qt counterparts
 WX_CUSTOM_CLASSES = {
     'wxScrolledCanvas': 'QScrollArea',
@@ -217,8 +310,9 @@ STD_BUTTONS = [
 # Generator
 
 class Generator:
-    def __init__( self, aFbp ):
+    def __init__( self, aFbp, aCompat = False ):
         self.fbp = aFbp
+        self.compat = aCompat       # the wxWidgets compatibility mode
         root = ET.parse( aFbp ).getroot()
         project = root.find( 'object' )
 
@@ -229,6 +323,7 @@ class Generator:
         self.file = self.project.get( 'file' ) or os.path.splitext( os.path.basename( aFbp ) )[0]
         self.forms = [ o for o in project.findall( 'object' ) ]
 
+        self.ids = []               # the ids of the windows (ID_...), in their order
         self.includes = set()       # headers of the .h
         self.cpp_includes = set()   # headers of the .cpp
         self.forward = set()        # forward declared classes
@@ -253,6 +348,17 @@ class Generator:
         h.append( '#include <wx/intl.h>' )
         h.append( '#include <qt_strings.h>' )
         h.append( '' )
+
+        # The ids of the windows, as wxFormBuilder defines them
+        first = parse_int( self.project.get( 'first_id' ), 1000 )
+
+        for n, wid in enumerate( dict.fromkeys( self.ids ) ):
+            h.append( '#ifndef %s' % wid )
+            h.append( '#define %s %d' % ( wid, first + n ) )
+            h.append( '#endif' )
+
+        if self.ids:
+            h.append( '' )
 
         for fwd in sorted( self.forward ):
             h.append( 'class %s;' % fwd )
@@ -347,6 +453,9 @@ class FormClass:
     # The events of a widget ---------------------------------------------------------------
 
     def connect_events( self, aObj, aVar, aQtClass ):
+        if self.gen.compat:
+            return self.connect_events_compat( aObj, aVar, aQtClass )
+
         for event, handler in events( aObj ).items():
             if event not in EVENTS:
                 raise FbpError( 'event %s of %s (%s) not supported'
@@ -443,6 +552,142 @@ class FormClass:
             else:
                 raise FbpError( 'event kind %s' % kind )
 
+    # The events of the compatibility mode ------------------------------------------------
+
+    def compat_call( self, aEvClass, aType, aVar, aHandler, aFill = '', aArgs = '' ):
+        """A lambda making the event of wxWidgets and calling the handler."""
+        widget = 'this' if aVar == 'this' else aVar
+        capture = '[this]' if aVar == 'this' else '[this, w = %s]' % aVar
+        prefix = 'auto* w = this; ' if aVar == 'this' else ''
+        return ( '%s( %s ) { %s%s evt( %s ); evt.SetId( wxGetWindowIdCompat( w ) ); evt.SetEventObject( w ); %s%s( evt ); }'
+                 % ( capture, aArgs, prefix, aEvClass, aType, aFill, aHandler ) )
+
+    def connect_events_compat( self, aObj, aVar, aQtClass ):
+        for event, handler in events( aObj ).items():
+            if event not in COMPAT_EVENTS:
+                raise FbpError( 'event %s of %s (%s) not supported'
+                                % ( event, aObj.get( 'class' ), props( aObj ).get( 'name' ) ) )
+
+            evClass, evType, way = COMPAT_EVENTS[event]
+            self.handler( handler, '%s& event' % evClass )
+            call = lambda fill = '', args = '': self.compat_call( evClass, evType, aVar, handler, fill, args )
+
+            if way in ( 'clicked', 'checked' ):
+                fill = 'evt.SetInt( w->isChecked() ? 1 : 0 ); ' if way == 'checked' else ''
+                self.code.append( '    QObject::connect( %s, &QAbstractButton::clicked, this, %s );'
+                                  % ( aVar, call( fill ) ) )
+
+            elif way == 'text':
+                if aQtClass in ( 'QLineEdit', 'wxTextCtrl' ):
+                    signal, getter = 'QLineEdit::textChanged', 'w->text()'
+                elif aQtClass in ( 'QPlainTextEdit', 'wxTextCtrlMultiLine' ):
+                    signal, getter = 'QPlainTextEdit::textChanged', 'w->toPlainText()'
+                elif aQtClass in ( 'QComboBox', 'wxComboBox', 'wxChoice' ):
+                    signal, getter = 'QComboBox::editTextChanged', 'w->currentText()'
+                else:
+                    raise FbpError( 'OnText of %s' % aQtClass )
+
+                self.code.append( '    QObject::connect( %s, &%s, this, %s );'
+                                  % ( aVar, signal, call( 'evt.SetString( ToWxString( %s ) ); ' % getter ) ) )
+
+            elif way == 'textenter':
+                if aQtClass in ( 'QLineEdit', 'wxTextCtrl' ):
+                    target = aVar
+                elif aQtClass in ( 'QComboBox', 'wxComboBox' ):
+                    target = '%s->lineEdit()' % aVar
+                else:
+                    raise FbpError( 'OnTextEnter of %s' % aQtClass )
+
+                self.code.append( '    QObject::connect( %s, &QLineEdit::returnPressed, this, %s );'
+                                  % ( target, call() ) )
+
+            elif way == 'choice':
+                self.code.append( '    QObject::connect( %s, &QComboBox::activated, this, %s );'
+                                  % ( aVar, call( 'evt.SetInt( aIndex ); evt.SetString( ToWxString( w->itemText( aIndex ) ) ); ', 'int aIndex' ) ) )
+
+            elif way == 'spin':
+                self.code.append( '    QObject::connect( %s, &QSpinBox::valueChanged, this, %s );'
+                                  % ( aVar, call( 'evt.SetInt( aValue ); ', 'int aValue' ) ) )
+
+            elif way == 'spindouble':
+                self.code.append( '    QObject::connect( %s, &QDoubleSpinBox::valueChanged, this, %s );'
+                                  % ( aVar, call( 'evt.SetValue( aValue ); ', 'double aValue' ) ) )
+
+            elif way == 'spintext':
+                self.code.append( '    QObject::connect( %s, &QAbstractSpinBox::editingFinished, this, %s );'
+                                  % ( aVar, call() ) )
+
+            elif way in ( 'slider', 'sliderthumb' ):
+                signal = 'QAbstractSlider::valueChanged' if way == 'slider' else 'QAbstractSlider::sliderMoved'
+                self.code.append( '    QObject::connect( %s, &%s, this, %s );'
+                                  % ( aVar, signal, call( 'evt.SetInt( aValue ); ', 'int aValue' ) ) )
+
+            elif way == 'listbox':
+                self.code.append( '    QObject::connect( %s, &QListWidget::currentRowChanged, this, %s );'
+                                  % ( aVar, call( 'evt.SetInt( aRow ); evt.SetString( ToWxString( w->item( aRow ) ? w->item( aRow )->text() : QString() ) ); ', 'int aRow' ) ) )
+
+            elif way == 'listdclick':
+                self.code.append( '    QObject::connect( %s, &QListWidget::itemDoubleClicked, this, %s );'
+                                  % ( aVar, call( 'evt.SetInt( w->row( aItem ) ); ', 'QListWidgetItem* aItem' ) ) )
+
+            elif way == 'checklist':
+                self.code.append( '    QObject::connect( %s, &QListWidget::itemChanged, this, %s );'
+                                  % ( aVar, call( 'evt.SetInt( w->row( aItem ) ); ', 'QListWidgetItem* aItem' ) ) )
+
+            elif way in ( 'focusin', 'focusout' ):
+                qtType = 'QEvent::FocusIn' if way == 'focusin' else 'QEvent::FocusOut'
+                self.code.append( '    KIQT::OnEvent( %s, %s, %s );' % ( aVar, qtType, call( '', 'QEvent*' ) ) )
+
+            elif way == 'size':
+                self.code.append( '    KIQT::OnEvent( %s, QEvent::Resize, %s );'
+                                  % ( aVar, call( '', 'QEvent* aQtEvent' ).replace( 'wxSizeEvent evt( wxEVT_SIZE )', 'wxSizeEvent evt( wxSizeOfEventCompat( aQtEvent ) )' ) ) )
+
+            elif way.startswith( 'mouse:' ):
+                fill = 'wxFillMouseEventCompat( evt, aQtEvent ); '
+                self.code.append( '    KIQT::OnEvent( %s, %s, %s );'
+                                  % ( aVar, way[len( 'mouse:' ):], call( fill, 'QEvent* aQtEvent' ) ) )
+
+            elif way.startswith( 'key:' ):
+                # A key not skipped by the handler is not processed by the widget
+                src = 'static_cast<QObject*>( %s )' % aVar if aVar != 'this' else 'static_cast<QObject*>( this )'
+                self.code.append( '    KIQT::FilterEvents( %s, [this, src = %s]( QEvent* aQtEvent ) { '
+                                  'if( aQtEvent->type() != %s ) return false; '
+                                  'wxKeyEvent evt( %s ); evt.SetEventObject( src ); wxFillKeyEventCompat( evt, aQtEvent ); '
+                                  '%s( evt ); return !evt.GetSkipped(); } );'
+                                  % ( aVar, src, way[len( 'key:' ):], evType, handler ) )
+
+            elif way == 'updateui':
+                src = 'static_cast<QObject*>( %s )' % aVar if aVar != 'this' else 'static_cast<QObject*>( this )'
+                self.code.append( '    KIQT::RegisterUpdateUI( this, [this, src = %s]() { wxUpdateUIEvent evt; evt.SetEventObject( src ); %s( evt ); } );'
+                                  % ( src, handler ) )
+
+            elif way == 'link':
+                self.code.append( '    QObject::connect( %s, &QLabel::linkActivated, this, %s );'
+                                  % ( aVar, call( 'evt.SetURL( ToWxString( aUrl ) ); ', 'const QString& aUrl' ) ) )
+
+            elif way == 'page':
+                self.code.append( '    QObject::connect( %s, &QTabWidget::currentChanged, this, %s );'
+                                  % ( aVar, call( 'evt.SetSelection( aPage ); ', 'int aPage' ) ) )
+
+            elif way.startswith( 'gridcell:' ):
+                self.code.append( '    QObject::connect( %s, &%s, this, [this, src = static_cast<QObject*>( %s )]( int aRow, int aCol ) { '
+                                  '%s evt( %s, 0, aRow, aCol ); evt.SetEventObject( src ); %s( evt ); } );'
+                                  % ( aVar, way[len( 'gridcell:' ):], aVar, evClass, evType, handler ) )
+
+            elif way == 'gridright':
+                self.code.append( '    %s->setContextMenuPolicy( Qt::CustomContextMenu );' % aVar )
+                self.code.append( '    QObject::connect( %s, &QWidget::customContextMenuRequested, this, [this, grid = %s]( const QPoint& aPos ) { '
+                                  'if( QTableWidgetItem* item = grid->itemAt( aPos ) ) { %s evt( %s, 0, item->row(), item->column() ); '
+                                  'evt.SetEventObject( grid ); %s( evt ); } } );'
+                                  % ( aVar, aVar, evClass, evType, handler ) )
+
+            elif way.startswith( 'stdbutton:' ):
+                # Connected by the button box (see the wxStdDialogButtonSizer)
+                pass
+
+            else:
+                raise FbpError( 'event way %s' % way )
+
     # The common properties of the widgets ---------------------------------------------------
 
     def common( self, aObj, aVar ):
@@ -525,6 +770,16 @@ class FormClass:
                         self.include( subHeader )
                 else:
                     raise FbpError( 'subclass %s without header' % sub )
+            elif self.gen.compat and cls in COMPAT_CLASSES:
+                # The control of the compatibility layer (derived from aQtClass)
+                qtType = COMPAT_CLASSES[cls]
+
+                if cls == 'wxTextCtrl' and 'wxTE_MULTILINE' in style:
+                    qtType = 'wxTextCtrlMultiLine'
+
+                self.include( '<wx/kiwx_gui.h>' )
+                self.qt( aQtClass )
+                args = aParent
             else:
                 self.qt( aQtClass )
 
@@ -617,8 +872,8 @@ class FormClass:
             var, t = make( qt )
             editable = cls == 'wxComboBox' and 'wxCB_READONLY' not in style
 
-            if editable:
-                self.code.append( '    %s->setEditable( true );' % var )
+            if editable or t != qt:
+                self.code.append( '    %s->setEditable( %s );' % ( var, 'true' if editable else 'false' ) )
 
             choices = parse_choices( p.get( 'choices' ) )
 
@@ -662,6 +917,9 @@ class FormClass:
             qt = 'QSlider'
             orient = 'Qt::Vertical' if 'wxSL_VERTICAL' in style else 'Qt::Horizontal'
             var, t = make( qt, '%s, %s' % ( orient, aParent ) )
+
+            if t != qt:
+                self.code.append( '    %s->setOrientation( %s );' % ( var, orient ) )
             self.code.append( '    %s->setRange( %d, %d );'
                               % ( var, parse_int( p.get( 'minValue' ), 0 ), parse_int( p.get( 'maxValue' ), 100 ) ) )
             self.code.append( '    %s->setValue( %d );' % ( var, parse_int( p.get( 'value' ), 0 ) ) )
@@ -810,8 +1068,22 @@ class FormClass:
             raise FbpError( 'class %s (%s) not supported' % ( cls, p.get( 'name' ) ) )
 
         self.common( aObj, var )
+        self.window_id( aObj, var )
         self.connect_events( aObj, var, qt if not sub else self.base_qt( cls, style ) )
         return var
+
+    def window_id( self, aObj, aVar ):
+        """The id of a window (compatibility mode): the code of the dialogs compares them."""
+        if not self.gen.compat:
+            return
+
+        wid = props( aObj ).get( 'id', 'wxID_ANY' ).strip()
+
+        if wid and wid != 'wxID_ANY':
+            if not wid.startswith( 'wxID_' ):
+                self.gen.ids.append( wid )
+
+            self.code.append( '    wxSetWindowIdCompat( %s, %s );' % ( aVar, wid ) )
 
     def base_qt( self, aClass, aStyle ):
         """The Qt class of a wx class (for the signals of a subclass)."""
@@ -842,10 +1114,17 @@ class FormClass:
 
             return self.qt( aQt )
 
+        if self.gen.compat and not sub and cls in ( 'wxPanel', 'wxNotebook', 'wxAuiNotebook' ):
+            self.include( '<wx/kiwx_gui.h>' )
+
+        def compat_klass( aQt, aCompat ):
+            return aCompat if self.gen.compat and not sub else klass( aQt )
+
         if cls == 'wxPanel':
-            t = klass( 'QWidget' )
+            t = compat_klass( 'QWidget', 'wxPanel' )
             var = self.var( aObj, t, 'new %s( %s )' % ( t, aParent ) )
             self.common( aObj, var )
+            self.window_id( aObj, var )
             self.children_layout( aObj, var )
             self.connect_events( aObj, var, 'QWidget' )
             return var
@@ -865,7 +1144,7 @@ class FormClass:
             return var
 
         if cls in ( 'wxNotebook', 'wxAuiNotebook' ):
-            t = klass( 'QTabWidget' )
+            t = compat_klass( 'QTabWidget', 'wxNotebook' )
             var = self.var( aObj, t, 'new %s( %s )' % ( t, aParent ) )
             self.common( aObj, var )
             selected = None
@@ -949,7 +1228,28 @@ class FormClass:
         p = props( aObj )
         saveGroup = self.radioGroup
 
-        if cls == 'wxBoxSizer':
+        if self.gen.compat and cls in ( 'wxBoxSizer', 'wxStaticBoxSizer', 'wxFlexGridSizer', 'wxGridSizer',
+                                         'wxGridBagSizer', 'wxWrapSizer' ):
+            # The sizers of the compatibility layer
+            self.include( '<wx/kiwx_gui.h>' )
+            vertical = p.get( 'orient' ) == 'wxVERTICAL'
+            orient = 'wxVERTICAL' if vertical else 'wxHORIZONTAL'
+
+            if cls in ( 'wxBoxSizer', 'wxWrapSizer' ):
+                var = self.var( aObj, 'wxBoxSizer', 'new wxBoxSizer( %s )' % orient )
+                self.box_items( aObj, var, aParent, vertical )
+            elif cls == 'wxStaticBoxSizer':
+                box = self.compat_static_box( aObj, aParent )
+                self.radioGroup = saveGroup
+                return self.wrap_widget( box )
+            elif cls in ( 'wxFlexGridSizer', 'wxGridSizer' ):
+                var = self.var( aObj, 'wxFlexGridSizer', 'new wxFlexGridSizer( %d )' % parse_int( p.get( 'cols' ), 0 ) )
+                self.grid_items( aObj, var, aParent )
+            else:
+                var = self.var( aObj, 'wxGridBagSizer', 'new wxGridBagSizer()' )
+                self.gridbag_items( aObj, var, aParent )
+
+        elif cls == 'wxBoxSizer':
             t = self.qt( 'QVBoxLayout' if p.get( 'orient' ) == 'wxVERTICAL' else 'QHBoxLayout' )
             var = self.var( aObj, t, 'new %s()' % t )
             self.box_items( aObj, var, aParent, p.get( 'orient' ) == 'wxVERTICAL' )
@@ -988,6 +1288,21 @@ class FormClass:
         self.radioGroup = saveGroup
         return var
 
+    def compat_static_box( self, aObj, aParent ):
+        """A wxStaticBoxSizer of the compatibility mode: its box (returned) and its sizer."""
+        p = props( aObj )
+        vertical = p.get( 'orient' ) == 'wxVERTICAL'
+        box = self.tmp( 'staticBox' )
+        self.code.append( '    wxStaticBox* %s = new wxStaticBox( %s, wxID_ANY, %s );'
+                          % ( box, aParent, tr( p.get( 'label', '' ) ) ) )
+        var = self.var( aObj, 'wxStaticBoxSizer', 'new wxStaticBoxSizer( %s, %s )'
+                        % ( box, 'wxVERTICAL' if vertical else 'wxHORIZONTAL' ) )
+        saveGroup = self.radioGroup
+        self.box_items( aObj, var, box, vertical )
+        self.radioGroup = saveGroup
+        self.common( aObj, box )
+        return box
+
     def wrap_widget( self, aWidget ):
         """A layout holding only a widget (for the sizers that are widgets in Qt)."""
         self.qt( 'QVBoxLayout' )
@@ -1014,6 +1329,10 @@ class FormClass:
         if cls in SIZERS:
             if cls in ( 'wxStdDialogButtonSizer', ):
                 return 'widget', self.button_box( child, aParent )
+
+            if cls == 'wxStaticBoxSizer' and self.gen.compat:
+                self.include( '<wx/kiwx_gui.h>' )
+                return 'widget', self.compat_static_box( child, aParent )
 
             if cls == 'wxStaticBoxSizer':
                 cp = props( child )
@@ -1171,6 +1490,9 @@ class FormClass:
         self.grid_gaps( aSizer, aLayout )
 
     def button_box( self, aObj, aParent ):
+        if self.gen.compat:
+            return self.button_box_compat( aObj, aParent )
+
         p = props( aObj )
         ev = events( aObj )
         self.qt( 'QDialogButtonBox' )
@@ -1216,6 +1538,53 @@ class FormClass:
 
         return box
 
+    def button_box_compat( self, aObj, aParent ):
+        """The wxStdDialogButtonSizer of the compatibility mode: its buttons are wxButtons."""
+        p = props( aObj )
+        ev = events( aObj )
+        self.include( '<wx/kiwx_gui.h>' )
+        box = self.var( aObj, 'wxStdDialogButtonSizer', 'new wxStdDialogButtonSizer( %s )' % aParent )
+        name = p.get( 'name' )
+
+        for prop, suffix, qtButton, wxId in STD_BUTTONS:
+            if p.get( prop, '0' ) != '1':
+                continue
+
+            button = name + suffix if name else self.tmp( 'button' )
+            perm = p.get( 'permission', 'protected' )
+            expr = '%s->AddStandardButton( QDialogButtonBox::%s, %s )' % ( box, qtButton, wxId )
+
+            if name and perm in ( 'protected', 'public', 'private' ):
+                self.members.append( ( perm, 'wxButton', button ) )
+                self.code.append( '    %s = %s;' % ( button, expr ) )
+            else:
+                self.code.append( '    wxButton* %s = %s;' % ( button, expr ) )
+
+            # The handler of the button, or the standard action of KiCad
+            handler = None
+
+            for evName, ( evClass, evType, way ) in COMPAT_EVENTS.items():
+                if way == 'stdbutton:%s' % qtButton and evName in ev and \
+                        ( prop != 'ContextHelp' or evName == 'OnContextHelpButtonClick' ):
+                    handler = ev[evName]
+
+            if handler:
+                # As with wxWidgets, the button does its standard action if the handler skips
+                # the event (the default handler)
+                self.handler( handler, 'wxCommandEvent& event' )
+                self.code.append( '    %s->setProperty( "kicadStandardButtonId", %s );' % ( button, wxId ) )
+                self.code.append( '    QObject::connect( %s, &QPushButton::clicked, this, [this, w = %s]() { '
+                                  'wxCommandEvent evt( wxEVT_BUTTON, %s ); evt.SetEventObject( w ); %s( evt ); '
+                                  'if( evt.GetSkipped() ) standardButtonClicked( w ); } );'
+                                  % ( button, button, wxId, handler ) )
+            else:
+                self.code.append( '    connectStandardButton( %s, %s );' % ( button, wxId ) )
+
+            if prop == 'OK':
+                self.code.append( '    %s->setDefault( true );' % button )
+
+        return box
+
     # The class -----------------------------------------------------------------------------
 
     def generate( self ):
@@ -1234,17 +1603,36 @@ class FormClass:
             ctorDecl = 'QWidget* aParent, const wxString& aTitle = _( %s )' % cstr( p.get( 'title', '' ) )
             ctorImpl = 'QWidget* aParent, const wxString& aTitle'
             init = '%s( aParent, aTitle )' % base
+
+            if self.gen.compat:
+                # The parameters of the bases of wxFormBuilder
+                ctorDecl = ( 'QWidget* aParent, int aId = wxID_ANY, const wxString& aTitle = _( %s ), '
+                             'const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize, '
+                             'long aStyle = 0' % cstr( p.get( 'title', '' ) ) )
+                ctorImpl = ( 'QWidget* aParent, int aId, const wxString& aTitle, const wxPoint& aPos, '
+                             'const wxSize& aSize, long aStyle' )
         elif self.kind == 'Panel':
             if sub:
                 base = sub
 
                 if subHeader:
                     self.include( subHeader )
+            elif self.gen.compat:
+                base = 'wxPanel'
+                self.include( '<wx/kiwx_gui.h>' )
             else:
                 base = self.qt( 'QWidget' )
 
             ctorDecl = ctorImpl = 'QWidget* aParent'
             init = '%s( aParent )' % base
+
+            if self.gen.compat:
+                # The parameters of the bases of wxFormBuilder
+                ctorDecl = ( 'QWidget* aParent, int aId = wxID_ANY, const wxPoint& aPos = wxDefaultPosition, '
+                             'const wxSize& aSize = wxDefaultSize, long aStyle = 0, '
+                             'const wxString& aName = wxEmptyString' )
+                ctorImpl = ( 'QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize, '
+                             'long aStyle, const wxString& aName' )
         else:
             raise FbpError( 'form %s not supported' % self.kind )
 
@@ -1255,6 +1643,9 @@ class FormClass:
                 self.code.append( '    setLayout( %s );' % layout )
             else:
                 raise FbpError( '%s in the form' % child.get( 'class' ) )
+
+        if self.gen.compat:
+            self.code.append( '    SetId( aId );' )
 
         self.connect_events( self.form, 'this', 'QWidget' )
 
@@ -1292,7 +1683,11 @@ class FormClass:
                 decl.append( '    // The event handlers: override them in the derived class' )
 
                 for name in sorted( self.handlers ):
-                    if name in self.stdHandlers:
+                    if self.gen.compat:
+                        # As the handlers of wxFormBuilder: the event is skipped
+                        decl.append( '    virtual void %s( %s ) { event.Skip(); }'
+                                     % ( name, self.handlers[name] ) )
+                    elif name in self.stdHandlers:
                         decl.append( '    virtual void %s( %s ) { standardButtonClicked( aSource ); }'
                                      % ( name, self.handlers[name] ) )
                     else:
@@ -1319,12 +1714,17 @@ SIZERS = ( 'wxBoxSizer', 'wxStaticBoxSizer', 'wxFlexGridSizer', 'wxGridSizer', '
 
 
 def main():
-    if len( sys.argv ) != 3:
-        sys.stderr.write( 'usage: fbp2qt.py <file.fbp> <output directory>\n' )
+    args = [ a for a in sys.argv[1:] if a != '--wx-compat' ]
+    compat = '--wx-compat' in sys.argv[1:]
+
+    if len( args ) != 2:
+        sys.stderr.write( 'usage: fbp2qt.py [--wx-compat] <file.fbp> <output directory>\n' )
         return 2
 
+    sys.argv = [ sys.argv[0] ] + args
+
     try:
-        gen = Generator( sys.argv[1] )
+        gen = Generator( sys.argv[1], compat )
         h, cpp = gen.generate()
     except FbpError as e:
         sys.stderr.write( '%s: %s\n' % ( sys.argv[1], e ) )

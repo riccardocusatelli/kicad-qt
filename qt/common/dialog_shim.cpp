@@ -437,6 +437,17 @@ void DIALOG_SHIM::SetupStandardButtons( std::map<int, wxString> aLabels )
                 {
                     QPushButton* button = box->button( aButton );
 
+                    // The buttons of the compatibility layer (wxStdDialogButtonSizer) are added
+                    // with their standard button as a property
+                    if( !button )
+                    {
+                        for( QAbstractButton* other : box->buttons() )
+                        {
+                            if( other->property( "kiqtStandardButton" ).toInt() == int( aButton ) )
+                                button = qobject_cast<QPushButton*>( other );
+                        }
+                    }
+
                     if( !button )
                         return;
 
@@ -461,6 +472,9 @@ void DIALOG_SHIM::SetupStandardButtons( std::map<int, wxString> aLabels )
 
         if( QPushButton* ok = box->button( QDialogButtonBox::Ok ) )
             ok->setDefault( true );
+        else if( wxStdDialogButtonSizer* compat = dynamic_cast<wxStdDialogButtonSizer*>( box ) )
+            if( wxButton* affirmative = compat->GetAffirmativeButton() )
+                affirmative->setDefault( true );
     }
 }
 

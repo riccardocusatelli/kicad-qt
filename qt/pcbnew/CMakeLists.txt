@@ -112,17 +112,32 @@ set( KIQT_PCBNEW_GUI_SRCS
 list( TRANSFORM KIQT_PCBNEW_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/ )
 
 kiqt_generate_fbp( KIQT_PCBNEW_GUI_FBP_SRCS
-    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_filter_selection_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_move_exact_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/widgets/appearance_controls_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/widgets/panel_selection_filter_base.fbp
     )
 
+# The dialogs of pcbnew built unchanged on the wxWidgets compatibility layer (qt/wxcompat)
+kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_enum_pads_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_filter_selection_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_push_pad_properties_base.fbp
+    )
+
+set( KIQT_PCBNEW_COMPAT_DIALOGS
+    dialogs/dialog_enum_pads.cpp
+    dialogs/dialog_filter_selection.cpp
+    dialogs/dialog_push_pad_properties.cpp
+    )
+
+list( TRANSFORM KIQT_PCBNEW_COMPAT_DIALOGS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/ )
+
 add_library( pcbnew_gui_qt STATIC
+    ${KIQT_PCBNEW_COMPAT_FBP_SRCS}
+    ${KIQT_PCBNEW_COMPAT_DIALOGS}
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
-    dialogs/dialog_filter_selection.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
     pcb_edit_frame_qt.cpp

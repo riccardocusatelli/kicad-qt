@@ -34,6 +34,19 @@ set( KIQT_FBP_DIR ${CMAKE_CURRENT_BINARY_DIR}/fbp )
 
 # kiqt_generate_fbp( <variable> <.fbp files...> ): the generated sources of the files.
 function( kiqt_generate_fbp aOutVar )
+    kiqt_generate_fbp_files( _sources "" ${ARGN} )
+    set( ${aOutVar} ${_sources} PARENT_SCOPE )
+endfunction()
+
+# kiqt_generate_fbp_compat( <variable> <.fbp files...> ): the generated sources of the files, in
+# the wxWidgets compatibility mode (the controls of qt/wxcompat, the events of wxWidgets): the
+# code of the dialogs of KiCad builds on them unchanged.
+function( kiqt_generate_fbp_compat aOutVar )
+    kiqt_generate_fbp_files( _sources "--wx-compat" ${ARGN} )
+    set( ${aOutVar} ${_sources} PARENT_SCOPE )
+endfunction()
+
+function( kiqt_generate_fbp_files aOutVar aOptions )
     set( _sources "" )
 
     foreach( _fbp ${ARGN} )
@@ -49,7 +62,7 @@ function( kiqt_generate_fbp aOutVar )
 
         add_custom_command(
             OUTPUT ${_outdir}/${_name}.h ${_outdir}/${_name}.cpp
-            COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_SOURCE_DIR}/qt/tools/fbp2qt.py ${_abs} ${_outdir}
+            COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_SOURCE_DIR}/qt/tools/fbp2qt.py ${aOptions} ${_abs} ${_outdir}
             DEPENDS ${_abs} ${PROJECT_SOURCE_DIR}/qt/tools/fbp2qt.py
             COMMENT "Generating the Qt base of ${_rel}"
             )
