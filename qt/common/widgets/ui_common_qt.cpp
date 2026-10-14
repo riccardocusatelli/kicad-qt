@@ -69,25 +69,25 @@ wxSize KIUI::GetTextSize( const wxString& aSingleLine, QWidget* aWindow )
 }
 
 
-QFont KIUI::GetMonospacedUIFont()
+wxFont KIUI::GetMonospacedUIFont()
 {
     return QFontDatabase::systemFont( QFontDatabase::FixedFont );
 }
 
 
-QFont KIUI::GetControlFont( QWidget* aWindow )
+wxFont KIUI::GetControlFont( QWidget* aWindow )
 {
     return aWindow ? aWindow->font() : QApplication::font();
 }
 
 
-QFont KIUI::GetInfoFont( QWidget* aWindow )
+wxFont KIUI::GetInfoFont( QWidget* aWindow )
 {
     return KIQT::InfoFont( aWindow );
 }
 
 
-QFont KIUI::GetSmallInfoFont( QWidget* aWindow )
+wxFont KIUI::GetSmallInfoFont( QWidget* aWindow )
 {
     QFont font = KIQT::InfoFont( aWindow );
 
@@ -98,13 +98,13 @@ QFont KIUI::GetSmallInfoFont( QWidget* aWindow )
 }
 
 
-QFont KIUI::GetDockedPaneFont( QWidget* aWindow )
+wxFont KIUI::GetDockedPaneFont( QWidget* aWindow )
 {
     return KIQT::DockedPaneFont( aWindow );
 }
 
 
-QFont KIUI::GetStatusFont( QWidget* aWindow )
+wxFont KIUI::GetStatusFont( QWidget* aWindow )
 {
     return KIQT::InfoFont( aWindow );
 }

@@ -72,6 +72,7 @@
 #include <wx/gdicmn.h>
 #include <wx/string.h>
 #include <wx/kiwx_events.h>
+#include <wx/kiwx_gdi.h>
 
 #include <qt_strings.h>
 
@@ -232,7 +233,25 @@ public:
     bool IsShownOnScreen() const { return this->isVisible(); }
 
     void SetFont( const QFont& aFont ) { this->setFont( aFont ); }
-    QFont GetFont() const { return this->font(); }
+    wxFont GetFont() const { return this->font(); }
+
+    void SetForegroundColour( const wxColour& aColour )
+    {
+        QPalette palette = this->palette();
+        palette.setColor( this->foregroundRole(), aColour );
+        this->setPalette( palette );
+    }
+
+    void SetBackgroundColour( const wxColour& aColour )
+    {
+        QPalette palette = this->palette();
+        palette.setColor( this->backgroundRole(), aColour );
+        this->setPalette( palette );
+        this->setAutoFillBackground( aColour.IsOk() );
+    }
+
+    wxColour GetForegroundColour() const { return this->palette().color( this->foregroundRole() ); }
+    wxColour GetBackgroundColour() const { return this->palette().color( this->backgroundRole() ); }
 
     void SetToolTip( const wxString& aTip ) { this->setToolTip( ToQString( aTip ) ); }
     void UnsetToolTip() { this->setToolTip( QString() ); }

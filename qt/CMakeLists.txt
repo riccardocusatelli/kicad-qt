@@ -84,14 +84,11 @@ set( KIQT_WXCOMPAT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wxcompat/include )
 include_directories( ${KIQT_WXCOMPAT_INCLUDE_DIR} )
 
 # kiqt_gui_target( <target> ): a library of the GUI of the Qt build: its windows are the widgets
-# of Qt.  The classes of wxWidgets named by the code of KiCad are the ones of Qt: wxWindow is
-# QWidget (as TOOLKIT_WINDOW), wxFont QFont, wxBitmapBundle QIcon (as TOOLKIT_BITMAP_BUNDLE), and
-# wxTextEntry the text control of the compatibility layer
+# of Qt: wxWindow (of the code of KiCad) is QWidget, as TOOLKIT_WINDOW, and wxTextEntry the text
+# control of the compatibility layer
 function( kiqt_gui_target aTarget )
     target_compile_definitions( ${aTarget} PRIVATE
         wxWindow=QWidget
-        wxFont=QFont
-        wxBitmapBundle=QIcon
         wxTextEntry=wxTextCtrl
         )
 endfunction()
