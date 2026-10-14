@@ -73,6 +73,7 @@
 #include <wx/string.h>
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
+#include <wx/kiwx_validators.h>
 
 #include <qt_strings.h>
 
@@ -340,6 +341,10 @@ public:
 
     void* GetClientData() const { return m_clientData; }
     void SetClientData( void* aData ) { m_clientData = aData; }
+
+    /// The validator of the window (a copy of @a aValidator).
+    void SetValidator( const wxValidator& aValidator ) { wxSetValidatorCompat( this, aValidator ); }
+    wxValidator* GetValidator() const { return wxGetValidatorCompat( this ); }
 
     /// The events go to the handlers of the dialogs: there is no handler to push on a widget.
     void SetEvtHandlerEnabled( bool aEnable ) { this->blockSignals( !aEnable ); }

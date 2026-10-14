@@ -758,9 +758,19 @@ wxPanel::wxPanel( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& 
 namespace
 {
 
-/// Apply @a aFunc to the panels and dialogs among the descendants of @a aWindow (not below them:
-/// their own transfers go to their children).
-bool forPanels( QWidget* aWindow, const std::function<bool( QWidget* )>& aFunc )
+enum class TRANSFER
+{
+    TO_WINDOW,
+    FROM_WINDOW,
+    VALIDATE
+};
+
+
+/**
+ * A transfer of the descendants of @a aWindow: the ones of their validators, and the ones of the
+ * panels and dialogs (not below them: their own transfers go to their children).
+ */
+bool transferChildren( QWidget* aWindow, TRANSFER aTransfer )
 {
     bool result = true;
 
@@ -770,10 +780,29 @@ bool forPanels( QWidget* aWindow, const std::function<bool( QWidget* )>& aFunc )
         if( child->isWindow() )
             continue;
 
-        if( dynamic_cast<wxTransferableCompat*>( child ) )
-            result &= aFunc( child );
+        if( wxValidator* validator = wxGetValidatorCompat( child ) )
+        {
+            switch( aTransfer )
+            {
+            case TRANSFER::TO_WINDOW:   result &= validator->TransferToWindow();     break;
+            case TRANSFER::FROM_WINDOW: result &= validator->TransferFromWindow();   break;
+            case TRANSFER::VALIDATE:    result &= validator->Validate( aWindow );    break;
+            }
+        }
+
+        if( wxTransferableCompat* transferable = dynamic_cast<wxTransferableCompat*>( child ) )
+        {
+            switch( aTransfer )
+            {
+            case TRANSFER::TO_WINDOW:   result &= transferable->TransferDataToWindow();   break;
+            case TRANSFER::FROM_WINDOW: result &= transferable->TransferDataFromWindow(); break;
+            case TRANSFER::VALIDATE:    result &= transferable->Validate();               break;
+            }
+        }
         else
-            result &= forPanels( child, aFunc );
+        {
+            result &= transferChildren( child, aTransfer );
+        }
     }
 
     return result;
@@ -784,19 +813,19 @@ bool forPanels( QWidget* aWindow, const std::function<bool( QWidget* )>& aFunc )
 
 bool wxTransferDataToChildrenCompat( QWidget* aWindow )
 {
-    return forPanels( aWindow, []( QWidget* aPanel ) { return wxTransferDataToWindowCompat( aPanel ); } );
+    return transferChildren( aWindow, TRANSFER::TO_WINDOW );
 }
 
 
 bool wxTransferDataFromChildrenCompat( QWidget* aWindow )
 {
-    return forPanels( aWindow, []( QWidget* aPanel ) { return wxTransferDataFromWindowCompat( aPanel ); } );
+    return transferChildren( aWindow, TRANSFER::FROM_WINDOW );
 }
 
 
 bool wxValidateChildrenCompat( QWidget* aWindow )
 {
-    return forPanels( aWindow, []( QWidget* aPanel ) { return wxValidateCompat( aPanel ); } );
+    return transferChildren( aWindow, TRANSFER::VALIDATE );
 }
 
 
