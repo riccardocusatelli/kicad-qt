@@ -446,18 +446,8 @@ using wxGridRowHeaderRenderer = wxGridHeaderLabelsRenderer;
 using wxGridCornerHeaderRenderer = wxGridHeaderLabelsRenderer;
 
 
-/// The handler of the events of an editor (the editors of KiCad derive from it).
-class KIQT_API wxEvtHandler
-{
-public:
-    virtual ~wxEvtHandler() = default;
-};
 
 
-/**
- * The edition of cells (wxGridCellEditor): its control, created once by Create(), is the editor
- * of the cell in the grid.
- */
 /**
  * The control of an editor (wxGridCellEditor::m_control): a guarded pointer that the editors
  * of KiCad cast to their control classes.
@@ -479,9 +469,43 @@ public:
     {
         return static_cast<T*>( data() );
     }
+
+    /// The API of wxWindow on the control (m_control->Bind(), GetEventHandler()...).
+    wxWindowRefCompat operator->() const { return wxWindowRefCompat( data() ); }
 };
 
 
+/**
+ * The handler pushed on the control of an editor while it is created (wxGridCellEditor::Create()):
+ * the end of the edition when the control loses the focus.  Qt handles the keys of the editors
+ * (Tab, Return, Escape).
+ */
+class KIQT_API wxGridCellEditorEvtHandler : public wxEvtHandler
+{
+public:
+    wxGridCellEditorEvtHandler( wxGrid* aGrid, wxGridCellEditor* aEditor );
+
+    void OnKillFocus( wxFocusEvent& aEvent );
+    void OnKeyDown( wxKeyEvent& aEvent ) { aEvent.Skip(); }
+    void OnChar( wxKeyEvent& aEvent ) { aEvent.Skip(); }
+
+    void SetInSetFocus( bool aInSetFocus ) { m_inSetFocus = aInSetFocus; }
+    bool IsInSetFocus() const { return m_inSetFocus; }
+
+    /// End the edition (the value of the editor is saved).
+    void DismissEditor();
+
+private:
+    wxGrid*           m_grid;
+    wxGridCellEditor* m_editor;
+    bool              m_inSetFocus;
+};
+
+
+/**
+ * The edition of cells (wxGridCellEditor): its control, created once by Create(), is the editor
+ * of the cell in the grid.
+ */
 class KIQT_API wxGridCellEditor : public wxGridRefCounted
 {
 public:
@@ -495,7 +519,10 @@ public:
     wxGridCellAttr* GetCellAttr() const { return m_attr; }
     void SetCellAttr( wxGridCellAttr* aAttr ) { m_attr = aAttr; }
 
-    /// Create the control of the editor, child of @a aParent.
+    /**
+     * Create the control of the editor, child of @a aParent.  The derived editors make their
+     * control, then call this one: it pushes @a aEventHandler on the control.
+     */
     virtual void Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler ) = 0;
 
     virtual void SetSize( const wxRect& aRect );

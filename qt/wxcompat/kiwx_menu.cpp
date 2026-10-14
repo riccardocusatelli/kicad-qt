@@ -559,7 +559,7 @@ void wxMenu::UpdateUI( void* aSource )
         // The handlers change the action of the item
         wxUpdateUIEvent event( item->GetId() );
         event.SetEventObject( item->GetActionCompat() );
-        m_events.Process( event );
+        ProcessEvent( event );
     }
 }
 
@@ -590,7 +590,7 @@ bool wxPopupMenuCompat( QWidget* aWindow, wxMenu* aMenu, const wxPoint& aPos,
     {
         aEvent.SetEventObject( menu );
 
-        if( menu->ProcessEvent( aEvent ) )
+        if( menu->ProcessEventLocally( aEvent ) )
             return false;
 
         menu = menu->GetParent();

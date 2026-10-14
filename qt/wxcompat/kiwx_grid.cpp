@@ -822,10 +822,30 @@ wxGridCellEditor::~wxGridCellEditor()
 }
 
 
+void wxGridCellEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler )
+{
+    if( m_control )
+    {
+        wxSetWindowIdCompat( m_control.data(), aId );
+
+        if( aEventHandler )
+            wxEvtHandlerCompat( m_control.data() )->PushEventHandlerCompat( aEventHandler );
+    }
+    else
+    {
+        delete aEventHandler;
+    }
+}
+
+
 void wxGridCellEditor::Destroy()
 {
     if( m_control )
-        m_control->deleteLater();
+    {
+        // The handler pushed by Create()
+        wxEvtHandlerCompat( m_control.data() )->PopEventHandlerCompat( true );
+        m_control.data()->deleteLater();
+    }
 
     m_control = nullptr;
 }
@@ -834,14 +854,47 @@ void wxGridCellEditor::Destroy()
 void wxGridCellEditor::SetSize( const wxRect& aRect )
 {
     if( m_control )
-        m_control->setGeometry( aRect.x, aRect.y, aRect.width, aRect.height );
+        m_control.data()->setGeometry( aRect.x, aRect.y, aRect.width, aRect.height );
 }
 
 
 void wxGridCellEditor::Show( bool aShow, wxGridCellAttr* aAttr )
 {
     if( m_control )
-        m_control->setVisible( aShow );
+        m_control.data()->setVisible( aShow );
+}
+
+
+wxGridCellEditorEvtHandler::wxGridCellEditorEvtHandler( wxGrid* aGrid, wxGridCellEditor* aEditor ) :
+        m_grid( aGrid ),
+        m_editor( aEditor ),
+        m_inSetFocus( false )
+{
+    Bind( wxEVT_KILL_FOCUS, &wxGridCellEditorEvtHandler::OnKillFocus, this );
+}
+
+
+void wxGridCellEditorEvtHandler::OnKillFocus( wxFocusEvent& aEvent )
+{
+    aEvent.Skip();
+
+    if( !m_inSetFocus )
+        DismissEditor();
+}
+
+
+void wxGridCellEditorEvtHandler::DismissEditor()
+{
+    // Later: the editor can't be closed from the handlers of its control
+    QPointer<wxGrid> grid( m_grid );
+
+    QMetaObject::invokeMethod( m_grid,
+                               [grid]()
+                               {
+                                   if( grid )
+                                       grid->DisableCellEditControl();
+                               },
+                               Qt::QueuedConnection );
 }
 
 
@@ -854,6 +907,8 @@ void wxGridCellTextEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aEve
         text->SetMaxLength( m_maxChars );
 
     m_control = text;
+
+    wxGridCellEditor::Create( aParent, aId, aEventHandler );
 }
 
 
@@ -936,6 +991,8 @@ void wxGridCellChoiceEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aE
                                         m_allowOthers ? 0 : wxCB_READONLY );
     combo->setEditable( m_allowOthers );
     m_control = combo;
+
+    wxGridCellEditor::Create( aParent, aId, aEventHandler );
 }
 
 
@@ -1013,6 +1070,8 @@ void wxGridCellBoolEditor::UseStringValues( const wxString& aTrue, const wxStrin
 void wxGridCellBoolEditor::Create( QWidget* aParent, int aId, wxEvtHandler* aEventHandler )
 {
     m_control = new wxCheckBox( aParent, aId );
+
+    wxGridCellEditor::Create( aParent, aId, aEventHandler );
 }
 
 
@@ -1027,7 +1086,7 @@ void wxGridCellBoolEditor::BeginEdit( int aRow, int aCol, wxGrid* aGrid )
 
     // A click on the cell toggles the value
     static_cast<wxCheckBox*>( m_control.data() )->SetValue( !m_value );
-    m_control->setFocus();
+    m_control.data()->setFocus();
 }
 
 
@@ -1340,7 +1399,7 @@ public:
 
         if( !editor->IsCreated() )
         {
-            editor->Create( aParent, wxID_ANY, nullptr );
+            editor->Create( aParent, wxID_ANY, new wxGridCellEditorEvtHandler( m_grid, editor ) );
 
             wxGridEditorCreatedEvent created( m_grid->GetId(), row, col, editor->GetControl() );
             created.SetEventObject( m_grid );

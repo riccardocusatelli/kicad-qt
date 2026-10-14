@@ -121,6 +121,14 @@ public:
 
     bool ProcessEvent( wxEvent& aEvent ) const;
 
+    /// The handlers pushed on the window (wxWindow::PushEventHandler()...).
+    wxEvtHandler* GetEventHandler() const;
+    void PushEventHandler( wxEvtHandler* aHandler ) const;
+    wxEvtHandler* PopEventHandler( bool aDeleteHandler = false ) const;
+
+    wxWindowRefCompat GetParent() const;
+    wxWindowRefCompat GetGrandParent() const { return GetParent().GetParent(); }
+
 private:
     void bindHandler( wxEventType aType, wxCompatEventSink::HANDLER aHandler, const void* aKey,
                       int aId, int aLastId ) const;
@@ -163,6 +171,9 @@ public:
 
     /// The types of the events of the window the validator handles (connected by SetWindow()).
     const std::vector<wxEventType>& GetEventTypesCompat() const { return m_eventTypes; }
+
+    /// Give an event to the handlers of the validator.
+    bool ProcessEvent( wxEvent& aEvent ) { return m_events->Process( aEvent ); }
     wxCompatEventSink* GetEventSinkCompat() const { return m_events.get(); }
 
     /// Check the value of the window (and show an error to the user).

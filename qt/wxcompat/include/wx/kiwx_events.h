@@ -35,6 +35,7 @@
 #define KIWX_EVENTS_H
 
 #include <functional>
+#include <memory>
 #include <type_traits>
 #include <vector>
 
@@ -801,14 +802,218 @@ class QWidget;
 KIQT_API void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType,
                                        wxCompatEventSink* aSink );
 
-/// Record @a aSink as the handlers of the window @a aWidget (the compatible windows).
-KIQT_API void wxRegisterEventSinkCompat( QWidget* aWidget, wxCompatEventSink* aSink );
+/// Call @a aFunction later, on the event loop of Qt, unless @a aAlive has expired by then.
+KIQT_API void wxCallAfterCompat( std::function<void()> aFunction, std::weak_ptr<bool> aAlive );
+
 
 /**
- * The handlers of the window @a aWidget: the ones of a compatible window, or handlers that the
- * widget keeps for the plain Qt widgets (the grid window of a grid...).
+ * A handler of events (wxEvtHandler): its handlers (Bind(), Connect()) and the chain of the
+ * handlers pushed on a window (PushEventHandler(): GRID_TRICKS on a grid...).  The compatible
+ * windows are handlers; the events their Qt widgets make go to their own handlers.
  */
-KIQT_API wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget );
+class KIQT_API wxEvtHandler
+{
+public:
+    wxEvtHandler() : m_aliveCompat( std::make_shared<bool>( true ) ) {}
+    virtual ~wxEvtHandler();
+
+    wxEvtHandler( const wxEvtHandler& ) = delete;
+    wxEvtHandler& operator=( const wxEvtHandler& ) = delete;
+
+    template <typename EVENT, typename CLASS, typename OBJECT>
+    void Bind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
+               int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        bindHandlerCompat( aType,
+                           [aMethod, aObject]( wxEvent& aEvent )
+                           {
+                               ( static_cast<CLASS*>( aObject )->*aMethod )( static_cast<EVENT&>( aEvent ) );
+                           },
+                           aObject, aId, aLastId );
+    }
+
+    template <typename FUNCTOR>
+    void Bind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        using EVENT = KIWX_DETAIL::EVENT_OF<FUNCTOR>;
+
+        bindHandlerCompat( aType,
+                           [aFunctor]( wxEvent& aEvent ) mutable
+                           {
+                               aFunctor( static_cast<EVENT&>( aEvent ) );
+                           },
+                           nullptr, aId, aLastId );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT>
+    bool Unbind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
+                 int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        return m_eventsCompat.Remove( aType, aObject );
+    }
+
+    template <typename FUNCTOR>
+    bool Unbind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY, int aLastId = wxID_ANY )
+    {
+        return m_eventsCompat.Remove( aType, nullptr );
+    }
+
+    /// Connect a method to the events of @a aType (the API of wxWidgets 2).  Without a sink,
+    /// wxWidgets calls the method on the handler itself: the handler is then this object.
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    void Connect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), void* aUserData = nullptr,
+                  OBJECT* aSink = nullptr )
+    {
+        Connect( wxID_ANY, wxID_ANY, aType, aMethod, aUserData, aSink );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    void Connect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        Connect( aId, wxID_ANY, aType, aMethod, aUserData, aSink );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    void Connect( int aId, int aLastId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        if( aSink )
+            Bind( aType, aMethod, aSink, aId, aLastId );
+        else if( CLASS* self = dynamic_cast<CLASS*>( this ) )
+            Bind( aType, aMethod, self, aId, aLastId );
+    }
+
+    bool Disconnect( int aId, wxEventType aType ) { return m_eventsCompat.Remove( aType, nullptr ); }
+
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    bool Disconnect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                     void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        const void* key = aSink ? static_cast<const void*>( aSink )
+                                : static_cast<const void*>( dynamic_cast<CLASS*>( this ) );
+        return m_eventsCompat.Remove( aType, key );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    bool Disconnect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                     void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        return Disconnect( aType, aMethod, aUserData, aSink );
+    }
+
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    bool Disconnect( int aId, int aLastId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                     void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        return Disconnect( aType, aMethod, aUserData, aSink );
+    }
+
+    /// Give an event to this handler and to the next ones of its chain, until one processes it.
+    virtual bool ProcessEvent( wxEvent& aEvent ) { return ProcessChainCompat( this, aEvent ); }
+    bool SafelyProcessEvent( wxEvent& aEvent ) { return ProcessEvent( aEvent ); }
+
+    /// Give an event to the handlers of this object only.
+    bool ProcessEventLocally( wxEvent& aEvent ) { return TryHereCompat( aEvent ); }
+
+    /// Process an event later (on the event loop); the handler takes the event.
+    template <typename EVENT>
+    void QueueEvent( EVENT* aEvent )
+    {
+        std::shared_ptr<EVENT> event( aEvent );
+        wxCallAfterCompat( [this, event]() { ProcessEvent( *event ); }, m_aliveCompat );
+    }
+
+    template <typename EVENT>
+    void AddPendingEvent( const EVENT& aEvent ) { QueueEvent( new EVENT( aEvent ) ); }
+
+    /// Call a function later, on the event loop (not after the handler is deleted).
+    template <typename FUNCTOR>
+    void CallAfter( FUNCTOR aFunctor )
+    {
+        wxCallAfterCompat( std::function<void()>( std::move( aFunctor ) ), m_aliveCompat );
+    }
+
+    template <typename CLASS>
+    void CallAfter( void ( CLASS::*aMethod )() )
+    {
+        CLASS* self = static_cast<CLASS*>( this );
+        wxCallAfterCompat( [self, aMethod]() { ( self->*aMethod )(); }, m_aliveCompat );
+    }
+
+    wxEvtHandler* GetNextHandler() const { return m_nextCompat; }
+    wxEvtHandler* GetPreviousHandler() const { return m_previousCompat; }
+    virtual void SetNextHandler( wxEvtHandler* aHandler ) { m_nextCompat = aHandler; }
+    virtual void SetPreviousHandler( wxEvtHandler* aHandler ) { m_previousCompat = aHandler; }
+    void Unlink();
+    bool IsUnlinked() const { return !m_nextCompat && !m_previousCompat; }
+
+    void SetEvtHandlerEnabled( bool aEnabled ) { m_enabledCompat = aEnabled; }
+    bool GetEvtHandlerEnabled() const { return m_enabledCompat; }
+
+    // The handlers pushed on a window (wxWindow::PushEventHandler())
+
+    /// The first handler of the chain of this window (the last pushed, or the window).
+    wxEvtHandler* GetEventHandlerCompat()
+    {
+        return m_topCompat ? m_topCompat : this;
+    }
+
+    void PushEventHandlerCompat( wxEvtHandler* aHandler );
+    wxEvtHandler* PopEventHandlerCompat( bool aDeleteHandler = false );
+    bool RemoveEventHandlerCompat( wxEvtHandler* aHandler );
+
+    wxCompatEventSink& GetEventSinkCompat() { return m_eventsCompat; }
+
+    /// Give an event to the handlers of @a aFirst and of the next handlers of its chain.
+    static bool ProcessChainCompat( wxEvtHandler* aFirst, wxEvent& aEvent );
+
+protected:
+    /// Add a handler (the windows also connect the signals of their Qt widgets).
+    virtual void bindHandlerCompat( wxEventType aType, wxCompatEventSink::HANDLER aHandler,
+                                    const void* aKey, int aId, int aLastId )
+    {
+        m_eventsCompat.Add( aType, std::move( aHandler ), aKey, aId, aLastId );
+    }
+
+    bool TryHereCompat( wxEvent& aEvent )
+    {
+        return m_enabledCompat && m_eventsCompat.Process( aEvent );
+    }
+
+    wxCompatEventSink m_eventsCompat;
+
+private:
+    wxEvtHandler*         m_nextCompat = nullptr;
+    wxEvtHandler*         m_previousCompat = nullptr;
+    wxEvtHandler*         m_topCompat = nullptr;
+    bool                  m_enabledCompat = true;
+    std::shared_ptr<bool> m_aliveCompat;
+};
+
+
+/// Give an event to a handler later (wxPostEvent()).
+template <typename EVENT>
+inline void wxPostEvent( wxEvtHandler* aHandler, const EVENT& aEvent )
+{
+    aHandler->QueueEvent( new EVENT( aEvent ) );
+}
+
+
+/// Record @a aHandler as the handler of the window @a aWidget (the compatible windows).
+KIQT_API void wxRegisterEvtHandlerCompat( QWidget* aWidget, wxEvtHandler* aHandler );
+
+/**
+ * The handler of the window @a aWidget: a compatible window, or a handler that the widget keeps
+ * for the plain Qt widgets (the grid window of a grid...).
+ */
+KIQT_API wxEvtHandler* wxEvtHandlerCompat( QWidget* aWidget );
+
+/// The handlers of the window @a aWidget (the ones of wxEvtHandlerCompat()).
+inline wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget )
+{
+    return &wxEvtHandlerCompat( aWidget )->GetEventSinkCompat();
+}
 
 #define wxEventHandler( func ) ( &func )
 #define wxCommandEventHandler( func ) ( &func )

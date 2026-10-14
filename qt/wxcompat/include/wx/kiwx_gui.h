@@ -221,7 +221,7 @@ private:
  * The API of wxWindow on a widget of Qt: the base of the controls of the compatibility layer.
  */
 template <class QT>
-class wxWindowCompat : public QT
+class wxWindowCompat : public QT, public wxEvtHandler
 {
 public:
     template <typename... ARGS>
@@ -230,7 +230,7 @@ public:
             m_clientData( nullptr ),
             m_sizerProxy( this )
     {
-        wxRegisterEventSinkCompat( this, &m_events );
+        wxRegisterEvtHandlerCompat( this, this );
     }
 
     /// The id of the window (a property of the widget, so that the events find it).
@@ -387,96 +387,27 @@ public:
     void SetValidator( const wxValidator& aValidator ) { wxSetValidatorCompat( this, aValidator ); }
     wxValidator* GetValidator() const { return wxGetValidatorCompat( this ); }
 
-    /// The events go to the handlers of the dialogs: there is no handler to push on a widget.
-    void SetEvtHandlerEnabled( bool aEnable ) { this->blockSignals( !aEnable ); }
+    /// No events from the widget and its handlers.
+    void SetEvtHandlerEnabled( bool aEnable )
+    {
+        this->blockSignals( !aEnable );
+        wxEvtHandler::SetEvtHandlerEnabled( aEnable );
+    }
 
     // The handlers of the events (wxEvtHandler::Bind(), Connect()) ------------------------
 
-    /// Bind a method of @a aObject to the events of @a aType.
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    void Bind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
-               int aId = wxID_ANY, int aLastId = wxID_ANY )
+    // The handlers of the events: Bind(), Connect()... of wxEvtHandler
+
+    /// The first handler of the chain of the window (the last pushed, or the window).
+    wxEvtHandler* GetEventHandler() { return GetEventHandlerCompat(); }
+
+    void PushEventHandler( wxEvtHandler* aHandler ) { PushEventHandlerCompat( aHandler ); }
+    wxEvtHandler* PopEventHandler( bool aDeleteHandler = false )
     {
-        bindHandler( aType,
-                     [aMethod, aObject]( wxEvent& aEvent )
-                     {
-                         ( static_cast<CLASS*>( aObject )->*aMethod )( static_cast<EVENT&>( aEvent ) );
-                     },
-                     aObject, aId, aLastId );
+        return PopEventHandlerCompat( aDeleteHandler );
     }
 
-    /// Bind a function (a lambda) to the events of @a aType.
-    template <typename FUNCTOR>
-    void Bind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY, int aLastId = wxID_ANY )
-    {
-        using EVENT = KIWX_DETAIL::EVENT_OF<FUNCTOR>;
-
-        bindHandler( aType,
-                     [aFunctor]( wxEvent& aEvent ) mutable
-                     {
-                         aFunctor( static_cast<EVENT&>( aEvent ) );
-                     },
-                     nullptr, aId, aLastId );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    bool Unbind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
-                 int aId = wxID_ANY, int aLastId = wxID_ANY )
-    {
-        return m_events.Remove( aType, aObject );
-    }
-
-    template <typename FUNCTOR>
-    bool Unbind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY, int aLastId = wxID_ANY )
-    {
-        return m_events.Remove( aType, nullptr );
-    }
-
-    /// Connect a method of @a aSink to the events of @a aType (the API of wxWidgets 2).
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    void Connect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), void* aUserData = nullptr,
-                  OBJECT* aSink = nullptr )
-    {
-        Bind( aType, aMethod, aSink );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
-    void Connect( int aId, int aLastId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
-                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
-    {
-        if( aSink )
-            Bind( aType, aMethod, aSink, aId, aLastId );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
-    void Connect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
-                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
-    {
-        // Without a sink, wxWidgets calls the method on the window itself (of another class):
-        // not possible here, the handler is left out
-        if( aSink )
-            Bind( aType, aMethod, aSink, aId );
-    }
-
-    /// Disconnect all the handlers of @a aType.
-    bool Disconnect( int aId, wxEventType aType ) { return m_events.Remove( aType, nullptr ); }
-
-    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
-    bool Disconnect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
-                     void* aUserData = nullptr, OBJECT* aSink = nullptr )
-    {
-        return aSink ? m_events.Remove( aType, aSink ) : false;
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    bool Disconnect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
-                     void* aUserData = nullptr, OBJECT* aSink = nullptr )
-    {
-        return m_events.Remove( aType, aSink );
-    }
-
-    /// The handler of the events of the window: the window itself (no handler is pushed).
-    wxWindowCompat* GetEventHandler() { return this; }
+    bool RemoveEventHandler( wxEvtHandler* aHandler ) { return RemoveEventHandlerCompat( aHandler ); }
 
     /// Show a popup menu and give the event of the chosen item to the window (wxWindow::PopupMenu()).
     bool PopupMenu( wxMenu* aMenu, const wxPoint& aPos = wxDefaultPosition )
@@ -484,48 +415,37 @@ public:
         wxCommandEvent event;
 
         if( wxPopupMenuCompat( this, aMenu, aPos, event ) )
-            m_events.Process( event );
+            ProcessEvent( event );
 
         return true;
     }
 
     bool PopupMenu( wxMenu* aMenu, int aX, int aY ) { return PopupMenu( aMenu, wxPoint( aX, aY ) ); }
 
-    /// Give an event to the handlers of this window (wxEvtHandler::ProcessEvent()).
-    bool ProcessEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
-    bool ProcessWindowEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
-    bool HandleWindowEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
-
-    /// Process an event later (on the event loop).
-    template <typename EVENT>
-    void QueueEvent( EVENT* aEvent )
+    /// Give an event to the handlers pushed on the window, then to the ones of the window.
+    bool ProcessEvent( wxEvent& aEvent ) override
     {
-        QMetaObject::invokeMethod( this,
-                                   [this, aEvent]()
-                                   {
-                                       m_events.Process( *aEvent );
-                                       delete aEvent;
-                                   },
-                                   Qt::QueuedConnection );
+        return ProcessChainCompat( GetEventHandlerCompat(), aEvent );
     }
 
-    template <typename EVENT>
-    void AddPendingEvent( const EVENT& aEvent ) { QueueEvent( new EVENT( aEvent ) ); }
+    bool ProcessWindowEvent( wxEvent& aEvent ) { return ProcessEvent( aEvent ); }
+    bool HandleWindowEvent( wxEvent& aEvent ) { return ProcessEvent( aEvent ); }
 
     /// The handlers of the window.
-    wxCompatEventSink& GetEventSink() { return m_events; }
+    wxCompatEventSink& GetEventSink() { return m_eventsCompat; }
 
-private:
-    void bindHandler( wxEventType aType, wxCompatEventSink::HANDLER aHandler, const void* aKey,
-                      int aId, int aLastId )
+protected:
+    /// The handlers also get the events made from the signals of the Qt widget.
+    void bindHandlerCompat( wxEventType aType, wxCompatEventSink::HANDLER aHandler,
+                            const void* aKey, int aId, int aLastId ) override
     {
-        m_events.Add( aType, std::move( aHandler ), aKey, aId, aLastId );
-        wxConnectQtEventsCompat( this, aType, &m_events );
+        m_eventsCompat.Add( aType, std::move( aHandler ), aKey, aId, aLastId );
+        wxConnectQtEventsCompat( this, aType, &m_eventsCompat );
     }
 
-    void*             m_clientData;
-    wxSizerProxy      m_sizerProxy;
-    wxCompatEventSink m_events;
+private:
+    void*        m_clientData;
+    wxSizerProxy m_sizerProxy;
 };
 
 

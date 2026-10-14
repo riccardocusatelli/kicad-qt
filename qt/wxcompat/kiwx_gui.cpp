@@ -399,35 +399,145 @@ void sendCompat( QWidget* aWidget, wxCompatEventSink* aSink, wxEventType aType,
 } // namespace
 
 
+// The handlers of events ---------------------------------------------------------------------
+
+void wxCallAfterCompat( std::function<void()> aFunction, std::weak_ptr<bool> aAlive )
+{
+    QMetaObject::invokeMethod( qApp,
+                               [function = std::move( aFunction ), alive = std::move( aAlive )]()
+                               {
+                                   // Not after the handler is deleted
+                                   if( !alive.expired() )
+                                       function();
+                               },
+                               Qt::QueuedConnection );
+}
+
+
+wxEvtHandler::~wxEvtHandler()
+{
+    // The handlers pushed on this window go with it, as with wxWidgets they should be popped
+    while( m_topCompat && m_topCompat != this )
+        PopEventHandlerCompat( false );
+
+    Unlink();
+}
+
+
+void wxEvtHandler::Unlink()
+{
+    if( m_previousCompat )
+        m_previousCompat->m_nextCompat = m_nextCompat;
+
+    if( m_nextCompat )
+        m_nextCompat->m_previousCompat = m_previousCompat;
+
+    m_nextCompat = nullptr;
+    m_previousCompat = nullptr;
+}
+
+
+bool wxEvtHandler::ProcessChainCompat( wxEvtHandler* aFirst, wxEvent& aEvent )
+{
+    for( wxEvtHandler* handler = aFirst; handler; handler = handler->m_nextCompat )
+    {
+        if( handler->TryHereCompat( aEvent ) )
+            return true;
+    }
+
+    return false;
+}
+
+
+void wxEvtHandler::PushEventHandlerCompat( wxEvtHandler* aHandler )
+{
+    if( !aHandler )
+        return;
+
+    wxEvtHandler* top = GetEventHandlerCompat();
+
+    aHandler->m_nextCompat = top;
+    aHandler->m_previousCompat = nullptr;
+    top->m_previousCompat = aHandler;
+    m_topCompat = aHandler;
+}
+
+
+wxEvtHandler* wxEvtHandler::PopEventHandlerCompat( bool aDeleteHandler )
+{
+    wxEvtHandler* top = m_topCompat;
+
+    if( !top || top == this )
+        return nullptr;
+
+    wxEvtHandler* next = top->m_nextCompat;
+    m_topCompat = ( next == this ) ? nullptr : next;
+
+    if( next )
+        next->m_previousCompat = nullptr;
+
+    top->m_nextCompat = nullptr;
+    top->m_previousCompat = nullptr;
+
+    if( aDeleteHandler )
+    {
+        delete top;
+        return nullptr;
+    }
+
+    return top;
+}
+
+
+bool wxEvtHandler::RemoveEventHandlerCompat( wxEvtHandler* aHandler )
+{
+    if( !aHandler || aHandler == this )
+        return false;
+
+    for( wxEvtHandler* handler = m_topCompat; handler && handler != this;
+         handler = handler->m_nextCompat )
+    {
+        if( handler != aHandler )
+            continue;
+
+        if( m_topCompat == aHandler )
+            m_topCompat = ( aHandler->m_nextCompat == this ) ? nullptr : aHandler->m_nextCompat;
+
+        aHandler->Unlink();
+        return true;
+    }
+
+    return false;
+}
+
+
 namespace
 {
-/// The handlers of a plain Qt widget (a child object of the widget, deleted with it).
-class KIWX_EVENT_SINK_HOLDER : public QObject
+/// The handler of a plain Qt widget (a child object of the widget, deleted with it).
+class KIWX_EVT_HANDLER_HOLDER : public QObject, public wxEvtHandler
 {
 public:
-    explicit KIWX_EVENT_SINK_HOLDER( QWidget* aWidget ) : QObject( aWidget ) {}
-
-    wxCompatEventSink m_sink;
+    explicit KIWX_EVT_HANDLER_HOLDER( QWidget* aWidget ) : QObject( aWidget ) {}
 };
 } // namespace
 
 
-void wxRegisterEventSinkCompat( QWidget* aWidget, wxCompatEventSink* aSink )
+void wxRegisterEvtHandlerCompat( QWidget* aWidget, wxEvtHandler* aHandler )
 {
-    aWidget->setProperty( "kiwxEventSink", QVariant::fromValue( static_cast<void*>( aSink ) ) );
+    aWidget->setProperty( "kiwxEvtHandler", QVariant::fromValue( static_cast<void*>( aHandler ) ) );
 }
 
 
-wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget )
+wxEvtHandler* wxEvtHandlerCompat( QWidget* aWidget )
 {
-    QVariant sink = aWidget->property( "kiwxEventSink" );
+    QVariant handler = aWidget->property( "kiwxEvtHandler" );
 
-    if( sink.isValid() )
-        return static_cast<wxCompatEventSink*>( sink.value<void*>() );
+    if( handler.isValid() )
+        return static_cast<wxEvtHandler*>( handler.value<void*>() );
 
-    KIWX_EVENT_SINK_HOLDER* holder = new KIWX_EVENT_SINK_HOLDER( aWidget );
-    wxRegisterEventSinkCompat( aWidget, &holder->m_sink );
-    return &holder->m_sink;
+    KIWX_EVT_HANDLER_HOLDER* holder = new KIWX_EVT_HANDLER_HOLDER( aWidget );
+    wxRegisterEvtHandlerCompat( aWidget, holder );
+    return holder;
 }
 
 

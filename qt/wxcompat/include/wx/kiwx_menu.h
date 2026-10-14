@@ -102,7 +102,7 @@ private:
 
 
 /// A menu (wxMenu): a QMenu whose items have the ids of wxWidgets.
-class KIQT_API wxMenu : public QMenu
+class KIQT_API wxMenu : public QMenu, public wxEvtHandler
 {
 public:
     explicit wxMenu( const wxString& aTitle = wxEmptyString, long aStyle = 0 );
@@ -165,57 +165,6 @@ public:
     /// The wxEVT_UPDATE_UI events of the items (the handlers of the menu).
     void UpdateUI( void* aSource = nullptr );
 
-    // The handlers of the events of the menu (wxEVT_MENU of its items)
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    void Bind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
-               int aId = wxID_ANY, int aLastId = wxID_ANY )
-    {
-        m_events.Add( aType,
-                      [aMethod, aObject]( wxEvent& aEvent )
-                      {
-                          ( static_cast<CLASS*>( aObject )->*aMethod )( static_cast<EVENT&>( aEvent ) );
-                      },
-                      aObject, aId, aLastId );
-    }
-
-    template <typename FUNCTOR>
-    void Bind( wxEventType aType, FUNCTOR aFunctor, int aId = wxID_ANY, int aLastId = wxID_ANY )
-    {
-        using EVENT = KIWX_DETAIL::EVENT_OF<FUNCTOR>;
-
-        m_events.Add( aType,
-                      [aFunctor]( wxEvent& aEvent ) mutable
-                      {
-                          aFunctor( static_cast<EVENT&>( aEvent ) );
-                      },
-                      nullptr, aId, aLastId );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT>
-    bool Unbind( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ), OBJECT* aObject,
-                 int aId = wxID_ANY, int aLastId = wxID_ANY )
-    {
-        return m_events.Remove( aType, aObject );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
-    void Connect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
-                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
-    {
-        if( aSink )
-            Bind( aType, aMethod, aSink, aId );
-    }
-
-    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
-    void Connect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
-                  void* aUserData = nullptr, OBJECT* aSink = nullptr )
-    {
-        if( aSink )
-            Bind( aType, aMethod, aSink );
-    }
-
-    bool ProcessEvent( wxEvent& aEvent ) { return m_events.Process( aEvent ); }
-
     /// The menus of an action (the menu of the item of an action).
     static wxMenuItem* ItemOfActionCompat( QAction* aAction );
 
@@ -226,7 +175,6 @@ private:
 
     wxMenu*                                  m_parentMenu;
     std::vector<std::unique_ptr<wxMenuItem>> m_items;
-    wxCompatEventSink                        m_events;
 };
 
 

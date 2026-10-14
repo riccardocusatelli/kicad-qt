@@ -95,7 +95,37 @@ void wxWindowRefCompat::SetToolTip( const wxString& aTip ) const
 
 bool wxWindowRefCompat::ProcessEvent( wxEvent& aEvent ) const
 {
-    return m_window && wxEventSinkCompat( m_window )->Process( aEvent );
+    if( !m_window )
+        return false;
+
+    wxEvtHandler* handler = wxEvtHandlerCompat( m_window );
+    return wxEvtHandler::ProcessChainCompat( handler->GetEventHandlerCompat(), aEvent );
+}
+
+
+wxEvtHandler* wxWindowRefCompat::GetEventHandler() const
+{
+    return m_window ? wxEvtHandlerCompat( m_window )->GetEventHandlerCompat() : nullptr;
+}
+
+
+void wxWindowRefCompat::PushEventHandler( wxEvtHandler* aHandler ) const
+{
+    if( m_window )
+        wxEvtHandlerCompat( m_window )->PushEventHandlerCompat( aHandler );
+}
+
+
+wxEvtHandler* wxWindowRefCompat::PopEventHandler( bool aDeleteHandler ) const
+{
+    return m_window ? wxEvtHandlerCompat( m_window )->PopEventHandlerCompat( aDeleteHandler )
+                    : nullptr;
+}
+
+
+wxWindowRefCompat wxWindowRefCompat::GetParent() const
+{
+    return wxWindowRefCompat( m_window ? m_window->parentWidget() : nullptr );
 }
 
 
