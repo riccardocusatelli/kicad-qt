@@ -302,12 +302,16 @@ void wxSetValidatorCompat( QWidget* aWindow, const wxValidator& aValidator )
     delete wxGetValidatorCompat( aWindow );
     aWindow->setProperty( VALIDATOR_PROPERTY, QVariant() );
 
-    wxValidator* validator = aValidator.Clone();
+    wxValidator* validator = static_cast<wxValidator*>( aValidator.Clone() );
 
     if( !validator )
         return;
 
     validator->SetWindow( aWindow );
+
+    // The events of the window the validator handles
+    for( wxEventType type : validator->GetEventTypesCompat() )
+        wxConnectQtEventsCompat( aWindow, type, validator->GetEventSinkCompat() );
     aWindow->setProperty( VALIDATOR_PROPERTY,
                           QVariant::fromValue( reinterpret_cast<quintptr>( validator ) ) );
 

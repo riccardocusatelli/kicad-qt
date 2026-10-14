@@ -34,8 +34,12 @@
 
 #include <kiqt.h>
 
+#include <memory>
+
 #include <wx/arrstr.h>
+#include <wx/object.h>
 #include <wx/string.h>
+#include <wx/kiwx_events.h>
 
 class QWidget;
 class wxTextCtrl;
@@ -64,15 +68,39 @@ private:
 };
 
 
-class KIQT_API wxValidator
+class KIQT_API wxValidator : public wxObject
 {
 public:
     wxValidator() = default;
-    wxValidator( const wxValidator& aOther ) = default;
-    virtual ~wxValidator() = default;
+    wxValidator( const wxValidator& aOther ) : wxObject( aOther ), m_validatorWindow( aOther.m_validatorWindow ) {}
+    ~wxValidator() override = default;
 
     /// A copy of the validator (each window has its own).
-    virtual wxValidator* Clone() const { return nullptr; }
+    virtual wxObject* Clone() const { return nullptr; }
+
+    /**
+     * The handlers of the events of the window of the validator (wxEvtHandler::Connect() of a
+     * validator): the key events of a text control filtered by the validator.
+     */
+    template <typename EVENT, typename CLASS>
+    void Connect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ) )
+    {
+        CLASS* self = static_cast<CLASS*>( this );
+        m_events->Add( aType,
+                       [self, aMethod]( wxEvent& aEvent ) { ( self->*aMethod )( static_cast<EVENT&>( aEvent ) ); },
+                       this );
+        m_eventTypes.push_back( aType );
+    }
+
+    template <typename EVENT, typename CLASS>
+    void Disconnect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ) )
+    {
+        m_events->Remove( aType, this );
+    }
+
+    /// The types of the events of the window the validator handles (connected by SetWindow()).
+    const std::vector<wxEventType>& GetEventTypesCompat() const { return m_eventTypes; }
+    wxCompatEventSink* GetEventSinkCompat() const { return m_events.get(); }
 
     /// Check the value of the window (and show an error to the user).
     virtual bool Validate( QWidget* aParent ) { return true; }
@@ -93,6 +121,11 @@ protected:
     void Copy( const wxValidator& aOther ) { m_validatorWindow = aOther.m_validatorWindow; }
 
     wxValidatorWindowCompat m_validatorWindow;
+
+private:
+    // Not copied: the handlers of a copy are connected by its own constructor
+    std::shared_ptr<wxCompatEventSink> m_events = std::make_shared<wxCompatEventSink>();
+    std::vector<wxEventType>           m_eventTypes;
 };
 
 KIQT_API extern const wxValidator wxDefaultValidator;
@@ -122,7 +155,7 @@ public:
     wxTextValidator( long aStyle = wxFILTER_NONE, wxString* aValue = nullptr );
     wxTextValidator( const wxTextValidator& aOther ) = default;
 
-    wxValidator* Clone() const override { return new wxTextValidator( *this ); }
+    wxObject* Clone() const override { return new wxTextValidator( *this ); }
 
     bool Validate( QWidget* aParent ) override;
     bool TransferToWindow() override;
@@ -173,7 +206,7 @@ public:
     explicit wxGenericValidator( wxString* aValue );
     explicit wxGenericValidator( int* aValue );
 
-    wxValidator* Clone() const override { return new wxGenericValidator( *this ); }
+    wxObject* Clone() const override { return new wxGenericValidator( *this ); }
 
     bool TransferToWindow() override;
     bool TransferFromWindow() override;

@@ -82,6 +82,8 @@ enum wxEventTypeCompat
     wxEVT_MOTION,
     wxEVT_MOUSEWHEEL,
     wxEVT_CHAR_HOOK,
+    wxEVT_CHAR,
+    wxEVT_KEY_UP,
     wxEVT_KEY_DOWN,
     wxEVT_INIT_DIALOG,
     wxEVT_CLOSE_WINDOW,

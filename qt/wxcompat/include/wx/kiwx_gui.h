@@ -86,6 +86,30 @@
 /// The ids of the windows (wxID_ANY gets a new negative id, as with wxWidgets).
 KIQT_API int wxWindowIDNew();
 
+/// Block the events (the signals) of a window while it lives (wxEventBlocker).
+class wxEventBlocker
+{
+public:
+    explicit wxEventBlocker( QWidget* aWindow, int aType = -1 ) :
+            m_window( aWindow ),
+            m_blocked( aWindow ? aWindow->blockSignals( true ) : false )
+    {
+    }
+
+    ~wxEventBlocker()
+    {
+        if( m_window )
+            m_window->blockSignals( m_blocked );
+    }
+
+private:
+    QWidget* m_window;
+    bool     m_blocked;
+};
+
+#define wxEVT_ANY -1
+
+
 /// The id of a window (wxID_ANY if it has none).
 KIQT_API int wxGetWindowIdCompat( const QObject* aWindow );
 
@@ -399,11 +423,24 @@ public:
         Bind( aType, aMethod, aSink );
     }
 
-    template <typename EVENT, typename CLASS, typename OBJECT>
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
     void Connect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
                   void* aUserData = nullptr, OBJECT* aSink = nullptr )
     {
-        Bind( aType, aMethod, aSink, aId );
+        // Without a sink, wxWidgets calls the method on the window itself (of another class):
+        // not possible here, the handler is left out
+        if( aSink )
+            Bind( aType, aMethod, aSink, aId );
+    }
+
+    /// Disconnect all the handlers of @a aType.
+    bool Disconnect( int aId, wxEventType aType ) { return m_events.Remove( aType, nullptr ); }
+
+    template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
+    bool Disconnect( int aId, wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),
+                     void* aUserData = nullptr, OBJECT* aSink = nullptr )
+    {
+        return aSink ? m_events.Remove( aType, aSink ) : false;
     }
 
     template <typename EVENT, typename CLASS, typename OBJECT>

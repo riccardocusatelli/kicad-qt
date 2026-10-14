@@ -694,7 +694,20 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
                     case wxEVT_ENTER_WINDOW:
                         return qtType == QEvent::Enter && mouse( aType );
 
+                    case wxEVT_KEY_UP:
+                        if( qtType == QEvent::KeyRelease )
+                        {
+                            wxKeyEvent event( aType );
+                            event.SetId( id );
+                            event.SetEventObject( w );
+                            wxFillKeyEventCompat( event, aQtEvent );
+                            return aSink->Process( event );
+                        }
+
+                        return false;
+
                     case wxEVT_CHAR_HOOK:
+                    case wxEVT_CHAR:
                     case wxEVT_KEY_DOWN:
                         if( qtType == QEvent::KeyPress || qtType == QEvent::ShortcutOverride )
                         {

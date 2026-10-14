@@ -76,7 +76,9 @@ endfunction()
 # The headers of the Qt versions of the GUI classes of KiCad (frames, canvas, menus, dialogs...)
 # come before the ones of the wxWidgets build: the tools of KiCad include them unchanged
 include_directories( BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include
-                             ${KIQT_FBP_DIR}/common )
+                             ${KIQT_FBP_DIR}/common
+                             ${KIQT_FBP_DIR}/common/dialogs
+                             ${KIQT_FBP_DIR}/common/widgets )
 
 # The wxWidgets compatibility layer (wxcompat): the controls of the dialogs (wxCheckBox,
 # wxTextCtrl...) on the widgets of Qt, for the code of the dialogs of KiCad

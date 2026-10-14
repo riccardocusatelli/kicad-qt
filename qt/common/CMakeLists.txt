@@ -55,7 +55,6 @@ add_library( kiqt SHARED
     widgets/wx_infobar.cpp
     widgets/wx_panel.cpp
     widgets/wx_progress_reporters.cpp
-    validators_qt.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gdi.cpp
@@ -185,10 +184,24 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/widgets/search_pane_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
+    )
+
+# The dialogs and widgets of KiCad built unchanged on the wxWidgets compatibility layer
+# (qt/wxcompat)
+kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
     )
 
+set( KIQT_COMMON_COMPAT_SRCS
+    dialogs/dialog_text_entry.cpp
+    validators.cpp
+    )
+
+list( TRANSFORM KIQT_COMMON_COMPAT_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/ )
+
 add_library( kiqt_common STATIC
+    ${KIQT_COMMON_COMPAT_FBP_SRCS}
+    ${KIQT_COMMON_COMPAT_SRCS}
     ${KIQT_COMMON_TOOL_SRCS}
     ${KIQT_COMMON_FBP_SRCS}
 
@@ -234,7 +247,6 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/notifications_manager.cpp
     ${CMAKE_SOURCE_DIR}/common/pgm_gui.cpp
     dialogs/dialog_color_picker.cpp
-    dialogs/dialog_text_entry.cpp
     dialogs/dialog_unit_entry.cpp
     dialogs/eda_list_dialog.cpp
     dialogs/eda_view_switcher.cpp
