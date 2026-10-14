@@ -36,8 +36,8 @@
 #include <qt_strings.h>
 
 
-WX_INFOBAR::WX_INFOBAR( QWidget* aParent ) :
-        QFrame( aParent ),
+WX_INFOBAR::WX_INFOBAR( wxWidgetArgCompat aParent ) :
+        wxWindowCompat<QFrame>( aParent.get() ),
         m_showTime( 0 ),
         m_updateLock( false ),
         m_showTimer( [this]() { onTimer(); } ),

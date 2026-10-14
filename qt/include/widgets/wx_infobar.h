@@ -33,6 +33,8 @@
 #include <kiqt.h>
 #include <QFrame>
 
+#include <wx/kiwx_window.h>
+
 #include <wx/string.h>
 #include <wx/intl.h>
 #include <wx/defs.h>                // wxICON_ flags (kiwx)
@@ -56,10 +58,10 @@ class QToolButton;
  * work with the AUI manager.  In Qt it is a frame above the canvas, hidden until a message is
  * shown.
  */
-class KIQT_API WX_INFOBAR : public QFrame
+class KIQT_API WX_INFOBAR : public wxWindowCompat<QFrame>
 {
 public:
-    WX_INFOBAR( QWidget* aParent );
+    WX_INFOBAR( wxWidgetArgCompat aParent );
 
     ~WX_INFOBAR();
 

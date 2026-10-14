@@ -57,6 +57,15 @@
 
 #define wxCHECK_VERSION_FULL( major, minor, release, subrel ) wxCHECK_VERSION( major, minor, release )
 
+// The boolean values of the old code of wxWidgets
+#ifndef TRUE
+#define TRUE true
+#endif
+
+#ifndef FALSE
+#define FALSE false
+#endif
+
 #if defined( __unix__ ) || defined( __APPLE__ )
 #ifndef __UNIX__
 #define __UNIX__ 1

@@ -550,6 +550,10 @@ public:
     virtual bool Validate();
 
     void SetHelpText( const wxString& aText ) {}
+
+    /// The icon of a top level window.
+    void SetIcon( const wxBitmap& aIcon ) { GetHandle()->setWindowIcon( QIcon( aIcon ) ); }
+    void SetIcons( const wxBitmapBundle& aIcons ) { GetHandle()->setWindowIcon( aIcons ); }
     void SetLayoutDirection( int aDirection ) {}
 
     // The handlers of the events

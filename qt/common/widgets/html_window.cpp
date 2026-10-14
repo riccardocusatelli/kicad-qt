@@ -36,9 +36,9 @@
 #include <ui_hooks.h>
 
 
-HTML_WINDOW::HTML_WINDOW( QWidget* aParent, wxWindowID aId, const wxPoint& aPos,
+HTML_WINDOW::HTML_WINDOW( wxWidgetArgCompat aParent, wxWindowID aId, const wxPoint& aPos,
                           const wxSize& aSize, long aStyle, const wxString& aName ) :
-        QTextBrowser( aParent )
+        wxWindowCompat<QTextBrowser>( aParent.get() )
 {
     if( aId != wxID_ANY )
         KIQT::SetWindowId( this, aId );

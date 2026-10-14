@@ -35,15 +35,17 @@
 #include <kiqt.h>     // Qt, without its METHOD macro
 #include <QTextBrowser>
 
+#include <wx/kiwx_window.h>
+
 #include <wx/defs.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
 
 
-class KIQT_API HTML_WINDOW : public QTextBrowser
+class KIQT_API HTML_WINDOW : public wxWindowCompat<QTextBrowser>
 {
 public:
-    HTML_WINDOW( QWidget* aParent, wxWindowID aId = wxID_ANY,
+    HTML_WINDOW( wxWidgetArgCompat aParent, wxWindowID aId = wxID_ANY,
                  const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                  long aStyle = 0, const wxString& aName = wxT( "htmlWindow" ) );
 

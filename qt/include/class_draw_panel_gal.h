@@ -41,6 +41,8 @@
 #include <QImage>
 #include <QWidget>
 
+#include <wx/kiwx_window.h>
+
 #include <gal/gal_backend.h>
 #include <math/box2.h>
 #include <math/vector2d.h>
@@ -76,7 +78,7 @@ struct VC_SETTINGS;
  * The GAL draws in device pixels: the positions of the view controls and the tools on the
  * screen are in device pixels.
  */
-class EDA_DRAW_PANEL_GAL : public QWidget
+class EDA_DRAW_PANEL_GAL : public wxWindowCompat<QWidget>
 {
 public:
     typedef KIGFX::GAL_BACKEND_TYPE GAL_TYPE;

@@ -108,7 +108,7 @@ public:
 
 EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( QWidget* aParentWindow,
                                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType ) :
-        QWidget( aParentWindow ),
+        wxWindowCompat<QWidget>( aParentWindow ),
         m_parent( aParentWindow ),
         m_edaFrame( nullptr ),
         m_refreshTimer( [this]() { onRefreshTimer(); } ),
