@@ -312,6 +312,54 @@ void wxWindow::SetFocus()
 }
 
 
+bool wxWindow::Navigate( int aFlags )
+{
+    // From this window to the next one of the focus chain of its top level window
+    QWidget* start = GetHandle();
+    bool     forward = aFlags & wxNavigationKeyEvent::IsForward;
+
+    for( QWidget* test = forward ? start->nextInFocusChain() : start->previousInFocusChain();
+         test && test != start; test = forward ? test->nextInFocusChain()
+                                               : test->previousInFocusChain() )
+    {
+        if( test->window() == start->window() && test->isVisible() && test->isEnabled()
+            && ( test->focusPolicy() & Qt::TabFocus ) && !start->isAncestorOf( test ) )
+        {
+            test->setFocus( forward ? Qt::TabFocusReason : Qt::BacktabFocusReason );
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+bool wxWindow::NavigateIn( int aFlags )
+{
+    // Within this window: from the focused child to the next one
+    QWidget* focus = QApplication::focusWidget();
+    QWidget* window = GetHandle();
+    bool     forward = aFlags & wxNavigationKeyEvent::IsForward;
+
+    if( !focus || !window->isAncestorOf( focus ) )
+        focus = window;
+
+    for( QWidget* test = forward ? focus->nextInFocusChain() : focus->previousInFocusChain();
+         test && test != focus; test = forward ? test->nextInFocusChain()
+                                               : test->previousInFocusChain() )
+    {
+        if( window->isAncestorOf( test ) && test->isVisible() && test->isEnabled()
+            && ( test->focusPolicy() & Qt::TabFocus ) )
+        {
+            test->setFocus( forward ? Qt::TabFocusReason : Qt::BacktabFocusReason );
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 bool wxWindow::HasFocus() const
 {
     return GetHandle()->hasFocus();

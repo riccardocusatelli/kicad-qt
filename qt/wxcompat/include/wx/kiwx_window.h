@@ -215,6 +215,10 @@ public:
 
     virtual void SetFocus();
     bool HasFocus() const;
+
+    /// Move the focus to the next (or previous) window of the keyboard navigation.
+    bool Navigate( int aFlags = 1 );
+    bool NavigateIn( int aFlags = 1 );
     virtual bool AcceptsFocus() const;
 
     /// The window with the keyboard focus (nullptr if none).

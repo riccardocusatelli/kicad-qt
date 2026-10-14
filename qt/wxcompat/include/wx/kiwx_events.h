@@ -133,6 +133,19 @@ enum wxEventTypeCompat
     wxEVT_MENU,
     wxEVT_COMBOBOX_DROPDOWN,
     wxEVT_COMBOBOX_CLOSEUP,
+    wxEVT_NAVIGATION_KEY,
+    wxEVT_STC_CHANGE,
+    wxEVT_STC_MODIFIED,
+    wxEVT_STC_UPDATEUI,
+    wxEVT_STC_CHARADDED,
+    wxEVT_STC_AUTOCOMP_CHAR_DELETED,
+    wxEVT_STC_AUTOCOMP_SELECTION,
+    wxEVT_STC_AUTOCOMP_COMPLETED,
+    wxEVT_STC_AUTOCOMP_CANCELLED,
+    wxEVT_STC_ZOOM,
+    wxEVT_STC_PAINTED,
+    wxEVT_STC_MARGINCLICK,
+    wxEVT_STC_DOUBLECLICK,
     wxEVT_MENU_OPEN,
     wxEVT_MENU_CLOSE,
     wxEVT_MENU_HIGHLIGHT,
@@ -399,6 +412,41 @@ public:
     int    m_keyCode;
     int    m_modifiers;
     wxChar m_uniChar;
+};
+
+
+/// A change of the colours of the system (wxSysColourChangedEvent).
+class wxSysColourChangedEvent : public wxEvent
+{
+public:
+    wxSysColourChangedEvent() : wxEvent( 0, wxEVT_SYS_COLOUR_CHANGED ) {}
+};
+
+#define wxSysColourChangedEventHandler( func ) ( &func )
+
+
+/// A move of the focus by the keyboard (wxNavigationKeyEvent).
+class wxNavigationKeyEvent : public wxEvent
+{
+public:
+    enum wxNavigationKeyEventFlags
+    {
+        IsBackward = 0x0000,
+        IsForward = 0x0001,
+        WinChange = 0x0002,
+        FromTab = 0x0004
+    };
+
+    wxNavigationKeyEvent() : wxEvent( 0, wxEVT_NAVIGATION_KEY ) {}
+
+    bool GetDirection() const { return m_flags & IsForward; }
+    void SetDirection( bool aForward ) { m_flags = aForward ? ( m_flags | IsForward ) : ( m_flags & ~IsForward ); }
+    bool IsWindowChange() const { return m_flags & WinChange; }
+    bool IsFromTab() const { return m_flags & FromTab; }
+    void SetFlags( long aFlags ) { m_flags = aFlags; }
+
+private:
+    long m_flags = IsForward;
 };
 
 
