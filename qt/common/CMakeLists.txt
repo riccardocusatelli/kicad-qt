@@ -59,6 +59,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gdi.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_grid.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
     # OpenGL canvas of Qt

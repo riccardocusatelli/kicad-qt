@@ -98,6 +98,20 @@ enum wxEventTypeCompat
     wxEVT_GRID_CELL_CHANGED,
     wxEVT_GRID_LABEL_LEFT_CLICK,
     wxEVT_GRID_COL_SIZE,
+    wxEVT_GRID_ROW_SIZE,
+    wxEVT_GRID_SELECT_CELL,
+    wxEVT_GRID_EDITOR_SHOWN,
+    wxEVT_GRID_EDITOR_HIDDEN,
+    wxEVT_GRID_EDITOR_CREATED,
+    wxEVT_GRID_LABEL_RIGHT_CLICK,
+    wxEVT_GRID_LABEL_LEFT_DCLICK,
+    wxEVT_GRID_CELL_RIGHT_DCLICK,
+    wxEVT_GRID_RANGE_SELECTED,
+    wxEVT_GRID_RANGE_SELECTING,
+    wxEVT_GRID_COL_MOVE,
+    wxEVT_GRID_COL_SORT,
+    wxEVT_GRID_TABBING,
+    wxEVT_GRID_CELL_CHANGING,
     wxEVT_NOTEBOOK_PAGE_CHANGING,
     wxEVT_ACTIVATE,
     wxEVT_IDLE,
@@ -138,6 +152,16 @@ using wxEventType = int;
 #define wxEVT_COMMAND_LIST_ITEM_SELECTED   wxEVT_LIST_ITEM_SELECTED
 #define wxEVT_COMMAND_LIST_ITEM_DESELECTED wxEVT_LIST_ITEM_DESELECTED
 #define wxEVT_COMMAND_LIST_ITEM_ACTIVATED  wxEVT_LIST_ITEM_ACTIVATED
+#define wxEVT_GRID_CMD_CELL_LEFT_CLICK     wxEVT_GRID_CELL_LEFT_CLICK
+#define wxEVT_GRID_CMD_CELL_LEFT_DCLICK    wxEVT_GRID_CELL_LEFT_DCLICK
+#define wxEVT_GRID_CMD_CELL_RIGHT_CLICK    wxEVT_GRID_CELL_RIGHT_CLICK
+#define wxEVT_GRID_CMD_CELL_CHANGED        wxEVT_GRID_CELL_CHANGED
+#define wxEVT_GRID_CMD_SELECT_CELL         wxEVT_GRID_SELECT_CELL
+#define wxEVT_GRID_CMD_EDITOR_SHOWN        wxEVT_GRID_EDITOR_SHOWN
+#define wxEVT_GRID_CMD_EDITOR_HIDDEN       wxEVT_GRID_EDITOR_HIDDEN
+#define wxEVT_GRID_CMD_COL_SIZE            wxEVT_GRID_COL_SIZE
+#define wxEVT_GRID_CMD_LABEL_LEFT_CLICK    wxEVT_GRID_LABEL_LEFT_CLICK
+#define wxEVT_GRID_CMD_RANGE_SELECTED      wxEVT_GRID_RANGE_SELECTED
 
 
 /// A new type of event (wxNewEventType()).
@@ -564,19 +588,79 @@ class wxGridEvent : public wxNotifyEvent
 {
 public:
     explicit wxGridEvent( wxEventType aType = wxEVT_NULL, int aId = 0, int aRow = -1,
-                          int aCol = -1 ) :
+                          int aCol = -1, int aX = -1, int aY = -1, bool aSelecting = true,
+                          int aModifiers = 0 ) :
             wxNotifyEvent( aType, aId ),
             m_row( aRow ),
-            m_col( aCol )
+            m_col( aCol ),
+            m_x( aX ),
+            m_y( aY ),
+            m_selecting( aSelecting ),
+            m_modifiers( aModifiers )
     {
     }
 
     int GetRow() const { return m_row; }
     int GetCol() const { return m_col; }
+    wxPoint GetPosition() const { return wxPoint( m_x, m_y ); }
+    bool Selecting() const { return m_selecting; }
+    bool ControlDown() const { return m_modifiers & wxMOD_CONTROL; }
+    bool CmdDown() const { return m_modifiers & wxMOD_CMD; }
+    bool ShiftDown() const { return m_modifiers & wxMOD_SHIFT; }
+    bool AltDown() const { return m_modifiers & wxMOD_ALT; }
 
 private:
-    int m_row;
-    int m_col;
+    int  m_row;
+    int  m_col;
+    int  m_x;
+    int  m_y;
+    bool m_selecting;
+    int  m_modifiers;
+};
+
+
+class wxGridRangeSelectEvent : public wxNotifyEvent
+{
+public:
+    explicit wxGridRangeSelectEvent( wxEventType aType = wxEVT_GRID_RANGE_SELECTED, int aId = 0,
+                                     int aTop = -1, int aLeft = -1, int aBottom = -1,
+                                     int aRight = -1, bool aSelecting = true ) :
+            wxNotifyEvent( aType, aId ),
+            m_top( aTop ), m_left( aLeft ), m_bottom( aBottom ), m_right( aRight ),
+            m_selecting( aSelecting )
+    {
+    }
+
+    int GetTopRow() const { return m_top; }
+    int GetBottomRow() const { return m_bottom; }
+    int GetLeftCol() const { return m_left; }
+    int GetRightCol() const { return m_right; }
+    bool Selecting() const { return m_selecting; }
+
+private:
+    int  m_top, m_left, m_bottom, m_right;
+    bool m_selecting;
+};
+
+
+class wxGridEditorCreatedEvent : public wxCommandEvent
+{
+public:
+    explicit wxGridEditorCreatedEvent( int aId = 0, int aRow = -1, int aCol = -1,
+                                       QWidget* aControl = nullptr ) :
+            wxCommandEvent( wxEVT_GRID_EDITOR_CREATED, aId ),
+            m_row( aRow ), m_col( aCol ), m_control( aControl )
+    {
+    }
+
+    int GetRow() const { return m_row; }
+    int GetCol() const { return m_col; }
+    QWidget* GetControl() const { return m_control; }
+
+private:
+    int      m_row;
+    int      m_col;
+    QWidget* m_control;
 };
 
 
