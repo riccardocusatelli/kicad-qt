@@ -237,7 +237,7 @@ COMPAT_CLASSES = {
 #   updateui             an update UI function
 #   link                 a hyperlink
 #   page                 the page of a notebook
-#   gridcell:<signal>, gridright    the cells of a grid
+#   bind                 the events the window sends itself (the grids): Bind() on it
 #   stdbutton:<id>       a button of the standard button box
 COMPAT_EVENTS = {
     'OnButtonClick':        ( 'wxCommandEvent', 'wxEVT_BUTTON', 'clicked' ),
@@ -274,10 +274,24 @@ COMPAT_EVENTS = {
     'OnHyperlink':          ( 'wxHyperlinkEvent', 'wxEVT_HYPERLINK', 'link' ),
     'OnNotebookPageChanged': ( 'wxNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
     'OnAuiNotebookPageChanged': ( 'wxAuiNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
-    'OnGridCellLeftClick':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_CLICK', 'gridcell:QTableWidget::cellClicked' ),
-    'OnGridCellLeftDClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_DCLICK', 'gridcell:QTableWidget::cellDoubleClicked' ),
-    'OnGridCellChange':     ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGED', 'gridcell:QTableWidget::cellChanged' ),
-    'OnGridCellRightClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_RIGHT_CLICK', 'gridright' ),
+    'OnGridCellLeftClick':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_CLICK', 'bind' ),
+    'OnGridCellLeftDClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_DCLICK', 'bind' ),
+    'OnGridCellRightClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_RIGHT_CLICK', 'bind' ),
+    'OnGridCellRightDClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_RIGHT_DCLICK', 'bind' ),
+    'OnGridCellChange':     ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGED', 'bind' ),
+    'OnGridCellChanging':   ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGING', 'bind' ),
+    'OnGridSelectCell':     ( 'wxGridEvent', 'wxEVT_GRID_SELECT_CELL', 'bind' ),
+    'OnGridEditorShown':    ( 'wxGridEvent', 'wxEVT_GRID_EDITOR_SHOWN', 'bind' ),
+    'OnGridEditorHidden':   ( 'wxGridEvent', 'wxEVT_GRID_EDITOR_HIDDEN', 'bind' ),
+    'OnGridEditorCreated':  ( 'wxGridEditorCreatedEvent', 'wxEVT_GRID_EDITOR_CREATED', 'bind' ),
+    'OnGridLabelLeftClick': ( 'wxGridEvent', 'wxEVT_GRID_LABEL_LEFT_CLICK', 'bind' ),
+    'OnGridLabelLeftDClick': ( 'wxGridEvent', 'wxEVT_GRID_LABEL_LEFT_DCLICK', 'bind' ),
+    'OnGridLabelRightClick': ( 'wxGridEvent', 'wxEVT_GRID_LABEL_RIGHT_CLICK', 'bind' ),
+    'OnGridColSize':        ( 'wxGridSizeEvent', 'wxEVT_GRID_COL_SIZE', 'bind' ),
+    'OnGridRowSize':        ( 'wxGridSizeEvent', 'wxEVT_GRID_ROW_SIZE', 'bind' ),
+    'OnGridRangeSelect':    ( 'wxGridRangeSelectEvent', 'wxEVT_GRID_RANGE_SELECTED', 'bind' ),
+    'OnGridCmdCellChange':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGED', 'bind' ),
+    'OnGridCmdSelectCell':  ( 'wxGridEvent', 'wxEVT_GRID_SELECT_CELL', 'bind' ),
     'OnRadioBox':           ( 'wxCommandEvent', 'wxEVT_RADIOBOX', 'radiobox' ),
     'OnClose':              ( 'wxCloseEvent', 'wxEVT_CLOSE_WINDOW', 'close' ),
     'OnInitDialog':         ( 'wxInitDialogEvent', 'wxEVT_INIT_DIALOG', 'initdialog' ),
@@ -457,11 +471,18 @@ class FormClass:
         return local
 
     def handler( self, aName, aParams ):
-        if aName in self.handlers and self.handlers[aName] != aParams:
-            raise FbpError( 'handler %s with parameters (%s) and (%s)'
-                            % ( aName, self.handlers[aName], aParams ) )
+        known = self.handlers.setdefault( aName, [] )
 
-        self.handlers[aName] = aParams
+        if aParams in known:
+            return
+
+        # As wxFormBuilder, a handler of events of different classes is overloaded (compatibility
+        # mode); the handlers of Qt have one signature
+        if known and not self.gen.compat:
+            raise FbpError( 'handler %s with parameters (%s) and (%s)'
+                            % ( aName, known[0], aParams ) )
+
+        known.append( aParams )
 
     # The events of a widget ---------------------------------------------------------------
 
@@ -585,7 +606,11 @@ class FormClass:
             self.handler( handler, '%s& event' % evClass )
             call = lambda fill = '', args = '': self.compat_call( evClass, evType, aVar, handler, fill, args )
 
-            if way in ( 'clicked', 'checked' ):
+            if way == 'bind':
+                self.code.append( '    %s->Bind( %s, [this]( %s& aEvent ) { %s( aEvent ); } );'
+                                  % ( aVar, evType, evClass, handler ) )
+
+            elif way in ( 'clicked', 'checked' ):
                 fill = 'evt.SetInt( w->isChecked() ? 1 : 0 ); ' if way == 'checked' else ''
                 self.code.append( '    QObject::connect( %s, &QAbstractButton::clicked, this, %s );'
                                   % ( aVar, call( fill ) ) )
@@ -681,18 +706,6 @@ class FormClass:
             elif way == 'page':
                 self.code.append( '    QObject::connect( %s, &QTabWidget::currentChanged, this, %s );'
                                   % ( aVar, call( 'evt.SetSelection( aPage ); ', 'int aPage' ) ) )
-
-            elif way.startswith( 'gridcell:' ):
-                self.code.append( '    QObject::connect( %s, &%s, this, [this, src = static_cast<QObject*>( %s )]( int aRow, int aCol ) { '
-                                  '%s evt( %s, 0, aRow, aCol ); evt.SetEventObject( src ); %s( evt ); } );'
-                                  % ( aVar, way[len( 'gridcell:' ):], aVar, evClass, evType, handler ) )
-
-            elif way == 'gridright':
-                self.code.append( '    %s->setContextMenuPolicy( Qt::CustomContextMenu );' % aVar )
-                self.code.append( '    QObject::connect( %s, &QWidget::customContextMenuRequested, this, [this, grid = %s]( const QPoint& aPos ) { '
-                                  'if( QTableWidgetItem* item = grid->itemAt( aPos ) ) { %s evt( %s, 0, item->row(), item->column() ); '
-                                  'evt.SetEventObject( grid ); %s( evt ); } } );'
-                                  % ( aVar, aVar, evClass, evType, handler ) )
 
             elif way == 'radiobox':
                 self.code.append( '    %s->OnSelected( %s );'
@@ -1826,15 +1839,16 @@ class FormClass:
                 decl.append( '    // The event handlers: override them in the derived class' )
 
                 for name in sorted( self.handlers ):
-                    if self.gen.compat:
-                        # As the handlers of wxFormBuilder: the event is skipped
-                        decl.append( '    virtual void %s( %s ) { event.Skip(); }'
-                                     % ( name, self.handlers[name] ) )
-                    elif name in self.stdHandlers:
-                        decl.append( '    virtual void %s( %s ) { standardButtonClicked( aSource ); }'
-                                     % ( name, self.handlers[name] ) )
-                    else:
-                        decl.append( '    virtual void %s( %s ) {}' % ( name, self.handlers[name] ) )
+                    for params in self.handlers[name]:
+                        if self.gen.compat:
+                            # As the handlers of wxFormBuilder: the event is skipped
+                            decl.append( '    virtual void %s( %s ) { event.Skip(); }'
+                                         % ( name, params ) )
+                        elif name in self.stdHandlers:
+                            decl.append( '    virtual void %s( %s ) { standardButtonClicked( aSource ); }'
+                                         % ( name, params ) )
+                        else:
+                            decl.append( '    virtual void %s( %s ) {}' % ( name, params ) )
 
             decl.append( '' )
 
