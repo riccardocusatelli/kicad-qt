@@ -31,6 +31,8 @@
 
 #include <QLineEdit>
 
+#include <wx/kiwx_gui.h>
+
 #include <libeval/numeric_evaluator.h>
 #include <wx/string.h>
 
@@ -40,10 +42,12 @@
  * Enter is pressed (Enter also accepts the dialog).  Back in the control, the expression is
  * shown again.
  */
-class TEXT_CTRL_EVAL : public QLineEdit
+class TEXT_CTRL_EVAL : public wxTextCtrl
 {
 public:
-    TEXT_CTRL_EVAL( QWidget* aParent, const wxString& aValue = wxEmptyString );
+    TEXT_CTRL_EVAL( wxWidgetArgCompat aParent, wxWindowID aId = wxID_ANY,
+                    const wxString& aValue = wxEmptyString, const wxPoint& aPos = wxDefaultPosition,
+                    const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
 
     ~TEXT_CTRL_EVAL() override = default;
 
@@ -57,12 +61,12 @@ public:
     }
 
     /// Set a new value, forgetting the expression.
-    void SetValue( const wxString& aValue );
+    void SetValue( const wxString& aValue ) override;
 
-    wxString GetValue() const;
+    wxString GetValue() const override;
 
     /// Set a new value without the change events (as ChangeValue() of wxWidgets).
-    void ChangeValue( const wxString& aValue );
+    void ChangeValue( const wxString& aValue ) override;
 
 protected:
     void focusInEvent( QFocusEvent* aEvent ) override;

@@ -47,17 +47,15 @@ bool LAYER_SELECTOR::SetLayersHotkeys( bool value )
 }
 
 
-LAYER_BOX_SELECTOR::LAYER_BOX_SELECTOR( QWidget* parent, wxWindowID id, const wxPoint& pos,
-                                        const wxSize& size, int n, const wxString choices[] ) :
-        QComboBox( parent ),
+LAYER_BOX_SELECTOR::LAYER_BOX_SELECTOR( wxWidgetArgCompat parent, wxWindowID id,
+                                        const wxPoint& pos, const wxSize& size, int n,
+                                        const wxString choices[] ) :
+        wxBitmapComboBox( parent, id, wxEmptyString, pos, wxDefaultSize, wxArrayString(),
+                          wxCB_READONLY ),
         LAYER_SELECTOR()
 {
     // A read only list (wxCB_READONLY)
-    setEditable( false );
     setSizeAdjustPolicy( QComboBox::AdjustToContents );
-
-    if( id != wxID_ANY )
-        KIQT::SetWindowId( this, id );
 
     if( size.x > 0 && size.y > 0 )
         resize( size.x, size.y );

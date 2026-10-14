@@ -165,3 +165,27 @@ bool wxFontEnumerator::IsValidFacename( const wxString& aFacename )
 {
     return QFontDatabase::families().contains( ToQString( aFacename ), Qt::CaseInsensitive );
 }
+
+
+wxSize wxGetDisplaySize()
+{
+    return wxDisplay( 0u ).GetGeometry().GetSize();
+}
+
+
+void wxDisplaySize( int* aWidth, int* aHeight )
+{
+    wxSize size = wxGetDisplaySize();
+
+    if( aWidth )
+        *aWidth = size.x;
+
+    if( aHeight )
+        *aHeight = size.y;
+}
+
+
+wxRect wxGetClientDisplayRect()
+{
+    return wxDisplay( 0u ).GetClientArea();
+}

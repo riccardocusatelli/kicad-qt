@@ -430,6 +430,13 @@ public:
 
     bool IsOk() const { return !isNull(); }
 
+    /// The image of a bitmap (wxIcon::CopyFromBitmap(): an icon is a bitmap here).
+    bool CopyFromBitmap( const wxBitmap& aBitmap )
+    {
+        *this = aBitmap;
+        return true;
+    }
+
     int GetWidth() const { return width(); }
     int GetHeight() const { return height(); }
     wxSize GetSize() const { return wxSize( width(), height() ); }

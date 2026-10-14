@@ -31,8 +31,10 @@
 #include <qt_strings.h>
 
 
-TEXT_CTRL_EVAL::TEXT_CTRL_EVAL( QWidget* aParent, const wxString& aValue ) :
-        QLineEdit( ToQString( aValue ), aParent ),
+TEXT_CTRL_EVAL::TEXT_CTRL_EVAL( wxWidgetArgCompat aParent, wxWindowID aId,
+                                const wxString& aValue, const wxPoint& aPos, const wxSize& aSize,
+                                long aStyle ) :
+        wxTextCtrl( aParent, aId, aValue, aPos, aSize, aStyle ),
         m_eval( EDA_UNITS::UNSCALED )
 {
     QObject::connect( this, &QLineEdit::returnPressed, this, [this]() { onTextEnter(); } );

@@ -103,13 +103,13 @@ UNIT_BINDER::UNIT_BINDER( EDA_DRAW_FRAME* aParent, QLabel* aLabel, QWidget* aVal
 }
 
 
-UNIT_BINDER::UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, QWidget* aEventSource,
+UNIT_BINDER::UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, wxWidgetArgCompat aEventSource,
                           QLabel* aLabel, QWidget* aValueCtrl, QLabel* aUnitLabel,
                           bool aAllowEval, bool aBindFocusEvent ) :
         m_bindFocusEvent( aBindFocusEvent ),
         m_label( aLabel ),
         m_valueCtrl( aValueCtrl ),
-        m_eventSource( aEventSource ),
+        m_eventSource( aEventSource.get() ),
         m_unitLabel( aUnitLabel ),
         m_iuScale( &aUnitsProvider->GetIuScale() ),
         m_units( aUnitsProvider->GetUserUnits() ),

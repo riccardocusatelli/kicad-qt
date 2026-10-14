@@ -220,7 +220,10 @@ void DIALOG_SHIM::restoreGeometry()
 
     if( saved.width() > 0 && saved.height() > 0 )
     {
-        resize( std::max( width(), saved.width() ), std::max( height(), saved.height() ) );
+        // The size computed by the dialog, or at least the saved one
+        if( !m_useCalculatedSize )
+            resize( std::max( width(), saved.width() ), std::max( height(), saved.height() ) );
+
         move( saved.topLeft() );
     }
     else if( parentWidget() )

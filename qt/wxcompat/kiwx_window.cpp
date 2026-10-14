@@ -89,6 +89,9 @@ wxEvtHandler* wxEvtHandlerCompat( QWidget* aWidget )
 void wxWindow::registerWindowCompat()
 {
     GetHandle()->setProperty( WINDOW_PROPERTY, QVariant::fromValue( static_cast<void*>( this ) ) );
+
+    if( QWidget* parent = GetHandle()->parentWidget() )
+        m_parent = wxWindowFromQt( parent );
 }
 
 
@@ -142,6 +145,38 @@ void wxWindowList::makeNodes()
 
 
 // The sizer of a window --------------------------------------------------------------------
+
+// The objects of the events ----------------------------------------------------------------
+
+wxObject* wxObjectOfQtCompat( QObject* aObject )
+{
+    if( !aObject )
+        return nullptr;
+
+    if( wxObject* object = dynamic_cast<wxObject*>( aObject ) )
+        return object;
+
+    if( QWidget* widget = qobject_cast<QWidget*>( aObject ) )
+        return wxWindowFromQt( widget );
+
+    return nullptr;
+}
+
+
+QObject* wxQtObjectOfCompat( wxObject* aObject )
+{
+    if( !aObject )
+        return nullptr;
+
+    if( QObject* object = dynamic_cast<QObject*>( aObject ) )
+        return object;
+
+    if( wxWindow* window = dynamic_cast<wxWindow*>( aObject ) )
+        return window->GetHandle();
+
+    return nullptr;
+}
+
 
 // wxSizer ----------------------------------------------------------------------------------
 
@@ -289,6 +324,143 @@ bool wxSizer::Detach( wxSizer* aSizer )
             child->setParent( nullptr );
             return true;
         }
+    }
+
+    return false;
+}
+
+
+wxWindow* wxSizerItem::GetWindow() const
+{
+    return m_window ? wxWindowFromQt( m_window ) : nullptr;
+}
+
+
+wxSizer* wxSizerItem::GetSizer() const
+{
+    return dynamic_cast<wxSizer*>( m_layout );
+}
+
+
+void wxSizerItem::Show( bool aShow )
+{
+    if( m_window )
+        m_window->setVisible( aShow );
+    else if( m_layout )
+        showLayout( m_layout, aShow );
+}
+
+
+bool wxSizerItem::IsShown() const
+{
+    return m_window ? !m_window->isHidden() : true;
+}
+
+
+wxSizerItem* wxSizer::itemCompat( QWidget* aWindow, QLayout* aLayout )
+{
+    for( const std::unique_ptr<wxSizerItem>& item : m_itemsCompat )
+    {
+        if( item->GetWidgetCompat() == aWindow && item->GetLayoutCompat() == aLayout )
+            return item.get();
+    }
+
+    m_itemsCompat.push_back( std::make_unique<wxSizerItem>( aWindow, aLayout ) );
+    return m_itemsCompat.back().get();
+}
+
+
+namespace
+{
+/// The layout holding a widget or a layout in @a aLayout (itself or a sub-layout).
+QLayout* findHolder( QLayout* aLayout, QWidget* aWindow, QLayout* aChild, bool aRecursive )
+{
+    for( int i = 0; i < aLayout->count(); ++i )
+    {
+        QLayoutItem* item = aLayout->itemAt( i );
+
+        if( ( aWindow && item->widget() == aWindow ) || ( aChild && item->layout() == aChild ) )
+            return aLayout;
+
+        if( aRecursive && item->layout() )
+        {
+            if( QLayout* holder = findHolder( item->layout(), aWindow, aChild, true ) )
+                return holder;
+        }
+    }
+
+    return nullptr;
+}
+} // namespace
+
+
+wxSizerItem* wxSizer::FindItem( wxWidgetArgCompat aWindow, bool aRecursive )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout || !aWindow || !findHolder( layout, aWindow, nullptr, aRecursive ) )
+        return nullptr;
+
+    return itemCompat( aWindow, nullptr );
+}
+
+
+wxSizerItem* wxSizer::FindItem( wxSizer* aSizer, bool aRecursive )
+{
+    QLayout* layout = GetLayoutCompat();
+    QLayout* child = aSizer ? aSizer->GetLayoutCompat() : nullptr;
+
+    if( !layout || !child || !findHolder( layout, nullptr, child, aRecursive ) )
+        return nullptr;
+
+    return itemCompat( nullptr, child );
+}
+
+
+wxSizerItem* wxSizer::GetItem( size_t aIndex )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout || aIndex >= size_t( layout->count() ) )
+        return nullptr;
+
+    QLayoutItem* item = layout->itemAt( int( aIndex ) );
+    return itemCompat( item->widget(), item->layout() );
+}
+
+
+bool wxSizer::Remove( int aIndex )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout || aIndex < 0 || aIndex >= layout->count() )
+        return false;
+
+    QLayoutItem* item = layout->takeAt( aIndex );
+
+    // A sizer is deleted with its item; a window stays a child of its parent
+    if( item->widget() )
+        std::erase_if( m_itemsCompat, [&]( const auto& aItem ) { return aItem->GetWidgetCompat() == item->widget(); } );
+    else if( item->layout() )
+        std::erase_if( m_itemsCompat, [&]( const auto& aItem ) { return aItem->GetLayoutCompat() == item->layout(); } );
+
+    delete item;
+    return true;
+}
+
+
+bool wxSizer::Remove( wxSizer* aSizer )
+{
+    QLayout* layout = GetLayoutCompat();
+    QLayout* child = aSizer ? aSizer->GetLayoutCompat() : nullptr;
+
+    if( !layout || !child )
+        return false;
+
+    for( int i = 0; i < layout->count(); ++i )
+    {
+        if( layout->itemAt( i )->layout() == child )
+            return Remove( i );
     }
 
     return false;
@@ -737,6 +909,65 @@ wxWindow* wxWindow::FindWindow( const wxString& aName ) const
 }
 
 
+namespace
+{
+/// The first widget of @a aParent (or of the top level windows) matching @a aMatch, as a window.
+wxWindow* findWindowCompat( const wxWindow* aParent,
+                            const std::function<bool( QWidget* )>& aMatch )
+{
+    QList<QWidget*> roots;
+
+    if( aParent )
+        roots << aParent->GetHandle();
+    else
+        roots = QApplication::topLevelWidgets();
+
+    for( QWidget* root : roots )
+    {
+        if( aMatch( root ) )
+            return wxWindowFromQt( root );
+
+        for( QWidget* child : root->findChildren<QWidget*>() )
+        {
+            if( aMatch( child ) )
+                return wxWindowFromQt( child );
+        }
+    }
+
+    return nullptr;
+}
+} // namespace
+
+
+wxWindow* wxWindow::FindWindowByName( const wxString& aName, const wxWindow* aParent )
+{
+    QString name = ToQString( aName );
+    return findWindowCompat( aParent,
+                             [&]( QWidget* aWidget ) { return aWidget->objectName() == name; } );
+}
+
+
+wxWindow* wxWindow::FindWindowById( long aId, const wxWindow* aParent )
+{
+    return findWindowCompat( aParent,
+                             [&]( QWidget* aWidget ) { return wxGetWindowIdCompat( aWidget ) == aId; } );
+}
+
+
+wxWindow* wxWindow::FindWindowByLabel( const wxString& aLabel, const wxWindow* aParent )
+{
+    QString label = ToQString( aLabel );
+
+    return findWindowCompat( aParent,
+                             [&]( QWidget* aWidget )
+                             {
+                                 QVariant text = aWidget->property( "text" );
+                                 return text.isValid() ? text.toString() == label
+                                                       : aWidget->windowTitle() == label;
+                             } );
+}
+
+
 // The geometry -----------------------------------------------------------------------------
 
 void wxWindow::SetMinSize( const wxSize& aSize )
@@ -1145,7 +1376,8 @@ void wxWindow::PostSizeEvent()
 
 wxSizer* wxWindow::GetSizer()
 {
-    QLayout* layout = GetHandle()->layout();
+    QWidget* client = GetClientWidgetCompat();
+    QLayout* layout = client ? client->layout() : nullptr;
 
     if( !layout )
         return nullptr;
@@ -1154,7 +1386,7 @@ wxSizer* wxWindow::GetSizer()
         return sizer;
 
     if( !m_sizerProxy )
-        m_sizerProxy = std::make_unique<wxSizerProxy>( GetHandle() );
+        m_sizerProxy = std::make_unique<wxSizerProxy>( client );
 
     return m_sizerProxy.get();
 }
@@ -1162,7 +1394,7 @@ wxSizer* wxWindow::GetSizer()
 
 void wxWindow::SetSizer( wxSizer* aSizer, bool aDeleteOld )
 {
-    QWidget* widget = GetHandle();
+    QWidget* widget = GetClientWidgetCompat();
     QLayout* layout = aSizer ? aSizer->GetLayoutCompat() : nullptr;
 
     // A widget has one layout: the old one goes first

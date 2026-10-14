@@ -188,21 +188,21 @@ wxString wxStripMenuCodes( const wxString& aLabel )
 
 void wxUpdateUIEvent::Enable( bool aEnable )
 {
-    if( QWidget* widget = qobject_cast<QWidget*>( GetEventObject() ) )
+    if( QWidget* widget = qobject_cast<QWidget*>( GetEventObjectCompat() ) )
         widget->setEnabled( aEnable );
-    else if( QAction* action = qobject_cast<QAction*>( GetEventObject() ) )
+    else if( QAction* action = qobject_cast<QAction*>( GetEventObjectCompat() ) )
         action->setEnabled( aEnable );
 }
 
 
 void wxUpdateUIEvent::Check( bool aCheck )
 {
-    if( QAbstractButton* button = qobject_cast<QAbstractButton*>( GetEventObject() ) )
+    if( QAbstractButton* button = qobject_cast<QAbstractButton*>( GetEventObjectCompat() ) )
     {
         QSignalBlocker blocker( button );
         button->setChecked( aCheck );
     }
-    else if( QAction* action = qobject_cast<QAction*>( GetEventObject() ) )
+    else if( QAction* action = qobject_cast<QAction*>( GetEventObjectCompat() ) )
     {
         QSignalBlocker blocker( action );
         action->setChecked( aCheck );
@@ -212,16 +212,16 @@ void wxUpdateUIEvent::Check( bool aCheck )
 
 void wxUpdateUIEvent::Show( bool aShow )
 {
-    if( QWidget* widget = qobject_cast<QWidget*>( GetEventObject() ) )
+    if( QWidget* widget = qobject_cast<QWidget*>( GetEventObjectCompat() ) )
         widget->setVisible( aShow );
-    else if( QAction* action = qobject_cast<QAction*>( GetEventObject() ) )
+    else if( QAction* action = qobject_cast<QAction*>( GetEventObjectCompat() ) )
         action->setVisible( aShow );
 }
 
 
 void wxUpdateUIEvent::SetText( const wxString& aText )
 {
-    QObject* object = GetEventObject();
+    QObject* object = GetEventObjectCompat();
 
     if( QAbstractButton* button = qobject_cast<QAbstractButton*>( object ) )
         button->setText( ToQString( aText ) );
@@ -787,6 +787,13 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
                         return false;
 
                     case wxEVT_SHOW:
+                        if( qtType == QEvent::Show || qtType == QEvent::Hide )
+                        {
+                            wxShowEvent event( id, qtType == QEvent::Show );
+                            event.SetEventObject( w );
+                            aSink->Process( event );
+                        }
+
                         return false;
 
                     case wxEVT_LEFT_DOWN:
@@ -2264,10 +2271,141 @@ wxStaticBoxSizer::wxStaticBoxSizer( int aOrient, wxWidgetArgCompat aParent, cons
 }
 
 
-wxGridBagSizer::wxGridBagSizer( int aVGap, int aHGap )
+wxGridBagSizer::wxGridBagSizer( int aVGap, int aHGap ) :
+        wxFlexGridSizer( 0, 0, aVGap, aHGap )
 {
-    setVerticalSpacing( std::max( aVGap, 4 ) );
-    setHorizontalSpacing( std::max( aHGap, 4 ) );
+}
+
+
+namespace
+{
+Qt::Alignment cellAlignment( int aFlag )
+{
+    if( aFlag & wxEXPAND )
+        return Qt::Alignment();
+
+    Qt::Alignment alignment = ( aFlag & wxALIGN_RIGHT ) ? Qt::AlignRight
+                              : ( aFlag & wxALIGN_CENTER_HORIZONTAL ) ? Qt::AlignHCenter
+                                                                       : Qt::AlignLeft;
+    alignment |= ( aFlag & wxALIGN_BOTTOM ) ? Qt::AlignBottom
+                 : ( aFlag & wxALIGN_CENTER_VERTICAL ) ? Qt::AlignVCenter
+                                                        : Qt::AlignTop;
+    return alignment;
+}
+} // namespace
+
+
+void wxGridBagSizer::Add( wxWidgetArgCompat aWindow, const wxGBPosition& aPos,
+                          const wxGBSpan& aSpan, int aFlag, int aBorder, void* aUserData )
+{
+    if( aWindow )
+    {
+        addWidget( aWindow, aPos.GetRow(), aPos.GetCol(), aSpan.GetRowspan(), aSpan.GetColspan(),
+                   cellAlignment( aFlag ) );
+    }
+}
+
+
+void wxGridBagSizer::Add( wxSizer* aSizer, const wxGBPosition& aPos, const wxGBSpan& aSpan,
+                          int aFlag, int aBorder, void* aUserData )
+{
+    if( aSizer && aSizer->GetLayoutCompat() )
+    {
+        addLayout( aSizer->GetLayoutCompat(), aPos.GetRow(), aPos.GetCol(), aSpan.GetRowspan(),
+                   aSpan.GetColspan(), cellAlignment( aFlag ) );
+    }
+}
+
+
+void wxGridBagSizer::Add( int aWidth, int aHeight, const wxGBPosition& aPos,
+                          const wxGBSpan& aSpan, int aFlag, int aBorder, void* aUserData )
+{
+    addItem( new QSpacerItem( std::max( aWidth, 0 ), std::max( aHeight, 0 ) ), aPos.GetRow(),
+             aPos.GetCol(), aSpan.GetRowspan(), aSpan.GetColspan() );
+}
+
+
+wxSizerItem* wxGridBagSizer::FindItemAtPosition( const wxGBPosition& aPos )
+{
+    QLayoutItem* item = itemAtPosition( aPos.GetRow(), aPos.GetCol() );
+
+    if( !item )
+        return nullptr;
+
+    return itemCompat( item->widget(), item->layout() );
+}
+
+
+wxGBPosition wxGridBagSizer::GetItemPosition( wxWidgetArgCompat aWindow )
+{
+    int index = aWindow ? indexOf( aWindow ) : -1;
+
+    if( index < 0 )
+        return wxGBPosition( -1, -1 );
+
+    int row, col, rowSpan, colSpan;
+    getItemPosition( index, &row, &col, &rowSpan, &colSpan );
+    return wxGBPosition( row, col );
+}
+
+
+wxGBSpan wxGridBagSizer::GetItemSpan( wxWidgetArgCompat aWindow )
+{
+    int index = aWindow ? indexOf( aWindow ) : -1;
+
+    if( index < 0 )
+        return wxGBSpan( -1, -1 );
+
+    int row, col, rowSpan, colSpan;
+    getItemPosition( index, &row, &col, &rowSpan, &colSpan );
+    return wxGBSpan( rowSpan, colSpan );
+}
+
+
+bool wxGridBagSizer::SetItemPosition( wxWidgetArgCompat aWindow, const wxGBPosition& aPos )
+{
+    int index = aWindow ? indexOf( aWindow ) : -1;
+
+    if( index < 0 )
+        return false;
+
+    int row, col, rowSpan, colSpan;
+    getItemPosition( index, &row, &col, &rowSpan, &colSpan );
+    Qt::Alignment alignment = itemAt( index )->alignment();
+    removeWidget( aWindow );
+    addWidget( aWindow, aPos.GetRow(), aPos.GetCol(), rowSpan, colSpan, alignment );
+    return true;
+}
+
+
+bool wxGridBagSizer::SetItemSpan( wxWidgetArgCompat aWindow, const wxGBSpan& aSpan )
+{
+    int index = aWindow ? indexOf( aWindow ) : -1;
+
+    if( index < 0 )
+        return false;
+
+    int row, col, rowSpan, colSpan;
+    getItemPosition( index, &row, &col, &rowSpan, &colSpan );
+    Qt::Alignment alignment = itemAt( index )->alignment();
+    removeWidget( aWindow );
+    addWidget( aWindow, row, col, aSpan.GetRowspan(), aSpan.GetColspan(), alignment );
+    return true;
+}
+
+
+bool wxGridBagSizer::CheckForIntersection( const wxGBPosition& aPos, const wxGBSpan& aSpan )
+{
+    for( int r = aPos.GetRow(); r < aPos.GetRow() + aSpan.GetRowspan(); ++r )
+    {
+        for( int c = aPos.GetCol(); c < aPos.GetCol() + aSpan.GetColspan(); ++c )
+        {
+            if( itemAtPosition( r, c ) )
+                return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -2414,4 +2552,301 @@ void wxEndBusyCursor()
 bool wxIsBusy()
 {
     return s_busyCount > 0;
+}
+
+
+// The scrolled windows ----------------------------------------------------------------------
+
+wxScrolledWindow::wxScrolledWindow( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
+                                    const wxSize& aSize, long aStyle ) :
+        wxWindowCompat<QScrollArea>( aParent )
+{
+    SetId( aId );
+    setWidgetResizable( true );
+    setFrameShape( QFrame::NoFrame );
+    setWidget( new QWidget( this ) );
+    EnableScrolling( aStyle & wxHSCROLL, aStyle & wxVSCROLL );
+}
+
+
+void wxScrolledWindow::SetScrollRate( int aX, int aY )
+{
+    m_rateX = std::max( aX, 1 );
+    m_rateY = std::max( aY, 1 );
+    horizontalScrollBar()->setSingleStep( m_rateX );
+    verticalScrollBar()->setSingleStep( m_rateY );
+}
+
+
+void wxScrolledWindow::GetScrollPixelsPerUnit( int* aX, int* aY ) const
+{
+    if( aX )
+        *aX = m_rateX;
+
+    if( aY )
+        *aY = m_rateY;
+}
+
+
+void wxScrolledWindow::Scroll( int aX, int aY )
+{
+    if( aX >= 0 )
+        horizontalScrollBar()->setValue( aX * m_rateX );
+
+    if( aY >= 0 )
+        verticalScrollBar()->setValue( aY * m_rateY );
+}
+
+
+void wxScrolledWindow::GetViewStart( int* aX, int* aY ) const
+{
+    wxPoint start = GetViewStart();
+
+    if( aX )
+        *aX = start.x;
+
+    if( aY )
+        *aY = start.y;
+}
+
+
+wxPoint wxScrolledWindow::GetViewStart() const
+{
+    return wxPoint( horizontalScrollBar()->value() / m_rateX,
+                    verticalScrollBar()->value() / m_rateY );
+}
+
+
+void wxScrolledWindow::EnableScrolling( bool aX, bool aY )
+{
+    setHorizontalScrollBarPolicy( aX ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff );
+    setVerticalScrollBarPolicy( aY ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff );
+}
+
+
+void wxScrolledWindow::ShowScrollbars( int aHorizontal, int aVertical )
+{
+    auto policy = []( int aVisibility )
+                  {
+                      // wxSHOW_SB_NEVER (-1), wxSHOW_SB_DEFAULT (0), wxSHOW_SB_ALWAYS (1)
+                      return aVisibility < 0   ? Qt::ScrollBarAlwaysOff
+                             : aVisibility > 0 ? Qt::ScrollBarAlwaysOn
+                                               : Qt::ScrollBarAsNeeded;
+                  };
+
+    setHorizontalScrollBarPolicy( policy( aHorizontal ) );
+    setVerticalScrollBarPolicy( policy( aVertical ) );
+}
+
+
+wxSize wxScrolledWindow::GetVirtualSize() const
+{
+    QWidget* content = widget();
+
+    if( !content )
+        return GetClientSize();
+
+    QSize size = content->size().expandedTo( content->sizeHint() );
+    return wxSize( size.width(), size.height() );
+}
+
+
+void wxScrolledWindow::FitInside()
+{
+    if( QWidget* content = widget() )
+    {
+        if( QLayout* layout = content->layout() )
+            layout->activate();
+
+        content->updateGeometry();
+    }
+}
+
+
+// The splitter windows ----------------------------------------------------------------------
+
+wxSplitterWindow::wxSplitterWindow( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
+                                    const wxSize& aSize, long aStyle ) :
+        wxWindowCompat<QSplitter>( aParent )
+{
+    SetId( aId );
+    setChildrenCollapsible( false );
+}
+
+
+bool wxSplitterWindow::split( Qt::Orientation aOrientation, QWidget* aWindow1,
+                              QWidget* aWindow2, int aSashPosition )
+{
+    if( !aWindow1 || !aWindow2 )
+        return false;
+
+    setOrientation( aOrientation );
+
+    if( indexOf( aWindow1 ) < 0 )
+        insertWidget( 0, aWindow1 );
+
+    if( indexOf( aWindow2 ) < 0 )
+        addWidget( aWindow2 );
+
+    aWindow1->show();
+    aWindow2->show();
+
+    if( aSashPosition != 0 )
+        SetSashPosition( aSashPosition );
+
+    return true;
+}
+
+
+bool wxSplitterWindow::SplitVertically( wxWidgetArgCompat aWindow1, wxWidgetArgCompat aWindow2,
+                                        int aSashPosition )
+{
+    return split( Qt::Horizontal, aWindow1, aWindow2, aSashPosition );
+}
+
+
+bool wxSplitterWindow::SplitHorizontally( wxWidgetArgCompat aWindow1, wxWidgetArgCompat aWindow2,
+                                          int aSashPosition )
+{
+    return split( Qt::Vertical, aWindow1, aWindow2, aSashPosition );
+}
+
+
+void wxSplitterWindow::Initialize( wxWidgetArgCompat aWindow )
+{
+    if( aWindow && indexOf( aWindow ) < 0 )
+        addWidget( aWindow );
+
+    // One window shown
+    for( int i = 0; i < count(); ++i )
+        widget( i )->setVisible( widget( i ) == aWindow.get() );
+}
+
+
+bool wxSplitterWindow::Unsplit( wxWidgetArgCompat aToRemove )
+{
+    if( !IsSplit() )
+        return false;
+
+    QWidget* removed = aToRemove ? aToRemove.get() : widget( count() - 1 );
+
+    if( !removed || indexOf( removed ) < 0 )
+        return false;
+
+    // The window stays a child of the splitter, hidden (as wxWidgets)
+    removed->hide();
+    return true;
+}
+
+
+bool wxSplitterWindow::ReplaceWindow( wxWidgetArgCompat aOld, wxWidgetArgCompat aNew )
+{
+    int index = aOld ? indexOf( aOld ) : -1;
+
+    if( index < 0 || !aNew )
+        return false;
+
+    replaceWidget( index, aNew );
+    return true;
+}
+
+
+bool wxSplitterWindow::IsSplit() const
+{
+    int shown = 0;
+
+    for( int i = 0; i < count(); ++i )
+    {
+        if( !widget( i )->isHidden() )
+            shown++;
+    }
+
+    return shown >= 2;
+}
+
+
+wxWindow* wxSplitterWindow::GetWindow1() const
+{
+    for( int i = 0; i < count(); ++i )
+    {
+        if( !widget( i )->isHidden() )
+            return wxWindowFromQt( widget( i ) );
+    }
+
+    return nullptr;
+}
+
+
+wxWindow* wxSplitterWindow::GetWindow2() const
+{
+    if( !IsSplit() )
+        return nullptr;
+
+    for( int i = count() - 1; i >= 0; --i )
+    {
+        if( !widget( i )->isHidden() )
+            return wxWindowFromQt( widget( i ) );
+    }
+
+    return nullptr;
+}
+
+
+void wxSplitterWindow::SetSashPosition( int aPosition, bool aRedraw )
+{
+    if( count() < 2 )
+        return;
+
+    int total = orientation() == Qt::Horizontal ? width() : height();
+
+    if( total <= 0 )
+    {
+        total = orientation() == Qt::Horizontal ? sizeHint().width() : sizeHint().height();
+        total = std::max( total, std::abs( aPosition ) * 2 );
+    }
+
+    int first = aPosition >= 0 ? aPosition : total + aPosition;
+    first = std::clamp( first, 0, total );
+
+    QList<int> sizes;
+    sizes << first << std::max( total - first, 0 );
+
+    for( int i = 2; i < count(); ++i )
+        sizes << 0;
+
+    setSizes( sizes );
+}
+
+
+int wxSplitterWindow::GetSashPosition() const
+{
+    QList<int> list = sizes();
+    return list.isEmpty() ? 0 : list.first();
+}
+
+
+void wxSplitterWindow::SetSashGravity( double aGravity )
+{
+    m_gravity = std::clamp( aGravity, 0.0, 1.0 );
+
+    // The share of the growth of each window (in hundredths)
+    if( count() >= 2 )
+    {
+        setStretchFactor( 0, int( m_gravity * 100 ) );
+        setStretchFactor( 1, 100 - int( m_gravity * 100 ) );
+    }
+}
+
+
+void wxSplitterWindow::SetMinimumPaneSize( int aSize )
+{
+    m_minimumPaneSize = aSize;
+
+    for( int i = 0; i < count(); ++i )
+    {
+        if( orientation() == Qt::Horizontal )
+            widget( i )->setMinimumWidth( aSize );
+        else
+            widget( i )->setMinimumHeight( aSize );
+    }
 }

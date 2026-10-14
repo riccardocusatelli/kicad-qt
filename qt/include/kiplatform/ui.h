@@ -166,6 +166,26 @@ namespace KIPLATFORM
          * @param aWindow that has a shutdown block reason set
          */
         void RemoveShutdownBlockReason( QWidget* aWindow );
+
+        /// The background color of the dialogs.
+        QColor GetDialogBGColour();
+
+        /// The size of the visible part of a window (the viewport of a scroll area).
+        wxSize GetUnobscuredSize( const QWidget* aWindow );
+
+        /*
+         * The workarounds of the toolkits of wxWidgets (GTK, macOS, MSW): the widgets of Qt need
+         * none of them.
+         */
+        inline void SetOverlayScrolling( const QWidget* aWindow, bool aOverlay ) {}
+        inline void FixupCancelButtonCmdKeyCollision( QWidget* aWindow ) {}
+        inline void LargeChoiceBoxHack( QWidget* aChoice ) {}
+        inline void EllipsizeChoiceBox( QWidget* aChoice ) {}
+        inline void ImmControl( QWidget* aWindow, bool aEnable ) {}
+        inline void ImeNotifyCancelComposition( QWidget* aWindow ) {}
+        inline void ReparentModal( QWidget* aWindow ) {}
+        inline void ReleaseChildWindow( QWidget* aWindow ) {}
+        inline bool IsStockCursorOk( int aCursor ) { return true; }
     }
 }
 

@@ -26,8 +26,9 @@
 #include <qt_ui.h>
 
 
-WX_PANEL::WX_PANEL( QWidget* aParent ) :
-        QWidget( aParent )
+WX_PANEL::WX_PANEL( wxWidgetArgCompat aParent, wxWindowID aId, const wxPoint& aPos,
+                    const wxSize& aSize, long aStyle, const wxString& aName ) :
+        wxPanel( aParent, aId, aPos, aSize, aStyle, aName )
 {
 }
 

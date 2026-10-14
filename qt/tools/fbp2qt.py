@@ -213,7 +213,7 @@ COMPAT_CLASSES = {
     'wxRadioButton': 'wxRadioButton',
     'wxChoice': 'wxChoice',
     'wxComboBox': 'wxComboBox',
-    'wxBitmapComboBox': 'wxComboBox',
+    'wxBitmapComboBox': 'wxBitmapComboBox',
     'wxSpinCtrl': 'wxSpinCtrl',
     'wxSpinCtrlDouble': 'wxSpinCtrlDouble',
     'wxSlider': 'wxSlider',
@@ -229,6 +229,8 @@ COMPAT_CLASSES = {
     'wxDataViewCtrl': 'wxDataViewCtrl',
     'wxDataViewListCtrl': 'wxDataViewListCtrl',
     'wxDataViewTreeCtrl': 'wxDataViewTreeCtrl',
+    'wxGrid': 'wxGrid',
+    'wxStyledTextCtrl': 'wxStyledTextCtrl',
 }
 
 # The events of the compatibility mode: name -> (class of the event, type of the event, how it
@@ -927,9 +929,13 @@ class FormClass:
                 self.include( '<wx/kiwx_gui.h>' )
                 self.qt( aQtClass )
 
+                if cls == 'wxStyledTextCtrl':
+                    self.include( '<wx/stc/stc.h>' )
+
                 # The arguments of the constructors of wxWidgets, for the controls made with them
                 if cls not in ( 'wxHyperlinkCtrl', 'wxFilePickerCtrl', 'wxDirPickerCtrl', 'wxListCtrl',
-                                'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl' ):
+                                'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl',
+                                'wxGrid' ):
                     args = aParent
             else:
                 self.qt( aQtClass )
@@ -1405,6 +1411,18 @@ class FormClass:
             self.connect_events( aObj, var, 'QWidget' )
             return var
 
+        if cls == 'wxScrolledWindow' and self.gen.compat and not sub:
+            # The children and the sizer are in the content of the scroll area
+            var = self.var( aObj, 'wxScrolledWindow', 'new wxScrolledWindow( %s )' % aParent )
+            self.qt( 'QWidget' )
+            content = self.tmp( 'scrolled' )
+            self.code.append( '    QWidget* %s = %s->GetClientWidgetCompat();' % ( content, var ) )
+            self.common( aObj, var )
+            self.window_id( aObj, var )
+            self.children_layout( aObj, content )
+            self.connect_events( aObj, var, 'QWidget' )
+            return var
+
         if cls == 'wxScrolledWindow':
             t = klass( 'QScrollArea' )
             var = self.var( aObj, t, 'new %s( %s )' % ( t, aParent ) )
@@ -1464,6 +1482,38 @@ class FormClass:
                 self.code.append( '    %s->setCurrentWidget( %s );' % ( var, selected ) )
 
             self.connect_events( aObj, var, 'QStackedWidget' )
+            return var
+
+        if cls == 'wxSplitterWindow' and self.gen.compat and not sub:
+            var = self.var( aObj, 'wxSplitterWindow', 'new wxSplitterWindow( %s )' % aParent )
+            self.common( aObj, var )
+            self.window_id( aObj, var )
+            windows = []
+
+            for item in aObj.findall( 'object' ):
+                for child in item.findall( 'object' ):
+                    windows.append( self.widget( child, var ) )
+
+            pos = parse_int( p.get( 'sashpos' ), 0 )
+            split = 'SplitVertically' if p.get( 'splitmode', 'wxSPLIT_VERTICAL' ) == 'wxSPLIT_VERTICAL' \
+                    else 'SplitHorizontally'
+
+            if len( windows ) == 2:
+                self.code.append( '    %s->%s( %s, %s, %d );' % ( var, split, windows[0], windows[1], pos ) )
+            elif len( windows ) == 1:
+                self.code.append( '    %s->Initialize( %s );' % ( var, windows[0] ) )
+
+            gravity = p.get( 'sashgravity' )
+
+            if gravity and float( gravity ) > 0:
+                self.code.append( '    %s->SetSashGravity( %s );' % ( var, gravity ) )
+
+            minPane = parse_int( p.get( 'min_pane_size' ), 0 )
+
+            if minPane > 0:
+                self.code.append( '    %s->SetMinimumPaneSize( %d );' % ( var, minPane ) )
+
+            self.connect_events( aObj, var, 'QSplitter' )
             return var
 
         if cls == 'wxSplitterWindow':

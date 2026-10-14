@@ -61,8 +61,10 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScrollArea>
 #include <QSlider>
 #include <QSpinBox>
+#include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
 #include <QTreeWidget>
@@ -73,12 +75,14 @@
 #include <wx/gdicmn.h>
 #include <wx/string.h>
 #include <wx/utils.h>
+#include <wx/filename.h>
 #include <wx/translation.h>
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
 #include <wx/kiwx_menu.h>
 #include <wx/kiwx_textentry.h>
 #include <wx/kiwx_window.h>
+#include <wx/kiwx_display.h>
 #include <wx/kiwx_validators.h>
 
 #include <qt_strings.h>
@@ -433,6 +437,9 @@ public:
         return wxNOT_FOUND;
     }
 
+    /// Select an item (wxItemContainer::Select()).
+    void Select( int aIndex ) { SetSelection( aIndex ); }
+
     virtual wxString GetStringSelection() const
     {
         int sel = GetSelection();
@@ -557,8 +564,6 @@ public:
     using wxChoice::SetSelection;
     using wxLineEditTextEntryCompat::SetSelection;
 
-    /// Select an item (wxItemContainer::Select()).
-    void Select( int aIndex ) { wxChoice::SetSelection( aIndex ); }
 
     void Popup() { showPopup(); }
     void Dismiss() { hidePopup(); }
@@ -885,6 +890,118 @@ public:
 using wxBookCtrlBase = wxNotebook;
 
 
+/**
+ * A scrolled window (wxScrolledWindow): a scroll area whose content widget holds the children
+ * and the sizer of the window.
+ */
+class KIQT_API wxScrolledWindow : public wxWindowCompat<QScrollArea>
+{
+public:
+    explicit wxScrolledWindow( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                               const wxPoint& aPos = wxDefaultPosition,
+                               const wxSize& aSize = wxDefaultSize,
+                               long aStyle = wxHSCROLL | wxVSCROLL );
+
+    QWidget* GetClientWidgetCompat() const override { return widget(); }
+
+    /// The scroll steps, in pixels.
+    void SetScrollRate( int aX, int aY );
+    void SetScrollbars( int aPixelsPerUnitX, int aPixelsPerUnitY, int, int, int = 0, int = 0,
+                        bool = false )
+    {
+        SetScrollRate( aPixelsPerUnitX, aPixelsPerUnitY );
+    }
+
+    void GetScrollPixelsPerUnit( int* aX, int* aY ) const;
+
+    /// Scroll to a position, in scroll steps.
+    void Scroll( int aX, int aY );
+    void Scroll( const wxPoint& aPos ) { Scroll( aPos.x, aPos.y ); }
+
+    /// The position of the view, in scroll steps.
+    void GetViewStart( int* aX, int* aY ) const;
+    wxPoint GetViewStart() const;
+
+    void EnableScrolling( bool aX, bool aY );
+    void ShowScrollbars( int aHorizontal, int aVertical );
+
+    wxSize GetVirtualSize() const;
+    void SetVirtualSize( const wxSize& aSize ) {}
+    void SetVirtualSize( int, int ) {}
+    void FitInside();
+    void SetTargetWindow( wxWidgetArgCompat ) {}
+
+private:
+    int m_rateX = 1;
+    int m_rateY = 1;
+};
+
+using wxScrolledCanvas = wxScrolledWindow;
+using wxScrolled_wxPanel = wxScrolledWindow;
+
+
+/// The ways of a splitter window (wxSplitterWindow::GetSplitMode()).
+enum wxSplitMode
+{
+    wxSPLIT_HORIZONTAL = 1,
+    wxSPLIT_VERTICAL
+};
+
+
+/// A window split in two (wxSplitterWindow).
+class KIQT_API wxSplitterWindow : public wxWindowCompat<QSplitter>
+{
+public:
+    explicit wxSplitterWindow( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                               const wxPoint& aPos = wxDefaultPosition,
+                               const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
+
+    /// The windows side by side (a vertical sash).
+    bool SplitVertically( wxWidgetArgCompat aWindow1, wxWidgetArgCompat aWindow2,
+                          int aSashPosition = 0 );
+
+    /// The windows one over the other (a horizontal sash).
+    bool SplitHorizontally( wxWidgetArgCompat aWindow1, wxWidgetArgCompat aWindow2,
+                            int aSashPosition = 0 );
+
+    void Initialize( wxWidgetArgCompat aWindow );
+    bool Unsplit( wxWidgetArgCompat aToRemove = nullptr );
+    bool ReplaceWindow( wxWidgetArgCompat aOld, wxWidgetArgCompat aNew );
+    bool IsSplit() const;
+
+    wxWindow* GetWindow1() const;
+    wxWindow* GetWindow2() const;
+
+    int GetSplitMode() const
+    {
+        return orientation() == Qt::Horizontal ? wxSPLIT_VERTICAL : wxSPLIT_HORIZONTAL;
+    }
+
+    void SetSplitMode( int aMode )
+    {
+        setOrientation( aMode == wxSPLIT_VERTICAL ? Qt::Horizontal : Qt::Vertical );
+    }
+
+    /// The position of the sash (a negative one is from the end).
+    void SetSashPosition( int aPosition, bool aRedraw = true );
+    int GetSashPosition() const;
+
+    void SetSashGravity( double aGravity );
+    double GetSashGravity() const { return m_gravity; }
+    void SetMinimumPaneSize( int aSize );
+    int GetMinimumPaneSize() const { return m_minimumPaneSize; }
+    void SetSashInvisible( bool aInvisible = true ) { setHandleWidth( aInvisible ? 0 : 5 ); }
+    void UpdateSize() {}
+
+private:
+    bool split( Qt::Orientation aOrientation, QWidget* aWindow1, QWidget* aWindow2,
+                int aSashPosition );
+
+    double m_gravity = 0.0;
+    int    m_minimumPaneSize = 0;
+};
+
+
 /// A book without tabs (wxSimplebook): the pages are selected by the code.
 class KIQT_API wxSimplebook : public wxWindowCompat<QStackedWidget>
 {
@@ -999,6 +1116,7 @@ public:
     void Realize() {}
     void SetSizeHints( wxWidgetArgCompat ) {}
     void Fit( wxWidgetArgCompat ) {}
+    wxSize GetMinSize() const { return wxSize( minimumSizeHint().width(), minimumSizeHint().height() ); }
     bool Show( bool aShow = true ) { setVisible( aShow ); return true; }
     bool Hide() { return Show( false ); }
 };
@@ -1044,15 +1162,6 @@ private:
 };
 
 
-class KIQT_API wxGridBagSizer : public wxSizerCompat<QGridLayout>
-{
-public:
-    explicit wxGridBagSizer( int aVGap = 0, int aHGap = 0 );
-
-    void SetEmptyCellSize( const wxSize& ) {}
-};
-
-
 class KIQT_API wxFlexGridSizer : public wxSizerCompat<QGridLayout>
 {
 public:
@@ -1062,6 +1171,8 @@ public:
     void AddGrowableCol( size_t aCol, int aProportion = 1 ) { setColumnStretch( int( aCol ), std::max( aProportion, 1 ) ); }
     void AddGrowableRow( size_t aRow, int aProportion = 1 ) { setRowStretch( int( aRow ), std::max( aProportion, 1 ) ); }
     void RemoveGrowableCol( size_t aCol ) { setColumnStretch( int( aCol ), 0 ); }
+    bool IsColGrowable( size_t aCol ) const { return columnStretch( int( aCol ) ) > 0; }
+    bool IsRowGrowable( size_t aRow ) const { return rowStretch( int( aRow ) ) > 0; }
     void RemoveGrowableRow( size_t aRow ) { setRowStretch( int( aRow ), 0 ); }
     void SetFlexibleDirection( int ) {}
     void SetNonFlexibleGrowMode( int ) {}
@@ -1099,7 +1210,84 @@ private:
     int m_next;
 };
 
-using wxGridSizer = wxFlexGridSizer;
+/// A grid of cells of the same size (wxGridSizer): a flexible grid without growable cells.
+class KIQT_API wxGridSizer : public wxFlexGridSizer
+{
+public:
+    using wxFlexGridSizer::wxFlexGridSizer;
+};
+
+
+/// The cell of an item of a wxGridBagSizer (wxGBPosition).
+class wxGBPosition
+{
+public:
+    wxGBPosition( int aRow = 0, int aCol = 0 ) : m_row( aRow ), m_col( aCol ) {}
+
+    int GetRow() const { return m_row; }
+    int GetCol() const { return m_col; }
+    void SetRow( int aRow ) { m_row = aRow; }
+    void SetCol( int aCol ) { m_col = aCol; }
+
+    bool operator==( const wxGBPosition& aOther ) const = default;
+
+private:
+    int m_row;
+    int m_col;
+};
+
+
+/// The cells an item of a wxGridBagSizer spans (wxGBSpan).
+class wxGBSpan
+{
+public:
+    wxGBSpan( int aRowSpan = 1, int aColSpan = 1 ) : m_rowSpan( aRowSpan ), m_colSpan( aColSpan ) {}
+
+    int GetRowspan() const { return m_rowSpan; }
+    int GetColspan() const { return m_colSpan; }
+    void SetRowspan( int aSpan ) { m_rowSpan = aSpan; }
+    void SetColspan( int aSpan ) { m_colSpan = aSpan; }
+
+    bool operator==( const wxGBSpan& aOther ) const = default;
+
+private:
+    int m_rowSpan;
+    int m_colSpan;
+};
+
+#define wxDefaultSpan wxGBSpan( 1, 1 )
+
+
+/// A grid whose items are placed in cells (wxGridBagSizer).
+class KIQT_API wxGridBagSizer : public wxFlexGridSizer
+{
+public:
+    explicit wxGridBagSizer( int aVGap = 0, int aHGap = 0 );
+
+    using wxFlexGridSizer::Add;
+
+    void Add( wxWidgetArgCompat aWindow, const wxGBPosition& aPos,
+              const wxGBSpan& aSpan = wxDefaultSpan, int aFlag = 0, int aBorder = 0,
+              void* aUserData = nullptr );
+    void Add( wxSizer* aSizer, const wxGBPosition& aPos, const wxGBSpan& aSpan = wxDefaultSpan,
+              int aFlag = 0, int aBorder = 0, void* aUserData = nullptr );
+    void Add( int aWidth, int aHeight, const wxGBPosition& aPos,
+              const wxGBSpan& aSpan = wxDefaultSpan, int aFlag = 0, int aBorder = 0,
+              void* aUserData = nullptr );
+
+    /// The item at a cell (nullptr if none).
+    wxSizerItem* FindItemAtPosition( const wxGBPosition& aPos );
+
+    wxGBPosition GetItemPosition( wxWidgetArgCompat aWindow );
+    bool SetItemPosition( wxWidgetArgCompat aWindow, const wxGBPosition& aPos );
+    wxGBSpan GetItemSpan( wxWidgetArgCompat aWindow );
+    bool SetItemSpan( wxWidgetArgCompat aWindow, const wxGBSpan& aSpan );
+
+    bool CheckForIntersection( const wxGBPosition& aPos, const wxGBSpan& aSpan );
+
+    void SetEmptyCellSize( const wxSize& ) {}
+    wxSize GetEmptyCellSize() const { return wxSize( 10, 20 ); }
+};
 using wxWrapSizer = wxBoxSizer;
 
 

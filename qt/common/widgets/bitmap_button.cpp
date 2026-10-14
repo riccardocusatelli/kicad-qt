@@ -42,9 +42,9 @@
 #include <ui_hooks.h>
 
 
-BITMAP_BUTTON::BITMAP_BUTTON( QWidget* aParent, wxWindowID aId, const wxPoint& aPos,
+BITMAP_BUTTON::BITMAP_BUTTON( wxWidgetArgCompat aParent, wxWindowID aId, const wxPoint& aPos,
                               const wxSize& aSize ) :
-        QAbstractButton( aParent ),
+        wxWindowCompat<QAbstractButton>( aParent.get() ),
         m_isRadioButton( false ),
         m_isSeparator( false ),
         m_showBadge( false ),

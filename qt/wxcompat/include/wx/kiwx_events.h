@@ -37,11 +37,13 @@
 #include <functional>
 #include <memory>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <kiqt.h>
 
 #include <wx/defs.h>
+#include <wx/object.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
 
@@ -245,6 +247,13 @@ KIQT_API wxEventType wxNewEventType();
 #define wxDEFINE_EVENT( name, type ) const wxEventType name = wxNewEventType()
 
 
+/// The object of wxWidgets of an object of Qt (the window of a widget...), nullptr if none.
+KIQT_API wxObject* wxObjectOfQtCompat( QObject* aObject );
+
+/// The object of Qt of an object of wxWidgets (the widget of a window...), nullptr if none.
+KIQT_API QObject* wxQtObjectOfCompat( wxObject* aObject );
+
+
 class wxEvent
 {
 public:
@@ -264,9 +273,41 @@ public:
     int GetId() const { return m_id; }
     void SetId( int aId ) { m_id = aId; }
 
-    /// The widget the event comes from.
-    QObject* GetEventObject() const { return m_object; }
-    void SetEventObject( QObject* aObject ) { m_object = aObject; }
+    /// The object the event comes from (a window, a menu...), as in wxWidgets.
+    wxObject* GetEventObject() const { return m_wxObject; }
+
+    /// The object of Qt the event comes from (the widget, the action of a menu item...).
+    QObject* GetEventObjectCompat() const { return m_object; }
+
+    /// Set the object the event comes from: an object of Qt or of wxWidgets (a window of the
+    /// compatibility layer is both).
+    template <class T>
+    void SetEventObject( T* aObject )
+    {
+        if constexpr( std::is_base_of_v<QObject, T> )
+        {
+            m_object = aObject;
+            m_wxObject = wxObjectOfQtCompat( aObject );
+        }
+        else
+        {
+            m_wxObject = const_cast<std::remove_const_t<T>*>( aObject );
+            m_object = wxQtObjectOfCompat( m_wxObject );
+        }
+    }
+
+    /// A smart pointer to the object (the control of a grid editor...).
+    template <class PTR, typename = decltype( std::declval<const PTR&>().operator->() )>
+    void SetEventObject( const PTR& aObject )
+    {
+        SetEventObject( aObject.operator->() );
+    }
+
+    void SetEventObject( std::nullptr_t )
+    {
+        m_object = nullptr;
+        m_wxObject = nullptr;
+    }
 
     /// Let the default processing of the event happen (the action of a standard button).
     void Skip( bool aSkip = true ) { m_skipped = aSkip; }
@@ -278,6 +319,7 @@ public:
 private:
     wxEventType m_type;
     int         m_id;
+    wxObject*   m_wxObject = nullptr;
     QObject*    m_object;
     bool        m_skipped;
 };
@@ -525,6 +567,24 @@ public:
             wxEvent( aId, wxEVT_INIT_DIALOG )
     {
     }
+};
+
+
+/// A window shown or hidden (wxShowEvent).
+class wxShowEvent : public wxEvent
+{
+public:
+    explicit wxShowEvent( int aId = 0, bool aShow = false ) :
+            wxEvent( aId, wxEVT_SHOW ),
+            m_show( aShow )
+    {
+    }
+
+    bool IsShown() const { return m_show; }
+    void SetShow( bool aShow ) { m_show = aShow; }
+
+private:
+    bool m_show;
 };
 
 
@@ -948,7 +1008,7 @@ KIQT_API void wxCallAfterCompat( std::function<void()> aFunction, std::weak_ptr<
  * handlers pushed on a window (PushEventHandler(): GRID_TRICKS on a grid...).  The compatible
  * windows are handlers; the events their Qt widgets make go to their own handlers.
  */
-class KIQT_API wxEvtHandler
+class KIQT_API wxEvtHandler : public wxObject
 {
 public:
     wxEvtHandler() : m_aliveCompat( std::make_shared<bool>( true ) ) {}
@@ -1134,6 +1194,14 @@ template <typename EVENT>
 inline void wxPostEvent( wxEvtHandler* aHandler, const EVENT& aEvent )
 {
     aHandler->QueueEvent( new EVENT( aEvent ) );
+}
+
+
+/// Give an event to a handler later; the handler takes the event (wxQueueEvent()).
+template <typename EVENT>
+inline void wxQueueEvent( wxEvtHandler* aHandler, EVENT* aEvent )
+{
+    aHandler->QueueEvent( aEvent );
 }
 
 

@@ -37,6 +37,7 @@
 
 #include <base_units.h>
 #include <units_provider.h>
+#include <wx/kiwx_window.h>
 #include <libeval/numeric_evaluator.h>
 
 class QLabel;
@@ -66,7 +67,7 @@ public:
                  QLabel* aLabel, QWidget* aValueCtrl, QLabel* aUnitLabel,
                  bool aAllowEval = true, bool aBindFocusEvent = true );
 
-    UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, QWidget* aEventSource,
+    UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, wxWidgetArgCompat aEventSource,
                  QLabel* aLabel, QWidget* aValueCtrl, QLabel* aUnitLabel,
                  bool aAllowEval = true, bool aBindFocusEvent = true );
 

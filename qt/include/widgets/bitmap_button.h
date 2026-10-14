@@ -40,12 +40,13 @@
 #include <wx/defs.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
+#include <wx/kiwx_window.h>
 
 
-class KIQT_API BITMAP_BUTTON : public QAbstractButton
+class KIQT_API BITMAP_BUTTON : public wxWindowCompat<QAbstractButton>
 {
 public:
-    BITMAP_BUTTON( QWidget* aParent, wxWindowID aId = wxID_ANY,
+    BITMAP_BUTTON( wxWidgetArgCompat aParent, wxWindowID aId = wxID_ANY,
                    const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize );
 
     ~BITMAP_BUTTON() override;
@@ -64,7 +65,7 @@ public:
     void SetDisabledBitmap( const QIcon& aBmp );
 
     /// Enable the button.  @return true if the state changed.
-    bool Enable( bool aEnable = true );
+    bool Enable( bool aEnable = true ) override;
 
     /// Setup the control as a two-state button (checked or unchecked).
     void SetIsCheckButton();

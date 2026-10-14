@@ -853,6 +853,8 @@ public:
     void EnableDragColSize( bool = true ) {}
     void EnableDragGridSize( bool = true ) {}
     void EnableDragColMove( bool = true ) {}
+    void EnableDragRowMove( bool = true ) {}
+    bool CanDragRowMove() const { return false; }
     void EnableDragCell( bool = true ) {}
     void DisableDragColSize() {}
     void DisableDragRowSize() {}
@@ -863,7 +865,13 @@ public:
     void SetSelectionForeground( const wxColour& ) {}
     void SetCellHighlightPenWidth( int ) {}
     void SetCellHighlightROPenWidth( int ) {}
-    void SetSortingColumn( int, bool = true ) {}
+
+    /// The column the rows are sorted by (an indicator in its label; the table sorts them).
+    void SetSortingColumn( int aCol, bool aAscending = true );
+    void UnsetSortingColumn() { SetSortingColumn( wxNOT_FOUND ); }
+    int GetSortingColumn() const { return m_sortCol; }
+    bool IsSortingBy( int aCol ) const { return m_sortCol != wxNOT_FOUND && m_sortCol == aCol; }
+    bool IsSortOrderAscending() const { return m_sortAscending; }
 
     void BeginBatch() { m_batchCount++; }
     void EndBatch();
@@ -1021,8 +1029,38 @@ private:
     wxGridSelectionModes m_selectionMode;
     bool                 m_editable;
     int                  m_batchCount;
+    int                  m_sortCol = wxNOT_FOUND;
+    bool                 m_sortAscending = true;
 };
 
 using wxGridSelectionModes = wxGrid::wxGridSelectionModes;
+
+
+/// No refresh of a grid while the locker lives (wxGridUpdateLocker).
+class wxGridUpdateLocker
+{
+public:
+    explicit wxGridUpdateLocker( wxGrid* aGrid = nullptr ) { Create( aGrid ); }
+
+    ~wxGridUpdateLocker()
+    {
+        if( m_grid )
+            m_grid->EndBatch();
+    }
+
+    void Create( wxGrid* aGrid )
+    {
+        m_grid = aGrid;
+
+        if( m_grid )
+            m_grid->BeginBatch();
+    }
+
+    wxGridUpdateLocker( const wxGridUpdateLocker& ) = delete;
+    wxGridUpdateLocker& operator=( const wxGridUpdateLocker& ) = delete;
+
+private:
+    wxGrid* m_grid = nullptr;
+};
 
 #endif // KIWX_GRID_H

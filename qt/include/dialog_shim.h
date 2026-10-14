@@ -68,6 +68,16 @@ class KICOMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HO
 public:
     DIALOG_SHIM( wxWidgetArgCompat aParent, const wxString& aTitle );
 
+    /// The constructor of wxWidgets (the id, the position, the size and the style are not used).
+    DIALOG_SHIM( wxWidgetArgCompat aParent, wxWindowID aId, const wxString& aTitle,
+                 const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+                 long aStyle = 0, const wxString& aName = wxEmptyString ) :
+            DIALOG_SHIM( aParent, aTitle )
+    {
+        if( aSize.x > 0 && aSize.y > 0 )
+            resize( aSize.x, aSize.y );
+    }
+
     ~DIALOG_SHIM();
 
     /**
@@ -221,6 +231,9 @@ protected:
 
     EDA_UNITS              m_units;    // userUnits for display and parsing
     std::string            m_hash_key; // optional custom key for persistence
+
+    /// Keep the size computed by the dialog instead of the saved one.
+    bool                   m_useCalculatedSize = false;
 
     QWidget*               m_initialFocusTarget;
     QEventLoop*            m_qmodal_loop;  // points to nested event_loop, NULL means not qmodal

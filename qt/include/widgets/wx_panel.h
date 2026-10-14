@@ -29,14 +29,18 @@
 
 #include <QWidget>
 
+#include <wx/kiwx_gui.h>
+
 #include <kiqt.h>
 #include <gal/color4d.h>
 
 
-class KIQT_API WX_PANEL : public QWidget
+class KIQT_API WX_PANEL : public wxPanel
 {
 public:
-    WX_PANEL( QWidget* aParent );
+    WX_PANEL( wxWidgetArgCompat aParent, wxWindowID aId = wxID_ANY,
+              const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+              long aStyle = 0, const wxString& aName = wxEmptyString );
 
     ~WX_PANEL() override = default;
 

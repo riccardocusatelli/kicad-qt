@@ -90,6 +90,14 @@ private:
 };
 
 
+/// The size of the primary screen (wxGetDisplaySize()).
+KIQT_API wxSize wxGetDisplaySize();
+KIQT_API void wxDisplaySize( int* aWidth, int* aHeight );
+
+/// The area of the primary screen without the panels of the desktop.
+KIQT_API wxRect wxGetClientDisplayRect();
+
+
 /// The fonts of the system (wxFontEnumerator).
 class KIQT_API wxFontEnumerator
 {

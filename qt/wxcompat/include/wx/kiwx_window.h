@@ -153,6 +153,45 @@ private:
 KIQT_API Qt::Alignment wxSizerFlagsAlignment( int aFlags, bool aVertical );
 
 
+class wxSizer;
+
+
+/// An item of a sizer: a window or a sizer of its layout (wxSizerItem).
+class KIQT_API wxSizerItem
+{
+public:
+    wxSizerItem( QWidget* aWindow, QLayout* aLayout ) :
+            m_window( aWindow ),
+            m_layout( aLayout )
+    {
+    }
+
+    bool IsWindow() const { return m_window != nullptr; }
+    bool IsSizer() const { return m_layout != nullptr; }
+    bool IsSpacer() const { return !m_window && !m_layout; }
+
+    wxWindow* GetWindow() const;
+    wxSizer* GetSizer() const;
+
+    void Show( bool aShow );
+    bool IsShown() const;
+
+    // The layout of Qt has no per-item flags, border or proportion to change afterwards
+    void SetFlag( int ) {}
+    void SetBorder( int ) {}
+    void SetProportion( int ) {}
+    void SetMinSize( const wxSize& ) {}
+    void SetMinSize( int, int ) {}
+
+    QWidget* GetWidgetCompat() const { return m_window; }
+    QLayout* GetLayoutCompat() const { return m_layout; }
+
+private:
+    QWidget* m_window;
+    QLayout* m_layout;
+};
+
+
 /**
  * A sizer (wxSizer): the API of wxSizer on a layout of Qt (GetLayoutCompat()).  The sizers of
  * the compatibility layer (wxBoxSizer...) are layouts; the layout of a window that isn't one
@@ -205,6 +244,20 @@ public:
 
     size_t GetItemCount() const;
 
+    /// Remove an item (a sizer is deleted, a window stays a child of its parent).
+    bool Remove( int aIndex );
+    bool Remove( wxSizer* aSizer );
+
+    /// The item of a window or of a sizer of the layout (nullptr if none).
+    wxSizerItem* FindItem( wxWidgetArgCompat aWindow, bool aRecursive = false );
+    wxSizerItem* FindItem( wxSizer* aSizer, bool aRecursive = false );
+    wxSizerItem* GetItem( wxWidgetArgCompat aWindow, bool aRecursive = false )
+    {
+        return FindItem( aWindow, aRecursive );
+    }
+
+    wxSizerItem* GetItem( size_t aIndex );
+
     /// Remove the items; delete their widgets if @a aDeleteWindows.
     void Clear( bool aDeleteWindows = false );
 
@@ -243,6 +296,13 @@ public:
     bool Hide( wxSizer* aSizer, bool aRecursive = false ) { return Show( aSizer, false ); }
 
     bool IsShown( wxWidgetArgCompat aWindow ) const;
+
+protected:
+    /// The item of a widget or of a layout (kept by the sizer, for the code holding it).
+    wxSizerItem* itemCompat( QWidget* aWindow, QLayout* aLayout );
+
+private:
+    std::vector<std::unique_ptr<wxSizerItem>> m_itemsCompat;
 };
 
 
@@ -278,6 +338,10 @@ public:
 
     /// The widget of the window.
     virtual QWidget* GetHandle() const = 0;
+
+    /// The widget of the children and of the sizer of the window (the content of a scrolled
+    /// window): the widget of the window by default.
+    virtual QWidget* GetClientWidgetCompat() const { return GetHandle(); }
 
     // The identity of the window
 
@@ -349,6 +413,11 @@ public:
     /// A descendant with an id or a name (or this window), nullptr if none.
     wxWindow* FindWindow( long aId ) const;
     wxWindow* FindWindow( const wxString& aName ) const;
+
+    /// A window of a parent (or of any top level window) by its name, id or label.
+    static wxWindow* FindWindowByName( const wxString& aName, const wxWindow* aParent = nullptr );
+    static wxWindow* FindWindowById( long aId, const wxWindow* aParent = nullptr );
+    static wxWindow* FindWindowByLabel( const wxString& aLabel, const wxWindow* aParent = nullptr );
 
     // The geometry (in the logical pixels of Qt)
 
@@ -529,6 +598,9 @@ protected:
     /// Forget it (the destructors of the controls, while their widget is still whole).
     void unregisterWindowCompat();
 
+    /// The parent of the window when it was made (as the member of wxWindow).
+    wxWindow* m_parent = nullptr;
+
 private:
     void*                         m_clientData = nullptr;
     long                          m_windowStyle = 0;
@@ -607,5 +679,8 @@ KIQT_API wxWindow* wxGetTopLevelParent( wxWidgetArgCompat aWindow );
 
 /// Center a window on its parent, or on the screen.
 KIQT_API void wxCentreWindow( wxWidgetArgCompat aWindow, int aDirection );
+
+/// A control (wxControl): the controls of the layer are windows.
+using wxControl = wxWindow;
 
 #endif // KIWX_WINDOW_H

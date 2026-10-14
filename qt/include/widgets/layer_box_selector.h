@@ -37,6 +37,7 @@
 #include <wx/defs.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
+#include <wx/kiwx_gui.h>
 
 
 /**
@@ -63,10 +64,10 @@ protected:
  * Display a layer list in a combo box: each item has the color swatch of its layer, and the
  * layer as data.
  */
-class LAYER_BOX_SELECTOR : public QComboBox, public LAYER_SELECTOR
+class LAYER_BOX_SELECTOR : public wxBitmapComboBox, public LAYER_SELECTOR
 {
 public:
-    LAYER_BOX_SELECTOR( QWidget* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
+    LAYER_BOX_SELECTOR( wxWidgetArgCompat parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
                         const wxSize& size = wxDefaultSize, int n = 0,
                         const wxString choices[] = nullptr );
 

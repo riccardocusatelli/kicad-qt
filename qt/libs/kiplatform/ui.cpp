@@ -25,6 +25,7 @@
 
 #include <kiplatform/ui.h>
 
+#include <QAbstractScrollArea>
 #include <QApplication>
 #include <QCursor>
 #include <QGuiApplication>
@@ -220,4 +221,22 @@ void KIPLATFORM::UI::SetShutdownBlockReason( QWidget* aWindow, const wxString& a
     ShutdownBlockReasonDestroy( hwnd );
     ShutdownBlockReasonCreate( hwnd, aReason.wc_str() );
 #endif
+}
+
+
+QColor KIPLATFORM::UI::GetDialogBGColour()
+{
+    return QApplication::palette().color( QPalette::Window );
+}
+
+
+wxSize KIPLATFORM::UI::GetUnobscuredSize( const QWidget* aWindow )
+{
+    if( !aWindow )
+        return wxSize();
+
+    if( const QAbstractScrollArea* area = qobject_cast<const QAbstractScrollArea*>( aWindow ) )
+        return wxSize( area->viewport()->width(), area->viewport()->height() );
+
+    return wxSize( aWindow->width(), aWindow->height() );
 }

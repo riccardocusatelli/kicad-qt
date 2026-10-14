@@ -36,6 +36,7 @@
 #include <wx/string.h>
 #include <wx/arrstr.h>
 #include <toolkit/toolkit_types.h>
+#include <toolkit/toolkit_window_arg.h>
 
 #include <functional>
 
@@ -44,7 +45,7 @@
  * Display a dialog indicating the file is already open, with an option to reset the lock.
  * @return true if the lock was reset.
  */
-KICOMMON_API bool AskOverrideLock( TOOLKIT_WINDOW* aParent, const wxString& aMessage );
+KICOMMON_API bool AskOverrideLock( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage );
 
 
 /**
@@ -57,7 +58,7 @@ KICOMMON_API bool AskOverrideLock( TOOLKIT_WINDOW* aParent, const wxString& aMes
  *                        in HandleUnsavedChanges() returning wxID_CANCEL).
  * @return wxID_YES, wxID_CANCEL, wxID_NO.
  */
-KICOMMON_API bool HandleUnsavedChanges( TOOLKIT_WINDOW* aParent, const wxString& aMessage,
+KICOMMON_API bool HandleUnsavedChanges( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage,
                                         const std::function<bool()>& aSaveFunction );
 
 /** Return the result code from the last call to HandleUnsavedChanges(): wxID_YES, wxID_NO or
@@ -74,22 +75,22 @@ KICOMMON_API int GetLastUnsavedChangesResponse();
  *                      written back to the bool.
  * @return wxID_YES, wxID_CANCEL, wxID_NO.
  */
-KICOMMON_API int UnsavedChangesDialog( TOOLKIT_WINDOW* aParent, const wxString& aMessage,
+KICOMMON_API int UnsavedChangesDialog( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage,
                                        bool* aApplyToAll );
 
-KICOMMON_API int UnsavedChangesDialog( TOOLKIT_WINDOW* aParent, const wxString& aMessage );
+KICOMMON_API int UnsavedChangesDialog( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage );
 
 
 /**
  * Display a confirmation dialog for a revert action.
  */
-KICOMMON_API bool ConfirmRevertDialog( TOOLKIT_WINDOW* parent, const wxString& aMessage );
+KICOMMON_API bool ConfirmRevertDialog( TOOLKIT_WINDOW_ARG parent, const wxString& aMessage );
 
 
 /**
  * Display an error or warning message box with \a aMessage.
  */
-KICOMMON_API void DisplayError( TOOLKIT_WINDOW* aParent, const wxString& aText );
+KICOMMON_API void DisplayError( TOOLKIT_WINDOW_ARG aParent, const wxString& aText );
 
 /**
  * Display an error message with \a aMessage
@@ -98,7 +99,7 @@ KICOMMON_API void DisplayError( TOOLKIT_WINDOW* aParent, const wxString& aText )
  * @param aMessage is the message text to display
  * @param aExtraInfo is extra data that can be optionally displayed in a collapsible pane
  */
-KICOMMON_API void DisplayErrorMessage( TOOLKIT_WINDOW* aParent, const wxString& aMessage,
+KICOMMON_API void DisplayErrorMessage( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage,
                                        const wxString& aExtraInfo = wxEmptyString );
 
 
@@ -109,7 +110,7 @@ KICOMMON_API void DisplayErrorMessage( TOOLKIT_WINDOW* aParent, const wxString& 
  * @param aMessage is the message text to display
  * @param aExtraInfo is the extra data that can be optionally displayed in a collapsible pane
  */
-KICOMMON_API void DisplayInfoMessage( TOOLKIT_WINDOW* parent, const wxString& aMessage,
+KICOMMON_API void DisplayInfoMessage( TOOLKIT_WINDOW_ARG parent, const wxString& aMessage,
                                       const wxString& aExtraInfo = wxEmptyString );
 
 /**
@@ -120,7 +121,7 @@ KICOMMON_API void DisplayInfoMessage( TOOLKIT_WINDOW* parent, const wxString& aM
  *
  * @return True if user selected the yes button, otherwise false.
  */
-KICOMMON_API bool IsOK( TOOLKIT_WINDOW* aParent, const wxString& aMessage );
+KICOMMON_API bool IsOK( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage );
 
 /**
  * Display a warning dialog with \a aMessage and returns the user response.
@@ -136,7 +137,7 @@ KICOMMON_API bool IsOK( TOOLKIT_WINDOW* aParent, const wxString& aMessage );
  *
  * @return wxID_OK or wxID_CANCEL depending on the button the user selected.
  */
-KICOMMON_API int OKOrCancelDialog( TOOLKIT_WINDOW* aParent, const wxString& aWarning,
+KICOMMON_API int OKOrCancelDialog( TOOLKIT_WINDOW_ARG aParent, const wxString& aWarning,
                                    const wxString& aMessage,
                                    const wxString& aDetailedMessage = wxEmptyString,
                                    const wxString& aOKLabel = wxEmptyString,
@@ -154,7 +155,7 @@ KICOMMON_API int OKOrCancelDialog( TOOLKIT_WINDOW* aParent, const wxString& aWar
  * @param aOptions is a vector of possible options.
  * @return Index of the selected option or -1 when the dialog has been canceled.
  */
-KICOMMON_API int SelectSingleOption( TOOLKIT_WINDOW* aParent, const wxString& aTitle,
+KICOMMON_API int SelectSingleOption( TOOLKIT_WINDOW_ARG aParent, const wxString& aTitle,
                                      const wxString& aMessage,
                                      const wxArrayString& aOptions );
 

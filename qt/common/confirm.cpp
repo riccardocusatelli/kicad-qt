@@ -50,7 +50,7 @@ static const wxChar traceConfirm[] = wxT( "KICAD_CONFIRM" );
 
 
 /// A message box with the texts of KiCad (the mnemonics of the labels are kept).
-static QMessageBox* newMessageBox( TOOLKIT_WINDOW* aParent, QMessageBox::Icon aIcon,
+static QMessageBox* newMessageBox( TOOLKIT_WINDOW_ARG aParent, QMessageBox::Icon aIcon,
                                    const wxString& aTitle, const wxString& aMessage,
                                    const wxString& aExtendedMessage = wxEmptyString )
 {
@@ -72,7 +72,7 @@ static bool noGui()
 }
 
 
-bool AskOverrideLock( TOOLKIT_WINDOW* aParent, const wxString& aMessage )
+bool AskOverrideLock( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage )
 {
     std::unique_ptr<QMessageBox> dlg( newMessageBox( aParent, QMessageBox::Critical,
             _( "File Open Warning" ), aMessage,
@@ -88,7 +88,7 @@ bool AskOverrideLock( TOOLKIT_WINDOW* aParent, const wxString& aMessage )
 }
 
 
-int UnsavedChangesDialog( TOOLKIT_WINDOW* parent, const wxString& aMessage, bool* aApplyToAll )
+int UnsavedChangesDialog( TOOLKIT_WINDOW_ARG parent, const wxString& aMessage, bool* aApplyToAll )
 {
     static bool s_apply_to_all = false;
 
@@ -129,13 +129,13 @@ int UnsavedChangesDialog( TOOLKIT_WINDOW* parent, const wxString& aMessage, bool
 }
 
 
-int UnsavedChangesDialog( TOOLKIT_WINDOW* parent, const wxString& aMessage )
+int UnsavedChangesDialog( TOOLKIT_WINDOW_ARG parent, const wxString& aMessage )
 {
     return UnsavedChangesDialog( parent, aMessage, nullptr );
 }
 
 
-bool ConfirmRevertDialog( TOOLKIT_WINDOW* parent, const wxString& aMessage )
+bool ConfirmRevertDialog( TOOLKIT_WINDOW_ARG parent, const wxString& aMessage )
 {
     std::unique_ptr<QMessageBox> dlg( newMessageBox( parent, QMessageBox::Warning,
             wxEmptyString, aMessage, _( "Your current changes will be permanently lost." ) ) );
@@ -152,7 +152,7 @@ bool ConfirmRevertDialog( TOOLKIT_WINDOW* parent, const wxString& aMessage )
 
 static int g_lastUnsavedChangesResult = -1;
 
-bool HandleUnsavedChanges( TOOLKIT_WINDOW* aParent, const wxString& aMessage,
+bool HandleUnsavedChanges( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage,
                            const std::function<bool()>& aSaveFunction )
 {
     g_lastUnsavedChangesResult = UnsavedChangesDialog( aParent, aMessage );
@@ -173,7 +173,7 @@ int GetLastUnsavedChangesResponse()
 }
 
 
-int OKOrCancelDialog( TOOLKIT_WINDOW* aParent, const wxString& aWarning, const wxString& aMessage,
+int OKOrCancelDialog( TOOLKIT_WINDOW_ARG aParent, const wxString& aWarning, const wxString& aMessage,
                       const wxString& aDetailedMessage, const wxString& aOKLabel,
                       const wxString& aCancelLabel, bool* aApplyToAll )
 {
@@ -206,13 +206,13 @@ int OKOrCancelDialog( TOOLKIT_WINDOW* aParent, const wxString& aWarning, const w
 
 
 // DisplayError should be deprecated, use DisplayErrorMessage instead
-void DisplayError( TOOLKIT_WINDOW* aParent, const wxString& aText )
+void DisplayError( TOOLKIT_WINDOW_ARG aParent, const wxString& aText )
 {
     DisplayErrorMessage( aParent, aText );
 }
 
 
-void DisplayErrorMessage( TOOLKIT_WINDOW* aParent, const wxString& aText, const wxString& aExtraInfo )
+void DisplayErrorMessage( TOOLKIT_WINDOW_ARG aParent, const wxString& aText, const wxString& aExtraInfo )
 {
     if( noGui() )
     {
@@ -227,7 +227,7 @@ void DisplayErrorMessage( TOOLKIT_WINDOW* aParent, const wxString& aText, const 
 }
 
 
-void DisplayInfoMessage( TOOLKIT_WINDOW* aParent, const wxString& aMessage, const wxString& aExtraInfo )
+void DisplayInfoMessage( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage, const wxString& aExtraInfo )
 {
     if( noGui() )
     {
@@ -242,7 +242,7 @@ void DisplayInfoMessage( TOOLKIT_WINDOW* aParent, const wxString& aMessage, cons
 }
 
 
-bool IsOK( TOOLKIT_WINDOW* aParent, const wxString& aMessage )
+bool IsOK( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage )
 {
 #ifdef __APPLE__
     // Why is the question icon a light-bulb on Mac?  That has more of a hint or info connotation.
@@ -265,7 +265,7 @@ bool IsOK( TOOLKIT_WINDOW* aParent, const wxString& aMessage )
 }
 
 
-int SelectSingleOption( TOOLKIT_WINDOW* aParent, const wxString& aTitle,
+int SelectSingleOption( TOOLKIT_WINDOW_ARG aParent, const wxString& aTitle,
                         const wxString& aMessage, const wxArrayString& aOptions )
 {
     QStringList options;

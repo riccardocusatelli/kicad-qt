@@ -3043,3 +3043,22 @@ void wxGrid::CalcUnscrolledPosition( int aX, int aY, int* aXX, int* aYY ) const
     if( aYY )
         *aYY = aY + verticalScrollBar()->value();
 }
+
+
+void wxGrid::SetSortingColumn( int aCol, bool aAscending )
+{
+    m_sortCol = aCol;
+    m_sortAscending = aAscending;
+
+    QHeaderView* header = horizontalHeader();
+
+    if( aCol == wxNOT_FOUND )
+    {
+        header->setSortIndicatorShown( false );
+    }
+    else
+    {
+        header->setSortIndicatorShown( true );
+        header->setSortIndicator( aCol, aAscending ? Qt::AscendingOrder : Qt::DescendingOrder );
+    }
+}
