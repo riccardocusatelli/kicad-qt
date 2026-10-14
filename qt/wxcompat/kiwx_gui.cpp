@@ -1006,6 +1006,14 @@ wxStaticBox::wxStaticBox( QWidget* aParent, int aId, const wxString& aLabel ) :
 }
 
 
+wxStaticBox::wxStaticBox( QWidget* aParent, int aId, const QString& aLabel ) :
+        wxWindowCompat<QGroupBox>( aParent )
+{
+    SetId( aId );
+    setTitle( aLabel );
+}
+
+
 wxNotebook::wxNotebook( QWidget* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
                         long aStyle ) :
         wxWindowCompat<QTabWidget>( aParent )

@@ -95,6 +95,67 @@ KIQT_API wxString wxStripMenuCodes( const wxString& aLabel );
 
 
 class wxSizerProxy;
+class DIALOG_SHIM;
+
+/// The dialogs of KiCad derive from DIALOG_SHIM (a QDialog with the API of wxDialog).
+using wxDialog = DIALOG_SHIM;
+
+
+/**
+ * The children of a window (wxWindow::GetChildren()): a list of the widgets, with the nodes of
+ * wxList (GetFirst(), GetNext(), GetData()) and the iterators of the standard library.
+ */
+class wxWindowList
+{
+public:
+    class Node
+    {
+    public:
+        QWidget* GetData() const { return m_data; }
+        Node* GetNext() const { return m_next; }
+
+    private:
+        friend class wxWindowList;
+
+        QWidget* m_data = nullptr;
+        Node*    m_next = nullptr;
+    };
+
+    using compatibility_iterator = Node*;
+
+    explicit wxWindowList( const QWidget* aParent )
+    {
+        for( QObject* child : aParent->children() )
+        {
+            if( child->isWidgetType() )
+                m_widgets.push_back( static_cast<QWidget*>( child ) );
+        }
+
+        m_nodes.resize( m_widgets.size() );
+
+        for( size_t i = 0; i < m_nodes.size(); ++i )
+        {
+            m_nodes[i].m_data = m_widgets[i];
+            m_nodes[i].m_next = i + 1 < m_nodes.size() ? &m_nodes[i + 1] : nullptr;
+        }
+    }
+
+    // The nodes point to each other: no copy
+    wxWindowList( const wxWindowList& ) = delete;
+    wxWindowList& operator=( const wxWindowList& ) = delete;
+
+    Node* GetFirst() const { return m_nodes.empty() ? nullptr : const_cast<Node*>( &m_nodes.front() ); }
+    size_t GetCount() const { return m_widgets.size(); }
+    size_t size() const { return m_widgets.size(); }
+    bool IsEmpty() const { return m_widgets.empty(); }
+
+    std::vector<QWidget*>::const_iterator begin() const { return m_widgets.begin(); }
+    std::vector<QWidget*>::const_iterator end() const { return m_widgets.end(); }
+
+private:
+    std::vector<QWidget*> m_widgets;
+    std::vector<Node>     m_nodes;
+};
 
 
 /**
@@ -175,6 +236,9 @@ public:
     bool HasFocus() const { return this->hasFocus(); }
 
     QWidget* GetParent() const { return this->parentWidget(); }
+
+    /// The child windows (the widgets that are children of this one).
+    wxWindowList GetChildren() const { return wxWindowList( this ); }
 
     wxString GetName() const { return ToWxString( this->objectName() ); }
     void SetName( const wxString& aName ) { this->setObjectName( ToQString( aName ) ); }
@@ -742,6 +806,8 @@ class KIQT_API wxStaticBox : public wxWindowCompat<QGroupBox>
 public:
     explicit wxStaticBox( QWidget* aParent = nullptr, int aId = wxID_ANY,
                           const wxString& aLabel = wxEmptyString );
+
+    wxStaticBox( QWidget* aParent, int aId, const QString& aLabel );
 
     void SetLabel( const wxString& aLabel ) { setTitle( ToQString( aLabel ) ); }
     wxString GetLabel() const { return ToWxString( title() ); }
