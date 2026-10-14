@@ -114,7 +114,7 @@ public:
 
     /**
      * Return the application of the GUI toolkit (the wxApp, which may come from wxPython,
-     * SINGLE_TOP, or kicad.exe, as wxGetApp() returns it; the QApplication of the Qt build).
+     * SINGLE_TOP, or kicad.exe, as wxGetApp() returns it; the KIQT_APP of the Qt build).
      */
     virtual TOOLKIT_APP& App();
 

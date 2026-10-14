@@ -158,4 +158,47 @@ private:
     int          m_popupMaxHeight;
 };
 
+// The flags of the drawing of the items of a wxOwnerDrawnComboBox
+#define wxODCB_DCLICK_CYCLES        0x0400
+#define wxODCB_STD_CONTROL_PAINT    0x1000
+#define wxODCB_PAINTING_CONTROL     0x0001
+#define wxODCB_PAINTING_SELECTED    0x0002
+
+
+/**
+ * A combo box drawing its items (wxOwnerDrawnComboBox): the items of its list are drawn by
+ * OnDrawItem(), with the heights of OnMeasureItem().  The control shows the text of the item.
+ */
+class KIQT_API wxOwnerDrawnComboBox : public wxComboBox
+{
+public:
+    wxOwnerDrawnComboBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                          const wxString& aValue = wxEmptyString,
+                          const wxPoint& aPos = wxDefaultPosition,
+                          const wxSize& aSize = wxDefaultSize,
+                          const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
+    wxOwnerDrawnComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue,
+                          const wxPoint& aPos, const wxSize& aSize, int aCount,
+                          const wxString aChoices[], long aStyle = 0 );
+
+    bool IsPopupShown() const;
+
+    /// Draw an item (wxODCB_PAINTING_SELECTED: a selected item of the list).
+    virtual void OnDrawItem( wxDC& aDc, const wxRect& aRect, int aItem, int aFlags ) const {}
+
+    /// The height of an item (-1: the default one).
+    virtual wxCoord OnMeasureItem( size_t aItem ) const { return -1; }
+    virtual wxCoord OnMeasureItemWidth( size_t aItem ) const { return -1; }
+
+    virtual void OnDrawBackground( wxDC& aDc, const wxRect& aRect, int aItem, int aFlags ) const {}
+
+    void showPopup() override;
+    void hidePopup() override;
+
+private:
+    void initCompat();
+
+    bool m_popupShown = false;
+};
+
 #endif // KIWX_COMBO_H

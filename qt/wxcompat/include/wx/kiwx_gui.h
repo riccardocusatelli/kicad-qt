@@ -40,6 +40,7 @@
 #define KIWX_GUI_H
 
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include <kiqt.h>
@@ -71,6 +72,8 @@
 #include <wx/defs.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
+#include <wx/utils.h>
+#include <wx/translation.h>
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
 #include <wx/kiwx_menu.h>
@@ -323,9 +326,33 @@ public:
 };
 
 
+/// The data of an item of a list, owned by the list (wxClientData).
+class wxClientData
+{
+public:
+    wxClientData() = default;
+    virtual ~wxClientData() = default;
+};
+
+
+/// A string as the data of an item (wxStringClientData).
+class wxStringClientData : public wxClientData
+{
+public:
+    wxStringClientData() = default;
+    explicit wxStringClientData( const wxString& aData ) : m_data( aData ) {}
+
+    void SetData( const wxString& aData ) { m_data = aData; }
+    const wxString& GetData() const { return m_data; }
+
+private:
+    wxString m_data;
+};
+
+
 /**
  * The API of wxItemContainer (the list of strings of a choice, a combo box, a list box), with
- * the client data of the items.
+ * the client data of the items (the client objects are client data owned by the list).
  */
 template <class QT>
 class wxItemContainerCompat : public wxWindowCompat<QT>
@@ -346,7 +373,7 @@ public:
 
     bool IsEmpty() const { return GetCount() == 0; }
 
-    int Append( const wxString& aItem ) { return Insert( aItem, GetCount(), nullptr ); }
+    int Append( const wxString& aItem ) { return Insert( aItem, GetCount(), static_cast<void*>( nullptr ) ); }
     int AppendString( const wxString& aItem ) { return Append( aItem ); }
     int Append( const wxString& aItem, void* aClientData )
     {
@@ -365,7 +392,10 @@ public:
             Append( item );
     }
 
-    int Insert( const wxString& aItem, unsigned int aPos ) { return Insert( aItem, aPos, nullptr ); }
+    int Insert( const wxString& aItem, unsigned int aPos )
+    {
+        return Insert( aItem, aPos, static_cast<void*>( nullptr ) );
+    }
 
     void Set( const wxArrayString& aItems )
     {
@@ -403,7 +433,7 @@ public:
         return wxNOT_FOUND;
     }
 
-    wxString GetStringSelection() const
+    virtual wxString GetStringSelection() const
     {
         int sel = GetSelection();
         return sel >= 0 ? GetString( sel ) : wxString();
@@ -420,8 +450,54 @@ public:
         return true;
     }
 
+    // The client objects: client data the list owns
+
+    int Append( const wxString& aItem, wxClientData* aClientData )
+    {
+        return Insert( aItem, GetCount(), aClientData );
+    }
+
+    int Insert( const wxString& aItem, unsigned int aPos, wxClientData* aClientData )
+    {
+        adoptCompat( aClientData );
+        return Insert( aItem, aPos, static_cast<void*>( aClientData ) );
+    }
+
+    wxClientData* GetClientObject( unsigned int aIndex ) const
+    {
+        return static_cast<wxClientData*>( GetClientData( aIndex ) );
+    }
+
+    void SetClientObject( unsigned int aIndex, wxClientData* aClientData )
+    {
+        releaseCompat( GetClientObject( aIndex ) );
+        adoptCompat( aClientData );
+        SetClientData( aIndex, static_cast<void*>( aClientData ) );
+    }
+
+    bool HasClientObjectData() const { return !m_clientObjectsCompat.empty(); }
+
     using wxWindowCompat<QT>::GetClientData;
     using wxWindowCompat<QT>::SetClientData;
+
+protected:
+    void adoptCompat( wxClientData* aData )
+    {
+        if( aData )
+            m_clientObjectsCompat.emplace_back( aData );
+    }
+
+    void releaseCompat( wxClientData* aData )
+    {
+        std::erase_if( m_clientObjectsCompat,
+                       [aData]( const std::unique_ptr<wxClientData>& aOwned )
+                       {
+                           return aOwned.get() == aData;
+                       } );
+    }
+
+private:
+    std::vector<std::unique_ptr<wxClientData>> m_clientObjectsCompat;
 };
 
 
@@ -480,6 +556,9 @@ public:
     using wxLineEditTextEntryCompat::GetSelection;
     using wxChoice::SetSelection;
     using wxLineEditTextEntryCompat::SetSelection;
+
+    /// Select an item (wxItemContainer::Select()).
+    void Select( int aIndex ) { wxChoice::SetSelection( aIndex ); }
 
     void Popup() { showPopup(); }
     void Dismiss() { hidePopup(); }
@@ -804,6 +883,94 @@ public:
 };
 
 using wxBookCtrlBase = wxNotebook;
+
+
+/// A book without tabs (wxSimplebook): the pages are selected by the code.
+class KIQT_API wxSimplebook : public wxWindowCompat<QStackedWidget>
+{
+public:
+    explicit wxSimplebook( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                           const wxPoint& aPos = wxDefaultPosition,
+                           const wxSize& aSize = wxDefaultSize, long aStyle = 0 ) :
+            wxWindowCompat<QStackedWidget>( aParent )
+    {
+        wxWindow::SetId( aId );
+    }
+
+    size_t GetPageCount() const { return size_t( count() ); }
+    wxWindow* GetPage( size_t aPage ) const { return wxWindowFromQt( widget( int( aPage ) ) ); }
+    wxWindow* GetCurrentPage() const { return wxWindowFromQt( currentWidget() ); }
+    int GetSelection() const { return currentIndex(); }
+
+    int SetSelection( size_t aPage ) { return ChangeSelection( aPage ); }
+
+    int ChangeSelection( size_t aPage )
+    {
+        int old = currentIndex();
+
+        if( int( aPage ) < count() )
+            setCurrentIndex( int( aPage ) );
+
+        return old;
+    }
+
+    bool AddPage( wxWidgetArgCompat aPage, const wxString& aText = wxEmptyString,
+                  bool aSelect = false, int aImage = -1 )
+    {
+        return InsertPage( GetPageCount(), aPage, aText, aSelect, aImage );
+    }
+
+    bool InsertPage( size_t aIndex, wxWidgetArgCompat aPage, const wxString& aText = wxEmptyString,
+                     bool aSelect = false, int aImage = -1 )
+    {
+        if( !aPage )
+            return false;
+
+        int index = insertWidget( int( aIndex ), aPage );
+
+        if( aSelect )
+            setCurrentIndex( index );
+
+        return true;
+    }
+
+    bool RemovePage( size_t aPage )
+    {
+        QWidget* page = widget( int( aPage ) );
+
+        if( !page )
+            return false;
+
+        removeWidget( page );
+        return true;
+    }
+
+    bool DeletePage( size_t aPage )
+    {
+        QWidget* page = widget( int( aPage ) );
+
+        if( !RemovePage( aPage ) )
+            return false;
+
+        page->deleteLater();
+        return true;
+    }
+
+    bool DeleteAllPages()
+    {
+        while( count() > 0 )
+            DeletePage( 0 );
+
+        return true;
+    }
+
+    int FindPage( wxWidgetArgCompat aPage ) const { return indexOf( aPage ); }
+
+    void SetEffect( int ) {}
+    void SetEffects( int, int ) {}
+    void SetEffectTimeout( unsigned ) {}
+    void ShowNewPage( wxWidgetArgCompat aPage ) { AddPage( aPage, wxEmptyString, true ); }
+};
 using wxAuiNotebook = wxNotebook;
 
 
@@ -830,6 +997,8 @@ public:
 
     void Layout() {}
     void Realize() {}
+    void SetSizeHints( wxWidgetArgCompat ) {}
+    void Fit( wxWidgetArgCompat ) {}
     bool Show( bool aShow = true ) { setVisible( aShow ); return true; }
     bool Hide() { return Show( false ); }
 };
@@ -838,129 +1007,16 @@ public:
 // Sizers ---------------------------------------------------------------------------------
 
 /**
- * The API of wxSizer on a layout of Qt.  The items are the widgets and layouts of the layout.
+ * A sizer of the compatibility layer: a layout of Qt (LAYOUT) with the API of wxSizer.
  */
 template <class LAYOUT>
-class wxSizerCompat : public LAYOUT
+class wxSizerCompat : public LAYOUT, public wxSizer
 {
 public:
     using LAYOUT::LAYOUT;
 
-    /// Lay the items out again.
-    void Layout()
-    {
-        this->invalidate();
-        this->activate();
-    }
-
-    /// Resize @a aWindow to the size of the layout; return the size.
-    wxSize Fit( wxWidgetArgCompat aWindow )
-    {
-        this->activate();
-
-        if( aWindow )
-        {
-            aWindow->adjustSize();
-            return wxSize( aWindow->width(), aWindow->height() );
-        }
-
-        return wxSize();
-    }
-
-    void FitInside( wxWidgetArgCompat aWindow ) { Fit( aWindow ); }
-
-    /// The minimum size of @a aWindow is the minimum size of the layout.
-    void SetSizeHints( wxWidgetArgCompat aWindow )
-    {
-        if( aWindow )
-        {
-            QSize size = this->minimumSize();
-            aWindow->setMinimumSize( size );
-            aWindow->adjustSize();
-        }
-    }
-
-    wxSize GetMinSize() const
-    {
-        QSize size = this->minimumSize();
-        return wxSize( size.width(), size.height() );
-    }
-
-    void SetMinSize( const wxSize& ) {}
-    void SetMinSize( int, int ) {}
-
-    /// Show or hide an item (a widget or a layout).
-    bool Show( wxWidgetArgCompat aWindow, bool aShow = true, bool aRecursive = false )
-    {
-        if( !aWindow || this->indexOf( aWindow ) < 0 )
-            return false;
-
-        aWindow->setVisible( aShow );
-        return true;
-    }
-
-    bool Show( QLayout* aLayout, bool aShow = true, bool aRecursive = false )
-    {
-        if( !aLayout )
-            return false;
-
-        showLayout( aLayout, aShow );
-        return true;
-    }
-
-    /// Show or hide all the items.
-    void ShowItems( bool aShow ) { showLayout( this, aShow ); }
-
-    bool Hide( wxWidgetArgCompat aWindow, bool aRecursive = false ) { return Show( aWindow, false ); }
-    bool Hide( QLayout* aLayout, bool aRecursive = false ) { return Show( aLayout, false ); }
-
-    bool IsShown( wxWidgetArgCompat aWindow ) const { return aWindow && !aWindow->isHidden(); }
-
-    /// Remove a widget from the layout (it stays a child of its parent).
-    bool Detach( wxWidgetArgCompat aWindow )
-    {
-        if( !aWindow || this->indexOf( aWindow ) < 0 )
-            return false;
-
-        this->removeWidget( aWindow );
-        return true;
-    }
-
-    size_t GetItemCount() const { return size_t( this->count() ); }
-
-    /// Remove the items; delete their widgets if @a aDeleteWindows.
-    void Clear( bool aDeleteWindows = false )
-    {
-        while( QLayoutItem* item = this->takeAt( 0 ) )
-        {
-            if( aDeleteWindows && item->widget() )
-                item->widget()->deleteLater();
-
-            delete item;
-        }
-    }
-
-    void SetDimension( const wxPoint&, const wxSize& ) {}
-    void RecalcSizes() { Layout(); }
-
-private:
-    static void showLayout( QLayout* aLayout, bool aShow )
-    {
-        for( int i = 0; i < aLayout->count(); ++i )
-        {
-            QLayoutItem* item = aLayout->itemAt( i );
-
-            if( item->widget() )
-                item->widget()->setVisible( aShow );
-            else if( item->layout() )
-                showLayout( item->layout(), aShow );
-        }
-    }
+    QLayout* GetLayoutCompat() const override { return const_cast<wxSizerCompat*>( this ); }
 };
-
-
-/// The flags of the items of the sizers that the dialogs give to Add().
-KIQT_API Qt::Alignment wxSizerFlagsAlignment( int aFlags, bool aVertical );
 
 
 class KIQT_API wxBoxSizer : public wxSizerCompat<QBoxLayout>
@@ -969,30 +1025,6 @@ public:
     explicit wxBoxSizer( int aOrient );
 
     int GetOrientation() const;
-
-    /// Add a widget (proportion, wx flags, border).
-    void Add( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0,
-              void* aUserData = nullptr );
-
-    /// Add a layout (a sizer).
-    void Add( QLayout* aSizer, int aProportion = 0, int aFlag = 0, int aBorder = 0,
-              void* aUserData = nullptr );
-
-    /// Add a spacer.
-    void Add( int aWidth, int aHeight, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
-
-    void Insert( size_t aIndex, wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0,
-                 int aBorder = 0 );
-    void Insert( size_t aIndex, QLayout* aSizer, int aProportion = 0, int aFlag = 0,
-                 int aBorder = 0 );
-
-    void Prepend( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0 )
-    {
-        Insert( 0, aWindow, aProportion, aFlag, aBorder );
-    }
-
-    void AddSpacer( int aSize ) { addSpacing( aSize ); }
-    void AddStretchSpacer( int aProportion = 1 ) { addStretch( aProportion ); }
 };
 
 
@@ -1035,9 +1067,28 @@ public:
     void SetNonFlexibleGrowMode( int ) {}
 
     /// Add a widget in the next cell.
-    void Add( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
-    void Add( QLayout* aSizer, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
-    void Add( int aWidth, int aHeight, int aProportion = 0, int aFlag = 0, int aBorder = 0 );
+    void Add( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0,
+              void* aUserData = nullptr ) override;
+    void Add( wxSizer* aSizer, int aProportion = 0, int aFlag = 0, int aBorder = 0,
+              void* aUserData = nullptr ) override;
+    void Add( int aWidth, int aHeight, int aProportion = 0, int aFlag = 0, int aBorder = 0,
+              void* aUserData = nullptr ) override;
+
+    /// The cells are filled in order: an insertion is an addition.
+    void Insert( size_t, wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0,
+                 int aBorder = 0, void* aUserData = nullptr ) override
+    {
+        Add( aWindow, aProportion, aFlag, aBorder );
+    }
+
+    void Insert( size_t, wxSizer* aSizer, int aProportion = 0, int aFlag = 0, int aBorder = 0,
+                 void* aUserData = nullptr ) override
+    {
+        Add( aSizer, aProportion, aFlag, aBorder );
+    }
+
+    void AddSpacer( int aSize ) override { Add( aSize, aSize ); }
+    void AddStretchSpacer( int aProportion = 1 ) override { Add( 0, 0, aProportion ); }
 
     int GetCols() const { return m_cols; }
 
@@ -1049,7 +1100,6 @@ private:
 };
 
 using wxGridSizer = wxFlexGridSizer;
-using wxSizer = QLayout;
 using wxWrapSizer = wxBoxSizer;
 
 
@@ -1074,6 +1124,23 @@ public:
     static void SetDelay( long aMilliseconds ) {}
     static void SetAutoPop( long aMilliseconds ) {}
     static void SetReshow( long aMilliseconds ) {}
+};
+
+
+/// The busy cursor of the application (the calls nest).
+KIQT_API void wxBeginBusyCursor( const void* aCursor = nullptr );
+KIQT_API void wxEndBusyCursor();
+KIQT_API bool wxIsBusy();
+
+/// The busy cursor while the object lives (wxBusyCursor).
+class wxBusyCursor
+{
+public:
+    explicit wxBusyCursor( const void* aCursor = nullptr ) { wxBeginBusyCursor( aCursor ); }
+    ~wxBusyCursor() { wxEndBusyCursor(); }
+
+    wxBusyCursor( const wxBusyCursor& ) = delete;
+    wxBusyCursor& operator=( const wxBusyCursor& ) = delete;
 };
 
 

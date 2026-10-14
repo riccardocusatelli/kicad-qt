@@ -143,6 +143,25 @@ enum wxEventTypeCompat
     wxEVT_COMBOBOX_CLOSEUP,
     wxEVT_NAVIGATION_KEY,
     wxEVT_FILEPICKER_CHANGED,
+    wxEVT_DATAVIEW_SELECTION_CHANGED,
+    wxEVT_DATAVIEW_ITEM_ACTIVATED,
+    wxEVT_DATAVIEW_ITEM_CONTEXT_MENU,
+    wxEVT_DATAVIEW_ITEM_VALUE_CHANGED,
+    wxEVT_DATAVIEW_ITEM_EXPANDED,
+    wxEVT_DATAVIEW_ITEM_COLLAPSED,
+    wxEVT_DATAVIEW_ITEM_EXPANDING,
+    wxEVT_DATAVIEW_ITEM_COLLAPSING,
+    wxEVT_DATAVIEW_ITEM_START_EDITING,
+    wxEVT_DATAVIEW_ITEM_EDITING_STARTED,
+    wxEVT_DATAVIEW_ITEM_EDITING_DONE,
+    wxEVT_DATAVIEW_COLUMN_HEADER_CLICK,
+    wxEVT_DATAVIEW_COLUMN_HEADER_RIGHT_CLICK,
+    wxEVT_DATAVIEW_COLUMN_SORTED,
+    wxEVT_DATAVIEW_COLUMN_REORDERED,
+    wxEVT_DATAVIEW_CACHE_HINT,
+    wxEVT_DATAVIEW_ITEM_BEGIN_DRAG,
+    wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE,
+    wxEVT_DATAVIEW_ITEM_DROP,
     wxEVT_DIRPICKER_CHANGED,
     wxEVT_STC_CHANGE,
     wxEVT_STC_MODIFIED,
@@ -159,10 +178,28 @@ enum wxEventTypeCompat
     wxEVT_MENU_OPEN,
     wxEVT_MENU_CLOSE,
     wxEVT_MENU_HIGHLIGHT,
+    wxEVT_PAINT,
+    wxEVT_ERASE_BACKGROUND,
     wxEVT_USER_FIRST = 10000
 };
 
 using wxEventType = int;
+
+/// The categories of the events (wxApp::SafeYieldFor()).
+enum wxEventCategory
+{
+    wxEVT_CATEGORY_UI = 1,
+    wxEVT_CATEGORY_USER_INPUT = 2,
+    wxEVT_CATEGORY_SOCKET = 4,
+    wxEVT_CATEGORY_TIMER = 8,
+    wxEVT_CATEGORY_THREAD = 16,
+    wxEVT_CATEGORY_UNKNOWN = 32,
+    wxEVT_CATEGORY_CLIPBOARD = 64,
+    wxEVT_CATEGORY_NATIVE_EVENTS = wxEVT_CATEGORY_UI | wxEVT_CATEGORY_USER_INPUT,
+    wxEVT_CATEGORY_ALL = wxEVT_CATEGORY_UI | wxEVT_CATEGORY_USER_INPUT | wxEVT_CATEGORY_SOCKET
+                         | wxEVT_CATEGORY_TIMER | wxEVT_CATEGORY_THREAD
+                         | wxEVT_CATEGORY_UNKNOWN | wxEVT_CATEGORY_CLIPBOARD
+};
 
 #define wxEVT_COMMAND_BUTTON_CLICKED       wxEVT_BUTTON
 #define wxEVT_COMMAND_MENU_SELECTED        wxEVT_MENU
@@ -201,6 +238,11 @@ using wxEventType = int;
 
 /// A new type of event (wxNewEventType()).
 KIQT_API wxEventType wxNewEventType();
+
+/// The types of events the code declares (the class of their events is given by the handlers).
+#define wxDECLARE_EVENT( name, type ) extern const wxEventType name
+#define wxDECLARE_EXPORTED_EVENT( expdecl, name, type ) extern expdecl const wxEventType name
+#define wxDEFINE_EVENT( name, type ) const wxEventType name = wxNewEventType()
 
 
 class wxEvent
@@ -484,6 +526,45 @@ public:
     {
     }
 };
+
+
+class wxMenu;
+
+/// The opening, the closing or the highlighted item of a menu (wxMenuEvent).
+class wxMenuEvent : public wxEvent
+{
+public:
+    explicit wxMenuEvent( wxEventType aType = wxEVT_NULL, int aMenuId = 0,
+                          wxMenu* aMenu = nullptr ) :
+            wxEvent( aMenuId, aType ),
+            m_menuId( aMenuId ),
+            m_menu( aMenu )
+    {
+    }
+
+    int GetMenuId() const { return m_menuId; }
+    wxMenu* GetMenu() const { return m_menu; }
+    bool IsPopup() const { return m_menuId == wxID_ANY; }
+
+private:
+    int     m_menuId;
+    wxMenu* m_menu;
+};
+
+#define wxMenuEventHandler( func ) ( &func )
+
+
+/// The painting of a window (wxPaintEvent): its handler paints with a wxPaintDC.
+class wxPaintEvent : public wxEvent
+{
+public:
+    explicit wxPaintEvent( int aId = 0 ) :
+            wxEvent( aId, wxEVT_PAINT )
+    {
+    }
+};
+
+#define wxPaintEventHandler( func ) ( &func )
 
 
 class wxCloseEvent : public wxEvent

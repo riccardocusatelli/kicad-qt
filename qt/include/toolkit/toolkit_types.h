@@ -49,7 +49,7 @@ using TOOLKIT_BITMAP = QPixmap;
 /// An icon of the user interface, with its images at the different scales of the screens.
 using TOOLKIT_BITMAP_BUNDLE = QIcon;
 
-class QApplication;
+class wxAppConsole;
 
-/// The application object of the GUI toolkit.
-using TOOLKIT_APP = QApplication;
+/// The application object (the KIQT_APP of the program: the wxApp API of the code of KiCad).
+using TOOLKIT_APP = wxAppConsole;

@@ -35,6 +35,7 @@
 #include <build_version.h>
 #include <core/ki_assert.h>
 #include <pgm_gui.h>
+#include <wx/app.h>
 #include <wx/filename.h>
 
 #include <qt_strings.h>
@@ -105,9 +106,10 @@ void PGM_GUI::SafeYield()
 }
 
 
-QApplication& PGM_GUI::App()
+wxAppConsole& PGM_GUI::App()
 {
-    QApplication* app = qobject_cast<QApplication*>( QCoreApplication::instance() );
+    // The KIQT_APP of the program (the QApplication is QCoreApplication::instance())
+    wxAppConsole* app = wxAppConsole::GetInstance();
     KI_ASSERT( app );
     return *app;
 }

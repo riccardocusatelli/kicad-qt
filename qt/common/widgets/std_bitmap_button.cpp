@@ -26,9 +26,12 @@
 #include <widgets/std_bitmap_button.h>
 
 
-STD_BITMAP_BUTTON::STD_BITMAP_BUTTON( QWidget* aParent ) :
-        QPushButton( aParent )
+STD_BITMAP_BUTTON::STD_BITMAP_BUTTON( wxWidgetArgCompat aParent, int aId,
+                                      const QIcon& aDummyBitmap, const wxPoint& aPos,
+                                      const wxSize& aSize, int aStyle ) :
+        wxWindowCompat<QPushButton>( aParent.get() )
 {
+    SetId( aId );
     setFocusPolicy( Qt::TabFocus );
 }
 

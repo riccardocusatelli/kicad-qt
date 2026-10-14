@@ -37,6 +37,8 @@
 
 #include <wx/string.h>
 #include <wx/kiwx_window.h>
+#include <wx/toplevel.h>
+#include <wx/translation.h>
 
 
 /// A message dialog (wxMessageDialog).
@@ -68,17 +70,26 @@ public:
     /// Show the dialog: wxID_OK, wxID_YES, wxID_NO or wxID_CANCEL.
     virtual int ShowModal();
 
+    /// Show the dialog (modally: a message dialog of Qt has no other mode).
+    virtual bool Show( bool aShow = true )
+    {
+        if( aShow )
+            wxMessageDialog::ShowModal();
+
+        return true;
+    }
+
     void SetMessage( const wxString& aMessage ) { m_message = aMessage; }
     void SetExtendedMessage( const wxString& aMessage ) { m_extendedMessage = aMessage; }
     wxString GetMessage() const { return m_message; }
     void SetTitle( const wxString& aTitle ) { m_caption = aTitle; }
 
-    bool SetYesNoLabels( const ButtonLabel& aYes, const ButtonLabel& aNo );
-    bool SetYesNoCancelLabels( const ButtonLabel& aYes, const ButtonLabel& aNo,
+    virtual bool SetYesNoLabels( const ButtonLabel& aYes, const ButtonLabel& aNo );
+    virtual bool SetYesNoCancelLabels( const ButtonLabel& aYes, const ButtonLabel& aNo,
                                const ButtonLabel& aCancel );
-    bool SetOKLabel( const ButtonLabel& aOk );
-    bool SetOKCancelLabels( const ButtonLabel& aOk, const ButtonLabel& aCancel );
-    bool SetHelpLabel( const ButtonLabel& aHelp ) { return true; }
+    virtual bool SetOKLabel( const ButtonLabel& aOk );
+    virtual bool SetOKCancelLabels( const ButtonLabel& aOk, const ButtonLabel& aCancel );
+    virtual bool SetHelpLabel( const ButtonLabel& aHelp ) { return true; }
 
     long GetMessageDialogStyle() const { return m_style; }
 

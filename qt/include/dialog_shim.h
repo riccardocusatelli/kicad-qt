@@ -47,6 +47,7 @@
 #include <kiway_holder.h>
 #include <wx/defs.h>        // wxID_ codes (kiwx)
 #include <wx/toplevel.h>    // the styles of the dialogs (kiwx)
+#include <core/raii.h>
 
 class QEventLoop;
 class QPushButton;
@@ -113,6 +114,9 @@ public:
 
     bool IsQuasiModal() const { return m_qmodal_loop != nullptr; }
 
+    /// The dialog is shown modally (ShowModal()).
+    bool IsModal() const { return isModal() && isVisible(); }
+
     /**
      * A modal dialog (a file dialog...) shown over a quasi-modal one: the windows of Qt
      * handle the modality of both, nothing to do.
@@ -122,6 +126,13 @@ public:
 
     /// The code the dialog was ended with.
     int GetReturnCode() const { return m_returnCode; }
+    void SetReturnCode( int aReturnCode ) { m_returnCode = aReturnCode; }
+
+    /**
+     * The keys pressed in the dialog or in its controls, before the controls (wxEVT_CHAR_HOOK):
+     * Ctrl+U changes the user units; the other keys are skipped.
+     */
+    virtual void OnCharHook( wxKeyEvent& aEvt );
 
     EDA_UNITS GetUserUnits() const
     {
@@ -192,6 +203,12 @@ protected:
      * from wxFormBuilder files, as the skipped events of wxWidgets.
      */
     void standardButtonClicked( QWidget* aSource );
+
+    /// Set the size of the dialog in dialog units (the average size of a character / 4).
+    void setSizeInDU( int x, int y ) { SetSize( ConvertDialogToPixels( wxSize( x, y ) ) ); }
+
+    int horizPixelsFromDU( int x ) const { return ConvertDialogToPixels( wxSize( x, 0 ) ).x; }
+    int vertPixelsFromDU( int y ) const { return ConvertDialogToPixels( wxSize( 0, y ) ).y; }
 
     /// The key of the dialog in the settings (the title, or m_hash_key).
     std::string dialogKey() const;

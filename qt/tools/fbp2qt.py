@@ -226,6 +226,9 @@ COMPAT_CLASSES = {
     'wxFilePickerCtrl': 'wxFilePickerCtrl',
     'wxDirPickerCtrl': 'wxDirPickerCtrl',
     'wxListCtrl': 'wxListCtrl',
+    'wxDataViewCtrl': 'wxDataViewCtrl',
+    'wxDataViewListCtrl': 'wxDataViewListCtrl',
+    'wxDataViewTreeCtrl': 'wxDataViewTreeCtrl',
 }
 
 # The events of the compatibility mode: name -> (class of the event, type of the event, how it
@@ -272,7 +275,7 @@ COMPAT_EVENTS = {
     'OnRightUp':            ( 'wxMouseEvent', 'wxEVT_RIGHT_UP', 'mouse:QEvent::MouseButtonRelease' ),
     'OnMotion':             ( 'wxMouseEvent', 'wxEVT_MOTION', 'mouse:QEvent::MouseMove' ),
     'OnMouseWheel':         ( 'wxMouseEvent', 'wxEVT_MOUSEWHEEL', 'mouse:QEvent::Wheel' ),
-    'OnCharHook':           ( 'wxKeyEvent', 'wxEVT_CHAR_HOOK', 'key:QEvent::KeyPress' ),
+    'OnCharHook':           ( 'wxKeyEvent', 'wxEVT_CHAR_HOOK', 'bind' ),
     'OnKeyDown':            ( 'wxKeyEvent', 'wxEVT_KEY_DOWN', 'key:QEvent::KeyPress' ),
     'OnUpdateUI':           ( 'wxUpdateUIEvent', 'wxEVT_UPDATE_UI', 'updateui' ),
     'OnHyperlink':          ( 'wxHyperlinkEvent', 'wxEVT_HYPERLINK', 'bind' ),
@@ -288,6 +291,60 @@ COMPAT_EVENTS = {
     'OnListKeyDown':        ( 'wxListEvent', 'wxEVT_LIST_KEY_DOWN', 'bind' ),
     'OnListBeginDrag':      ( 'wxListEvent', 'wxEVT_LIST_BEGIN_DRAG', 'bind' ),
     'OnFileChanged':        ( 'wxFileDirPickerEvent', 'wxEVT_FILEPICKER_CHANGED', 'bind' ),
+    'OnDataViewCtrlSelectionChanged':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_SELECTION_CHANGED', 'bind' ),
+    'OnDataViewCtrlItemActivated':       ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_ACTIVATED', 'bind' ),
+    'OnDataViewCtrlItemContextMenu':     ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_CONTEXT_MENU', 'bind' ),
+    'OnDataViewCtrlItemValueChanged':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_VALUE_CHANGED', 'bind' ),
+    'OnDataViewCtrlItemExpanded':        ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EXPANDED', 'bind' ),
+    'OnDataViewCtrlItemCollapsed':       ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_COLLAPSED', 'bind' ),
+    'OnDataViewCtrlItemExpanding':       ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EXPANDING', 'bind' ),
+    'OnDataViewCtrlItemCollapsing':      ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_COLLAPSING', 'bind' ),
+    'OnDataViewCtrlItemStartEditing':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_START_EDITING', 'bind' ),
+    'OnDataViewCtrlItemEditingStarted':  ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EDITING_STARTED', 'bind' ),
+    'OnDataViewCtrlItemEditingDone':     ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EDITING_DONE', 'bind' ),
+    'OnDataViewCtrlColumnHeaderClick':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_HEADER_CLICK', 'bind' ),
+    'OnDataViewCtrlColumnHeaderRightClick': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_HEADER_RIGHT_CLICK', 'bind' ),
+    'OnDataViewCtrlColumnSorted':        ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_SORTED', 'bind' ),
+    'OnDataViewCtrlColumnReordered':     ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_REORDERED', 'bind' ),
+    'OnDataViewCtrlItemBeginDrag':       ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_BEGIN_DRAG', 'bind' ),
+    'OnDataViewCtrlItemDropPossible':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE', 'bind' ),
+    'OnDataViewCtrlItemDrop':            ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_DROP', 'bind' ),
+    'OnDataViewListCtrlSelectionChanged': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_SELECTION_CHANGED', 'bind' ),
+    'OnDataViewListCtrlItemActivated':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_ACTIVATED', 'bind' ),
+    'OnDataViewListCtrlItemContextMenu': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_CONTEXT_MENU', 'bind' ),
+    'OnDataViewListCtrlItemValueChanged': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_VALUE_CHANGED', 'bind' ),
+    'OnDataViewListCtrlItemExpanded':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EXPANDED', 'bind' ),
+    'OnDataViewListCtrlItemCollapsed':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_COLLAPSED', 'bind' ),
+    'OnDataViewListCtrlItemExpanding':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EXPANDING', 'bind' ),
+    'OnDataViewListCtrlItemCollapsing':  ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_COLLAPSING', 'bind' ),
+    'OnDataViewListCtrlItemStartEditing': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_START_EDITING', 'bind' ),
+    'OnDataViewListCtrlItemEditingStarted': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EDITING_STARTED', 'bind' ),
+    'OnDataViewListCtrlItemEditingDone': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EDITING_DONE', 'bind' ),
+    'OnDataViewListCtrlColumnHeaderClick': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_HEADER_CLICK', 'bind' ),
+    'OnDataViewListCtrlColumnHeaderRightClick': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_HEADER_RIGHT_CLICK', 'bind' ),
+    'OnDataViewListCtrlColumnSorted':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_SORTED', 'bind' ),
+    'OnDataViewListCtrlColumnReordered': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_REORDERED', 'bind' ),
+    'OnDataViewListCtrlItemBeginDrag':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_BEGIN_DRAG', 'bind' ),
+    'OnDataViewListCtrlItemDropPossible': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE', 'bind' ),
+    'OnDataViewListCtrlItemDrop':        ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_DROP', 'bind' ),
+    'OnDataViewTreeCtrlSelectionChanged': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_SELECTION_CHANGED', 'bind' ),
+    'OnDataViewTreeCtrlItemActivated':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_ACTIVATED', 'bind' ),
+    'OnDataViewTreeCtrlItemContextMenu': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_CONTEXT_MENU', 'bind' ),
+    'OnDataViewTreeCtrlItemValueChanged': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_VALUE_CHANGED', 'bind' ),
+    'OnDataViewTreeCtrlItemExpanded':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EXPANDED', 'bind' ),
+    'OnDataViewTreeCtrlItemCollapsed':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_COLLAPSED', 'bind' ),
+    'OnDataViewTreeCtrlItemExpanding':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EXPANDING', 'bind' ),
+    'OnDataViewTreeCtrlItemCollapsing':  ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_COLLAPSING', 'bind' ),
+    'OnDataViewTreeCtrlItemStartEditing': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_START_EDITING', 'bind' ),
+    'OnDataViewTreeCtrlItemEditingStarted': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EDITING_STARTED', 'bind' ),
+    'OnDataViewTreeCtrlItemEditingDone': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_EDITING_DONE', 'bind' ),
+    'OnDataViewTreeCtrlColumnHeaderClick': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_HEADER_CLICK', 'bind' ),
+    'OnDataViewTreeCtrlColumnHeaderRightClick': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_HEADER_RIGHT_CLICK', 'bind' ),
+    'OnDataViewTreeCtrlColumnSorted':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_SORTED', 'bind' ),
+    'OnDataViewTreeCtrlColumnReordered': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_COLUMN_REORDERED', 'bind' ),
+    'OnDataViewTreeCtrlItemBeginDrag':   ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_BEGIN_DRAG', 'bind' ),
+    'OnDataViewTreeCtrlItemDropPossible': ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE', 'bind' ),
+    'OnDataViewTreeCtrlItemDrop':        ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_DROP', 'bind' ),
     'OnDirChanged':         ( 'wxFileDirPickerEvent', 'wxEVT_DIRPICKER_CHANGED', 'bind' ),
     'OnNotebookPageChanged': ( 'wxNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
     'OnAuiNotebookPageChanged': ( 'wxAuiNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
@@ -871,7 +928,8 @@ class FormClass:
                 self.qt( aQtClass )
 
                 # The arguments of the constructors of wxWidgets, for the controls made with them
-                if cls not in ( 'wxHyperlinkCtrl', 'wxFilePickerCtrl', 'wxDirPickerCtrl', 'wxListCtrl' ):
+                if cls not in ( 'wxHyperlinkCtrl', 'wxFilePickerCtrl', 'wxDirPickerCtrl', 'wxListCtrl',
+                                'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl' ):
                     args = aParent
             else:
                 self.qt( aQtClass )
@@ -1107,6 +1165,16 @@ class FormClass:
             self.include( '<wx/kiwx_listctrl.h>' )
             var, t = make( qt, '%s, wxID_ANY, wxDefaultPosition, wxDefaultSize, %s'
                                % ( aParent, p.get( 'style' ) or 'wxLC_REPORT' ) )
+
+        elif cls in ( 'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl' ) and self.gen.compat:
+            # The data view of the compatibility layer (its model is given by the code of the dialog)
+            qt = 'QTreeView'
+            self.include( '<wx/dataview.h>' )
+            var, t = make( qt, '%s, wxID_ANY, wxDefaultPosition, wxDefaultSize, %s'
+                               % ( aParent, p.get( 'style' ) or '0' ) )
+
+            if aObj.findall( 'object' ):
+                raise FbpError( 'columns of %s in the fbp: not supported' % cls )
 
         elif cls == 'wxListCtrl':
             # The report view of a list (the columns are added by the code of the dialog)
@@ -1377,7 +1445,7 @@ class FormClass:
             return var
 
         if cls == 'wxSimplebook':
-            t = klass( 'QStackedWidget' )
+            t = compat_klass( 'QStackedWidget', 'wxSimplebook' )
             var = self.var( aObj, t, 'new %s( %s )' % ( t, aParent ) )
             self.common( aObj, var )
             selected = None

@@ -149,11 +149,108 @@ private:
 };
 
 
+/// The alignment of Qt of the flags of an item of a sizer (wxALIGN_..., wxEXPAND).
+KIQT_API Qt::Alignment wxSizerFlagsAlignment( int aFlags, bool aVertical );
+
+
 /**
- * The sizer of a window (wxWindow::GetSizer()): the layout of the widget, with the API of
- * wxSizer the dialogs use on it.
+ * A sizer (wxSizer): the API of wxSizer on a layout of Qt (GetLayoutCompat()).  The sizers of
+ * the compatibility layer (wxBoxSizer...) are layouts; the layout of a window that isn't one
+ * is a sizer through wxSizerProxy.  The items are the widgets and the layouts of the layout.
  */
-class KIQT_API wxSizerProxy
+class KIQT_API wxSizer
+{
+public:
+    wxSizer() = default;
+    virtual ~wxSizer() = default;
+
+    wxSizer( const wxSizer& ) = delete;
+    wxSizer& operator=( const wxSizer& ) = delete;
+
+    /// The layout of Qt of the sizer (nullptr if none).
+    virtual QLayout* GetLayoutCompat() const = 0;
+
+    // The items
+
+    virtual void Add( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0,
+                      int aBorder = 0, void* aUserData = nullptr );
+    virtual void Add( wxSizer* aSizer, int aProportion = 0, int aFlag = 0, int aBorder = 0,
+                      void* aUserData = nullptr );
+
+    /// Add a spacer (a stretch if @a aProportion > 0).
+    virtual void Add( int aWidth, int aHeight, int aProportion = 0, int aFlag = 0,
+                      int aBorder = 0, void* aUserData = nullptr );
+
+    virtual void Insert( size_t aIndex, wxWidgetArgCompat aWindow, int aProportion = 0,
+                         int aFlag = 0, int aBorder = 0, void* aUserData = nullptr );
+    virtual void Insert( size_t aIndex, wxSizer* aSizer, int aProportion = 0, int aFlag = 0,
+                         int aBorder = 0, void* aUserData = nullptr );
+
+    void Prepend( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0 )
+    {
+        Insert( 0, aWindow, aProportion, aFlag, aBorder );
+    }
+
+    void Prepend( wxSizer* aSizer, int aProportion = 0, int aFlag = 0, int aBorder = 0 )
+    {
+        Insert( 0, aSizer, aProportion, aFlag, aBorder );
+    }
+
+    virtual void AddSpacer( int aSize );
+    virtual void AddStretchSpacer( int aProportion = 1 );
+
+    /// Remove a widget or a sizer from the layout (a widget stays a child of its parent).
+    bool Detach( wxWidgetArgCompat aWindow );
+    bool Detach( wxSizer* aSizer );
+
+    size_t GetItemCount() const;
+
+    /// Remove the items; delete their widgets if @a aDeleteWindows.
+    void Clear( bool aDeleteWindows = false );
+
+    // The layout
+
+    /// Lay the items out again.
+    void Layout();
+
+    /// Resize @a aWindow to the size of the layout; return the size.
+    wxSize Fit( wxWidgetArgCompat aWindow );
+    void FitInside( wxWidgetArgCompat aWindow ) { Fit( aWindow ); }
+
+    /// The minimum size of @a aWindow is the minimum size of the layout.
+    void SetSizeHints( wxWidgetArgCompat aWindow );
+
+    wxSize GetMinSize() const;
+    void SetMinSize( const wxSize& ) {}
+    void SetMinSize( int, int ) {}
+    void SetDimension( const wxPoint&, const wxSize& ) {}
+    void SetDimension( int, int, int, int ) {}
+    void RecalcSizes() { Layout(); }
+
+    /// The window the sizer lays out (nullptr if none).
+    wxWindow* GetContainingWindow() const;
+
+    // Showing the items
+
+    bool Show( wxWidgetArgCompat aWindow, bool aShow = true, bool aRecursive = false );
+    bool Show( wxSizer* aSizer, bool aShow = true, bool aRecursive = false );
+
+    /// Show or hide all the items.
+    void Show( bool aShow ) { ShowItems( aShow ); }
+    void ShowItems( bool aShow );
+
+    bool Hide( wxWidgetArgCompat aWindow, bool aRecursive = false ) { return Show( aWindow, false ); }
+    bool Hide( wxSizer* aSizer, bool aRecursive = false ) { return Show( aSizer, false ); }
+
+    bool IsShown( wxWidgetArgCompat aWindow ) const;
+};
+
+
+/**
+ * The layout of a window that isn't a sizer of the compatibility layer (a layout of Qt), as a
+ * sizer (wxWindow::GetSizer()).
+ */
+class KIQT_API wxSizerProxy : public wxSizer
 {
 public:
     explicit wxSizerProxy( QWidget* aWindow ) :
@@ -161,17 +258,7 @@ public:
     {
     }
 
-    void Layout();
-    wxSize Fit( wxWidgetArgCompat aWindow );
-    void FitInside( wxWidgetArgCompat aWindow ) { Fit( aWindow ); }
-    void SetSizeHints( wxWidgetArgCompat aWindow );
-    wxSize GetMinSize() const;
-    bool Show( wxWidgetArgCompat aWindow, bool aShow = true, bool aRecursive = false );
-    bool Hide( wxWidgetArgCompat aWindow, bool aRecursive = false ) { return Show( aWindow, false ); }
-    bool IsShown( wxWidgetArgCompat aWindow ) const;
-
-    /// The layout of the window.
-    QLayout* GetLayout() const;
+    QLayout* GetLayoutCompat() const override { return m_window ? m_window->layout() : nullptr; }
 
 private:
     QWidget* m_window;
@@ -351,9 +438,9 @@ public:
     void SendSizeEvent( int aFlags = 0 ) { PostSizeEvent(); }
 
     /// The layout of the window, as a sizer (nullptr if it has none).
-    wxSizerProxy* GetSizer();
-    void SetSizer( QLayout* aSizer, bool aDeleteOld = true );
-    void SetSizerAndFit( QLayout* aSizer, bool aDeleteOld = true );
+    wxSizer* GetSizer();
+    void SetSizer( wxSizer* aSizer, bool aDeleteOld = true );
+    void SetSizerAndFit( wxSizer* aSizer, bool aDeleteOld = true );
 
     /// Center a window on its parent (or the screen).
     void Centre( int aDirection = wxBOTH );
@@ -423,6 +510,13 @@ public:
     /// Show a popup menu and give the event of the chosen item to the window.
     bool PopupMenu( wxMenu* aMenu, const wxPoint& aPos = wxDefaultPosition );
     bool PopupMenu( wxMenu* aMenu, int aX, int aY ) { return PopupMenu( aMenu, wxPoint( aX, aY ) ); }
+
+    /// Show a menu and return the id of the chosen item (wxID_NONE if none), without its event.
+    int GetPopupMenuSelectionFromUser( wxMenu& aMenu, const wxPoint& aPos = wxDefaultPosition );
+    int GetPopupMenuSelectionFromUser( wxMenu& aMenu, int aX, int aY )
+    {
+        return GetPopupMenuSelectionFromUser( aMenu, wxPoint( aX, aY ) );
+    }
 
 protected:
     /// The handlers also get the events made from the signals and the events of the widget.

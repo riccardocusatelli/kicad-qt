@@ -36,6 +36,8 @@
 
 #include <kiqt.h>
 
+#include <memory>
+
 #include <QColor>
 #include <QFont>
 #include <QIcon>
@@ -237,6 +239,9 @@ KIQT_API extern const wxColour* wxRED;
 KIQT_API extern const wxColour* wxBLUE;
 KIQT_API extern const wxColour* wxGREEN;
 KIQT_API extern const wxColour* wxLIGHT_GREY;
+KIQT_API extern const wxColour* wxYELLOW;
+KIQT_API extern const wxColour* wxCYAN;
+KIQT_API extern const wxColour* wxGREY;
 
 
 class KIQT_API wxPen
@@ -652,11 +657,67 @@ private:
     wxColour  m_textForeground;
     wxColour  m_textBackground;
     wxBrush   m_background;
+
+protected:
+    void SetPainterCompat( QPainter* aPainter ) { m_painter = aPainter; }
 };
 
 using wxGCDC = wxDC;
-using wxPaintDC = wxDC;
-using wxClientDC = wxDC;
+
+class wxWindow;
+
+
+/**
+ * The device context of a window (wxPaintDC, wxClientDC): a painter on the window while it
+ * is painted (in a handler of wxEVT_PAINT), or else on an image of its size (to measure texts:
+ * the windows of Qt are painted only when they are painted).
+ */
+class KIQT_API wxPaintDC : public wxDC
+{
+public:
+    explicit wxPaintDC( const wxWindow* aWindow );
+    ~wxPaintDC() override;
+
+private:
+    void init( QWidget* aWindow );
+
+    std::unique_ptr<QPainter> m_ownPainter;
+    std::unique_ptr<QImage>   m_image;
+};
+
+using wxClientDC = wxPaintDC;
+using wxWindowDC = wxPaintDC;
+using wxBufferedPaintDC = wxPaintDC;
+using wxAutoBufferedPaintDC = wxPaintDC;
+
+/// The widgets painted now (their wxPaintDC paint on them): the paint events of the layer.
+KIQT_API void wxSetPaintingCompat( QWidget* aWidget, bool aPainting );
+KIQT_API bool wxIsPaintingCompat( const QWidget* aWidget );
+
+
+/// A device context drawing on a bitmap (wxMemoryDC).
+class KIQT_API wxMemoryDC : public wxDC
+{
+public:
+    wxMemoryDC();
+    explicit wxMemoryDC( wxBitmap& aBitmap );
+    ~wxMemoryDC() override;
+
+    /// Draw on @a aBitmap: the drawing is in the bitmap when another one is selected (or
+    /// wxNullBitmap), or when the DC is deleted.
+    void SelectObject( wxBitmap& aBitmap );
+
+    /// Draw on a copy of a constant bitmap (wxNullBitmap: on nothing).
+    void SelectObject( const wxBitmap& aBitmap ) { SelectObjectAsSource( aBitmap ); }
+    void SelectObjectAsSource( const wxBitmap& aBitmap );
+
+private:
+    void release();
+
+    std::unique_ptr<QPainter> m_ownPainter;
+    QImage                    m_image;
+    wxBitmap*                 m_bitmap = nullptr;
+};
 
 
 /// The pen of a DC while the changer lives (wxDCPenChanger).

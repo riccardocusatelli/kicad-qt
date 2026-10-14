@@ -31,6 +31,7 @@
 #include <atomic>
 
 #include <QAbstractButton>
+#include <QAbstractScrollArea>
 #include <QAction>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -425,6 +426,57 @@ bool wxEvtHandler::RemoveEventHandlerCompat( wxEvtHandler* aHandler )
 }
 
 
+namespace
+{
+/**
+ * The wxEVT_CHAR_HOOK events of a window: the keys pressed in the window or in one of its
+ * controls (not in another window), given to the window before the control.  A key a handler
+ * processes (doesn't skip) doesn't go to the control.  The filter lives as long as the window.
+ */
+class KIWX_CHAR_HOOK_FILTER : public QObject
+{
+public:
+    KIWX_CHAR_HOOK_FILTER( QWidget* aWindow, wxCompatEventSink* aSink ) :
+            QObject( aWindow ),
+            m_window( aWindow ),
+            m_sink( aSink )
+    {
+        qApp->installEventFilter( this );
+    }
+
+protected:
+    bool eventFilter( QObject* aWatched, QEvent* aEvent ) override
+    {
+        if( aEvent->type() != QEvent::KeyPress || !aWatched->isWidgetType() )
+            return false;
+
+        QWidget* receiver = static_cast<QWidget*>( aWatched );
+
+        // A key event goes up to the parents if the control ignores it: once, at its first
+        // receiver (the control with the focus)
+        if( receiver != m_window && !m_window->isAncestorOf( receiver ) )
+            return false;
+
+        if( QWidget* focus = QApplication::focusWidget();
+            focus && receiver != focus && ( focus == m_window || m_window->isAncestorOf( focus ) ) )
+        {
+            return false;
+        }
+
+        wxKeyEvent event( wxEVT_CHAR_HOOK );
+        event.SetId( wxGetWindowIdCompat( m_window ) );
+        event.SetEventObject( receiver );
+        wxFillKeyEventCompat( event, aEvent );
+        return m_sink->Process( event );
+    }
+
+private:
+    QWidget*           m_window;
+    wxCompatEventSink* m_sink;
+};
+} // namespace
+
+
 void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEventSink* aSink )
 {
     // Connected once per type
@@ -655,6 +707,38 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
                        } );
         break;
 
+    case wxEVT_CHAR_HOOK:
+        // The keys pressed in the window or in its controls, before the controls
+        new KIWX_CHAR_HOOK_FILTER( w, aSink );
+        break;
+
+    case wxEVT_PAINT:
+    {
+        // The paint events of the widget (of the viewport of a scroll area): a handler that
+        // doesn't skip the event paints the widget instead of Qt
+        QWidget* painted = w;
+
+        if( QAbstractScrollArea* area = qobject_cast<QAbstractScrollArea*>( w ) )
+            painted = area->viewport();
+
+        KIQT::FilterEvents( painted,
+                [w, painted, aSink]( QEvent* aQtEvent ) -> bool
+                {
+                    if( aQtEvent->type() != QEvent::Paint )
+                        return false;
+
+                    wxPaintEvent event( wxGetWindowIdCompat( w ) );
+                    event.SetEventObject( w );
+
+                    wxSetPaintingCompat( painted, true );
+                    bool processed = aSink->Process( event );
+                    wxSetPaintingCompat( painted, false );
+
+                    return processed;
+                } );
+        break;
+    }
+
     default:
         // The events of the widget (the input events, the focus, the size...)
         KIQT::FilterEvents( w,
@@ -744,7 +828,6 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
 
                         return false;
 
-                    case wxEVT_CHAR_HOOK:
                     case wxEVT_CHAR:
                     case wxEVT_KEY_DOWN:
                         if( qtType == QEvent::KeyPress || qtType == QEvent::ShortcutOverride )
@@ -2166,46 +2249,6 @@ int wxBoxSizer::GetOrientation() const
 }
 
 
-void wxBoxSizer::Add( wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder, void* aUserData )
-{
-    Insert( count(), aWindow, aProportion, aFlag, aBorder );
-}
-
-
-void wxBoxSizer::Add( QLayout* aSizer, int aProportion, int aFlag, int aBorder, void* aUserData )
-{
-    Insert( count(), aSizer, aProportion, aFlag, aBorder );
-}
-
-
-void wxBoxSizer::Add( int aWidth, int aHeight, int aProportion, int aFlag, int aBorder )
-{
-    if( aProportion > 0 )
-        addStretch( aProportion );
-    else
-        addSpacing( GetOrientation() == wxVERTICAL ? aHeight : aWidth );
-}
-
-
-void wxBoxSizer::Insert( size_t aIndex, wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder )
-{
-    if( !aWindow )
-        return;
-
-    insertWidget( int( std::min<size_t>( aIndex, count() ) ), aWindow, aProportion,
-                  wxSizerFlagsAlignment( aFlag, GetOrientation() == wxVERTICAL ) );
-}
-
-
-void wxBoxSizer::Insert( size_t aIndex, QLayout* aSizer, int aProportion, int aFlag, int aBorder )
-{
-    if( !aSizer )
-        return;
-
-    insertLayout( int( std::min<size_t>( aIndex, count() ) ), aSizer, aProportion );
-}
-
-
 wxStaticBoxSizer::wxStaticBoxSizer( wxStaticBox* aBox, int aOrient ) :
         wxBoxSizer( aOrient ),
         m_box( aBox )
@@ -2252,7 +2295,8 @@ void wxFlexGridSizer::nextCell( int& aRow, int& aCol )
 }
 
 
-void wxFlexGridSizer::Add( wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder )
+void wxFlexGridSizer::Add( wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder,
+                           void* aUserData )
 {
     int row, col;
     nextCell( row, col );
@@ -2276,17 +2320,19 @@ void wxFlexGridSizer::Add( wxWidgetArgCompat aWindow, int aProportion, int aFlag
 }
 
 
-void wxFlexGridSizer::Add( QLayout* aSizer, int aProportion, int aFlag, int aBorder )
+void wxFlexGridSizer::Add( wxSizer* aSizer, int aProportion, int aFlag, int aBorder,
+                           void* aUserData )
 {
     int row, col;
     nextCell( row, col );
 
-    if( aSizer )
-        addLayout( aSizer, row, col );
+    if( aSizer && aSizer->GetLayoutCompat() )
+        addLayout( aSizer->GetLayoutCompat(), row, col );
 }
 
 
-void wxFlexGridSizer::Add( int aWidth, int aHeight, int aProportion, int aFlag, int aBorder )
+void wxFlexGridSizer::Add( int aWidth, int aHeight, int aProportion, int aFlag, int aBorder,
+                           void* aUserData )
 {
     int row, col;
     nextCell( row, col );
@@ -2343,4 +2389,29 @@ QWidget* wxFindFocusCompat()
 void wxBell()
 {
     QApplication::beep();
+}
+
+
+// The busy cursor ---------------------------------------------------------------------------
+
+static int s_busyCount = 0;
+
+
+void wxBeginBusyCursor( const void* aCursor )
+{
+    if( s_busyCount++ == 0 )
+        QApplication::setOverrideCursor( Qt::WaitCursor );
+}
+
+
+void wxEndBusyCursor()
+{
+    if( s_busyCount > 0 && --s_busyCount == 0 )
+        QApplication::restoreOverrideCursor();
+}
+
+
+bool wxIsBusy()
+{
+    return s_busyCount > 0;
 }

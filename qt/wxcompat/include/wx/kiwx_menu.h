@@ -188,4 +188,10 @@ private:
 KIQT_API bool wxPopupMenuCompat( QWidget* aWindow, wxMenu* aMenu, const wxPoint& aPos,
                                  wxCommandEvent& aEvent );
 
+/**
+ * Show the menu @a aMenu on @a aWindow at @a aPos (wxDefaultPosition: at the mouse) and return
+ * the id of the chosen item (wxID_NONE if none), without its event.
+ */
+KIQT_API int wxPopupMenuSelectionCompat( QWidget* aWindow, wxMenu* aMenu, const wxPoint& aPos );
+
 #endif // KIWX_MENU_H

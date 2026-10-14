@@ -1453,6 +1453,12 @@ void EDA_BASE_FRAME::ChangeUserUnits( EDA_UNITS aUnits )
 
     for( const auto& [id, listener] : listeners )
         listener( this );
+
+    // The windows bound to EDA_EVT_UNITS_CHANGED (UNIT_BINDER... on the compatibility layer)
+    wxCommandEvent e( EDA_EVT_UNITS_CHANGED );
+    e.SetInt( static_cast<int>( aUnits ) );
+    e.SetClientData( this );
+    ProcessEventLocally( e );
 }
 
 

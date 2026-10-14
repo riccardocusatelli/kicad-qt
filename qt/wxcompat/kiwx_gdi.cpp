@@ -29,7 +29,9 @@
 #include <wx/kiwx_gdi.h>
 
 #include <map>
+#include <set>
 
+#include <QAbstractScrollArea>
 #include <QApplication>
 #include <QFontMetrics>
 #include <QPainter>
@@ -41,6 +43,7 @@
 #include <QWidget>
 
 #include <wx/defs.h>
+#include <wx/kiwx_window.h>
 
 #include <gal/color4d.h>
 #include <qt_strings.h>
@@ -133,6 +136,9 @@ static const wxColour s_red( 255, 0, 0 );
 static const wxColour s_blue( 0, 0, 255 );
 static const wxColour s_green( 0, 255, 0 );
 static const wxColour s_lightGrey( 211, 211, 211 );
+static const wxColour s_yellow( 255, 255, 0 );
+static const wxColour s_cyan( 0, 255, 255 );
+static const wxColour s_grey( 128, 128, 128 );
 
 const wxColour* wxBLACK = &s_black;
 const wxColour* wxWHITE = &s_white;
@@ -140,6 +146,9 @@ const wxColour* wxRED = &s_red;
 const wxColour* wxBLUE = &s_blue;
 const wxColour* wxGREEN = &s_green;
 const wxColour* wxLIGHT_GREY = &s_lightGrey;
+const wxColour* wxYELLOW = &s_yellow;
+const wxColour* wxCYAN = &s_cyan;
+const wxColour* wxGREY = &s_grey;
 
 
 // The conversions of KIGFX::COLOR4D (color4d_wx.cpp with wxWidgets)
@@ -975,4 +984,134 @@ wxSize wxRendererNative::GetCheckBoxSize( QWidget* aWindow, int aFlags )
     QStyle* style = styleOf( aWindow );
     return wxSize( style->pixelMetric( QStyle::PM_IndicatorWidth, nullptr, aWindow ),
                    style->pixelMetric( QStyle::PM_IndicatorHeight, nullptr, aWindow ) );
+}
+
+
+// The device contexts of the windows and of the bitmaps -------------------------------------
+
+namespace
+{
+std::set<const QWidget*>& paintingWidgets()
+{
+    static std::set<const QWidget*> widgets;
+    return widgets;
+}
+
+
+/// The widget painted for a window (the viewport of a scroll area).
+QWidget* paintedWidget( QWidget* aWindow )
+{
+    if( QAbstractScrollArea* area = qobject_cast<QAbstractScrollArea*>( aWindow ) )
+        return area->viewport();
+
+    return aWindow;
+}
+} // namespace
+
+
+void wxSetPaintingCompat( QWidget* aWidget, bool aPainting )
+{
+    if( aPainting )
+        paintingWidgets().insert( aWidget );
+    else
+        paintingWidgets().erase( aWidget );
+}
+
+
+bool wxIsPaintingCompat( const QWidget* aWidget )
+{
+    return paintingWidgets().count( aWidget ) > 0;
+}
+
+
+wxPaintDC::wxPaintDC( const wxWindow* aWindow ) :
+        wxDC( nullptr, aWindow ? aWindow->GetHandle() : nullptr )
+{
+    init( aWindow ? aWindow->GetHandle() : nullptr );
+}
+
+
+void wxPaintDC::init( QWidget* aWindow )
+{
+    QWidget* widget = aWindow ? paintedWidget( aWindow ) : nullptr;
+
+    if( widget && wxIsPaintingCompat( widget ) )
+    {
+        m_ownPainter = std::make_unique<QPainter>( widget );
+    }
+    else
+    {
+        // Not painted now: an image of the size of the window, for the measures
+        QSize size = widget ? widget->size().expandedTo( QSize( 1, 1 ) ) : QSize( 1, 1 );
+        m_image = std::make_unique<QImage>( size, QImage::Format_ARGB32_Premultiplied );
+        m_image->fill( Qt::transparent );
+        m_ownPainter = std::make_unique<QPainter>( m_image.get() );
+    }
+
+    m_ownPainter->setRenderHint( QPainter::Antialiasing );
+    SetPainterCompat( m_ownPainter.get() );
+    SetFont( GetFont() );
+}
+
+
+wxPaintDC::~wxPaintDC()
+{
+    m_ownPainter.reset();
+}
+
+
+wxMemoryDC::wxMemoryDC() :
+        wxDC( nullptr )
+{
+    SelectObjectAsSource( wxNullBitmap );
+}
+
+
+wxMemoryDC::wxMemoryDC( wxBitmap& aBitmap ) :
+        wxDC( nullptr )
+{
+    SelectObject( aBitmap );
+}
+
+
+wxMemoryDC::~wxMemoryDC()
+{
+    release();
+}
+
+
+void wxMemoryDC::release()
+{
+    m_ownPainter.reset();
+
+    if( m_bitmap )
+        *m_bitmap = wxBitmap( QPixmap::fromImage( m_image ) );
+
+    m_bitmap = nullptr;
+}
+
+
+void wxMemoryDC::SelectObject( wxBitmap& aBitmap )
+{
+    SelectObjectAsSource( aBitmap );
+
+    if( !aBitmap.isNull() )
+        m_bitmap = &aBitmap;
+}
+
+
+void wxMemoryDC::SelectObjectAsSource( const wxBitmap& aBitmap )
+{
+    release();
+
+    m_image = aBitmap.isNull() ? QImage( 1, 1, QImage::Format_ARGB32_Premultiplied )
+                               : aBitmap.toImage().convertToFormat( QImage::Format_ARGB32_Premultiplied );
+
+    if( aBitmap.isNull() )
+        m_image.fill( Qt::transparent );
+
+    m_ownPainter = std::make_unique<QPainter>( &m_image );
+    m_ownPainter->setRenderHint( QPainter::Antialiasing );
+    SetPainterCompat( m_ownPainter.get() );
+    SetFont( GetFont() );
 }

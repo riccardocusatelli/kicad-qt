@@ -29,21 +29,26 @@
 #include <QIcon>
 #include <QPushButton>
 
+#include <wx/kiwx_window.h>
+
 
 /**
  * A bitmap button widget that behaves like a standard dialog button, except with an icon
- * instead of a label.
+ * instead of a label: a window of the compatibility layer (the API of wxWindow).
  */
-class STD_BITMAP_BUTTON : public QPushButton
+class STD_BITMAP_BUTTON : public wxWindowCompat<QPushButton>
 {
 public:
-    STD_BITMAP_BUTTON( QWidget* aParent );
+    explicit STD_BITMAP_BUTTON( wxWidgetArgCompat aParent, int aId = wxID_ANY,
+                                const QIcon& aDummyBitmap = QIcon(),
+                                const wxPoint& aPos = wxDefaultPosition,
+                                const wxSize& aSize = wxDefaultSize, int aStyle = 0 );
 
     ~STD_BITMAP_BUTTON() override = default;
 
     void SetBitmap( const QIcon& aBmp );
 
-    bool Enable( bool aEnable = true );
+    bool Enable( bool aEnable = true ) override;
 };
 
 #endif /*STD_BITMAP_BUTTON_H*/

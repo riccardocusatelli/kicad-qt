@@ -24,8 +24,10 @@
 #include <wx/kiwx_window.h>
 
 #include <algorithm>
+#include <functional>
 
 #include <QApplication>
+#include <QBoxLayout>
 #include <QCloseEvent>
 #include <QFontMetrics>
 #include <QResizeEvent>
@@ -33,6 +35,7 @@
 #include <QVariant>
 
 #include <qt_strings.h>
+#include <wx/kiwx_gui.h>
 #include <wx/kiwx_menu.h>
 #include <wx/kiwx_validators.h>
 
@@ -140,15 +143,186 @@ void wxWindowList::makeNodes()
 
 // The sizer of a window --------------------------------------------------------------------
 
-QLayout* wxSizerProxy::GetLayout() const
+// wxSizer ----------------------------------------------------------------------------------
+
+namespace
 {
-    return m_window ? m_window->layout() : nullptr;
+/// The layout of a sizer as a box layout (nullptr if it isn't one).
+QBoxLayout* boxLayout( const wxSizer* aSizer )
+{
+    return qobject_cast<QBoxLayout*>( aSizer->GetLayoutCompat() );
 }
 
 
-void wxSizerProxy::Layout()
+bool isVertical( QBoxLayout* aBox )
 {
-    if( QLayout* layout = GetLayout() )
+    return aBox->direction() == QBoxLayout::TopToBottom
+           || aBox->direction() == QBoxLayout::BottomToTop;
+}
+
+
+void showLayout( QLayout* aLayout, bool aShow )
+{
+    for( int i = 0; i < aLayout->count(); ++i )
+    {
+        QLayoutItem* item = aLayout->itemAt( i );
+
+        if( item->widget() )
+            item->widget()->setVisible( aShow );
+        else if( item->layout() )
+            showLayout( item->layout(), aShow );
+    }
+}
+} // namespace
+
+
+void wxSizer::Add( wxWidgetArgCompat aWindow, int aProportion, int aFlag, int aBorder,
+                   void* aUserData )
+{
+    QLayout* layout = GetLayoutCompat();
+    Insert( layout ? size_t( layout->count() ) : 0, aWindow, aProportion, aFlag, aBorder );
+}
+
+
+void wxSizer::Add( wxSizer* aSizer, int aProportion, int aFlag, int aBorder, void* aUserData )
+{
+    QLayout* layout = GetLayoutCompat();
+    Insert( layout ? size_t( layout->count() ) : 0, aSizer, aProportion, aFlag, aBorder );
+}
+
+
+void wxSizer::Add( int aWidth, int aHeight, int aProportion, int aFlag, int aBorder,
+                   void* aUserData )
+{
+    if( QBoxLayout* box = boxLayout( this ) )
+    {
+        if( aProportion > 0 )
+            box->addStretch( aProportion );
+        else
+            box->addSpacing( isVertical( box ) ? aHeight : aWidth );
+    }
+    else if( QLayout* layout = GetLayoutCompat() )
+    {
+        layout->addItem( new QSpacerItem( std::max( aWidth, 0 ), std::max( aHeight, 0 ) ) );
+    }
+}
+
+
+void wxSizer::Insert( size_t aIndex, wxWidgetArgCompat aWindow, int aProportion, int aFlag,
+                      int aBorder, void* aUserData )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout || !aWindow )
+        return;
+
+    if( QBoxLayout* box = boxLayout( this ) )
+    {
+        box->insertWidget( int( std::min<size_t>( aIndex, box->count() ) ), aWindow, aProportion,
+                           wxSizerFlagsAlignment( aFlag, isVertical( box ) ) );
+    }
+    else
+    {
+        layout->addWidget( aWindow );
+    }
+}
+
+
+void wxSizer::Insert( size_t aIndex, wxSizer* aSizer, int aProportion, int aFlag, int aBorder,
+                      void* aUserData )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout || !aSizer || !aSizer->GetLayoutCompat() )
+        return;
+
+    if( QBoxLayout* box = boxLayout( this ) )
+    {
+        box->insertLayout( int( std::min<size_t>( aIndex, box->count() ) ),
+                           aSizer->GetLayoutCompat(), aProportion );
+    }
+    else
+    {
+        layout->addItem( aSizer->GetLayoutCompat() );
+    }
+}
+
+
+void wxSizer::AddSpacer( int aSize )
+{
+    Add( aSize, aSize );
+}
+
+
+void wxSizer::AddStretchSpacer( int aProportion )
+{
+    Add( 0, 0, std::max( aProportion, 1 ) );
+}
+
+
+bool wxSizer::Detach( wxWidgetArgCompat aWindow )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout || !aWindow || layout->indexOf( aWindow ) < 0 )
+        return false;
+
+    layout->removeWidget( aWindow );
+    return true;
+}
+
+
+bool wxSizer::Detach( wxSizer* aSizer )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout || !aSizer || !aSizer->GetLayoutCompat() )
+        return false;
+
+    QLayout* child = aSizer->GetLayoutCompat();
+
+    for( int i = 0; i < layout->count(); ++i )
+    {
+        if( layout->itemAt( i )->layout() == child )
+        {
+            layout->takeAt( i );
+            child->setParent( nullptr );
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+size_t wxSizer::GetItemCount() const
+{
+    QLayout* layout = GetLayoutCompat();
+    return layout ? size_t( layout->count() ) : 0;
+}
+
+
+void wxSizer::Clear( bool aDeleteWindows )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout )
+        return;
+
+    while( QLayoutItem* item = layout->takeAt( 0 ) )
+    {
+        if( aDeleteWindows && item->widget() )
+            item->widget()->deleteLater();
+
+        // An item of a layout is the layout itself: it is deleted with the item
+        delete item;
+    }
+}
+
+
+void wxSizer::Layout()
+{
+    if( QLayout* layout = GetLayoutCompat() )
     {
         layout->invalidate();
         layout->activate();
@@ -156,7 +330,7 @@ void wxSizerProxy::Layout()
 }
 
 
-wxSize wxSizerProxy::Fit( wxWidgetArgCompat aWindow )
+wxSize wxSizer::Fit( wxWidgetArgCompat aWindow )
 {
     Layout();
 
@@ -168,9 +342,9 @@ wxSize wxSizerProxy::Fit( wxWidgetArgCompat aWindow )
 }
 
 
-void wxSizerProxy::SetSizeHints( wxWidgetArgCompat aWindow )
+void wxSizer::SetSizeHints( wxWidgetArgCompat aWindow )
 {
-    if( QLayout* layout = GetLayout(); layout && aWindow )
+    if( QLayout* layout = GetLayoutCompat(); layout && aWindow )
     {
         layout->activate();
         aWindow->setMinimumSize( layout->minimumSize() );
@@ -179,9 +353,9 @@ void wxSizerProxy::SetSizeHints( wxWidgetArgCompat aWindow )
 }
 
 
-wxSize wxSizerProxy::GetMinSize() const
+wxSize wxSizer::GetMinSize() const
 {
-    QLayout* layout = GetLayout();
+    QLayout* layout = GetLayoutCompat();
 
     if( !layout )
         return wxSize();
@@ -191,9 +365,19 @@ wxSize wxSizerProxy::GetMinSize() const
 }
 
 
-bool wxSizerProxy::Show( wxWidgetArgCompat aWindow, bool aShow, bool aRecursive )
+wxWindow* wxSizer::GetContainingWindow() const
 {
-    if( !aWindow )
+    QLayout* layout = GetLayoutCompat();
+    QWidget* widget = layout ? layout->parentWidget() : nullptr;
+    return widget ? wxWindowFromQt( widget ) : nullptr;
+}
+
+
+bool wxSizer::Show( wxWidgetArgCompat aWindow, bool aShow, bool aRecursive )
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !aWindow || ( layout && layout->indexOf( aWindow ) < 0 && !aRecursive ) )
         return false;
 
     aWindow->setVisible( aShow );
@@ -201,7 +385,24 @@ bool wxSizerProxy::Show( wxWidgetArgCompat aWindow, bool aShow, bool aRecursive 
 }
 
 
-bool wxSizerProxy::IsShown( wxWidgetArgCompat aWindow ) const
+bool wxSizer::Show( wxSizer* aSizer, bool aShow, bool aRecursive )
+{
+    if( !aSizer || !aSizer->GetLayoutCompat() )
+        return false;
+
+    showLayout( aSizer->GetLayoutCompat(), aShow );
+    return true;
+}
+
+
+void wxSizer::ShowItems( bool aShow )
+{
+    if( QLayout* layout = GetLayoutCompat() )
+        showLayout( layout, aShow );
+}
+
+
+bool wxSizer::IsShown( wxWidgetArgCompat aWindow ) const
 {
     return aWindow && !aWindow->isHidden();
 }
@@ -942,10 +1143,15 @@ void wxWindow::PostSizeEvent()
 }
 
 
-wxSizerProxy* wxWindow::GetSizer()
+wxSizer* wxWindow::GetSizer()
 {
-    if( !GetHandle()->layout() )
+    QLayout* layout = GetHandle()->layout();
+
+    if( !layout )
         return nullptr;
+
+    if( wxSizer* sizer = dynamic_cast<wxSizer*>( layout ) )
+        return sizer;
 
     if( !m_sizerProxy )
         m_sizerProxy = std::make_unique<wxSizerProxy>( GetHandle() );
@@ -954,20 +1160,21 @@ wxSizerProxy* wxWindow::GetSizer()
 }
 
 
-void wxWindow::SetSizer( QLayout* aSizer, bool aDeleteOld )
+void wxWindow::SetSizer( wxSizer* aSizer, bool aDeleteOld )
 {
     QWidget* widget = GetHandle();
+    QLayout* layout = aSizer ? aSizer->GetLayoutCompat() : nullptr;
 
     // A widget has one layout: the old one goes first
-    if( QLayout* old = widget->layout(); old && old != aSizer )
+    if( QLayout* old = widget->layout(); old && old != layout )
         delete old;
 
-    if( aSizer )
-        widget->setLayout( aSizer );
+    if( layout )
+        widget->setLayout( layout );
 }
 
 
-void wxWindow::SetSizerAndFit( QLayout* aSizer, bool aDeleteOld )
+void wxWindow::SetSizerAndFit( wxSizer* aSizer, bool aDeleteOld )
 {
     SetSizer( aSizer, aDeleteOld );
     Fit();
@@ -1086,6 +1293,12 @@ bool wxWindow::PopupMenu( wxMenu* aMenu, const wxPoint& aPos )
         ProcessEvent( event );
 
     return true;
+}
+
+
+int wxWindow::GetPopupMenuSelectionFromUser( wxMenu& aMenu, const wxPoint& aPos )
+{
+    return wxPopupMenuSelectionCompat( GetHandle(), &aMenu, aPos );
 }
 
 

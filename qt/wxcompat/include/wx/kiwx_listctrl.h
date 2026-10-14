@@ -187,28 +187,35 @@ public:
     {
     }
 
-    long GetIndex() const { return m_item.GetId(); }
-    int GetColumn() const { return m_column; }
+    long GetIndex() const { return m_itemIndex; }
+    int GetColumn() const { return m_col; }
     const wxListItem& GetItem() const { return m_item; }
     wxString GetLabel() const { return m_item.GetText(); }
     wxString GetText() const { return m_item.GetText(); }
     wxUIntPtr GetData() const { return m_item.GetData(); }
     int GetImage() const { return m_item.GetImage(); }
-    int GetKeyCode() const { return m_keyCode; }
-    wxPoint GetPoint() const { return m_point; }
+    int GetKeyCode() const { return m_code; }
+    wxPoint GetPoint() const { return m_pointDrag; }
     bool IsEditCancelled() const { return false; }
 
     // The ones of the controls of the layer
-    void SetItemCompat( const wxListItem& aItem ) { m_item = aItem; }
-    void SetColumnCompat( int aColumn ) { m_column = aColumn; }
-    void SetKeyCodeCompat( int aKeyCode ) { m_keyCode = aKeyCode; }
-    void SetPointCompat( const wxPoint& aPoint ) { m_point = aPoint; }
+    void SetItemCompat( const wxListItem& aItem )
+    {
+        m_item = aItem;
+        m_itemIndex = aItem.GetId();
+    }
 
-private:
+    void SetColumnCompat( int aColumn ) { m_col = aColumn; }
+    void SetKeyCodeCompat( int aKeyCode ) { m_code = aKeyCode; }
+    void SetPointCompat( const wxPoint& aPoint ) { m_pointDrag = aPoint; }
+
+    // The data of the event (public in wxWidgets)
+    int        m_code = 0;
+    long       m_oldItemIndex = -1;
+    long       m_itemIndex = -1;
+    int        m_col = -1;
+    wxPoint    m_pointDrag;
     wxListItem m_item;
-    int        m_column = -1;
-    int        m_keyCode = 0;
-    wxPoint    m_point;
 };
 
 #define wxListEventHandler( func ) ( &func )

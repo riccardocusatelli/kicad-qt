@@ -69,6 +69,9 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_msgdlg.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_pickers.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_listctrl.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_dataview.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_statusbar.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_display.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_clipboard.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
@@ -205,7 +208,9 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
     grid_tricks.cpp
+    kidialog.cpp
     scintilla_tricks.cpp
+    ui_events.cpp
     validators.cpp
     widgets/grid_bitmap_toggle.cpp
     widgets/grid_button.cpp
@@ -216,6 +221,8 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/grid_text_button_helpers.cpp
     widgets/grid_text_helpers.cpp
     widgets/indicator_icon.cpp
+    widgets/number_badge.cpp
+    widgets/wx_dataviewctrl.cpp
     widgets/wx_grid.cpp
     )
 

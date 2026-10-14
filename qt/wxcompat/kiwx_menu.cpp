@@ -599,3 +599,22 @@ bool wxPopupMenuCompat( QWidget* aWindow, wxMenu* aMenu, const wxPoint& aPos,
     aEvent.SetEventObject( aWindow );
     return true;
 }
+
+
+int wxPopupMenuSelectionCompat( QWidget* aWindow, wxMenu* aMenu, const wxPoint& aPos )
+{
+    if( !aMenu )
+        return wxID_NONE;
+
+    aMenu->UpdateUI();
+
+    QPoint pos = aPos == wxDefaultPosition ? QCursor::pos()
+                                           : aWindow->mapToGlobal( QPoint( aPos.x, aPos.y ) );
+
+    wxMenuItem* item = wxMenu::ItemOfActionCompat( aMenu->exec( pos ) );
+
+    if( !item || item->IsSeparator() || item->IsSubMenu() )
+        return wxID_NONE;
+
+    return item->GetId();
+}

@@ -26,6 +26,10 @@
  */
 
 #include <wx/app.h>     // kiwx
+#include <wx/kiwx_events.h>
+
+#include <QCoreApplication>
+#include <QEventLoop>
 
 
 /**
@@ -39,4 +43,31 @@ class KIQT_APP : public wxAppConsole
 {
 public:
     bool IsGUI() const override { return true; }
+
+    bool Yield( bool aOnlyIfNeeded = false ) override
+    {
+        QCoreApplication::processEvents();
+        return true;
+    }
+
+    bool SafeYield( wxWindow* aWindow, bool aOnlyIfNeeded ) override
+    {
+        QCoreApplication::processEvents( QEventLoop::ExcludeUserInputEvents );
+        return true;
+    }
+
+    bool SafeYieldFor( wxWindow* aWindow, long aEventsToProcess ) override
+    {
+        QCoreApplication::processEvents( ( aEventsToProcess & wxEVT_CATEGORY_USER_INPUT )
+                                                 ? QEventLoop::AllEvents
+                                                 : QEventLoop::ExcludeUserInputEvents );
+        return true;
+    }
+
+    /// The main window (the frames are the top-level windows of Qt: kept for the code asking).
+    void SetTopWindow( wxWindow* aWindow ) override { m_topWindow = aWindow; }
+    wxWindow* GetTopWindow() const override { return m_topWindow; }
+
+private:
+    wxWindow* m_topWindow = nullptr;
 };

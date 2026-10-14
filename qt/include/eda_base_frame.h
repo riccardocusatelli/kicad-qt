@@ -60,6 +60,7 @@
 #include <widgets/wx_infobar_message_type.h>
 #include <undo_redo_container.h>
 #include <units_provider.h>
+#include <ui_events.h>
 #include <origin_transforms.h>
 #include <toolkit/close_request.h>
 #include <toolkit/gui_timer.h>

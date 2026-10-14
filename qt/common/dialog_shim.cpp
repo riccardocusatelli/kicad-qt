@@ -101,6 +101,23 @@ DIALOG_SHIM::DIALOG_SHIM( wxWidgetArgCompat aParent, const wxString& aTitle ) :
         if( m_parentFrame->HasKiway() )
             SetKiway( this, &m_parentFrame->Kiway() );
     }
+
+    // The keys of the dialog and of its controls (as the event table of wxWidgets: the handlers
+    // bound by the dialogs come first)
+    Bind( wxEVT_CHAR_HOOK, &DIALOG_SHIM::OnCharHook, this );
+}
+
+
+void DIALOG_SHIM::OnCharHook( wxKeyEvent& aEvt )
+{
+    // Ctrl+U: the other user units
+    if( aEvt.GetKeyCode() == 'U' && aEvt.GetModifiers() == wxMOD_CONTROL && m_parentFrame )
+    {
+        m_parentFrame->ToggleUserUnits();
+        return;
+    }
+
+    aEvt.Skip();
 }
 
 

@@ -28,7 +28,10 @@
 
 #include <wx/kiwx_combo.h>
 
+#include <QAbstractItemView>
 #include <QFrame>
+#include <QPainter>
+#include <QStyledItemDelegate>
 #include <QHBoxLayout>
 #include <QScreen>
 #include <QToolButton>
@@ -220,3 +223,117 @@ void wxComboCtrl::SetButtonBitmaps( const wxBitmapBundle& aNormal, bool aPushBut
 }
 
 
+
+
+// wxOwnerDrawnComboBox ---------------------------------------------------------------------
+
+namespace
+{
+/// The items of the list of a wxOwnerDrawnComboBox, drawn by the combo box.
+class KIWX_OWNER_DRAWN_DELEGATE : public QStyledItemDelegate
+{
+public:
+    explicit KIWX_OWNER_DRAWN_DELEGATE( wxOwnerDrawnComboBox* aCombo ) :
+            QStyledItemDelegate( aCombo ),
+            m_combo( aCombo )
+    {
+    }
+
+    void paint( QPainter* aPainter, const QStyleOptionViewItem& aOption,
+                const QModelIndex& aIndex ) const override
+    {
+        bool selected = aOption.state & QStyle::State_Selected;
+
+        aPainter->save();
+
+        if( selected )
+            aPainter->fillRect( aOption.rect, aOption.palette.highlight() );
+
+        wxDC dc( aPainter, m_combo );
+
+        if( selected )
+            dc.SetTextForeground( wxColour( aOption.palette.color( QPalette::HighlightedText ) ) );
+
+        const QRect& r = aOption.rect;
+        m_combo->OnDrawItem( dc, wxRect( r.x(), r.y(), r.width(), r.height() ), aIndex.row(),
+                             selected ? wxODCB_PAINTING_SELECTED : 0 );
+
+        aPainter->restore();
+    }
+
+    QSize sizeHint( const QStyleOptionViewItem& aOption, const QModelIndex& aIndex ) const override
+    {
+        QSize size = QStyledItemDelegate::sizeHint( aOption, aIndex );
+        wxCoord height = m_combo->OnMeasureItem( size_t( aIndex.row() ) );
+        wxCoord width = m_combo->OnMeasureItemWidth( size_t( aIndex.row() ) );
+
+        if( height > 0 )
+            size.setHeight( height );
+
+        if( width > 0 )
+            size.setWidth( width );
+
+        return size;
+    }
+
+private:
+    wxOwnerDrawnComboBox* m_combo;
+};
+
+
+wxArrayString choicesOf( int aCount, const wxString aChoices[] )
+{
+    wxArrayString choices;
+
+    for( int i = 0; aChoices && i < aCount; ++i )
+        choices.Add( aChoices[i] );
+
+    return choices;
+}
+} // namespace
+
+
+wxOwnerDrawnComboBox::wxOwnerDrawnComboBox( wxWidgetArgCompat aParent, int aId,
+                                            const wxString& aValue, const wxPoint& aPos,
+                                            const wxSize& aSize, const wxArrayString& aChoices,
+                                            long aStyle ) :
+        wxComboBox( aParent, aId, aValue, aPos, aSize, aChoices, aStyle )
+{
+    initCompat();
+}
+
+
+wxOwnerDrawnComboBox::wxOwnerDrawnComboBox( wxWidgetArgCompat aParent, int aId,
+                                            const wxString& aValue, const wxPoint& aPos,
+                                            const wxSize& aSize, int aCount,
+                                            const wxString aChoices[], long aStyle ) :
+        wxComboBox( aParent, aId, aValue, aPos, aSize, choicesOf( aCount, aChoices ), aStyle )
+{
+    initCompat();
+}
+
+
+void wxOwnerDrawnComboBox::initCompat()
+{
+    setItemDelegate( new KIWX_OWNER_DRAWN_DELEGATE( this ) );
+}
+
+
+bool wxOwnerDrawnComboBox::IsPopupShown() const
+{
+    return m_popupShown;
+}
+
+
+void wxOwnerDrawnComboBox::showPopup()
+{
+    m_popupShown = true;
+    wxComboBox::showPopup();
+}
+
+
+void wxOwnerDrawnComboBox::hidePopup()
+{
+    wxComboBox::hidePopup();
+    m_popupShown = false;
+}

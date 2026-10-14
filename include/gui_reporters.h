@@ -25,18 +25,19 @@
 #include <reporter.h>
 
 class wxStatusBar;
-class wxTextCtrl;
+class wxTextEntry;
 class KISTATUSBAR;
 class STATUSBAR_WARNING_REPORTER_IMPL;
 
 
 /**
- * A wrapper for reporting to a wxTextCtrl object.
+ * A wrapper for reporting to a wxTextCtrl object (any text entry: a multi-line text control
+ * of the Qt compatibility layer is not a wxTextCtrl).
  */
 class KICOMMON_API WX_TEXT_CTRL_REPORTER : public REPORTER
 {
 public:
-    WX_TEXT_CTRL_REPORTER( wxTextCtrl* aTextCtrl ) :
+    WX_TEXT_CTRL_REPORTER( wxTextEntry* aTextCtrl ) :
         REPORTER(),
         m_textCtrl( aTextCtrl )
     {
@@ -50,7 +51,7 @@ public:
                       SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override;
 
 private:
-    wxTextCtrl* m_textCtrl;
+    wxTextEntry* m_textCtrl;
 };
 
 

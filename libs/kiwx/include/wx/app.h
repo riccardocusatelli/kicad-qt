@@ -27,6 +27,8 @@
 #include <wx/arrstr.h>
 #include <wx/string.h>
 
+class wxWindow;
+
 /// The command line arguments of the application (wxCmdLineArgsArray).
 class wxCmdLineArgsArray
 {
@@ -87,6 +89,21 @@ public:
     void SetVendorDisplayName( const wxString& aName ) { m_vendorDisplayName = aName; }
 
     void ExitMainLoop() {}
+
+    // The event loop of the user interface (none here: the application of a user interface
+    // overrides them)
+
+    /// Process the pending events.
+    virtual bool Yield( bool aOnlyIfNeeded = false ) { return true; }
+
+    /// Process the pending events without the input of the user (wxSafeYield()).
+    virtual bool SafeYield( wxWindow* aWindow, bool aOnlyIfNeeded ) { return true; }
+
+    /// Process the pending events of the categories @a aEventsToProcess (wxEventCategory).
+    virtual bool SafeYieldFor( wxWindow* aWindow, long aEventsToProcess ) { return true; }
+
+    virtual void      SetTopWindow( wxWindow* aWindow ) {}
+    virtual wxWindow* GetTopWindow() const { return nullptr; }
 
     int                argc = 0;
     wxCmdLineArgsArray argv;

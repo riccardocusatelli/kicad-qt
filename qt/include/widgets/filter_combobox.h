@@ -40,6 +40,7 @@
 #include <wx/arrstr.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
+#include <wx/kiwx_window.h>
 
 class QLineEdit;
 class QListWidget;
@@ -128,15 +129,15 @@ protected:
 /**
  * A combo box showing its list in a popup with a filter.
  */
-class FILTER_COMBOBOX : public QComboBox
+class FILTER_COMBOBOX : public wxWindowCompat<QComboBox>
 {
 public:
     // C'tor matching wxFormBuilder's Custom Control
-    FILTER_COMBOBOX( QWidget* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
+    FILTER_COMBOBOX( wxWidgetArgCompat parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
                      const wxSize& size = wxDefaultSize, long style = 0 );
 
     // C'tor matching wxFormBuilder's ComboxBox.
-    FILTER_COMBOBOX( QWidget* parent, wxWindowID id, const wxString& value,
+    FILTER_COMBOBOX( wxWidgetArgCompat parent, wxWindowID id, const wxString& value,
                      const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize,
                      int count = 0, wxString strings[] = nullptr, long style = 0 );
 
@@ -154,7 +155,8 @@ public:
     /// Call @a aHandler when an item of the popup is selected (FILTERED_ITEM_SELECTED).
     void OnFilteredItemSelected( std::function<void()> aHandler );
 
-    /// Tell the handlers that an item was selected (after the current event).
+    /// Tell the handlers (and the ones bound to FILTERED_ITEM_SELECTED) that an item was
+    /// selected (after the current event).
     void NotifyItemSelected();
 
     void showPopup() override;
@@ -171,3 +173,7 @@ protected:
     long                               m_style;
     std::vector<std::function<void()>> m_selectedHandlers;
 };
+
+
+/// An item of the popup of a FILTER_COMBOBOX was selected (a wxCommandEvent of the combo box).
+wxDECLARE_EVENT( FILTERED_ITEM_SELECTED, wxCommandEvent );

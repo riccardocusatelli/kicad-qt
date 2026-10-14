@@ -394,12 +394,17 @@ void FILTER_COMBOPOPUP::doStartingKey( QKeyEvent* aEvent )
 }
 
 
-FILTER_COMBOBOX::FILTER_COMBOBOX( QWidget* parent, wxWindowID id, const wxPoint& pos,
+wxDEFINE_EVENT( FILTERED_ITEM_SELECTED, wxCommandEvent );
+
+
+FILTER_COMBOBOX::FILTER_COMBOBOX( wxWidgetArgCompat parent, wxWindowID id, const wxPoint& pos,
                                   const wxSize& size, long style ) :
-        QComboBox( parent ),
+        wxWindowCompat<QComboBox>( parent.get() ),
         m_filterPopup( nullptr ),
         m_style( style )
 {
+    SetId( id );
+
     // A read-only combo box shows the chosen string; the other ones can be typed in
     setEditable( !( style & wxCB_READONLY ) );
 
@@ -408,7 +413,7 @@ FILTER_COMBOBOX::FILTER_COMBOBOX( QWidget* parent, wxWindowID id, const wxPoint&
 }
 
 
-FILTER_COMBOBOX::FILTER_COMBOBOX( QWidget* parent, wxWindowID id, const wxString& value,
+FILTER_COMBOBOX::FILTER_COMBOBOX( wxWidgetArgCompat parent, wxWindowID id, const wxString& value,
                                   const wxPoint& pos, const wxSize& size,
                                   int count, wxString strings[], long style ) :
         FILTER_COMBOBOX( parent, id, pos, size, style )
@@ -478,6 +483,10 @@ void FILTER_COMBOBOX::NotifyItemSelected()
 
                             for( const std::function<void()>& handler : handlers )
                                 handler();
+
+                            wxCommandEvent event( FILTERED_ITEM_SELECTED, GetId() );
+                            event.SetEventObject( this );
+                            ProcessEvent( event );
                         } );
 }
 
