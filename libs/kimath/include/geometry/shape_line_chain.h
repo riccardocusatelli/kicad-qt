@@ -34,6 +34,12 @@
 #include <geometry/corner_strategy.h>
 #include <math/vector2d.h>
 
+#if defined( _MSC_VER )
+// ssize_t is a POSIX extension; kimath is built without wx, which defines it on Windows
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 /**
  * Holds information on each point of a SHAPE_LINE_CHAIN that is retrievable
  * after an operation with Clipper2Lib
