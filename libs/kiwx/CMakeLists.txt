@@ -76,6 +76,7 @@ if( WIN32 )
     target_sources( kiwx PRIVATE
         src/msw/dynlib_msw.cpp
         src/msw/file_msw.cpp
+        src/msw/registry_msw.cpp
         src/msw/stdpaths_msw.cpp
         src/msw/utils_msw.cpp
         )

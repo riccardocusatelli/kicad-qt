@@ -19,10 +19,6 @@
     "boost-test",
     "boost-uuid",
     "cairo",
-    {
-      "name": "wxwidgets-33",
-      "features": [ "webview" ]
-    },
     "curl",
     "expat",
     {
@@ -46,7 +42,6 @@
     },
     "icu",
     "ngspice",
-    "wxpython-33",
     {
       "name": "libgit2",
       "features": [ "ssh", "winhttp" ]
@@ -56,6 +51,25 @@
     "zlib",
     "zstd"
   ],
+  "default-features": [ "wx" ],
+  "features": {
+    "wx": {
+      "description": "The wxWidgets build of KiCad",
+      "dependencies": [
+        {
+          "name": "wxwidgets-33",
+          "features": [ "webview" ]
+        },
+        "wxpython-33"
+      ]
+    },
+    "qt": {
+      "description": "The Qt build of KiCad (KICAD_WX_FREE and KICAD_QT_SHELL; VCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON, VCPKG_MANIFEST_FEATURES=qt)",
+      "dependencies": [
+        "qtbase"
+      ]
+    }
+  },
   "overrides": [
     {
       "name": "glm",

@@ -300,7 +300,11 @@ wxString wxString::From8BitData( const char* aStr, size_t aLen )
 namespace
 {
 
+#if defined( _MSC_VER )
+wxString formatNumber( const char* aFormat, ... );
+#else
 wxString formatNumber( const char* aFormat, ... ) __attribute__( ( format( printf, 1, 2 ) ) );
+#endif
 
 wxString formatNumber( const char* aFormat, ... )
 {

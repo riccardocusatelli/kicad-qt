@@ -429,7 +429,12 @@ public:
     wxCStrData           GetData() const { return c_str(); }
     wxWritableCharBuffer char_str( const wxMBConv& aConv = wxConvLibc ) const { return mb_str( aConv ); }
     wxWritableWCharBuffer wchar_str() const { return wxWritableWCharBuffer( m_impl ); }
+#ifdef _WIN32
+    // The file names of Windows are wide (as wxMSW)
+    const wchar_t*       fn_str() const { return wc_str(); }
+#else
     wxScopedCharBuffer   fn_str() const { return utf8_str(); }
+#endif
     wxCharBuffer         mb_str( const wxMBConv& aConv = wxConvLibc ) const;
     wxCharBuffer         mbc_str() const { return mb_str( *wxConvCurrent ); }
     wxScopedCharBuffer   utf8_str() const;

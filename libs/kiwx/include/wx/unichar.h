@@ -33,6 +33,8 @@
  * A Unicode character (a code point), as wxUniChar: converts from and to the C character
  * types; a char is taken as ISO-8859-1 (bytes above 127 never occur in KiCad's literals).
  */
+class wxUniCharRef;
+
 class wxUniChar
 {
 public:
@@ -53,6 +55,10 @@ public:
     constexpr wxUniChar( unsigned short c ) : m_value( c ) {}
     constexpr wxUniChar( long long c ) : m_value( static_cast<value_type>( c ) ) {}
     constexpr wxUniChar( unsigned long long c ) : m_value( static_cast<value_type>( c ) ) {}
+
+    /// A character of a wxString (as wxWidgets: a constructor, not a conversion operator of
+    /// the reference, which MSVC finds ambiguous with the other constructors).
+    wxUniChar( const wxUniCharRef& c );
 
     constexpr value_type GetValue() const { return m_value; }
 
@@ -171,8 +177,6 @@ public:
 
     bool GetAsChar( char* c ) const { return wxUniChar( m_ref ).GetAsChar( c ); }
 
-    operator wxUniChar() const { return wxUniChar( m_ref ); }
-
     operator char() const { return wxUniChar( m_ref ); }
     operator unsigned char() const { return wxUniChar( m_ref ); }
     operator wchar_t() const { return m_ref; }
@@ -226,6 +230,11 @@ public:
 private:
     wchar_t& m_ref;
 };
+
+
+inline wxUniChar::wxUniChar( const wxUniCharRef& c ) : m_value( c.GetValue() )
+{
+}
 
 inline int operator-( char c1, const wxUniCharRef& c2 ) { return -( c2 - c1 ); }
 inline int operator-( const wxUniChar& c1, const wxUniCharRef& c2 ) { return -( c2 - c1 ); }

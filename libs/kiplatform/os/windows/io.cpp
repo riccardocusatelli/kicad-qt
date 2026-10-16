@@ -23,6 +23,7 @@
 #include <wx/wxcrt.h>
 #include <wx/filename.h>
 
+#include <io.h>
 #include <stdexcept>
 #include <string>
 #include <windows.h>

@@ -23,6 +23,7 @@
 #include <wx/app.h>
 #include <wx/log.h>
 #include <wx/string.h>
+#include <wx/utils.h>
 #if wxCHECK_VERSION( 3, 3, 0 )
 #include <wx/msw/darkmode.h>
 #endif

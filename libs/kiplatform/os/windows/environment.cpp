@@ -26,7 +26,9 @@
 #include <wx/tokenzr.h>
 #include <wx/app.h>
 #include <wx/uri.h>
+#ifndef KIWX
 #include <wx/window.h>
+#endif
 
 #include <windows.h>
 #include <shellapi.h>
@@ -433,6 +435,11 @@ wxString KIPLATFORM::ENV::GetAppUserModelId()
 void KIPLATFORM::ENV::SetAppDetailsForWindow( wxWindow* aWindow, const wxString& aRelaunchCommand,
                                               const wxString& aRelaunchDisplayName )
 {
+#ifdef KIWX
+    // The wxBase of KiCad (the build without wxWidgets) has no windows: the Qt shell sets the
+    // details of its own windows
+    return;
+#else
     IPropertyStore* pps;
     HRESULT         hr = ::SHGetPropertyStoreForWindow( aWindow->GetHWND(), IID_PPV_ARGS( &pps ) );
     if( SUCCEEDED( hr ) )
@@ -483,6 +490,7 @@ void KIPLATFORM::ENV::SetAppDetailsForWindow( wxWindow* aWindow, const wxString&
 
         pps->Release();
     }
+#endif
 }
 
 
