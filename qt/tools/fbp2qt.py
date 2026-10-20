@@ -392,6 +392,38 @@ COMPAT_EVENTS = {
 }
 
 
+# The standard ids of wxWidgets (wxID_OK...): the other ids of the windows are defined by the
+# generated headers, as wxFormBuilder does
+def standard_ids():
+    path = os.path.join( os.path.dirname( os.path.abspath( __file__ ) ), '..', '..', 'libs', 'kiwx',
+                         'include', 'wx', 'kiwx_constants.h' )
+
+    with open( path, encoding = 'utf-8' ) as f:
+        return set( re.findall( r'\b(wxID_\w+)\s*[=,]', f.read() ) )
+
+
+STANDARD_IDS = standard_ids()
+
+
+# The arguments of the constructors of wxFormBuilder after the parent and the id, by class: the
+# subclasses and the custom controls of KiCad (compatibility mode) are created with them
+def wx_ctor_args( aClass, aProps, aStyle ):
+    if aClass == 'wxBitmapButton':
+        return 'wxNullBitmap, wxDefaultPosition, wxDefaultSize, %s' % aStyle
+    if aClass == 'wxButton':
+        return '_( %s ), wxDefaultPosition, wxDefaultSize, %s' % ( cstr( aProps.get( 'label', '' ) ), aStyle )
+    if aClass == 'wxTextCtrl':
+        return 'wxString::FromUTF8( %s ), wxDefaultPosition, wxDefaultSize, %s' % ( cstr( aProps.get( 'value', '' ) ), aStyle )
+    if aClass in ( 'wxBitmapComboBox', 'wxComboBox' ):
+        return 'wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, nullptr, %s' % aStyle
+    if aClass == 'wxChoice':
+        return 'wxDefaultPosition, wxDefaultSize, 0, nullptr, %s' % aStyle
+    if aClass in ( 'wxGrid', 'wxHtmlWindow', 'wxTreeCtrl', 'CustomControl' ):
+        return 'wxDefaultPosition, wxDefaultSize, %s' % aStyle
+
+    return None
+
+
 # The classes of wxWidgets used as custom controls, and their Qt counterparts
 WX_CUSTOM_CLASSES = {
     'wxScrolledCanvas': 'QScrollArea',
@@ -903,6 +935,13 @@ class FormClass:
             args = aArgs if aArgs is not None else aParent
             qtType = aQtClass
 
+            # A class of KiCad: created with the arguments of wxFormBuilder
+            if sub and self.gen.compat and aArgs is None:
+                ctorArgs = wx_ctor_args( cls, p, self.wx_style( p ) )
+
+                if ctorArgs is not None:
+                    args = '%s, %s, %s' % ( aParent, self.wx_id( p ), ctorArgs )
+
             # Without the compatibility layer, a grid is a QTableWidget (WX_GRID is the grid of
             # the layer)
             if sub == 'WX_GRID' and not self.gen.compat:
@@ -1340,7 +1379,21 @@ class FormClass:
                     else:
                         self.include( subHeader )
 
-                var = self.var( aObj, klass, 'new %s( %s )' % ( klass, aParent ) )
+                args = aParent
+
+                if self.gen.compat:
+                    # The construction code of wxFormBuilder, in the parent of the generated code
+                    construction = p.get( 'construction', '' ).strip()
+                    m = re.match( r'^\s*\w+\s*=\s*new\s+%s\s*\(\s*[^,()]+(?:\([^()]*\))?\s*(,.*)\)\s*;\s*$'
+                                  % re.escape( klass ), construction, re.S )
+
+                    if m:
+                        args = aParent + m.group( 1 ).rstrip()
+                    else:
+                        args = '%s, %s, %s' % ( aParent, self.wx_id( p ),
+                                                wx_ctor_args( 'CustomControl', p, self.wx_style( p ) ) )
+
+                var = self.var( aObj, klass, 'new %s( %s )' % ( klass, args ) )
                 qt = klass
 
         elif cls in ( 'wxPanel', 'wxScrolledWindow', 'wxNotebook', 'wxAuiNotebook', 'wxSimplebook',
@@ -1355,6 +1408,21 @@ class FormClass:
         self.connect_events( aObj, var, qt if not sub else self.base_qt( cls, style ) )
         return var
 
+    def wx_id( self, aProps ):
+        """The id of a window for its constructor (compatibility mode)."""
+        wid = aProps.get( 'id', 'wxID_ANY' ).strip() or 'wxID_ANY'
+
+        if wid not in STANDARD_IDS:
+            self.gen.ids.append( wid )
+
+        return wid
+
+    def wx_style( self, aProps ):
+        """The style of a window for its constructor, as wxFormBuilder writes it."""
+        parts = [ aProps.get( k, '' ).strip() for k in ( 'style', 'window_style' ) ]
+        parts = [ x for x in parts if x ]
+        return '|'.join( parts ) if parts else '0'
+
     def window_id( self, aObj, aVar ):
         """The id of a window (compatibility mode): the code of the dialogs compares them."""
         if not self.gen.compat:
@@ -1363,7 +1431,7 @@ class FormClass:
         wid = props( aObj ).get( 'id', 'wxID_ANY' ).strip()
 
         if wid and wid != 'wxID_ANY':
-            if not wid.startswith( 'wxID_' ):
+            if wid not in STANDARD_IDS:
                 self.gen.ids.append( wid )
 
             self.code.append( '    wxSetWindowIdCompat( %s, %s );' % ( aVar, wid ) )
@@ -1413,14 +1481,15 @@ class FormClass:
             return var
 
         if cls == 'wxScrolledWindow' and self.gen.compat and not sub:
-            # The children and the sizer are in the content of the scroll area
+            # The sizer is in the content of the scroll area, which holds the children; they are
+            # created in the window (their parent with wxWidgets), the layout moves them
             var = self.var( aObj, 'wxScrolledWindow', 'new wxScrolledWindow( %s )' % aParent )
             self.qt( 'QWidget' )
             content = self.tmp( 'scrolled' )
             self.code.append( '    QWidget* %s = %s->GetClientWidgetCompat();' % ( content, var ) )
             self.common( aObj, var )
             self.window_id( aObj, var )
-            self.children_layout( aObj, content )
+            self.children_layout( aObj, var, content )
             self.connect_events( aObj, var, 'QWidget' )
             return var
 
@@ -1538,12 +1607,13 @@ class FormClass:
 
         raise FbpError( 'container %s' % cls )
 
-    def children_layout( self, aObj, aWidget ):
-        """The layout of a window: its sizer."""
+    def children_layout( self, aObj, aWidget, aLayoutWidget = None ):
+        """The layout of a window: its sizer.  The children are created in aWidget, the layout is
+        set on aLayoutWidget (the content of a scroll area), aWidget by default."""
         for child in aObj.findall( 'object' ):
             if child.get( 'class' ) in SIZERS:
                 layout = self.sizer( child, aWidget, aTop = True )
-                self.code.append( '    %s->setLayout( %s );' % ( aWidget, layout ) )
+                self.code.append( '    %s->setLayout( %s );' % ( aLayoutWidget or aWidget, layout ) )
             else:
                 raise FbpError( '%s in a window' % child.get( 'class' ) )
 
