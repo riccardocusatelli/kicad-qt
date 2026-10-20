@@ -339,6 +339,49 @@ wxEvtHandler::~wxEvtHandler()
 }
 
 
+static const wxEventTableEntry s_noEventTableEntries[] = { { wxEVT_NULL, 0, 0, nullptr } };
+
+const wxEventTable wxEvtHandler::sm_eventTable = { nullptr, &s_noEventTableEntries[0] };
+
+
+void wxEvtHandler::ScheduleEventTableCompat()
+{
+    if( m_eventTableScheduledCompat )
+        return;
+
+    // The object isn't built yet (the binder is a member of its class): its table is the one
+    // of its class once it is
+    m_eventTableScheduledCompat = true;
+    wxCallAfterCompat( [this]() { bindEventTableCompat(); }, m_aliveCompat );
+}
+
+
+void wxEvtHandler::bindEventTableCompat()
+{
+    for( const wxEventTable* table = GetEventTable(); table; table = table->baseTable )
+    {
+        for( const wxEventTableEntry* entry = table->entries; entry->m_fn; ++entry )
+        {
+            // The entries of the events that the layer doesn't produce
+            if( entry->m_eventType == wxEVT_NULL )
+                continue;
+
+            std::function<void( wxEvtHandler*, wxEvent& )> fn = entry->m_fn;
+
+            bindHandlerCompat( entry->m_eventType,
+                               [this, fn]( wxEvent& aEvent ) { fn( this, aEvent ); },
+                               &sm_eventTable, entry->m_id, entry->m_lastId );
+        }
+    }
+}
+
+
+wxEventTableBinderCompat::wxEventTableBinderCompat( wxEvtHandler* aHandler )
+{
+    aHandler->ScheduleEventTableCompat();
+}
+
+
 void wxEvtHandler::Unlink()
 {
     if( m_previousCompat )
@@ -1530,6 +1573,20 @@ void wxCheckListBox::Check( unsigned int aIndex, bool aCheck )
 }
 
 
+unsigned int wxCheckListBox::GetCheckedItems( wxArrayInt& aCheckedItems ) const
+{
+    aCheckedItems.clear();
+
+    for( unsigned int i = 0; i < GetCount(); ++i )
+    {
+        if( IsChecked( i ) )
+            aCheckedItems.push_back( int( i ) );
+    }
+
+    return static_cast<unsigned int>( aCheckedItems.size() );
+}
+
+
 int wxCheckListBox::Insert( const wxString& aItem, unsigned int aPos, void* aClientData )
 {
     QSignalBlocker blocker( this );
@@ -1538,6 +1595,81 @@ int wxCheckListBox::Insert( const wxString& aItem, unsigned int aPos, void* aCli
     it->setFlags( it->flags() | Qt::ItemIsUserCheckable );
     it->setCheckState( Qt::Unchecked );
     return index;
+}
+
+
+wxRearrangeList::wxRearrangeList( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
+                                  const wxSize& aSize, const wxArrayInt& aOrder,
+                                  const wxArrayString& aItems, long aStyle ) :
+        wxCheckListBox( aParent, aId, aPos, aSize, wxArrayString(), aStyle ),
+        m_order( aOrder )
+{
+    for( int index : aOrder )
+    {
+        int item = index >= 0 ? index : ~index;
+        unsigned int pos = Append( aItems[item] );
+        Check( pos, index >= 0 );
+    }
+
+    // The checked state of the order follows the one of the items
+    QObject::connect( this, &QListWidget::itemChanged, this,
+                      [this]( QListWidgetItem* aItem )
+                      {
+                          int row = this->row( aItem );
+
+                          if( row < 0 || row >= int( m_order.size() ) )
+                              return;
+
+                          int item = m_order[row] >= 0 ? m_order[row] : ~m_order[row];
+                          m_order[row] = IsChecked( row ) ? item : ~item;
+                      } );
+}
+
+
+bool wxRearrangeList::CanMoveCurrentUp() const
+{
+    return GetSelection() > 0;
+}
+
+
+bool wxRearrangeList::CanMoveCurrentDown() const
+{
+    int sel = GetSelection();
+    return sel != wxNOT_FOUND && sel + 1 < int( GetCount() );
+}
+
+
+bool wxRearrangeList::MoveCurrentUp()
+{
+    if( !CanMoveCurrentUp() )
+        return false;
+
+    int sel = GetSelection();
+    swapWithNext( sel - 1 );
+    SetSelection( sel - 1 );
+    return true;
+}
+
+
+bool wxRearrangeList::MoveCurrentDown()
+{
+    if( !CanMoveCurrentDown() )
+        return false;
+
+    int sel = GetSelection();
+    swapWithNext( sel );
+    SetSelection( sel + 1 );
+    return true;
+}
+
+
+void wxRearrangeList::swapWithNext( int aIndex )
+{
+    // The item keeps its text, its check state and its client data
+    QSignalBlocker blocker( this );
+    QListWidgetItem* item = takeItem( aIndex + 1 );
+    insertItem( aIndex, item );
+    std::swap( m_order[aIndex], m_order[aIndex + 1] );
 }
 
 

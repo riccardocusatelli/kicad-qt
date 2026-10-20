@@ -159,6 +159,18 @@ public:
     void SetupStandardButtons( std::map<int, wxString> aLabels = {} );
 
     /**
+     * The standard buttons of the flags (wxOK, wxCANCEL, wxYES, wxNO, wxAPPLY, wxHELP), as
+     * wxDialog::CreateStdDialogButtonSizer().
+     */
+    wxStdDialogButtonSizer* CreateStdDialogButtonSizer( long aFlags );
+
+    /**
+     * The standard buttons of the flags under a separator line, as
+     * wxDialog::CreateSeparatedButtonSizer().
+     */
+    wxSizer* CreateSeparatedButtonSizer( long aFlags );
+
+    /**
      * Opt out of control state saving.
      *
      * @param aWindow is the control to not save the state of.

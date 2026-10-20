@@ -25,7 +25,7 @@
 #ifndef DIALOG_DIELECTRIC_MANAGER_H
 #define DIALOG_DIELECTRIC_MANAGER_H
 
-#include "dialog_dielectric_list_manager_base.h"
+#include <board_stackup_manager/dialog_dielectric_list_manager_base.h>
 #include "stackup_predefined_prms.h"
 #include "dielectric_material.h"
 

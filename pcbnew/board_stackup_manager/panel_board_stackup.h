@@ -30,7 +30,7 @@
 #include <widgets/unit_binder.h>
 #include <wx/gdicmn.h>
 
-#include "panel_board_stackup_base.h"
+#include <board_stackup_manager/panel_board_stackup_base.h>
 #include "board_stackup.h"
 #include "stackup_predefined_prms.h"
 #include "dielectric_material.h"

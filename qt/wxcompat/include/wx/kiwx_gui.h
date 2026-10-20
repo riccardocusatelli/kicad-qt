@@ -651,9 +651,43 @@ public:
     bool IsChecked( unsigned int aIndex ) const;
     void Check( unsigned int aIndex, bool aCheck = true );
 
+    /// The indices of the checked items.
+    unsigned int GetCheckedItems( wxArrayInt& aCheckedItems ) const;
+
     int Insert( const wxString& aItem, unsigned int aPos, void* aClientData ) override;
 
     using wxListBox::Insert;
+};
+
+
+/**
+ * A list of checked items that the user orders (wxRearrangeList): a wxCheckListBox whose
+ * current item moves up and down, with its check state and its client data.
+ */
+class KIQT_API wxRearrangeList : public wxCheckListBox
+{
+public:
+    /**
+     * @param aOrder gives the items in their order: the index of an item, or its complement
+     *               (~index) for an item that is not checked.
+     */
+    wxRearrangeList( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
+                     const wxSize& aSize, const wxArrayInt& aOrder,
+                     const wxArrayString& aItems, long aStyle = 0 );
+
+    /// The items in their current order, as the order given to the constructor.
+    const wxArrayInt& GetCurrentOrder() const { return m_order; }
+
+    bool CanMoveCurrentUp() const;
+    bool CanMoveCurrentDown() const;
+    bool MoveCurrentUp();
+    bool MoveCurrentDown();
+
+private:
+    /// Swap the item @a aIndex with the next one.
+    void swapWithNext( int aIndex );
+
+    wxArrayInt m_order;
 };
 
 

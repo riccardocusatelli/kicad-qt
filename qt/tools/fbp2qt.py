@@ -278,6 +278,7 @@ COMPAT_EVENTS = {
     'OnMotion':             ( 'wxMouseEvent', 'wxEVT_MOTION', 'mouse:QEvent::MouseMove' ),
     'OnMouseWheel':         ( 'wxMouseEvent', 'wxEVT_MOUSEWHEEL', 'mouse:QEvent::Wheel' ),
     'OnCharHook':           ( 'wxKeyEvent', 'wxEVT_CHAR_HOOK', 'bind' ),
+    'OnPaint':              ( 'wxPaintEvent', 'wxEVT_PAINT', 'bind' ),
     'OnKeyDown':            ( 'wxKeyEvent', 'wxEVT_KEY_DOWN', 'key:QEvent::KeyPress' ),
     'OnUpdateUI':           ( 'wxUpdateUIEvent', 'wxEVT_UPDATE_UI', 'updateui' ),
     'OnHyperlink':          ( 'wxHyperlinkEvent', 'wxEVT_HYPERLINK', 'bind' ),

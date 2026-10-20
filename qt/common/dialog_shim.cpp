@@ -499,6 +499,43 @@ void DIALOG_SHIM::SetupStandardButtons( std::map<int, wxString> aLabels )
 }
 
 
+wxStdDialogButtonSizer* DIALOG_SHIM::CreateStdDialogButtonSizer( long aFlags )
+{
+    wxStdDialogButtonSizer* box = new wxStdDialogButtonSizer( this );
+
+    if( aFlags & wxOK )
+        box->AddStandardButton( QDialogButtonBox::Ok, wxID_OK );
+
+    if( aFlags & wxYES )
+        box->AddStandardButton( QDialogButtonBox::Yes, wxID_YES );
+
+    if( aFlags & wxAPPLY )
+        box->AddStandardButton( QDialogButtonBox::Apply, wxID_APPLY );
+
+    if( aFlags & wxNO )
+        box->AddStandardButton( QDialogButtonBox::No, wxID_NO );
+
+    if( aFlags & wxCANCEL )
+        box->AddStandardButton( QDialogButtonBox::Cancel, wxID_CANCEL );
+
+    if( aFlags & wxHELP )
+        box->AddStandardButton( QDialogButtonBox::Help, wxID_HELP );
+
+    return box;
+}
+
+
+wxSizer* DIALOG_SHIM::CreateSeparatedButtonSizer( long aFlags )
+{
+    wxBoxSizer* sizer = new wxBoxSizer( wxVERTICAL );
+
+    sizer->Add( new wxStaticLine( this ), 0, wxEXPAND | wxBOTTOM, 5 );
+    sizer->Add( CreateStdDialogButtonSizer( aFlags ), 0, wxEXPAND );
+
+    return sizer;
+}
+
+
 void DIALOG_SHIM::OptOut( wxWidgetArgCompat aWindow )
 {
     m_optOut.insert( aWindow.get() );

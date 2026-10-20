@@ -41,13 +41,14 @@ class QComboBox;
 using TOOLKIT_CHOICE = QComboBox;
 
 class QPixmap;
-class QIcon;
+class wxBitmapBundle;
 
 /// An image of the user interface (an icon at one size, a color swatch).
 using TOOLKIT_BITMAP = QPixmap;
 
-/// An icon of the user interface, with its images at the different scales of the screens.
-using TOOLKIT_BITMAP_BUNDLE = QIcon;
+/// An icon of the user interface, with its images at the different scales of the screens: the
+/// wxBitmapBundle of the compatibility layer (a QIcon with the API of wxWidgets, wx/bmpbndl.h).
+using TOOLKIT_BITMAP_BUNDLE = wxBitmapBundle;
 
 class wxAppConsole;
 

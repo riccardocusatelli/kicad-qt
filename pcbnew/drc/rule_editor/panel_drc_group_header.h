@@ -27,10 +27,10 @@
 #include <lset.h>
 #include <lseq.h>
 
-#include "panel_drc_rule_editor_base.h"
+#include <drc/rule_editor/panel_drc_rule_editor_base.h>
 #include "drc_rule_editor_enums.h"
 #include "drc_rule_editor_utils.h"
-#include "panel_drc_group_header_base.h"
+#include <drc/rule_editor/panel_drc_group_header_base.h>
 
 
 struct DRC_RULE_ROW

@@ -25,7 +25,7 @@
 #ifndef DIALOG_SELECT_3DMODEL_H
 #define DIALOG_SELECT_3DMODEL_H
 
-#include "dialog_select_3d_model_base.h"
+#include <dialogs/dialog_select_3d_model_base.h>
 
 class FP_3DMODEL;
 class S3D_CACHE;

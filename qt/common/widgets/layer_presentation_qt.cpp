@@ -38,6 +38,7 @@
 #include <QPixmap>
 
 #include <gal/color4d.h>
+#include <toolkit/bitmaps.h>
 #include <qt_ui.h>
 
 using namespace KIGFX;
@@ -121,8 +122,8 @@ static QPixmap createLayerPairBitmapAtSize( const COLOR4D& aTopColor, const COLO
 }
 
 
-QIcon LAYER_PRESENTATION::CreateLayerPairIcon( const COLOR4D& aTopColor,
-                                               const COLOR4D& aBottomColor, int aDefSize )
+TOOLKIT_BITMAP_BUNDLE LAYER_PRESENTATION::CreateLayerPairIcon( const COLOR4D& aTopColor,
+                                                               const COLOR4D& aBottomColor, int aDefSize )
 {
     QIcon icon;
 
@@ -136,7 +137,8 @@ QIcon LAYER_PRESENTATION::CreateLayerPairIcon( const COLOR4D& aTopColor,
 }
 
 
-QIcon LAYER_PRESENTATION::CreateLayerPairIcon( int aLeftLayer, int aRightLayer, int aDefSize ) const
+TOOLKIT_BITMAP_BUNDLE LAYER_PRESENTATION::CreateLayerPairIcon( int aLeftLayer, int aRightLayer,
+                                                               int aDefSize ) const
 {
     const COLOR4D topColor = getLayerColor( aLeftLayer );
     const COLOR4D bottomColor = getLayerColor( aRightLayer );

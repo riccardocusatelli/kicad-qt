@@ -25,7 +25,7 @@
  * @file kiwx_pickers.h
  * The link and picker controls of the wxWidgets compatibility layer of the Qt build (wxcompat):
  * wxHyperlinkCtrl on a QLabel, wxFilePickerCtrl and wxDirPickerCtrl as a text control with a
- * browse button.
+ * browse button, wxCollapsiblePane as a button and a pane.
  */
 
 #ifndef KIWX_PICKERS_H
@@ -45,6 +45,9 @@ class QToolButton;
 #define wxHL_ALIGN_RIGHT 0x0004
 #define wxHL_ALIGN_CENTRE 0x0008
 #define wxHL_DEFAULT_STYLE ( wxHL_CONTEXTMENU | wxNO_BORDER | wxHL_ALIGN_CENTRE )
+
+#define wxCP_NO_TLW_RESIZE 0x0002
+#define wxCP_DEFAULT_STYLE ( wxTAB_TRAVERSAL | wxNO_BORDER )
 
 #define wxPB_USE_TEXTCTRL 0x0002
 #define wxPB_SMALL 0x8000
@@ -185,6 +188,54 @@ public:
 
 protected:
     wxString browse() override;
+};
+
+/// The event of a wxCollapsiblePane that the user collapses or expands.
+class wxCollapsiblePaneEvent : public wxCommandEvent
+{
+public:
+    wxCollapsiblePaneEvent( wxObject* aGenerator = nullptr, int aId = 0, bool aCollapsed = true ) :
+            wxCommandEvent( wxEVT_COLLAPSIBLEPANE_CHANGED, aId ),
+            m_collapsed( aCollapsed )
+    {
+        SetEventObject( aGenerator );
+    }
+
+    bool GetCollapsed() const { return m_collapsed; }
+    void SetCollapsed( bool aCollapsed ) { m_collapsed = aCollapsed; }
+
+private:
+    bool m_collapsed;
+};
+
+
+/**
+ * A pane that the user shows and hides (wxCollapsiblePane): a button with an arrow and the
+ * label, and the pane (a wxPanel) under it, collapsed at first.
+ */
+class KIQT_API wxCollapsiblePane : public wxWindowCompat<QWidget>
+{
+public:
+    explicit wxCollapsiblePane( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                                const wxString& aLabel = wxEmptyString,
+                                const wxPoint& aPos = wxDefaultPosition,
+                                const wxSize& aSize = wxDefaultSize,
+                                long aStyle = wxCP_DEFAULT_STYLE );
+
+    /// The window of the content of the pane.
+    wxWindow* GetPane() const;
+
+    void Collapse( bool aCollapse = true );
+    void Expand() { Collapse( false ); }
+    bool IsCollapsed() const;
+    bool IsExpanded() const { return !IsCollapsed(); }
+
+    void SetLabel( const wxString& aLabel ) override;
+    wxString GetLabel() const override;
+
+private:
+    QToolButton* m_button;
+    wxPanel*     m_pane;
 };
 
 #endif // KIWX_PICKERS_H

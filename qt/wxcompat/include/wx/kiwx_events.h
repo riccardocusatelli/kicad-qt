@@ -182,6 +182,7 @@ enum wxEventTypeCompat
     wxEVT_MENU_HIGHLIGHT,
     wxEVT_PAINT,
     wxEVT_ERASE_BACKGROUND,
+    wxEVT_COLLAPSIBLEPANE_CHANGED,
     wxEVT_USER_FIRST = 10000
 };
 
@@ -1008,6 +1009,9 @@ KIQT_API void wxCallAfterCompat( std::function<void()> aFunction, std::weak_ptr<
  * handlers pushed on a window (PushEventHandler(): GRID_TRICKS on a grid...).  The compatible
  * windows are handlers; the events their Qt widgets make go to their own handlers.
  */
+struct wxEventTable;
+
+
 class KIQT_API wxEvtHandler : public wxObject
 {
 public:
@@ -1162,6 +1166,12 @@ public:
 
     wxCompatEventSink& GetEventSinkCompat() { return m_eventsCompat; }
 
+    /// The static event table of the class (wxDECLARE_EVENT_TABLE()), with the ones of its bases.
+    virtual const wxEventTable* GetEventTable() const { return &sm_eventTable; }
+
+    /// Bind the entries of the event table, once, on the event loop (after the construction).
+    void ScheduleEventTableCompat();
+
     /// Give an event to the handlers of @a aFirst and of the next handlers of its chain.
     static bool ProcessChainCompat( wxEvtHandler* aFirst, wxEvent& aEvent );
 
@@ -1180,7 +1190,13 @@ protected:
 
     wxCompatEventSink m_eventsCompat;
 
+    /// The root of the event tables: no entries.
+    static const wxEventTable sm_eventTable;
+
 private:
+    void bindEventTableCompat();
+
+    bool                  m_eventTableScheduledCompat = false;
     wxEvtHandler*         m_nextCompat = nullptr;
     wxEvtHandler*         m_previousCompat = nullptr;
     wxEvtHandler*         m_topCompat = nullptr;
@@ -1195,6 +1211,157 @@ inline void wxPostEvent( wxEvtHandler* aHandler, const EVENT& aEvent )
 {
     aHandler->QueueEvent( new EVENT( aEvent ) );
 }
+
+
+// Event tables ----------------------------------------------------------------------------
+
+/*
+ * The static event tables of wxWidgets (wxDECLARE_EVENT_TABLE(), wxBEGIN_EVENT_TABLE()...): the
+ * entries of the table of a class and of its bases are bound (Bind()) once the object is built,
+ * on the event loop.  The entries of the events that the layer doesn't produce (the files
+ * dropped on a window, the moves and the iconization of the frames...) are kept but never bound.
+ */
+
+/// An entry of an event table: an event type, a range of ids and the method of the class.
+struct wxEventTableEntry
+{
+    wxEventType                                       m_eventType;
+    int                                               m_id;
+    int                                               m_lastId;
+    std::function<void( wxEvtHandler*, wxEvent& )>    m_fn;
+};
+
+
+/// The event table of a class: its entries, and the table of its base class.
+struct wxEventTable
+{
+    const wxEventTable*      baseTable;
+    const wxEventTableEntry* entries;
+};
+
+
+/// The function of an entry: the method of the class of the handler.
+template <typename CLASS, typename EVENT>
+std::function<void( wxEvtHandler*, wxEvent& )> wxEventTableFunctionCompat( void ( CLASS::*aMethod )( EVENT& ) )
+{
+    return [aMethod]( wxEvtHandler* aHandler, wxEvent& aEvent )
+           {
+               if( CLASS* self = dynamic_cast<CLASS*>( aHandler ) )
+                   ( self->*aMethod )( static_cast<EVENT&>( aEvent ) );
+           };
+}
+
+
+/// Schedules the binding of the event table of its object (a member of the classes with a table).
+class KIQT_API wxEventTableBinderCompat
+{
+public:
+    explicit wxEventTableBinderCompat( wxEvtHandler* aHandler );
+};
+
+
+#define wxDECLARE_EVENT_TABLE()                                                                 \
+    private:                                                                                    \
+        static const wxEventTableEntry sm_eventTableEntries[];                                  \
+        wxEventTableBinderCompat m_eventTableBinderCompat{ this };                              \
+    protected:                                                                                  \
+        const wxEventTable* GetEventTable() const override;                                     \
+        static const wxEventTable sm_eventTable
+
+#define DECLARE_EVENT_TABLE() wxDECLARE_EVENT_TABLE();
+
+#define wxBEGIN_EVENT_TABLE( theClass, baseClass )                                              \
+    const wxEventTable theClass::sm_eventTable =                                                \
+            { &baseClass::sm_eventTable, &theClass::sm_eventTableEntries[0] };                  \
+    const wxEventTable* theClass::GetEventTable() const { return &theClass::sm_eventTable; }    \
+    const wxEventTableEntry theClass::sm_eventTableEntries[] = {
+
+#define wxEND_EVENT_TABLE() { wxEVT_NULL, 0, 0, nullptr } };
+
+#define BEGIN_EVENT_TABLE( a, b ) wxBEGIN_EVENT_TABLE( a, b )
+#define END_EVENT_TABLE() wxEND_EVENT_TABLE()
+
+#define wx__DECLARE_EVT2( evt, id1, id2, fn ) { evt, id1, id2, wxEventTableFunctionCompat( &fn ) },
+#define wx__DECLARE_EVT1( evt, id, fn ) wx__DECLARE_EVT2( evt, id, wxID_ANY, fn )
+#define wx__DECLARE_EVT0( evt, fn ) wx__DECLARE_EVT1( evt, wxID_ANY, fn )
+
+/// An entry of an event that the layer doesn't produce
+#define wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn ) { wxEVT_NULL, wxID_ANY, wxID_ANY, []( wxEvtHandler*, wxEvent& ) {} },
+
+#define EVT_COMMAND( id, evt, fn ) wx__DECLARE_EVT1( evt, id, fn )
+#define EVT_COMMAND_RANGE( id1, id2, evt, fn ) wx__DECLARE_EVT2( evt, id1, id2, fn )
+
+#define EVT_MENU( id, fn ) wx__DECLARE_EVT1( wxEVT_MENU, id, fn )
+#define EVT_MENU_RANGE( id1, id2, fn ) wx__DECLARE_EVT2( wxEVT_MENU, id1, id2, fn )
+#define EVT_TOOL( id, fn ) EVT_MENU( id, fn )
+#define EVT_TOOL_RANGE( id1, id2, fn ) EVT_MENU_RANGE( id1, id2, fn )
+#define EVT_MENU_OPEN( fn ) wx__DECLARE_EVT0( wxEVT_MENU_OPEN, fn )
+#define EVT_MENU_CLOSE( fn ) wx__DECLARE_EVT0( wxEVT_MENU_CLOSE, fn )
+#define EVT_MENU_HIGHLIGHT_ALL( fn ) wx__DECLARE_EVT0( wxEVT_MENU_HIGHLIGHT, fn )
+#define EVT_UPDATE_UI( id, fn ) wx__DECLARE_EVT1( wxEVT_UPDATE_UI, id, fn )
+#define EVT_UPDATE_UI_RANGE( id1, id2, fn ) wx__DECLARE_EVT2( wxEVT_UPDATE_UI, id1, id2, fn )
+
+#define EVT_BUTTON( id, fn ) wx__DECLARE_EVT1( wxEVT_BUTTON, id, fn )
+#define EVT_CHECKBOX( id, fn ) wx__DECLARE_EVT1( wxEVT_CHECKBOX, id, fn )
+#define EVT_CHOICE( id, fn ) wx__DECLARE_EVT1( wxEVT_CHOICE, id, fn )
+#define EVT_COMBOBOX( id, fn ) wx__DECLARE_EVT1( wxEVT_COMBOBOX, id, fn )
+#define EVT_LISTBOX( id, fn ) wx__DECLARE_EVT1( wxEVT_LISTBOX, id, fn )
+#define EVT_LISTBOX_DCLICK( id, fn ) wx__DECLARE_EVT1( wxEVT_LISTBOX_DCLICK, id, fn )
+#define EVT_RADIOBUTTON( id, fn ) wx__DECLARE_EVT1( wxEVT_RADIOBUTTON, id, fn )
+#define EVT_RADIOBOX( id, fn ) wx__DECLARE_EVT1( wxEVT_RADIOBOX, id, fn )
+#define EVT_TOGGLEBUTTON( id, fn ) wx__DECLARE_EVT1( wxEVT_TOGGLEBUTTON, id, fn )
+#define EVT_TEXT( id, fn ) wx__DECLARE_EVT1( wxEVT_TEXT, id, fn )
+#define EVT_TEXT_ENTER( id, fn ) wx__DECLARE_EVT1( wxEVT_TEXT_ENTER, id, fn )
+#define EVT_SLIDER( id, fn ) wx__DECLARE_EVT1( wxEVT_SLIDER, id, fn )
+#define EVT_SPINCTRL( id, fn ) wx__DECLARE_EVT1( wxEVT_SPINCTRL, id, fn )
+#define EVT_HYPERLINK( id, fn ) wx__DECLARE_EVT1( wxEVT_HYPERLINK, id, fn )
+#define EVT_NOTEBOOK_PAGE_CHANGED( id, fn ) wx__DECLARE_EVT1( wxEVT_NOTEBOOK_PAGE_CHANGED, id, fn )
+#define EVT_LIST_ITEM_SELECTED( id, fn ) wx__DECLARE_EVT1( wxEVT_LIST_ITEM_SELECTED, id, fn )
+#define EVT_LIST_ITEM_ACTIVATED( id, fn ) wx__DECLARE_EVT1( wxEVT_LIST_ITEM_ACTIVATED, id, fn )
+#define EVT_GRID_CMD_CELL_CHANGED( id, fn ) wx__DECLARE_EVT1( wxEVT_GRID_CELL_CHANGED, id, fn )
+
+#define EVT_SIZE( fn ) wx__DECLARE_EVT0( wxEVT_SIZE, fn )
+#define EVT_PAINT( fn ) wx__DECLARE_EVT0( wxEVT_PAINT, fn )
+#define EVT_ERASE_BACKGROUND( fn ) wx__DECLARE_EVT0( wxEVT_ERASE_BACKGROUND, fn )
+#define EVT_CLOSE( fn ) wx__DECLARE_EVT0( wxEVT_CLOSE_WINDOW, fn )
+#define EVT_ACTIVATE( fn ) wx__DECLARE_EVT0( wxEVT_ACTIVATE, fn )
+#define EVT_IDLE( fn ) wx__DECLARE_EVT0( wxEVT_IDLE, fn )
+#define EVT_SHOW( fn ) wx__DECLARE_EVT0( wxEVT_SHOW, fn )
+#define EVT_INIT_DIALOG( fn ) wx__DECLARE_EVT0( wxEVT_INIT_DIALOG, fn )
+#define EVT_SYS_COLOUR_CHANGED( fn ) wx__DECLARE_EVT0( wxEVT_SYS_COLOUR_CHANGED, fn )
+#define EVT_DPI_CHANGED( fn ) wx__DECLARE_EVT0( wxEVT_DPI_CHANGED, fn )
+#define EVT_SET_FOCUS( fn ) wx__DECLARE_EVT0( wxEVT_SET_FOCUS, fn )
+#define EVT_KILL_FOCUS( fn ) wx__DECLARE_EVT0( wxEVT_KILL_FOCUS, fn )
+#define EVT_CHAR( fn ) wx__DECLARE_EVT0( wxEVT_CHAR, fn )
+#define EVT_CHAR_HOOK( fn ) wx__DECLARE_EVT0( wxEVT_CHAR_HOOK, fn )
+#define EVT_KEY_DOWN( fn ) wx__DECLARE_EVT0( wxEVT_KEY_DOWN, fn )
+#define EVT_KEY_UP( fn ) wx__DECLARE_EVT0( wxEVT_KEY_UP, fn )
+#define EVT_LEFT_DOWN( fn ) wx__DECLARE_EVT0( wxEVT_LEFT_DOWN, fn )
+#define EVT_LEFT_UP( fn ) wx__DECLARE_EVT0( wxEVT_LEFT_UP, fn )
+#define EVT_LEFT_DCLICK( fn ) wx__DECLARE_EVT0( wxEVT_LEFT_DCLICK, fn )
+#define EVT_RIGHT_DOWN( fn ) wx__DECLARE_EVT0( wxEVT_RIGHT_DOWN, fn )
+#define EVT_RIGHT_UP( fn ) wx__DECLARE_EVT0( wxEVT_RIGHT_UP, fn )
+#define EVT_MOTION( fn ) wx__DECLARE_EVT0( wxEVT_MOTION, fn )
+#define EVT_MOUSEWHEEL( fn ) wx__DECLARE_EVT0( wxEVT_MOUSEWHEEL, fn )
+#define EVT_ENTER_WINDOW( fn ) wx__DECLARE_EVT0( wxEVT_ENTER_WINDOW, fn )
+#define EVT_LEAVE_WINDOW( fn ) wx__DECLARE_EVT0( wxEVT_LEAVE_WINDOW, fn )
+#define EVT_MOUSE_EVENTS( fn )                                                                  \
+    EVT_LEFT_DOWN( fn ) EVT_LEFT_UP( fn ) EVT_LEFT_DCLICK( fn ) EVT_RIGHT_DOWN( fn )            \
+    EVT_RIGHT_UP( fn ) EVT_MOTION( fn ) EVT_MOUSEWHEEL( fn ) EVT_ENTER_WINDOW( fn )             \
+    EVT_LEAVE_WINDOW( fn )
+#define EVT_SCROLL( fn )                                                                        \
+    wx__DECLARE_EVT0( wxEVT_SCROLL_CHANGED, fn ) wx__DECLARE_EVT0( wxEVT_SCROLL_THUMBTRACK, fn )
+
+// The events that the layer doesn't produce
+#define EVT_DROP_FILES( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_MIDDLE_DOWN( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_MIDDLE_UP( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_MAGNIFY( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_MOVE( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_ICONIZE( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_MAXIMIZE( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_TIMER( id, fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
+#define EVT_SOCKET( id, fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
 
 
 /// Give an event to a handler later; the handler takes the event (wxQueueEvent()).

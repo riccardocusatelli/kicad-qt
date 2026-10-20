@@ -27,7 +27,7 @@
 
 
 #include <board.h>
-#include "panel_board_finish_base.h"
+#include <board_stackup_manager/panel_board_finish_base.h>
 
 class PAGED_DIALOG;
 class PCB_EDIT_FRAME;

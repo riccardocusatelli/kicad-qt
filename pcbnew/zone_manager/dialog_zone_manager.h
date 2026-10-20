@@ -41,7 +41,7 @@
 #include <trigo.h>
 #include <eda_pattern_match.h>
 
-#include "dialog_zone_manager_base.h"
+#include <zone_manager/dialog_zone_manager_base.h>
 
 
 class PANEL_ZONE_PROPERTIES;

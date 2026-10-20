@@ -166,10 +166,20 @@ public:
     /**
      * Repaint the canvas, if it has changed.
      *
-     * @param aEraseBackground is unused: the canvas is always drawn whole (the parameter of
-     *                         the wxWidgets build).
+     * @param aEraseBackground and @param aRect are unused: the canvas is always drawn whole (the
+     *                         parameters of wxWindow::Refresh()).
      */
-    virtual void Refresh( bool aEraseBackground = true );
+    virtual void Refresh( bool aEraseBackground = true, const wxRect* aRect = nullptr ) override;
+
+    /// The canvas doesn't scroll (its view pans): the origin of wxScrolledCanvas::GetViewStart().
+    void GetViewStart( int* aX, int* aY ) const
+    {
+        if( aX )
+            *aX = 0;
+
+        if( aY )
+            *aY = 0;
+    }
 
     /**
      * Force a redraw.

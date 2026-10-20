@@ -25,8 +25,10 @@
 
 #include <QDesktopServices>
 #include <QHBoxLayout>
+#include <QSignalBlocker>
 #include <QToolButton>
 #include <QUrl>
+#include <QVBoxLayout>
 
 #include <qt_strings.h>
 
@@ -188,4 +190,72 @@ wxString wxDirPickerCtrl::browse()
     wxString    dir = GetPath().IsEmpty() ? m_initialDir : GetPath();
     wxDirDialog dialog( this, m_message, dir );
     return dialog.ShowModal() == wxID_OK ? dialog.GetPath() : wxString();
+}
+
+wxCollapsiblePane::wxCollapsiblePane( wxWidgetArgCompat aParent, int aId, const wxString& aLabel,
+                                      const wxPoint& aPos, const wxSize& aSize, long aStyle ) :
+        wxWindowCompat<QWidget>( aParent )
+{
+    SetId( aId );
+
+    QVBoxLayout* layout = new QVBoxLayout( this );
+    layout->setContentsMargins( 0, 0, 0, 0 );
+
+    m_button = new QToolButton( this );
+    m_button->setToolButtonStyle( Qt::ToolButtonTextBesideIcon );
+    m_button->setAutoRaise( true );
+    m_button->setCheckable( true );
+    m_button->setArrowType( Qt::RightArrow );
+    m_button->setText( ToQString( aLabel ) );
+    layout->addWidget( m_button, 0, Qt::AlignLeft );
+
+    m_pane = new wxPanel( this );
+    m_pane->hide();
+    layout->addWidget( m_pane, 1 );
+
+    QObject::connect( m_button, &QToolButton::toggled, this,
+                      [this]( bool aChecked )
+                      {
+                          Collapse( !aChecked );
+
+                          wxCollapsiblePaneEvent event( this, GetId(), !aChecked );
+                          ProcessEvent( event );
+                      } );
+}
+
+
+wxWindow* wxCollapsiblePane::GetPane() const
+{
+    return m_pane;
+}
+
+
+void wxCollapsiblePane::Collapse( bool aCollapse )
+{
+    {
+        QSignalBlocker blocker( m_button );
+        m_button->setChecked( !aCollapse );
+    }
+
+    m_button->setArrowType( aCollapse ? Qt::RightArrow : Qt::DownArrow );
+    m_pane->setVisible( !aCollapse );
+    updateGeometry();
+}
+
+
+bool wxCollapsiblePane::IsCollapsed() const
+{
+    return !m_pane->isVisibleTo( const_cast<wxCollapsiblePane*>( this ) );
+}
+
+
+void wxCollapsiblePane::SetLabel( const wxString& aLabel )
+{
+    m_button->setText( ToQString( aLabel ) );
+}
+
+
+wxString wxCollapsiblePane::GetLabel() const
+{
+    return ToWxString( m_button->text() );
 }

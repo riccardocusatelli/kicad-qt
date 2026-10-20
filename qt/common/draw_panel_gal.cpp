@@ -483,7 +483,7 @@ void EDA_DRAW_PANEL_GAL::RequestRefresh()
 }
 
 
-void EDA_DRAW_PANEL_GAL::Refresh( bool aEraseBackground )
+void EDA_DRAW_PANEL_GAL::Refresh( bool aEraseBackground, const wxRect* aRect )
 {
     // The drawing is done by the paint event, at most once by frame of the screen
     update();

@@ -766,7 +766,8 @@ public:
     int GetDefaultRowSize() const;
     int GetDefaultColSize() const;
     void SetColMinimalWidth( int aCol, int aWidth );
-    void SetColMinimalAcceptableWidth( int aWidth ) {}
+    void SetColMinimalAcceptableWidth( int aWidth ) { m_colMinimalAcceptableWidthCompat = aWidth; }
+    int GetColMinimalAcceptableWidth() const { return m_colMinimalAcceptableWidthCompat; }
     void SetRowMinimalHeight( int aRow, int aHeight ) {}
     void AutoSizeColumn( int aCol, bool aSetAsMin = true );
     void AutoSizeColumns( bool aSetAsMin = true );
@@ -1031,6 +1032,7 @@ private:
     int                  m_batchCount;
     int                  m_sortCol = wxNOT_FOUND;
     bool                 m_sortAscending = true;
+    int                  m_colMinimalAcceptableWidthCompat = 0;
 };
 
 using wxGridSelectionModes = wxGrid::wxGridSelectionModes;

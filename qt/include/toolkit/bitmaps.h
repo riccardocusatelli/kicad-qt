@@ -27,5 +27,6 @@
 #include <kiqt.h>     // Qt, without its METHOD macro
 #include <QIcon>
 #include <QPixmap>
+#include <wx/bmpbndl.h>
 
 #include <toolkit/toolkit_types.h>
