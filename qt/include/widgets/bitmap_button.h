@@ -43,11 +43,22 @@
 #include <wx/kiwx_window.h>
 
 
+class wxBitmap;
+
+
 class KIQT_API BITMAP_BUTTON : public wxWindowCompat<QAbstractButton>
 {
 public:
     BITMAP_BUTTON( wxWidgetArgCompat aParent, wxWindowID aId = wxID_ANY,
                    const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize );
+
+    /// The constructor of wxFormBuilder (the bitmap is set later).
+    BITMAP_BUTTON( wxWidgetArgCompat aParent, wxWindowID aId, const wxBitmap& aDummyBitmap,
+                   const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+                   int aStyle = 0 ) :
+            BITMAP_BUTTON( aParent, aId, aPos, aSize )
+    {
+    }
 
     ~BITMAP_BUTTON() override;
 

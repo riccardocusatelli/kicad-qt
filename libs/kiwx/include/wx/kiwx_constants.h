@@ -487,6 +487,14 @@ wxALLOW_COMBINING_ENUMS(wxSizerFlagBits, wxStretch)
 #define wxBU_NOTEXT         0x0002
 #define wxBU_AUTODRAW       0x0004
 
+/*
+    wxHtmlWindow flags (wx/html/htmlwin.h)
+ */
+#define wxHW_SCROLLBAR_NEVER    0x0002
+#define wxHW_SCROLLBAR_AUTO     0x0004
+#define wxHW_NO_SELECTION       0x0008
+#define wxHW_DEFAULT_STYLE      wxHW_SCROLLBAR_AUTO
+
 
 /*
  * extended dialog specifiers. these values are stored in a different

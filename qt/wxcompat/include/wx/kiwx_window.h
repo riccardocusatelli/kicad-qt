@@ -421,7 +421,7 @@ public:
 
     // The geometry (in the logical pixels of Qt)
 
-    void SetMinSize( const wxSize& aSize );
+    virtual void SetMinSize( const wxSize& aSize );
     void SetMaxSize( const wxSize& aSize );
     void SetMinClientSize( const wxSize& aSize ) { SetMinSize( aSize ); }
     void SetMaxClientSize( const wxSize& aSize ) { SetMaxSize( aSize ); }

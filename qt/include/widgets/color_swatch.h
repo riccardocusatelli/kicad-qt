@@ -89,6 +89,13 @@ public:
      */
     COLOR_SWATCH( wxWidgetArgCompat aParent );
 
+    COLOR_SWATCH( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos = wxDefaultPosition,
+                  const wxSize& aSize = wxDefaultSize, long aStyle = 0 ) :
+            COLOR_SWATCH( aParent )
+    {
+        SetWindowID( aId );
+    }
+
     /**
      * Set the current swatch color directly.
      */

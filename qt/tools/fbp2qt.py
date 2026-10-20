@@ -1393,7 +1393,20 @@ class FormClass:
                         args = '%s, %s, %s' % ( aParent, self.wx_id( p ),
                                                 wx_ctor_args( 'CustomControl', p, self.wx_style( p ) ) )
 
-                var = self.var( aObj, klass, 'new %s( %s )' % ( klass, args ) )
+                declaration = p.get( 'declaration', '' ).strip() if self.gen.compat else ''
+                perm = p.get( 'permission', 'protected' )
+
+                if declaration and perm in ( 'protected', 'public', 'private' ):
+                    # The members of the declaration of wxFormBuilder (the control and its data)
+                    for line in declaration.splitlines():
+                        if line.strip():
+                            self.members.append( ( perm, None, line.strip() ) )
+
+                    var = p.get( 'name' )
+                    self.code.append( '    %s = new %s( %s );' % ( var, klass, args ) )
+                else:
+                    var = self.var( aObj, klass, 'new %s( %s )' % ( klass, args ) )
+
                 qt = klass
 
         elif cls in ( 'wxPanel', 'wxScrolledWindow', 'wxNotebook', 'wxAuiNotebook', 'wxSimplebook',
@@ -2073,7 +2086,10 @@ class FormClass:
             decl.append( '%s:' % perm )
 
             for _, t, n in members:
-                decl.append( '    %s* %s = nullptr;' % ( t, n ) )
+                if t is None:
+                    decl.append( '    %s' % n )     # a declaration of the fbp
+                else:
+                    decl.append( '    %s* %s = nullptr;' % ( t, n ) )
 
             if perm == 'protected' and self.handlers:
                 decl.append( '' )
