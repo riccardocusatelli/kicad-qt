@@ -274,6 +274,10 @@ public:
     void SetSizeHints( wxWidgetArgCompat aWindow );
 
     wxSize GetMinSize() const;
+
+    /// The size of the area of the layout.
+    wxSize GetSize() const;
+
     void SetMinSize( const wxSize& ) {}
     void SetMinSize( int, int ) {}
     void SetDimension( const wxPoint&, const wxSize& ) {}

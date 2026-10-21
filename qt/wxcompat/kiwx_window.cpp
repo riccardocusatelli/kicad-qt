@@ -537,6 +537,18 @@ wxSize wxSizer::GetMinSize() const
 }
 
 
+wxSize wxSizer::GetSize() const
+{
+    QLayout* layout = GetLayoutCompat();
+
+    if( !layout )
+        return wxSize();
+
+    QRect rect = layout->geometry();
+    return wxSize( rect.width(), rect.height() );
+}
+
+
 wxWindow* wxSizer::GetContainingWindow() const
 {
     QLayout* layout = GetLayoutCompat();

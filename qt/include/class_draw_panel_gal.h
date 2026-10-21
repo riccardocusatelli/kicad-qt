@@ -181,6 +181,9 @@ public:
             *aY = 0;
     }
 
+    /// The canvas has no scrollbars (wxWindow::ShowScrollbars()).
+    void ShowScrollbars( int aHorizontal, int aVertical ) {}
+
     /**
      * Force a redraw.
      */

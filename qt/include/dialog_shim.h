@@ -241,6 +241,12 @@ protected:
     /// Show the dialog where it was (and with the size it had).
     void restoreGeometry();
 
+    /**
+     * Forget the saved geometry of the dialog: the next time, the dialog has the size computed
+     * from its layout.
+     */
+    void resetSize();
+
     EDA_UNITS              m_units;    // userUnits for display and parsing
     std::string            m_hash_key; // optional custom key for persistence
 

@@ -495,6 +495,16 @@ wxALLOW_COMBINING_ENUMS(wxSizerFlagBits, wxStretch)
 #define wxHW_NO_SELECTION       0x0008
 #define wxHW_DEFAULT_STYLE      wxHW_SCROLLBAR_AUTO
 
+/*
+    The visibility of the scrollbars of a window (wx/window.h)
+ */
+enum wxScrollbarVisibility
+{
+    wxSHOW_SB_NEVER = -1,
+    wxSHOW_SB_DEFAULT,
+    wxSHOW_SB_ALWAYS
+};
+
 
 /*
  * extended dialog specifiers. these values are stored in a different

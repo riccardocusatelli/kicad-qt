@@ -197,6 +197,20 @@ void DIALOG_SHIM::saveGeometry()
 }
 
 
+void DIALOG_SHIM::resetSize()
+{
+    if( COMMON_SETTINGS* settings = Pgm().GetCommonSettings() )
+    {
+        auto dlgIt = settings->CsInternals().m_dialogControlValues.find( dialogKey() );
+
+        if( dlgIt == settings->CsInternals().m_dialogControlValues.end() )
+            return;
+
+        dlgIt->second.erase( "__geometry" );
+    }
+}
+
+
 void DIALOG_SHIM::restoreGeometry()
 {
     QRect saved;

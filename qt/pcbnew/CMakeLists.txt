@@ -146,13 +146,16 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_filter_selection_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_find_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_associations_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_checker_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_wizard_list_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_fp_edit_pad_table_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_gen_footprint_position_file_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_gendrill_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_generators_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_get_footprint_by_name_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_global_deletion_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_global_edit_teardrops_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_global_edit_text_and_graphics_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_global_edit_tracks_and_vias_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_import_netlist_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_import_settings_base.fbp
@@ -163,6 +166,7 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_non_copper_zones_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_offset_item_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_outset_items_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_pad_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_pns_diff_pair_dimensions_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_pns_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_position_relative_base.fbp
@@ -231,6 +235,8 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_filter_selection.cpp
     dialogs/dialog_find.cpp
     dialogs/dialog_footprint_associations.cpp
+    dialogs/dialog_footprint_checker.cpp
+    dialogs/dialog_fp_edit_pad_table.cpp
     dialogs/dialog_gen_footprint_position.cpp
     dialogs/dialog_gencad_export_options.cpp
     dialogs/dialog_gendrill.cpp
@@ -238,6 +244,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_get_footprint_by_name.cpp
     dialogs/dialog_global_deletion.cpp
     dialogs/dialog_global_edit_teardrops.cpp
+    dialogs/dialog_global_edit_text_and_graphics.cpp
     dialogs/dialog_global_edit_tracks_and_vias.cpp
     dialogs/dialog_import_netlist.cpp
     dialogs/dialog_import_settings.cpp
@@ -249,6 +256,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_non_copper_zones_properties.cpp
     dialogs/dialog_offset_item.cpp
     dialogs/dialog_outset_items.cpp
+    dialogs/dialog_pad_properties.cpp
     dialogs/dialog_pns_diff_pair_dimensions.cpp
     dialogs/dialog_pns_settings.cpp
     dialogs/dialog_position_relative.cpp
