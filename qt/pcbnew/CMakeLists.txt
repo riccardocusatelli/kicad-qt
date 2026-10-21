@@ -120,12 +120,13 @@ kiqt_generate_fbp( KIQT_PCBNEW_GUI_FBP_SRCS
 # The dialogs of pcbnew built unchanged on the wxWidgets compatibility layer (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_HTML_reporter_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_color_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_image_editor_base.fbp
     ${CMAKE_SOURCE_DIR}/common/widgets/wx_html_report_panel_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_stackup_manager/dialog_dielectric_list_manager_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_stackup_manager/panel_board_finish_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_stackup_manager/panel_board_stackup_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_barcode_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_board_reannotate_base.fbp
@@ -147,6 +148,8 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_find_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_associations_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_checker_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_properties_fp_editor_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_wizard_list_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_fp_edit_pad_table_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_gen_footprint_position_file_base.fbp
@@ -167,6 +170,7 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_offset_item_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_outset_items_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_pad_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_plot_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_pns_diff_pair_dimensions_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_pns_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_position_relative_base.fbp
@@ -191,6 +195,7 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_edit_options_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_editor_field_defaults_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_editor_graphics_defaults_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_properties_3d_model_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_user_layer_names_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_pcbnew_action_plugins_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_pcbnew_display_origin_base.fbp
@@ -215,8 +220,13 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     )
 
 set( KIQT_PCBNEW_COMPAT_DIALOGS
+    board_stackup_manager/dialog_dielectric_list_manager.cpp
+    board_stackup_manager/panel_board_finish.cpp
+    board_stackup_manager/panel_board_stackup.cpp
+    board_stackup_manager/stackup_predefined_prms.cpp
     dialogs/dialog_barcode_properties.cpp
     dialogs/dialog_board_reannotate.cpp
+    dialogs/dialog_board_setup.cpp
     dialogs/dialog_board_statistics.cpp
     dialogs/dialog_board_stats_job.cpp
     dialogs/dialog_cleanup_graphics.cpp
@@ -236,6 +246,8 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_find.cpp
     dialogs/dialog_footprint_associations.cpp
     dialogs/dialog_footprint_checker.cpp
+    dialogs/dialog_footprint_properties.cpp
+    dialogs/dialog_footprint_properties_fp_editor.cpp
     dialogs/dialog_fp_edit_pad_table.cpp
     dialogs/dialog_gen_footprint_position.cpp
     dialogs/dialog_gencad_export_options.cpp
@@ -257,6 +269,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_offset_item.cpp
     dialogs/dialog_outset_items.cpp
     dialogs/dialog_pad_properties.cpp
+    dialogs/dialog_plot.cpp
     dialogs/dialog_pns_diff_pair_dimensions.cpp
     dialogs/dialog_pns_settings.cpp
     dialogs/dialog_position_relative.cpp
@@ -282,6 +295,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/panel_fp_editor_color_settings.cpp
     dialogs/panel_fp_editor_field_defaults.cpp
     dialogs/panel_fp_editor_graphics_defaults.cpp
+    dialogs/panel_fp_properties_3d_model.cpp
     dialogs/panel_fp_user_layer_names.cpp
     dialogs/panel_pcbnew_action_plugins.cpp
     dialogs/panel_pcbnew_color_settings.cpp
@@ -312,6 +326,7 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_COMPAT_DIALOGS}
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp

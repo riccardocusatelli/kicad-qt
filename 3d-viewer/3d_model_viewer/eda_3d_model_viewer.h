@@ -34,15 +34,15 @@
 #define _C3D_MODEL_VIEWER_H_
 
 #include "3d_rendering/track_ball.h"
-#include <gal/hidpi_gl_canvas.h>
+#include <gal/hidpi_gl_3D_canvas.h>
 
 class S3D_CACHE;
 class MODEL_3D;
 
 /**
- *  Implement a canvas based on a wxGLCanvas.
+ *  Implement a canvas based on an OpenGL canvas of the GUI toolkit.
  */
-class EDA_3D_MODEL_VIEWER : public HIDPI_GL_CANVAS
+class EDA_3D_MODEL_VIEWER : public HIDPI_GL_3D_CANVAS
 {
 public:
     /**
@@ -51,7 +51,7 @@ public:
      *  @param aParent the parent creator of this canvas.
      *  @param aGLAttribs openGL attributes created by #OGL_ATT_LIST::GetAttributesList.
      */
-    EDA_3D_MODEL_VIEWER( wxWindow* aParent, const wxGLAttributes& aGLAttribs,
+    EDA_3D_MODEL_VIEWER( TOOLKIT_WINDOW* aParent, const KIGL_ATTRIBUTES& aGLAttribs,
                          S3D_CACHE* aCacheManager = nullptr );
 
     ~EDA_3D_MODEL_VIEWER();
@@ -81,32 +81,12 @@ private:
     void ogl_initialize();
     void ogl_set_arrow_material();
 
-    void OnPaint( wxPaintEvent& event );
-
-    void OnEraseBackground( wxEraseEvent& event );
-
-    void OnMouseWheel( wxMouseEvent& event );
-
-#ifdef USE_OSX_MAGNIFY_EVENT
-    void   OnMagnify( wxMouseEvent& event );
-#endif
-
-    void OnMouseMove( wxMouseEvent& event );
-
-    void OnLeftDown( wxMouseEvent& event );
-
-    void OnLeftUp( wxMouseEvent& event );
-
-    void OnMiddleUp( wxMouseEvent& event );
-
-    void OnMiddleDown( wxMouseEvent& event );
-
-    void OnRightClick( wxMouseEvent& event );
-
-    DECLARE_EVENT_TABLE()
+    void onPaint() override;
+    void onMouseWheel( const MOUSE_STATE& aMouse ) override;
+    void onMouseMove( const MOUSE_STATE& aMouse ) override;
 
     /// openGL context
-    wxGLContext* m_glRC;
+    KIGL_CONTEXT* m_glRC;
 
     /// Camera used in this canvas
     TRACK_BALL m_trackBallCamera;

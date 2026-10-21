@@ -37,6 +37,11 @@
 #include <wx/kiwx_gui.h>
 #include <wx/kiwx_filedlg.h>
 
+#include <vector>
+
+class QFileSystemModel;
+class QTreeView;
+
 class QToolButton;
 
 
@@ -48,6 +53,15 @@ class QToolButton;
 
 #define wxCP_NO_TLW_RESIZE 0x0002
 #define wxCP_DEFAULT_STYLE ( wxTAB_TRAVERSAL | wxNO_BORDER )
+
+// The styles of wxGenericDirCtrl
+#define wxDIRCTRL_DIR_ONLY       0x0010
+#define wxDIRCTRL_SELECT_FIRST   0x0020
+#define wxDIRCTRL_SHOW_FILTERS   0x0040
+#define wxDIRCTRL_3D_INTERNAL    0x0080
+#define wxDIRCTRL_EDIT_LABELS    0x0100
+#define wxDIRCTRL_MULTIPLE       0x0200
+#define wxDIRCTRL_DEFAULT_STYLE  wxDIRCTRL_3D_INTERNAL
 
 #define wxPB_USE_TEXTCTRL 0x0002
 #define wxPB_SMALL 0x8000
@@ -236,6 +250,59 @@ public:
 private:
     QToolButton* m_button;
     wxPanel*     m_pane;
+};
+
+
+/**
+ * A tree of the directories and of the files (wxGenericDirCtrl): a tree view of the file system
+ * and, with wxDIRCTRL_SHOW_FILTERS, the choice of the filter of the files under it.  It sends
+ * wxEVT_DIRCTRL_SELECTIONCHANGED and wxEVT_DIRCTRL_FILEACTIVATED (wxCommandEvent).
+ */
+class KIQT_API wxGenericDirCtrl : public wxWindowCompat<QWidget>
+{
+public:
+    explicit wxGenericDirCtrl( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                               const wxString& aDir = wxEmptyString,
+                               const wxPoint& aPos = wxDefaultPosition,
+                               const wxSize& aSize = wxDefaultSize,
+                               long aStyle = wxDIRCTRL_DEFAULT_STYLE,
+                               const wxString& aFilter = wxEmptyString, int aDefaultFilter = 0,
+                               const wxString& aName = wxEmptyString );
+
+    /// The directory selected, or the directory of the file selected.
+    wxString GetPath() const;
+
+    /// Select a directory or a file, and show it.
+    void SetPath( const wxString& aPath );
+
+    /// The file selected (empty if a directory is selected).
+    wxString GetFilePath() const;
+
+    void UnselectAll();
+    void ShowHidden( bool aShow );
+
+    /// The filter: a wildcard of wxWidgets ("description|patterns|...").
+    void SetFilter( const wxString& aFilter );
+    wxString GetFilter() const { return m_filter; }
+
+    void SetFilterIndex( int aIndex );
+    int GetFilterIndex() const;
+
+    /// The choice of the filter (nullptr without wxDIRCTRL_SHOW_FILTERS).
+    wxChoice* GetFilterListCtrl() const { return m_filterChoice; }
+
+    /// Apply the filter selected in the choice.
+    void ReCreateTree();
+
+private:
+    void applyFilter( int aIndex );
+
+    QFileSystemModel*    m_model;
+    QTreeView*           m_tree;
+    wxChoice*            m_filterChoice;
+    wxString             m_filter;
+    std::vector<QString> m_patterns;   ///< The patterns of each filter, separated by ';'
+    int                  m_filterIndex = 0;
 };
 
 #endif // KIWX_PICKERS_H

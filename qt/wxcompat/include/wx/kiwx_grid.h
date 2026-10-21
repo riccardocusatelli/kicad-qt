@@ -514,6 +514,7 @@ public:
     bool IsCreated() const { return m_control != nullptr; }
 
     wxWindow* GetControl() const { return m_control ? wxWindowFromQt( m_control.data() ) : nullptr; }
+    wxWindow* GetWindow() const { return GetControl(); }
     void SetControl( wxWidgetArgCompat aControl ) { m_control = aControl.get(); }
 
     /// The widget of the control.

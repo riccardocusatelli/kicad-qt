@@ -43,14 +43,14 @@ public:
                  const wxString& name = wxEmptyString );
 
     /// A page made by @a aLazyCtor when it is first shown.
-    bool AddLazyPage( std::function<QWidget*( QWidget* aParent )> aLazyCtor,
+    bool AddLazyPage( std::function<wxWindow*( wxWindow* aParent )> aLazyCtor,
                       const wxString& text, bool bSelect = false, int imageId = -1 );
 
-    bool AddLazySubPage( std::function<QWidget*( QWidget* aParent )> aLazyCtor,
+    bool AddLazySubPage( std::function<wxWindow*( wxWindow* aParent )> aLazyCtor,
                          const wxString& text, bool bSelect = false, int imageId = -1 );
 
     /// The window of a page (made now if it is a lazy page).
-    QWidget* ResolvePage( size_t aPage );
+    wxWindow* ResolvePage( size_t aPage );
 };
 
 #endif // WX_TREEBOOK_H

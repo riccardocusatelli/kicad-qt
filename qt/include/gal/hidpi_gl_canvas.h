@@ -35,6 +35,8 @@
 #include <kicad_gl/kiglad.h> // Must be included first
 
 #include <kiqt.h>
+#include <algorithm>
+
 #include <QPointer>
 #include <QWidget>
 
@@ -125,6 +127,12 @@ public:
 
     /// Give the keyboard focus to the canvas.
     void SetFocus();
+
+    /// The minimum size of the canvas, in logical pixels (-1: no minimum) (wxWindow::SetMinSize()).
+    void SetMinSize( const wxSize& aSize )
+    {
+        setMinimumSize( std::max( aSize.x, 0 ), std::max( aSize.y, 0 ) );
+    }
 
     /// The size of the canvas, in logical pixels.
     wxSize GetClientSize() const;

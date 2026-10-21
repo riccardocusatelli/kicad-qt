@@ -41,6 +41,7 @@
 #include <3d_rendering/track_ball.h>
 #include <3d_viewer/eda_3d_viewer_settings.h>
 #include <eda_units.h>
+#include <wx/event.h>
 
 // Define min and max parameter values
 #define MAX_SCALE          10000.0
@@ -74,6 +75,11 @@ class SPNAV_VIEWER_PLUGIN;
 #else
 class NL_FOOTPRINT_PROPERTIES_PLUGIN;
 #endif
+
+
+/// The panel is shown or hidden in its dialog (defined with the panel of the 3D models of the
+/// footprints).
+wxDECLARE_EVENT( wxCUSTOM_PANEL_SHOWN_EVENT, wxCommandEvent );
 
 
 class PANEL_PREVIEW_3D_MODEL: public TOOLS_HOLDER, public PANEL_PREVIEW_3D_MODEL_BASE
@@ -110,6 +116,19 @@ public:
      * wxWidgets build): the 3D mouse moves the preview while it is shown.
      */
     void OnPanelShown( bool aShown );
+
+    /// The panel is shown in a window shown (wxWindow::IsShownOnScreen()).
+    bool IsShownOnScreen() const { return isVisible(); }
+
+    /// The events sent to the panel (wxWindow::ProcessWindowEvent()): wxCUSTOM_PANEL_SHOWN_EVENT.
+    bool ProcessWindowEvent( wxEvent& aEvent )
+    {
+        if( aEvent.GetEventType() != wxCUSTOM_PANEL_SHOWN_EVENT )
+            return false;
+
+        OnPanelShown( static_cast<wxCommandEvent&>( aEvent ).GetInt() != 0 );
+        return true;
+    }
 
 private:
     void loadSettings();

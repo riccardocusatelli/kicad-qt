@@ -211,6 +211,18 @@ void DIALOG_SHIM::resetSize()
 }
 
 
+bool DIALOG_SHIM::EmulateButtonClickIfPresent( int aId )
+{
+    QAbstractButton* button = dynamic_cast<QAbstractButton*>( FindWindow( aId ) );
+
+    if( !button || !button->isEnabled() || !button->isVisible() )
+        return false;
+
+    button->click();
+    return true;
+}
+
+
 void DIALOG_SHIM::restoreGeometry()
 {
     QRect saved;

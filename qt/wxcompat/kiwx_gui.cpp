@@ -38,6 +38,8 @@
 #include <QResizeEvent>
 #include <QWheelEvent>
 #include <QApplication>
+#include <QDesktopServices>
+#include <QUrl>
 #include <QMessageBox>
 #include <QScreen>
 #include <QScrollBar>
@@ -2659,6 +2661,18 @@ QWidget* wxFindFocusCompat()
 void wxBell()
 {
     QApplication::beep();
+}
+
+
+bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags )
+{
+    return QDesktopServices::openUrl( QUrl::fromLocalFile( ToQString( aDocument ) ) );
+}
+
+
+bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags )
+{
+    return QDesktopServices::openUrl( QUrl::fromUserInput( ToQString( aUrl ) ) );
 }
 
 

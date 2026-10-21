@@ -24,9 +24,14 @@
 #include <wx/kiwx_pickers.h>
 
 #include <QDesktopServices>
+#include <QDir>
+#include <QFileInfo>
+#include <QFileSystemModel>
+#include <QHeaderView>
 #include <QHBoxLayout>
 #include <QSignalBlocker>
 #include <QToolButton>
+#include <QTreeView>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -258,4 +263,216 @@ void wxCollapsiblePane::SetLabel( const wxString& aLabel )
 wxString wxCollapsiblePane::GetLabel() const
 {
     return ToWxString( m_button->text() );
+}
+
+
+wxGenericDirCtrl::wxGenericDirCtrl( wxWidgetArgCompat aParent, int aId, const wxString& aDir,
+                                    const wxPoint& aPos, const wxSize& aSize, long aStyle,
+                                    const wxString& aFilter, int aDefaultFilter,
+                                    const wxString& aName ) :
+        wxWindowCompat<QWidget>( aParent ),
+        m_filterChoice( nullptr )
+{
+    SetId( aId );
+
+    QVBoxLayout* layout = new QVBoxLayout( this );
+    layout->setContentsMargins( 0, 0, 0, 0 );
+
+    m_model = new QFileSystemModel( this );
+    m_model->setRootPath( QString() );
+    m_model->setNameFilterDisables( false );
+    m_model->setFilter( ( aStyle & wxDIRCTRL_DIR_ONLY )
+                                ? QDir::AllDirs | QDir::NoDotAndDotDot | QDir::Drives
+                                : QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot | QDir::Drives );
+
+    m_tree = new QTreeView( this );
+    m_tree->setModel( m_model );
+    m_tree->setHeaderHidden( true );
+
+    // Only the names
+    for( int col = 1; col < m_model->columnCount(); ++col )
+        m_tree->hideColumn( col );
+
+    layout->addWidget( m_tree, 1 );
+
+    if( aStyle & wxDIRCTRL_SHOW_FILTERS )
+    {
+        m_filterChoice = new wxChoice( this );
+        layout->addWidget( m_filterChoice );
+
+        QObject::connect( m_filterChoice, &QComboBox::currentIndexChanged, this,
+                          [this]( int aIndex )
+                          {
+                              if( aIndex >= 0 )
+                                  applyFilter( aIndex );
+                          } );
+    }
+
+    QObject::connect( m_tree->selectionModel(), &QItemSelectionModel::currentChanged, this,
+                      [this]( const QModelIndex&, const QModelIndex& )
+                      {
+                          wxCommandEvent event( wxEVT_DIRCTRL_SELECTIONCHANGED, GetId() );
+                          event.SetEventObject( this );
+                          ProcessEvent( event );
+                      } );
+
+    QObject::connect( m_tree, &QTreeView::activated, this,
+                      [this]( const QModelIndex& aIndex )
+                      {
+                          if( m_model->isDir( aIndex ) )
+                              return;
+
+                          wxCommandEvent event( wxEVT_DIRCTRL_FILEACTIVATED, GetId() );
+                          event.SetEventObject( this );
+                          ProcessEvent( event );
+                      } );
+
+    if( !aFilter.IsEmpty() )
+    {
+        SetFilter( aFilter );
+        SetFilterIndex( aDefaultFilter );
+    }
+
+    if( !aDir.IsEmpty() )
+        SetPath( aDir );
+}
+
+
+wxString wxGenericDirCtrl::GetPath() const
+{
+    QModelIndex index = m_tree->currentIndex();
+
+    if( !index.isValid() )
+        return wxString();
+
+    return ToWxString( QDir::toNativeSeparators( m_model->filePath( index ) ) );
+}
+
+
+void wxGenericDirCtrl::SetPath( const wxString& aPath )
+{
+    QModelIndex index = m_model->index( ToQString( aPath ) );
+
+    if( !index.isValid() )
+        return;
+
+    // The parents are expanded, and a directory too (as wxWidgets)
+    for( QModelIndex parent = index.parent(); parent.isValid(); parent = parent.parent() )
+        m_tree->expand( parent );
+
+    if( m_model->isDir( index ) )
+        m_tree->expand( index );
+
+    m_tree->setCurrentIndex( index );
+    m_tree->scrollTo( index );
+}
+
+
+wxString wxGenericDirCtrl::GetFilePath() const
+{
+    QModelIndex index = m_tree->currentIndex();
+
+    if( !index.isValid() || m_model->isDir( index ) )
+        return wxString();
+
+    return ToWxString( QDir::toNativeSeparators( m_model->filePath( index ) ) );
+}
+
+
+void wxGenericDirCtrl::UnselectAll()
+{
+    QSignalBlocker blocker( m_tree->selectionModel() );
+    m_tree->selectionModel()->clear();
+}
+
+
+void wxGenericDirCtrl::ShowHidden( bool aShow )
+{
+    QDir::Filters filters = m_model->filter();
+    m_model->setFilter( aShow ? ( filters | QDir::Hidden ) : ( filters & ~QDir::Hidden ) );
+}
+
+
+void wxGenericDirCtrl::SetFilter( const wxString& aFilter )
+{
+    m_filter = aFilter;
+    m_patterns.clear();
+
+    // "description|patterns|description|patterns...", or only the patterns
+    QStringList parts = ToQString( aFilter ).split( '|' );
+    QStringList descriptions;
+
+    if( parts.size() == 1 )
+    {
+        descriptions.append( parts[0] );
+        m_patterns.push_back( parts[0] );
+    }
+    else
+    {
+        for( int i = 0; i + 1 < parts.size(); i += 2 )
+        {
+            descriptions.append( parts[i] );
+            m_patterns.push_back( parts[i + 1] );
+        }
+    }
+
+    if( m_filterChoice )
+    {
+        QSignalBlocker blocker( m_filterChoice );
+        m_filterChoice->clear();
+        m_filterChoice->addItems( descriptions );
+    }
+
+    SetFilterIndex( 0 );
+}
+
+
+void wxGenericDirCtrl::SetFilterIndex( int aIndex )
+{
+    if( aIndex < 0 || aIndex >= static_cast<int>( m_patterns.size() ) )
+        return;
+
+    if( m_filterChoice )
+        m_filterChoice->SetSelection( aIndex );
+
+    applyFilter( aIndex );
+}
+
+
+int wxGenericDirCtrl::GetFilterIndex() const
+{
+    return m_filterIndex;
+}
+
+
+void wxGenericDirCtrl::ReCreateTree()
+{
+    applyFilter( m_filterIndex );
+}
+
+
+void wxGenericDirCtrl::applyFilter( int aIndex )
+{
+    if( aIndex < 0 || aIndex >= static_cast<int>( m_patterns.size() ) )
+        return;
+
+    m_filterIndex = aIndex;
+
+    QStringList patterns;
+
+    for( const QString& pattern : m_patterns[aIndex].split( ';', Qt::SkipEmptyParts ) )
+    {
+        QString trimmed = pattern.trimmed();
+
+        // All the files: no name filter
+        if( trimmed == QStringLiteral( "*" ) || trimmed == QStringLiteral( "*.*" ) )
+        {
+            patterns.clear();
+            break;
+        }
+
+        patterns.append( trimmed );
+    }
+
+    m_model->setNameFilters( patterns );
 }

@@ -30,7 +30,7 @@
 #include <wx/string.h>
 #include <wx/valtext.h>
 
-#include <../common/dialogs/dialog_configure_paths_base.h>
+#include <dialogs/dialog_configure_paths_base.h>
 
 
 class HTML_WINDOW;

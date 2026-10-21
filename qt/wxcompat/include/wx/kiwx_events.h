@@ -183,6 +183,8 @@ enum wxEventTypeCompat
     wxEVT_PAINT,
     wxEVT_ERASE_BACKGROUND,
     wxEVT_COLLAPSIBLEPANE_CHANGED,
+    wxEVT_DIRCTRL_SELECTIONCHANGED,
+    wxEVT_DIRCTRL_FILEACTIVATED,
     wxEVT_USER_FIRST = 10000
 };
 
@@ -471,6 +473,11 @@ public:
     bool LeftDClick() const { return GetEventType() == wxEVT_LEFT_DCLICK; }
     bool RightDown() const { return GetEventType() == wxEVT_RIGHT_DOWN; }
     bool RightUp() const { return GetEventType() == wxEVT_RIGHT_UP; }
+
+    /// The mouse moves (the state of the buttons isn't kept: a drag is a move too).
+    bool Moving() const { return GetEventType() == wxEVT_MOTION; }
+    bool Entering() const { return GetEventType() == wxEVT_ENTER_WINDOW; }
+    bool Leaving() const { return GetEventType() == wxEVT_LEAVE_WINDOW; }
 
     int  m_x, m_y;
     int  m_wheelRotation;
@@ -763,6 +770,8 @@ public:
     int GetOldSelection() const { return m_oldSelection; }
     void SetOldSelection( int aSel ) { m_oldSelection = aSel; }
     void SetSelection( int aSel ) { SetInt( aSel ); }
+
+    wxBookCtrlEvent* Clone() const { return new wxBookCtrlEvent( *this ); }
 
 private:
     int m_oldSelection;

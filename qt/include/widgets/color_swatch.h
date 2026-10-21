@@ -96,6 +96,15 @@ public:
         SetWindowID( aId );
     }
 
+    /// Enable or disable the swatch (wxWindow::Enable()).
+    bool Enable( bool aEnable = true )
+    {
+        setEnabled( aEnable );
+        return true;
+    }
+
+    bool Disable() { return Enable( false ); }
+
     /**
      * Set the current swatch color directly.
      */

@@ -231,6 +231,7 @@ COMPAT_CLASSES = {
     'wxDataViewTreeCtrl': 'wxDataViewTreeCtrl',
     'wxGrid': 'wxGrid',
     'wxStyledTextCtrl': 'wxStyledTextCtrl',
+    'wxGenericDirCtrl': 'wxGenericDirCtrl',
 }
 
 # The events of the compatibility mode: name -> (class of the event, type of the event, how it
@@ -294,6 +295,8 @@ COMPAT_EVENTS = {
     'OnListKeyDown':        ( 'wxListEvent', 'wxEVT_LIST_KEY_DOWN', 'bind' ),
     'OnListBeginDrag':      ( 'wxListEvent', 'wxEVT_LIST_BEGIN_DRAG', 'bind' ),
     'OnFileChanged':        ( 'wxFileDirPickerEvent', 'wxEVT_FILEPICKER_CHANGED', 'bind' ),
+    'OnDirctrlSelectionChanged': ( 'wxCommandEvent', 'wxEVT_DIRCTRL_SELECTIONCHANGED', 'bind' ),
+    'OnDirctrlFileActivated':    ( 'wxCommandEvent', 'wxEVT_DIRCTRL_FILEACTIVATED', 'bind' ),
     'OnDataViewCtrlSelectionChanged':    ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_SELECTION_CHANGED', 'bind' ),
     'OnDataViewCtrlItemActivated':       ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_ACTIVATED', 'bind' ),
     'OnDataViewCtrlItemContextMenu':     ( 'wxDataViewEvent', 'wxEVT_DATAVIEW_ITEM_CONTEXT_MENU', 'bind' ),
@@ -975,7 +978,7 @@ class FormClass:
                 # The arguments of the constructors of wxWidgets, for the controls made with them
                 if cls not in ( 'wxHyperlinkCtrl', 'wxFilePickerCtrl', 'wxDirPickerCtrl', 'wxListCtrl',
                                 'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl',
-                                'wxGrid' ):
+                                'wxGrid', 'wxGenericDirCtrl' ):
                     args = aParent
             else:
                 self.qt( aQtClass )
@@ -1329,6 +1332,14 @@ class FormClass:
                 self.code.append( '    QListWidgetItem* %s = new QListWidgetItem( %s, %s );' % ( item, tr( choice ), var ) )
                 self.code.append( '    %s->setFlags( %s->flags() | Qt::ItemIsUserCheckable );' % ( item, item ) )
                 self.code.append( '    %s->setCheckState( Qt::Unchecked );' % item )
+
+        elif cls == 'wxGenericDirCtrl' and self.gen.compat:
+            qt = 'QWidget'
+            var, t = make( qt, '%s, %s, wxEmptyString, wxDefaultPosition, wxDefaultSize, %s, '
+                                      'wxEmptyString, %s' % ( aParent, self.wx_id( p ), self.wx_style( p ),
+                                                              parse_int( p.get( 'defaultfilter' ), 0 ) ) )
+            self.include( '<wx/dirctrl.h>' )
+            self.code.append( '    %s->ShowHidden( %s );' % ( var, 'true' if p.get( 'show_hidden' ) == '1' else 'false' ) )
 
         elif cls == 'wxHtmlWindow':
             qt = 'QTextBrowser'

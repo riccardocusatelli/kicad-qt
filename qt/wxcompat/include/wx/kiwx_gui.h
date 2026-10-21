@@ -1196,6 +1196,15 @@ private:
 };
 
 
+/// How the cells not growable of a wxFlexGridSizer grow (Qt lays them out by itself).
+enum wxFlexSizerGrowMode
+{
+    wxFLEX_GROWMODE_NONE,
+    wxFLEX_GROWMODE_SPECIFIED,
+    wxFLEX_GROWMODE_ALL
+};
+
+
 class KIQT_API wxFlexGridSizer : public wxSizerCompat<QGridLayout>
 {
 public:
@@ -1210,6 +1219,11 @@ public:
     void RemoveGrowableRow( size_t aRow ) { setRowStretch( int( aRow ), 0 ); }
     void SetFlexibleDirection( int ) {}
     void SetNonFlexibleGrowMode( int ) {}
+
+    int GetVGap() const { return verticalSpacing(); }
+    int GetHGap() const { return horizontalSpacing(); }
+    void SetVGap( int aGap ) { setVerticalSpacing( aGap ); }
+    void SetHGap( int aGap ) { setHorizontalSpacing( aGap ); }
 
     /// Add a widget in the next cell.
     void Add( wxWidgetArgCompat aWindow, int aProportion = 0, int aFlag = 0, int aBorder = 0,
@@ -1337,6 +1351,12 @@ KIQT_API QWidget* wxFindFocusCompat();
 
 /// Ring the bell.
 KIQT_API void wxBell();
+
+/// Open a document or a directory with the default application of the system.
+KIQT_API bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags = 0 );
+
+/// Open a URL with the default browser of the system.
+KIQT_API bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags = 0 );
 
 /// The tooltips of the application (wxToolTip): Qt shows them always.
 class wxToolTip

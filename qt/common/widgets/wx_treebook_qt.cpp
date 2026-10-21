@@ -39,7 +39,7 @@
 class LAZY_PAGE : public wxPanel
 {
 public:
-    LAZY_PAGE( QWidget* aParent, std::function<QWidget*( QWidget* aParent )> aLazyCtor ) :
+    LAZY_PAGE( QWidget* aParent, std::function<wxWindow*( wxWindow* aParent )> aLazyCtor ) :
             wxPanel( aParent, wxID_ANY ),
             m_lazyCtor( std::move( aLazyCtor ) ),
             m_contents( nullptr )
@@ -48,15 +48,15 @@ public:
         m_layout->setContentsMargins( 0, 0, 0, 0 );
     }
 
-    QWidget* Resolve()
+    wxWindow* Resolve()
     {
         if( !m_contents )
         {
             m_contents = m_lazyCtor( this );
-            m_layout->addWidget( m_contents, 1 );
+            m_layout->addWidget( m_contents->GetHandle(), 1 );
             m_layout->activate();
 
-            wxTransferDataToWindowCompat( m_contents );
+            wxTransferDataToWindowCompat( m_contents->GetHandle() );
         }
 
         return m_contents;
@@ -65,17 +65,17 @@ public:
     // The transfers of the page are the ones of its contents, once made
     bool TransferDataToWindow() override
     {
-        return m_contents ? wxTransferDataToWindowCompat( m_contents ) : true;
+        return m_contents ? wxTransferDataToWindowCompat( m_contents->GetHandle() ) : true;
     }
 
     bool TransferDataFromWindow() override
     {
-        return m_contents ? wxTransferDataFromWindowCompat( m_contents ) : true;
+        return m_contents ? wxTransferDataFromWindowCompat( m_contents->GetHandle() ) : true;
     }
 
     bool Validate() override
     {
-        return m_contents ? wxValidateCompat( m_contents ) : true;
+        return m_contents ? wxValidateCompat( m_contents->GetHandle() ) : true;
     }
 
     long GetContentsStyle() const
@@ -92,10 +92,10 @@ protected:
     }
 
 private:
-    std::function<QWidget*( QWidget* aParent )> m_lazyCtor;
+    std::function<wxWindow*( wxWindow* aParent )> m_lazyCtor;
 
     QVBoxLayout* m_layout;
-    QWidget*     m_contents;
+    wxWindow*    m_contents;
 };
 
 
@@ -106,26 +106,26 @@ WX_TREEBOOK::WX_TREEBOOK( QWidget* parent, int id, const wxPoint& pos, const wxS
 }
 
 
-bool WX_TREEBOOK::AddLazyPage( std::function<QWidget*( QWidget* aParent )> aLazyCtor,
+bool WX_TREEBOOK::AddLazyPage( std::function<wxWindow*( wxWindow* aParent )> aLazyCtor,
                                const wxString& text, bool bSelect, int imageId )
 {
     return AddPage( new LAZY_PAGE( this, std::move( aLazyCtor ) ), text, bSelect, imageId );
 }
 
 
-bool WX_TREEBOOK::AddLazySubPage( std::function<QWidget*( QWidget* aParent )> aLazyCtor,
+bool WX_TREEBOOK::AddLazySubPage( std::function<wxWindow*( wxWindow* aParent )> aLazyCtor,
                                   const wxString& text, bool bSelect, int imageId )
 {
     return AddSubPage( new LAZY_PAGE( this, std::move( aLazyCtor ) ), text, bSelect, imageId );
 }
 
 
-QWidget* WX_TREEBOOK::ResolvePage( size_t aPage )
+wxWindow* WX_TREEBOOK::ResolvePage( size_t aPage )
 {
     wxWindow* page = GetPage( aPage );
 
     if( LAZY_PAGE* lazyPage = dynamic_cast<LAZY_PAGE*>( page ) )
         return lazyPage->Resolve();
 
-    return page ? page->GetHandle() : nullptr;
+    return page;
 }

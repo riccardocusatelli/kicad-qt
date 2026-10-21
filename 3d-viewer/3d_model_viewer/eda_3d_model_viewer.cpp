@@ -32,7 +32,7 @@
 #include <kicad_gl/gl_context_mgr.h>
 
 #include <iostream>
-#include <wx/dcclient.h>
+#include <wx/log.h>
 
 #include <base_units.h>
 #include <build_version.h>
@@ -65,25 +65,6 @@
 const wxChar* EDA_3D_MODEL_VIEWER::m_logTrace = wxT( "KI_TRACE_EDA_3D_MODEL_VIEWER" );
 
 
-BEGIN_EVENT_TABLE( EDA_3D_MODEL_VIEWER, wxGLCanvas )
-    EVT_PAINT( EDA_3D_MODEL_VIEWER::OnPaint )
-
-    // mouse events
-    EVT_LEFT_DOWN( EDA_3D_MODEL_VIEWER::OnLeftDown )
-    EVT_LEFT_UP( EDA_3D_MODEL_VIEWER::OnLeftUp )
-    EVT_MIDDLE_UP( EDA_3D_MODEL_VIEWER::OnMiddleUp )
-    EVT_MIDDLE_DOWN( EDA_3D_MODEL_VIEWER::OnMiddleDown)
-    EVT_RIGHT_DOWN( EDA_3D_MODEL_VIEWER::OnRightClick )
-    EVT_MOUSEWHEEL( EDA_3D_MODEL_VIEWER::OnMouseWheel )
-    EVT_MOTION( EDA_3D_MODEL_VIEWER::OnMouseMove )
-
-#ifdef USE_OSX_MAGNIFY_EVENT
-     EVT_MAGNIFY(   EDA_3D_MODEL_VIEWER::OnMagnify )
-#endif
-
-    // other events
-    EVT_ERASE_BACKGROUND( EDA_3D_MODEL_VIEWER::OnEraseBackground )
-END_EVENT_TABLE()
 
 
 // This defines the range that all coord will have to be rendered.
@@ -92,11 +73,11 @@ END_EVENT_TABLE()
 #define RANGE_SCALE_3D 8.0f
 
 
-EDA_3D_MODEL_VIEWER::EDA_3D_MODEL_VIEWER( wxWindow* aParent, const wxGLAttributes& aGLAttribs,
+EDA_3D_MODEL_VIEWER::EDA_3D_MODEL_VIEWER( TOOLKIT_WINDOW* aParent,
+                                          const KIGL_ATTRIBUTES& aGLAttribs,
                                           S3D_CACHE* aCacheManager ) :
-        HIDPI_GL_CANVAS( EDA_DRAW_PANEL_GAL::GetVcSettings(), aParent, aGLAttribs, wxID_ANY,
-                         wxDefaultPosition, wxDefaultSize,
-                         wxFULL_REPAINT_ON_RESIZE ),
+        HIDPI_GL_3D_CANVAS( EDA_DRAW_PANEL_GAL::GetVcSettings(), m_trackBallCamera, aParent,
+                            aGLAttribs ),
         m_trackBallCamera( RANGE_SCALE_3D * 4.0f ),
         m_cacheManager( aCacheManager )
 {
@@ -249,10 +230,8 @@ void EDA_3D_MODEL_VIEWER::ogl_set_arrow_material()
 }
 
 
-void EDA_3D_MODEL_VIEWER::OnPaint( wxPaintEvent& event )
+void EDA_3D_MODEL_VIEWER::onPaint()
 {
-    event.Skip( false );
-
     // SwapBuffer requires the window to be shown before calling
     if( !IsShownOnScreen() )
     {
@@ -400,96 +379,52 @@ void EDA_3D_MODEL_VIEWER::OnPaint( wxPaintEvent& event )
 }
 
 
-void EDA_3D_MODEL_VIEWER::OnEraseBackground( wxEraseEvent& event )
+void EDA_3D_MODEL_VIEWER::onMouseWheel( const MOUSE_STATE& aMouse )
 {
-    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnEraseBackground" ) );
-    // Do nothing, to avoid flashing.
-}
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::onMouseWheel" ) );
 
-
-void EDA_3D_MODEL_VIEWER::OnMouseWheel( wxMouseEvent& event )
-{
-    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_MODEL_VIEWER::OnMouseWheel" ) );
-
-    if( event.ShiftDown() )
+    if( aMouse.m_shift )
     {
-        //if( event.GetWheelRotation() < 0 )
+        //if( aMouse.m_wheelRotation < 0 )
             //SetView3D( VIEW_3D_TYPE::VIEW3D_PAN_UP );    // move up
         //else
             //SetView3D( VIEW_3D_TYPE::VIEW3D_PAN_DOWN );  // move down
     }
-    else if( event.ControlDown() )
+    else if( aMouse.m_control )
     {
-        //if( event.GetWheelRotation() > 0 )
+        //if( aMouse.m_wheelRotation > 0 )
             //SetView3D( VIEW_3D_TYPE::VIEW3D_PAN_RIGHT ); // move right
         //else
             //SetView3D( VIEW_3D_TYPE::VIEW3D_PAN_LEFT );  // move left
     }
     else
     {
-        m_trackBallCamera.Zoom( event.GetWheelRotation() > 0 ? 1.1f : 1/1.1f );
+        m_trackBallCamera.Zoom( aMouse.m_wheelRotation > 0 ? 1.1f : 1/1.1f );
 
         //DisplayStatus();
-        Refresh( false );
+        Refresh();
     }
 
-    m_trackBallCamera.SetCurMousePosition( event.GetPosition() );
+    m_trackBallCamera.SetCurMousePosition( wxPoint( aMouse.m_position.x, aMouse.m_position.y ) );
 }
 
 
-#ifdef USE_OSX_MAGNIFY_EVENT
-void EDA_3D_MODEL_VIEWER::OnMagnify( wxMouseEvent& event )
-{
-}
-#endif
-
-
-void EDA_3D_MODEL_VIEWER::OnMouseMove( wxMouseEvent& event )
+void EDA_3D_MODEL_VIEWER::onMouseMove( const MOUSE_STATE& aMouse )
 {
     const wxSize&  nativeWinSize  = GetNativePixelSize();
-    const wxPoint& nativePosition = GetNativePosition( event.GetPosition() );
+    const wxPoint& nativePosition = GetNativePosition( wxPoint( aMouse.m_position.x,
+                                                                aMouse.m_position.y ) );
 
     m_trackBallCamera.SetCurWindowSize( nativeWinSize );
 
-    if( event.Dragging() )
+    if( aMouse.m_dragging )
     {
-        if( event.LeftIsDown() )            // Drag
+        if( aMouse.m_leftDown )            // Drag
             m_trackBallCamera.Drag( nativePosition );
 
         // orientation has changed, redraw mesh
-        Refresh( false );
+        Refresh();
     }
 
     m_trackBallCamera.SetCurMousePosition( nativePosition );
 }
-
-
-void EDA_3D_MODEL_VIEWER::OnLeftDown( wxMouseEvent& event )
-{
-    event.Skip();
-}
-
-
-void EDA_3D_MODEL_VIEWER::OnLeftUp( wxMouseEvent& event )
-{
-    event.Skip();
-}
-
-
-void EDA_3D_MODEL_VIEWER::OnMiddleDown( wxMouseEvent& event )
-{
-    event.Skip();
-}
-
-
-void EDA_3D_MODEL_VIEWER::OnMiddleUp( wxMouseEvent& event )
-{
-    event.Skip();
-}
-
-
-void EDA_3D_MODEL_VIEWER::OnRightClick( wxMouseEvent& event )
-{
-    event.Skip();
-}
-

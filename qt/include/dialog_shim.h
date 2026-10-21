@@ -247,6 +247,9 @@ protected:
      */
     void resetSize();
 
+    /// Click the button @a aId if it is enabled and shown (wxDialog::EmulateButtonClickIfPresent()).
+    bool EmulateButtonClickIfPresent( int aId );
+
     EDA_UNITS              m_units;    // userUnits for display and parsing
     std::string            m_hash_key; // optional custom key for persistence
 

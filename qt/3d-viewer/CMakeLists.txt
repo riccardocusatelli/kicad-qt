@@ -60,9 +60,17 @@ kiqt_generate_fbp( KIQT_3D_VIEWER_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/3d-viewer/dialogs/panel_preview_3d_model_base.fbp
     )
 
+# The dialogs of the 3D viewer built unchanged on the wxWidgets compatibility layer (qt/wxcompat)
+kiqt_generate_fbp_compat( KIQT_3D_VIEWER_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/3d-viewer/dialogs/dialog_select_3d_model_base.fbp
+    )
+
 add_library( 3d-viewer_qt STATIC
     ${KIQT_3D_VIEWER_SRCS}
     ${KIQT_3D_VIEWER_FBP_SRCS}
+    ${KIQT_3D_VIEWER_COMPAT_FBP_SRCS}
+    ${CMAKE_SOURCE_DIR}/3d-viewer/3d_model_viewer/eda_3d_model_viewer.cpp
+    ${CMAKE_SOURCE_DIR}/3d-viewer/dialogs/dialog_select_3d_model.cpp
     common_ogl/ogl_attr_list_qt.cpp
     3d_viewer/eda_3d_viewer_frame_qt.cpp
     dialogs/appearance_controls_3D_qt.cpp
