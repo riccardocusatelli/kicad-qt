@@ -51,6 +51,7 @@ class QLineEdit;
 class QPoint;
 class QTimer;
 class QTreeView;
+class LIB_TREE_VIEW;
 class QVBoxLayout;
 
 
@@ -263,7 +264,7 @@ protected:
 
     QLineEdit*       m_query_ctrl;
     BITMAP_BUTTON*   m_sort_ctrl;
-    QTreeView*       m_tree_ctrl;
+    LIB_TREE_VIEW*   m_tree_ctrl;
     HTML_WINDOW*     m_details_ctrl;
     QTimer*          m_debounceTimer;
     bool             m_inTimerEvent;

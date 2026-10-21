@@ -42,6 +42,14 @@
 static const int kDataViewIndent = 20;
 
 
+bool LIB_TREE_VIEW::IsExpanded( const wxDataViewItem& aItem ) const
+{
+    LIB_TREE_MODEL_ADAPTER* adapter = dynamic_cast<LIB_TREE_MODEL_ADAPTER*>( model() );
+
+    return adapter && isExpanded( adapter->ToIndex( aItem ) );
+}
+
+
 LIB_TREE_NODE* LIB_TREE_MODEL_ADAPTER::ToNode( const QModelIndex& aIndex )
 {
     return aIndex.isValid() ? static_cast<LIB_TREE_NODE*>( aIndex.internalPointer() ) : nullptr;
@@ -140,7 +148,7 @@ void LIB_TREE_MODEL_ADAPTER::OpenLibs( const std::vector<wxString>& aLibs )
 
     for( const wxString& lib : aLibs )
     {
-        QModelIndex item = FindItem( LIB_ID( lib, wxEmptyString ) );
+        QModelIndex item = ToIndex( FindItem( LIB_ID( lib, wxEmptyString ) ) );
 
         if( item.isValid() )
             m_widget->expand( item );
@@ -216,7 +224,7 @@ void LIB_TREE_MODEL_ADAPTER::UpdateSearchString( const wxString& aSearch, bool a
 }
 
 
-void LIB_TREE_MODEL_ADAPTER::AttachTo( QTreeView* aTreeView )
+void LIB_TREE_MODEL_ADAPTER::AttachTo( LIB_TREE_VIEW* aTreeView )
 {
     m_widget = aTreeView;
     aTreeView->setIndentation( kDataViewIndent );
@@ -325,15 +333,15 @@ LIB_TREE_NODE* LIB_TREE_MODEL_ADAPTER::GetTreeNodeFor( const QModelIndex& aSelec
 }
 
 
-QModelIndex LIB_TREE_MODEL_ADAPTER::FindItem( const LIB_ID& aLibId )
+wxDataViewItem LIB_TREE_MODEL_ADAPTER::FindItem( const LIB_ID& aLibId )
 {
-    return ToIndex( findNode( aLibId ) );
+    return ToItem( findNode( aLibId ) );
 }
 
 
-QModelIndex LIB_TREE_MODEL_ADAPTER::GetCurrentDataViewItem()
+wxDataViewItem LIB_TREE_MODEL_ADAPTER::GetCurrentDataViewItem()
 {
-    return FindItem( m_preselect_lib_id );
+    return ToItem( findNode( m_preselect_lib_id ) );
 }
 
 
@@ -372,22 +380,49 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
 }
 
 
-bool LIB_TREE_MODEL_ADAPTER::IsContainer( const LIB_TREE_NODE* aNode ) const
+bool LIB_TREE_MODEL_ADAPTER::IsContainer( const wxDataViewItem& aItem ) const
 {
-    return aNode ? !aNode->m_Children.empty() : true;
+    LIB_TREE_NODE* node = ToNode( aItem );
+    return node ? !node->m_Children.empty() : true;
 }
 
 
-wxString LIB_TREE_MODEL_ADAPTER::GetValue( const LIB_TREE_NODE* aNode, unsigned int aCol ) const
+void LIB_TREE_MODEL_ADAPTER::GetValue( wxVariant& aVariant, const wxDataViewItem& aItem,
+                                       unsigned int aCol ) const
 {
-    return nodeText( aNode, aCol );
+    if( IsFrozen() )
+    {
+        aVariant = wxEmptyString;
+        return;
+    }
+
+    LIB_TREE_NODE* node = ToNode( aItem );
+    KI_CHECK( node, /* void */ );
+
+    aVariant = nodeText( node, aCol );
 }
 
 
-bool LIB_TREE_MODEL_ADAPTER::IsItalic( const LIB_TREE_NODE* aNode, unsigned int aCol ) const
+bool LIB_TREE_MODEL_ADAPTER::GetAttr( const wxDataViewItem& aItem, unsigned int aCol,
+                                      wxDataViewItemAttr& aAttr ) const
 {
-    // Names of non-root aliases are italicized
-    return aNode->m_Type == LIB_TREE_NODE::TYPE::ITEM && !aNode->m_IsRoot && aCol == 0;
+    if( IsFrozen() )
+        return false;
+
+    LIB_TREE_NODE* node = ToNode( aItem );
+    KI_CHECK( node, false );
+
+    if( node->m_Type == LIB_TREE_NODE::TYPE::ITEM )
+    {
+        if( !node->m_IsRoot && aCol == 0 )
+        {
+            // Names of non-root aliases are italicized
+            aAttr.SetItalic( true );
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -457,7 +492,11 @@ QVariant LIB_TREE_MODEL_ADAPTER::data( const QModelIndex& aIndex, int aRole ) co
     switch( aRole )
     {
     case Qt::DisplayRole:
-        return ToQString( GetValue( node, aIndex.column() ) );
+    {
+        wxVariant value;
+        GetValue( value, ToItem( node ), aIndex.column() );
+        return ToQString( value.GetString() );
+    }
 
     case Qt::ToolTipRole:
         if( aIndex.column() == NAME_COL && !node->m_Desc.IsEmpty() )
@@ -466,14 +505,31 @@ QVariant LIB_TREE_MODEL_ADAPTER::data( const QModelIndex& aIndex, int aRole ) co
         return QVariant();
 
     case Qt::FontRole:
-        if( IsItalic( node, aIndex.column() ) && m_widget )
+    case Qt::ForegroundRole:
+    case Qt::BackgroundRole:
+    {
+        wxDataViewItemAttr attr;
+
+        if( !GetAttr( ToItem( node ), aIndex.column(), attr ) )
+            return QVariant();
+
+        if( aRole == Qt::FontRole && attr.HasFont() && m_widget )
         {
             QFont font = m_widget->font();
-            font.setItalic( true );
+            font.setBold( attr.GetBold() );
+            font.setItalic( attr.GetItalic() );
+            font.setStrikeOut( attr.GetStrikethrough() );
             return font;
         }
 
+        if( aRole == Qt::ForegroundRole && attr.HasColour() )
+            return QColor( attr.GetColour() );
+
+        if( aRole == Qt::BackgroundRole && attr.HasBackgroundColour() )
+            return QColor( attr.GetBackgroundColour() );
+
         return QVariant();
+    }
 
     default:
         return QVariant();

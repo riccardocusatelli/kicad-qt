@@ -44,6 +44,7 @@
 #include <project.h>
 
 #include <wx/object.h>
+#include <wx/dataview.h>
 
 #include <functional>
 #include <map>
@@ -55,8 +56,22 @@
 class TOOL_DISPATCHER;
 class TOOL_INTERACTIVE;
 class EDA_BASE_FRAME;
-class QTreeView;
-class QWidget;
+class wxWindow;
+
+
+/**
+ * The view of the tree of a library: a QTreeView with the call of wxDataViewCtrl that the
+ * adapters of the editors make on it.
+ */
+class LIB_TREE_VIEW : public QTreeView
+{
+public:
+    explicit LIB_TREE_VIEW( QWidget* aParent = nullptr ) : QTreeView( aParent ) {}
+
+    /// The item is expanded in the view (wxDataViewCtrl::IsExpanded()).
+    bool IsExpanded( const wxDataViewItem& aItem ) const;
+};
+
 
 
 class LIB_TREE_MODEL_ADAPTER : public QAbstractItemModel, public wxRefCounter
@@ -196,7 +211,7 @@ public:
      *
      * @param aTreeView the view to attach to
      */
-    void AttachTo( QTreeView* aTreeView );
+    void AttachTo( LIB_TREE_VIEW* aTreeView );
 
     /**
      * A final-stage initialization to be called after the window hierarchy has been realized
@@ -223,9 +238,9 @@ public:
 
     virtual wxString GenerateInfo( const LIB_ID& aLibId, int aUnit ) { return wxEmptyString; }
 
-    virtual bool HasPreview( const QModelIndex& aItem ) { return false; }
-    virtual void ShowPreview( QWidget* aParent, const QModelIndex& aItem ) {}
-    virtual void ShutdownPreview( QWidget* aParent ) {}
+    virtual bool HasPreview( const wxDataViewItem& aItem ) { return false; }
+    virtual void ShowPreview( wxWindow* aParent, const wxDataViewItem& aItem ) {}
+    virtual void ShutdownPreview( wxWindow* aParent ) {}
 
     TOOL_DISPATCHER* GetToolDispatcher() const;
 
@@ -243,14 +258,29 @@ public:
     }
 
     /**
-     * Returns the index of the alias in the view (invalid if not found).
+     * Returns the item of the alias (invalid if not found).
      */
-    QModelIndex FindItem( const LIB_ID& aLibId );
+    wxDataViewItem FindItem( const LIB_ID& aLibId );
 
-    virtual QModelIndex GetCurrentDataViewItem();
+    virtual wxDataViewItem GetCurrentDataViewItem();
 
     /// The node of an index of the view (nullptr for the root).
     static LIB_TREE_NODE* ToNode( const QModelIndex& aIndex );
+
+    /// The node of an item (the wxDataViewModel interface of the adapters of the editors).
+    static LIB_TREE_NODE* ToNode( const wxDataViewItem& aItem )
+    {
+        return static_cast<LIB_TREE_NODE*>( aItem.GetID() );
+    }
+
+    /// The item of a node.
+    static wxDataViewItem ToItem( const LIB_TREE_NODE* aNode )
+    {
+        return wxDataViewItem( const_cast<LIB_TREE_NODE*>( aNode ) );
+    }
+
+    /// The index in the view of an item (invalid for the root or an item not shown).
+    QModelIndex ToIndex( const wxDataViewItem& aItem ) const { return ToIndex( ToNode( aItem ) ); }
 
     /// The index in the view of a node (invalid for the root or a node not shown).
     QModelIndex ToIndex( const LIB_TREE_NODE* aNode, int aColumn = 0 ) const;
@@ -327,14 +357,19 @@ protected:
 
     virtual void loadColumnConfig();
 
-    /// The node can have children (wxDataViewModel::IsContainer()).
-    virtual bool IsContainer( const LIB_TREE_NODE* aNode ) const;
+    // The interface of wxDataViewModel that the adapters of the editors override: the model of
+    // Qt shows what they give.
 
-    /// The text of a node for the column @a aCol (wxDataViewModel::GetValue()).
-    virtual wxString GetValue( const LIB_TREE_NODE* aNode, unsigned int aCol ) const;
+    /// The item can have children.
+    virtual bool IsContainer( const wxDataViewItem& aItem ) const;
 
-    /// The node is shown in italics (wxDataViewModel::GetAttr()).
-    virtual bool IsItalic( const LIB_TREE_NODE* aNode, unsigned int aCol ) const;
+    /// The text of an item for the column @a aCol.
+    virtual void GetValue( wxVariant& aVariant, const wxDataViewItem& aItem,
+                           unsigned int aCol ) const;
+
+    /// The attributes of the text of an item (bold, italics, ...): false if none.
+    virtual bool GetAttr( const wxDataViewItem& aItem, unsigned int aCol,
+                          wxDataViewItemAttr& aAttr ) const;
 
     virtual PROJECT::LIB_TYPE_T getLibType() = 0;
 
@@ -390,7 +425,7 @@ protected:
     std::map<wxString, int>      m_colWidths;
     std::vector<wxString>        m_shownColumns;   // Stored in display order
 
-    QTreeView*                   m_widget;
+    LIB_TREE_VIEW*               m_widget;
 
     std::function<void()>        m_lazyLoadHandler;
 

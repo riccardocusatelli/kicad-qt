@@ -201,7 +201,7 @@ LIB_TREE::LIB_TREE( QWidget* aParent, const wxString& aRecentSearchesKey,
     }
 
     // Tree control
-    m_tree_ctrl = new QTreeView( this );
+    m_tree_ctrl = new LIB_TREE_VIEW( this );
     m_tree_ctrl->setSelectionMode( ( aFlags & MULTISELECT ) ? QAbstractItemView::ExtendedSelection
                                                             : QAbstractItemView::SingleSelection );
     m_tree_ctrl->setSelectionBehavior( QAbstractItemView::SelectRows );
@@ -385,7 +385,7 @@ int LIB_TREE::GetSelectedTreeNodes( std::vector<LIB_TREE_NODE*>& aSelection ) co
 
 void LIB_TREE::SelectLibId( const LIB_ID& aLibId )
 {
-    QModelIndex item = m_adapter->FindItem( aLibId );
+    QModelIndex item = m_adapter->ToIndex( m_adapter->FindItem( aLibId ) );
 
     // Expand the parent library so the row is visible and can be selected/scrolled to.
     for( QModelIndex parent = item.parent(); parent.isValid(); parent = parent.parent() )
@@ -397,7 +397,7 @@ void LIB_TREE::SelectLibId( const LIB_ID& aLibId )
 
 void LIB_TREE::CenterLibId( const LIB_ID& aLibId )
 {
-    centerIfValid( m_adapter->FindItem( aLibId ) );
+    centerIfValid( m_adapter->ToIndex( m_adapter->FindItem( aLibId ) ) );
 }
 
 
@@ -409,7 +409,7 @@ void LIB_TREE::Unselect()
 
 void LIB_TREE::ExpandLibId( const LIB_ID& aLibId )
 {
-    expandIfValid( m_adapter->FindItem( aLibId ) );
+    expandIfValid( m_adapter->ToIndex( m_adapter->FindItem( aLibId ) ) );
 }
 
 
@@ -671,7 +671,7 @@ bool LIB_TREE::onQueryKey( QKeyEvent* aEvent )
     QModelIndex sel = currentSelection();
 
     if( !sel.isValid() )
-        sel = m_adapter->GetCurrentDataViewItem();
+        sel = m_adapter->ToIndex( m_adapter->GetCurrentDataViewItem() );
 
     LIB_TREE_NODE::TYPE type = sel.isValid() ? m_adapter->GetTypeFor( sel )
                                              : LIB_TREE_NODE::TYPE::INVALID;
@@ -737,7 +737,7 @@ bool LIB_TREE::onTreeKey( QKeyEvent* aEvent )
         QModelIndex sel = currentSelection();
 
         if( !sel.isValid() )
-            sel = m_adapter->GetCurrentDataViewItem();
+            sel = m_adapter->ToIndex( m_adapter->GetCurrentDataViewItem() );
 
         if( sel.isValid() )
             m_tree_ctrl->setExpanded( sel, aEvent->key() == Qt::Key_Right );
