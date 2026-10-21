@@ -3,6 +3,7 @@
 // resources such as icons instead of playing alphabetical ordering games
 // We also don't need the stock wx icons
 
+#ifndef KICAD_WX_FREE
 // Standard wxWindows Cursors
 WXCURSOR_HAND           CURSOR  DISCARDABLE     "wx/msw/hand.cur"
 WXCURSOR_BULLSEYE       CURSOR  DISCARDABLE     "wx/msw/bullseye.cur"
@@ -20,6 +21,7 @@ csquery                 BITMAP "wx/msw/csquery.bmp"
 
 // For obtaining the RGB values of standard colours
 wxBITMAP_STD_COLOURS    BITMAP "wx/msw/colours.bmp"
+#endif // KICAD_WX_FREE
 
 #include <winver.h> // defines VS_VERSION_INFO
 #define INCLUDE_KICAD_VERSION

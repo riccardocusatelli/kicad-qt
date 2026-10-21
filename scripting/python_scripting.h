@@ -47,7 +47,7 @@
 #include <kicommon.h>
 #include <toolkit/toolkit_types.h>
 
-class KICOMMON_API SCRIPTING
+class KIQT_COMMON_API SCRIPTING
 {
 public:
     SCRIPTING();

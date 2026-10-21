@@ -35,7 +35,7 @@ class COMMON_SETTINGS;
  * scale to use for canvases. This has several sources and the availability of
  * some of them are platform dependent.
  */
-class KICOMMON_API DPI_SCALING_COMMON : public DPI_SCALING
+class KIQT_COMMON_API DPI_SCALING_COMMON : public DPI_SCALING
 {
 public:
     /**

@@ -32,7 +32,7 @@ class wxStaticBitmap;
 /**
  * Represent a row indicator icon for use in places like the layer widget.
  */
-class KICOMMON_API INDICATOR_ICON : public wxPanel
+class KIQT_COMMON_API INDICATOR_ICON : public wxPanel
 {
 public:
     /**
@@ -94,7 +94,7 @@ private:
 /**
  * Icon provider for the "standard" row indicators, for example in layer selection lists
  */
-class KICOMMON_API ROW_ICON_PROVIDER : public INDICATOR_ICON::ICON_PROVIDER
+class KIQT_COMMON_API ROW_ICON_PROVIDER : public INDICATOR_ICON::ICON_PROVIDER
 {
 public:
 

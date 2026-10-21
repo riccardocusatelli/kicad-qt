@@ -33,7 +33,7 @@
 class wxGrid;
 
 
-class KICOMMON_API GRID_CELL_COMBOBOX : public wxGridCellEditor
+class KIQT_COMMON_API GRID_CELL_COMBOBOX : public wxGridCellEditor
 {
 public:
     GRID_CELL_COMBOBOX( const wxArrayString& names );

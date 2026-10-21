@@ -35,7 +35,7 @@ class REPORTER;
  * Responsible for loading plugin definitions for API-based plugins (ones that do not run inside
  * KiCad itself, but instead are launched as external processes by KiCad)
  */
-class KICOMMON_API API_PLUGIN_MANAGER
+class KIQT_COMMON_API API_PLUGIN_MANAGER
 {
 public:
     API_PLUGIN_MANAGER();

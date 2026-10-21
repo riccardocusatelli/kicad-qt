@@ -22,11 +22,6 @@ set( KIQT_OPENGL_GAL_SRCS
 
 list( TRANSFORM KIQT_OPENGL_GAL_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/gal/opengl/ )
 
-set( KIQT_VIEW_CONTROLS_SRCS
-    ${CMAKE_SOURCE_DIR}/common/view/view_controls.cpp
-    ${CMAKE_SOURCE_DIR}/common/view/zoom_controller.cpp
-    )
-
 add_library( kiqt SHARED
     gal_canvas.cpp
     property_panel.cpp
@@ -76,7 +71,6 @@ add_library( kiqt SHARED
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
     # OpenGL canvas of Qt
-    ${KIQT_VIEW_CONTROLS_SRCS}
     ${KIQT_OPENGL_GAL_SRCS}
     gal/hidpi_gl_canvas.cpp
     gal/hidpi_gl_3D_canvas_qt.cpp
@@ -86,13 +80,22 @@ add_library( kiqt SHARED
     kicad_gl/gl_utils.cpp
     )
 
+if( MSVC )
+    # The sources of kiqt that define GAL_DLL (the OpenGL GAL) export the inline members of the GAL
+    # base classes too, which kigal_model exports: keep the first definition
+    target_link_options( kiqt PRIVATE /FORCE:MULTIPLE )
+
+    # The Qt program classes are exported as on Linux, where every symbol is visible
+    set_target_properties( kiqt PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON )
+endif()
+
 set_target_properties( kiqt PROPERTIES
     AUTOMOC ON
     OUTPUT_NAME kiqt
     )
 
 # The OpenGL GAL is part of the GAL library (GAL_API)
-set_source_files_properties( ${KIQT_OPENGL_GAL_SRCS} ${KIQT_VIEW_CONTROLS_SRCS}
+set_source_files_properties( ${KIQT_OPENGL_GAL_SRCS}
                              gal/hidpi_gl_canvas.cpp gal/opengl_gal_qt.cpp
                              gal/hidpi_gl_3D_canvas_qt.cpp
                              ${CMAKE_SOURCE_DIR}/common/gal/hidpi_gl_3D_canvas.cpp
@@ -304,6 +307,7 @@ add_library( kiqt_common STATIC
     )
 
 set_target_properties( kiqt_common PROPERTIES POSITION_INDEPENDENT_CODE ON )
+
 
 # The code of KiCad includes Python.h, whose structures have members named as the keywords of Qt
 target_compile_definitions( kiqt_common PRIVATE QT_NO_KEYWORDS )

@@ -643,6 +643,11 @@ public:
 
     ~wxWindowCompat() override { unregisterWindowCompat(); }
 
+    // The Qt widgets are not copyable; keep the forwarding constructor from taking over copies
+    wxWindowCompat( const wxWindowCompat& ) = delete;
+    wxWindowCompat( wxWindowCompat&& ) = delete;
+    wxWindowCompat& operator=( const wxWindowCompat& ) = delete;
+
     QWidget* GetHandle() const override
     {
         return const_cast<QWidget*>( static_cast<const QWidget*>( this ) );

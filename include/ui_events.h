@@ -27,7 +27,7 @@
 #include <kicommon.h>
 #include <wx/event.h>
 
-wxDECLARE_EXPORTED_EVENT( KICOMMON_API, EDA_EVT_UNITS_CHANGED, wxCommandEvent );
+wxDECLARE_EXPORTED_EVENT( KIQT_COMMON_API, EDA_EVT_UNITS_CHANGED, wxCommandEvent );
 wxDECLARE_EXPORTED_EVENT( KICOMMON_API, EDA_LANG_CHANGED, wxCommandEvent );
 
 #endif

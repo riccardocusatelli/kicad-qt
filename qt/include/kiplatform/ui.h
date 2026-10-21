@@ -40,21 +40,21 @@ class QWidget;
 namespace KIPLATFORM
 {
     // Implemented in libkiqt
-    namespace KIQT_API UI
+    namespace UI
     {
         /**
          * Determine if the desktop interface is currently using a dark theme or a light theme.
          *
          * @return true if a dark theme is being used.
          */
-        bool IsDarkTheme();
+        KIQT_API bool IsDarkTheme();
 
         /**
          * Pass the current focus to the window, and activate its top level window.
          *
          * @param aWindow is the window to pass focus to
          */
-        void ForceFocus( QWidget* aWindow );
+        KIQT_API void ForceFocus( QWidget* aWindow );
 
         /**
          * Let a file dialog show the network file systems (GTK): the dialogs of Qt show them.
@@ -65,7 +65,7 @@ namespace KIPLATFORM
          * Return the background and foreground colors for info bars and the popups of
          * information in the current UI theme (the info colors of the desktop).
          */
-        void GetInfoBarColours( QColor& aFGColour, QColor& aBGColour );
+        KIQT_API void GetInfoBarColours( QColor& aFGColour, QColor& aBGColour );
 
         /**
          * Check to see if the given window is the currently active window (e.g. the window
@@ -73,38 +73,38 @@ namespace KIPLATFORM
          *
          * @param aWindow is the window to check
          */
-        bool IsWindowActive( QWidget* aWindow );
+        KIQT_API bool IsWindowActive( QWidget* aWindow );
 
         /**
          * Make a window stay above its parent window (the windows of KiCad that float over a
          * frame, as the quasi-modal dialogs).
          */
-        void ReparentWindow( QWidget* aWindow, QWidget* aParent );
+        KIQT_API void ReparentWindow( QWidget* aWindow, QWidget* aParent );
 
         /**
          * Tries to determine the pixel scaling factor currently in use for the window.
          * @param aWindow pointer to the window to check
          * @return Pixel scale factor in use
          */
-        double GetPixelScaleFactor( const QWidget* aWindow );
+        KIQT_API double GetPixelScaleFactor( const QWidget* aWindow );
 
         /**
          * Tries to determine the content scaling factor currently in use for the window.
          * The content scaling factor is typically settable by the user and may differ from the
          * pixel scaling factor.
          */
-        double GetContentScaleFactor( const QWidget* aWindow );
+        KIQT_API double GetContentScaleFactor( const QWidget* aWindow );
 
         /**
          * If the user has disabled icons system-wide, we check that here
          */
-        bool AllowIconsInMenus();
+        KIQT_API bool AllowIconsInMenus();
 
         /**
          * Returns the mouse position in screen coordinates.
          * If we've just warped the cursor, returns the new coordinates.
          */
-        wxPoint GetMousePosition();
+        KIQT_API wxPoint GetMousePosition();
 
         /**
          * Move the mouse cursor to a specific position relative to the window
@@ -113,7 +113,7 @@ namespace KIPLATFORM
          * @param aY destination y position
          * @return true if the warp was successful
          */
-        bool WarpPointer( QWidget* aWindow, int aX, int aY );
+        KIQT_API bool WarpPointer( QWidget* aWindow, int aX, int aY );
 
         /**
          * Prepare a window for the panning by dragging the mouse beyond its edges (the cursor
@@ -122,31 +122,31 @@ namespace KIPLATFORM
          * @param aWindow Window in which to position to mouse cursor
          * @return true if infinite panning is supported
          */
-        bool InfiniteDragPrepareWindow( QWidget* aWindow );
+        KIQT_API bool InfiniteDragPrepareWindow( QWidget* aWindow );
 
         /**
          * Allows the cursor to freely move again after a drag (see `InfiniteDragPrepareWindow`).
          */
-        void InfiniteDragReleaseWindow();
+        KIQT_API void InfiniteDragReleaseWindow();
 
         /**
          * Ensure that a window is visible on the screen.
          *
          * @param aWindow window to make visible
          */
-        void EnsureVisible( QWidget* aWindow );
+        KIQT_API void EnsureVisible( QWidget* aWindow );
 
         /**
          * Intended to set the floating window level in macOS on a window
          */
-        void SetFloatLevel( QWidget* aWindow );
+        KIQT_API void SetFloatLevel( QWidget* aWindow );
 
         /**
          * Drop a scroll of a tree view pending in the toolkit, before its rows are freed (a
          * GtkTreeView of wxWidgets on GTK).  Nothing to do with Qt: the views of Qt scroll to
          * their indexes, invalidated with the model.
          */
-        void CancelPendingScroll( QTreeView* aCtrl );
+        KIQT_API void CancelPendingScroll( QTreeView* aCtrl );
 
         /**
          * Sets the block reason why the window/application is preventing OS shutdown.
@@ -158,20 +158,20 @@ namespace KIPLATFORM
          * @param aWindow that will have a shutdown blocker message
          * @param aReason to display why the shutdown block is occurring
          */
-        void SetShutdownBlockReason( QWidget* aWindow, const wxString& aReason );
+        KIQT_API void SetShutdownBlockReason( QWidget* aWindow, const wxString& aReason );
 
         /**
          * Removes any shutdown block reason set
          *
          * @param aWindow that has a shutdown block reason set
          */
-        void RemoveShutdownBlockReason( QWidget* aWindow );
+        KIQT_API void RemoveShutdownBlockReason( QWidget* aWindow );
 
         /// The background color of the dialogs.
-        QColor GetDialogBGColour();
+        KIQT_API QColor GetDialogBGColour();
 
         /// The size of the visible part of a window (the viewport of a scroll area).
-        wxSize GetUnobscuredSize( const QWidget* aWindow );
+        KIQT_API wxSize GetUnobscuredSize( const QWidget* aWindow );
 
         /*
          * The workarounds of the toolkits of wxWidgets (GTK, macOS, MSW): the widgets of Qt need

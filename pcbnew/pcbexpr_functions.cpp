@@ -47,6 +47,11 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 
+// <windows.h> (via kiwx) defines GetObject as GetObjectW
+#ifdef GetObject
+#undef GetObject
+#endif
+
 
 bool fromToFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 {

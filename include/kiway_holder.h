@@ -36,7 +36,7 @@ class PROJECT;
  *
  * It allows calls to Kiway() and SetKiway().
  */
-class KICOMMON_API KIWAY_HOLDER
+class KIQT_COMMON_API KIWAY_HOLDER
 {
 public:
     enum HOLDER_TYPE { DIALOG, FRAME, PANEL };

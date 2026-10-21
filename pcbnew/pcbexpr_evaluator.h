@@ -40,6 +40,11 @@
 class BOARD;
 class BOARD_ITEM;
 
+// <windows.h> (via kiwx) defines GetObject as GetObjectW
+#ifdef GetObject
+#undef GetObject
+#endif
+
 class PCBEXPR_VAR_REF;
 
 class PCBEXPR_UCODE final : public LIBEVAL::UCODE

@@ -38,6 +38,11 @@
 #include <string_utils.h>
 #include <core/ki_assert.h>
 
+// <windows.h> (via kiwx) defines GetObject as GetObjectW
+#ifdef GetObject
+#undef GetObject
+#endif
+
 
 /* --------------------------------------------------------------------------------------------
  * Specialized Expression References

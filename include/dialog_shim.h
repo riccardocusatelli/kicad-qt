@@ -80,7 +80,7 @@ KICOMMON_API wxRect ClampRectToDisplay( const wxRect& aRect, const wxRect& aClie
  * <br>
  * in the dialog window's properties.
  */
-class KICOMMON_API DIALOG_SHIM : public wxDialog, public KIWAY_HOLDER
+class KIQT_COMMON_API DIALOG_SHIM : public wxDialog, public KIWAY_HOLDER
 {
 public:
     DIALOG_SHIM( wxWindow* aParent, wxWindowID id, const wxString& title,

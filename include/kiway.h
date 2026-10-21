@@ -139,7 +139,7 @@
  * and a #NETLIST, (anything relating to production of a single #BOARD and added to class
  * #PROJECT.)
  */
-class KICOMMON_API KIWAY : public wxEvtHandler, public KIWAY_BASE
+class KIQT_COMMON_API KIWAY : public wxEvtHandler, public KIWAY_BASE
 {
     friend struct PGM_SINGLE_TOP;        // can use set_kiface()
 

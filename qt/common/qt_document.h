@@ -30,6 +30,7 @@
 #include <math/vector2d.h>
 
 #include "kiqt.h"
+#include "qt_tool.h"   // complete for the std::unique_ptr<QT_TOOL> members (MSVC, moc)
 
 class EDA_ITEM;
 class GAL_CANVAS;

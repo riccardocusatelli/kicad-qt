@@ -42,9 +42,13 @@ KICOMMON_API void to_json( nlohmann::json& aJson, const wxRect& aRect );
 KICOMMON_API void from_json( const nlohmann::json& aJson, wxRect& aRect );
 KICOMMON_API bool operator<( const wxRect& aLhs, const wxRect& aRhs );
 
+// Without wxWidgets, wxAuiPaneInfo stays incomplete and MSVC rejects the json conversion probes
+// these declarations trigger; they are defined in aui_pane_settings.cpp (GUI only).
+#ifndef KICAD_WX_FREE
 KICOMMON_API void to_json( nlohmann::json& aJson, const wxAuiPaneInfo& aPaneInfo );
 KICOMMON_API void from_json( const nlohmann::json& aJson, wxAuiPaneInfo& aPaneInfo );
 KICOMMON_API bool operator<( const wxAuiPaneInfo& aLhs, const wxAuiPaneInfo& aRhs );
 KICOMMON_API bool operator==( const wxAuiPaneInfo& aLhs, const wxAuiPaneInfo& aRhs );
+#endif
 
 #endif // _AUI_SETTINGS_H_

@@ -96,7 +96,7 @@ protected:
 };
 
 
-class KICOMMON_API WX_GRID : public wxGrid
+class KIQT_COMMON_API WX_GRID : public wxGrid
 {
 public:
     // Constructor has to be wxFormBuilder-compatible

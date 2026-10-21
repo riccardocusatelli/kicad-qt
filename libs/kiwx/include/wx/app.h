@@ -27,6 +27,10 @@
 #include <wx/arrstr.h>
 #include <wx/string.h>
 
+#ifdef Yield
+#undef Yield    // <windows.h> defines Yield() as a macro
+#endif
+
 class wxWindow;
 
 /// The command line arguments of the application (wxCmdLineArgsArray).

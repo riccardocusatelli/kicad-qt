@@ -88,7 +88,8 @@ LOCALE_IO::LOCALE_IO() :
     {
 #if USE_WXLOCALE
         #define C_LANG "C"
-        m_wxLocale = new wxLocale( C_LANG, C_LANG, C_LANG, false );
+        m_wxLocale = new wxLocale();
+        m_wxLocale->Init( C_LANG, C_LANG, C_LANG, false );
 #else
         // Store the user locale name, to restore this locale later, in dtor
         m_user_locale = setlocale( LC_NUMERIC, nullptr );

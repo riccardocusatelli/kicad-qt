@@ -19,6 +19,7 @@
 
 #include <wx/dir.h>
 #include <wx/filename.h>
+#include <wx/log.h>
 #include <wx/stdpaths.h>
 #include <wx/string.h>
 #include <wx/utils.h>
@@ -569,7 +570,11 @@ void PATHS::EnsureUserPathsExist()
                    "3. Make sure you have correct permissions set up" ),
                 tmp.GetPath() );
 
+#ifdef KICAD_WX_FREE
+        wxLogWarning( "%s", msg );
+#else
         wxMessageBox( msg, _( "Warning" ), wxICON_WARNING );
+#endif
     }
 #endif
 }

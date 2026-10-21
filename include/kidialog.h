@@ -38,7 +38,7 @@
 /**
  * Helper class to create more flexible dialogs, including 'do not show again' checkbox handling.
  */
-class KICOMMON_API KIDIALOG : public KIDIALOG_BASE
+class KIQT_COMMON_API KIDIALOG : public KIDIALOG_BASE
 {
 public:
     static void ClearDoNotShowAgainDialogs();

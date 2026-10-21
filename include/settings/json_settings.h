@@ -407,7 +407,11 @@ extern template std::optional<GRID> JSON_SETTINGS::Get<GRID>( const std::string&
 extern template std::optional<wxPoint> JSON_SETTINGS::Get<wxPoint>( const std::string& aPath ) const;
 extern template std::optional<wxSize> JSON_SETTINGS::Get<wxSize>( const std::string& aPath ) const;
 extern template std::optional<wxRect> JSON_SETTINGS::Get<wxRect>( const std::string& aPath ) const;
+// MSVC instantiates std::optional<T> for an extern template declaration, which fails for the
+// incomplete wxAuiPaneInfo; the explicit instantiation in aui_pane_settings.cpp still provides it.
+#ifndef _MSC_VER
 extern template std::optional<wxAuiPaneInfo> JSON_SETTINGS::Get<wxAuiPaneInfo>( const std::string& aPath ) const;
+#endif
 extern template std::optional<KIGFX::CROSS_HAIR_MODE> JSON_SETTINGS::Get<KIGFX::CROSS_HAIR_MODE>( const std::string& aPath ) const;
 
 #endif

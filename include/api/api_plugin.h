@@ -94,7 +94,7 @@ struct PLUGIN_ACTION
  * via the IPC API.  The plugin metadata is read from a JSON file containing things like which
  * actions the plugin is capable of and how to invoke each one.
  */
-class KICOMMON_API API_PLUGIN
+class KIQT_COMMON_API API_PLUGIN
 {
 public:
     API_PLUGIN( const wxFileName& aConfigFile, const JSON_SCHEMA_VALIDATOR& aValidator );

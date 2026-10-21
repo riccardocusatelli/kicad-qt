@@ -59,7 +59,7 @@ class KICAD_API_SERVER;
  * The editors and the project manager derive their program class from PGM_GUI; GUI code
  * reaches it with PgmGui().
  */
-class KICOMMON_API PGM_GUI : public PGM_BASE
+class KIQT_COMMON_API PGM_GUI : public PGM_BASE
 {
 public:
     PGM_GUI();
@@ -224,6 +224,6 @@ protected:
  * The program of a graphical KiCad application.  Only valid in the editors and the project
  * manager (not in kicad-cli), where the program derives from PGM_GUI.
  */
-KICOMMON_API extern PGM_GUI& PgmGui();
+KIQT_COMMON_API extern PGM_GUI& PgmGui();
 
 #endif // PGM_GUI_H

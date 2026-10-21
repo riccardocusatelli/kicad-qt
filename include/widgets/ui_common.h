@@ -62,7 +62,7 @@ KICOMMON_API wxSize GetTextSize( const wxString& aSingleLine, wxWindow* aWindow 
 
 KICOMMON_API wxFont GetMonospacedUIFont();
 
-KICOMMON_API wxFont GetControlFont( wxWindow* aWindow );
+KIQT_COMMON_API wxFont GetControlFont( wxWindow* aWindow );
 KICOMMON_API wxFont GetInfoFont( wxWindow* aWindow );
 KICOMMON_API wxFont GetSmallInfoFont( wxWindow* aWindow );
 KICOMMON_API wxFont GetDockedPaneFont( wxWindow* aWindow );
@@ -124,7 +124,7 @@ KICOMMON_API void Disable( wxWindow* aWindow );
  * Move the focus to the first window after @a aWindow and its children that takes it (Ctrl+Tab
  * out of a grid, where Tab moves between the cells).
  */
-KICOMMON_API void FocusNextWindow( wxWindow* aWindow );
+KIQT_COMMON_API void FocusNextWindow( wxWindow* aWindow );
 
 KICOMMON_API extern const wxString s_FocusStealableInputName;
 

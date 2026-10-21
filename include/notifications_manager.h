@@ -39,7 +39,7 @@ struct NOTIFICATION;
 class NOTIFICATIONS_LIST;
 
 
-struct KICOMMON_API NOTIFICATION
+struct KIQT_COMMON_API NOTIFICATION
 {
 public:
     wxString title;       ///< Title of the notification.
@@ -50,7 +50,7 @@ public:
 };
 
 
-class KICOMMON_API NOTIFICATIONS_MANAGER
+class KIQT_COMMON_API NOTIFICATIONS_MANAGER
 {
 public:
     NOTIFICATIONS_MANAGER();

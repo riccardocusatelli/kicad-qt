@@ -461,7 +461,7 @@ void wxGridTableBase::SetValueAsDouble( int aRow, int aCol, double aValue )
 
 void wxGridTableBase::SetValueAsBool( int aRow, int aCol, bool aValue )
 {
-    SetValue( aRow, aCol, aValue ? wxS( "1" ) : wxString() );
+    SetValue( aRow, aCol, aValue ? wxString( wxS( "1" ) ) : wxString() );
 }
 
 

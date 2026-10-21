@@ -63,7 +63,7 @@ class UNIT_BINDER;
  * the quasi-modal mode of KiCad, and remembers the geometry of the dialog (with the same
  * settings as the wxWidgets build).
  */
-class KICOMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HOLDER
+class KIQT_COMMON_API DIALOG_SHIM : public wxWindowCompat<QDialog>, public KIWAY_HOLDER
 {
 public:
     DIALOG_SHIM( wxWidgetArgCompat aParent, const wxString& aTitle );

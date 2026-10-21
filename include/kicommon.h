@@ -30,3 +30,11 @@
 #else
 #define KICOMMON_API
 #endif
+
+// The classes that the Qt build compiles into libkiqt_common (a static library, in each KIFACE and
+// in kicad-qt) instead of kicommon: not exported, not imported
+#if defined( KICAD_WX_FREE )
+    #define KIQT_COMMON_API
+#else
+    #define KIQT_COMMON_API KICOMMON_API
+#endif

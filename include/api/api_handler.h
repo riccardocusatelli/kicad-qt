@@ -54,7 +54,7 @@ struct HANDLER_CONTEXT
 };
 
 
-class KICOMMON_API API_HANDLER
+class KIQT_COMMON_API API_HANDLER
 {
 public:
     API_HANDLER() {}

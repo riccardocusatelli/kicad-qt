@@ -934,7 +934,7 @@ add_headless_kiface( pcbnew_cli_kiface
     USAGE       pcbnew_kiface_objects common pcbcommon core 3d-viewer
     ARCHIVES    3d-viewer connectivity pcbcommon pnsrouter common idf3 ${PCBNEW_IO_LIBRARIES}
                 pads_common allegro_convert
-    LIBRARIES   kicommon_model gal_model core kicad_3dsg zint delaunator ${OPENGL_glu_LIBRARY} ZLIB::ZLIB Boost::headers ${wxWidgets_BASE_LIBRARIES} ${OCC_LIBRARIES}
+    LIBRARIES   kicommon_model gal_model core kicad_3dsg zint delaunator ${OPENGL_glu_LIBRARY} ZLIB::ZLIB Boost::headers ${wxWidgets_BASE_LIBRARIES} ${OCC_LIBRARIES} ${PYTHON_LIBRARIES}
                 ${PCBNEW_EXTRA_LIBS}
     )
 

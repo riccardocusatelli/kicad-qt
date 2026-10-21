@@ -36,7 +36,7 @@
  * This badge will also automatically truncate the displayed number to the set maximum and display
  * "+" at the end to represent it is truncated.
  */
-class KICOMMON_API NUMBER_BADGE : public wxPanel
+class KIQT_COMMON_API NUMBER_BADGE : public wxPanel
 {
 public:
     /**

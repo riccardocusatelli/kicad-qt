@@ -32,6 +32,10 @@
 
 #include <qt_strings.h>
 
+#ifdef _WIN32
+#include <windows.h>   // CREATE_NO_WINDOW
+#endif
+
 
 namespace TOOLKIT
 {

@@ -61,7 +61,8 @@ enum wxEndianness
 
 
 /// The platform information of a program without user interface (the wxBase port).
-class WXDLLIMPEXP_BASE wxPlatformInfo
+/// Header-only: no export macro, since MSVC would import the inline members from a DLL.
+class wxPlatformInfo
 {
 public:
     static const wxPlatformInfo& Get()

@@ -33,6 +33,7 @@
 #ifndef KISTATUSBAR_H
 #define KISTATUSBAR_H
 
+#include <kicommon.h>
 #include <mutex>
 #include <optional>
 #include <unordered_map>
@@ -51,7 +52,7 @@ class QToolButton;
 class BITMAP_BUTTON;
 
 
-class KIQT_API KISTATUSBAR : public QStatusBar
+class KIQT_COMMON_API KISTATUSBAR : public QStatusBar
 {
 public:
     enum STYLE_FLAGS : int

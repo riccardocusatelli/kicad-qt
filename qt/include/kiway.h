@@ -57,7 +57,7 @@ class LOCAL_HISTORY;
  * A minimalistic software bus for communications between various DLLs/DSOs (DSOs) within
  * the same KiCad process: the KIFACEs, and the frames they make (the players).
  */
-class KICOMMON_API KIWAY : public KIWAY_BASE
+class KIQT_COMMON_API KIWAY : public KIWAY_BASE
 {
 public:
     KIWAY( int aCtlBits, QMainWindow* aTop = nullptr );

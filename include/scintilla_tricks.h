@@ -32,7 +32,7 @@
  * Add cut/copy/paste, dark theme, autocomplete and brace highlighting to a wxStyleTextCtrl
  * instance.
  */
-class KICOMMON_API SCINTILLA_TRICKS : public wxEvtHandler
+class KIQT_COMMON_API SCINTILLA_TRICKS : public wxEvtHandler
 {
 public:
 

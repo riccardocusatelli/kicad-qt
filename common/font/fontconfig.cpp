@@ -30,7 +30,7 @@
 #include <embedded_files.h>
 #include <core/ki_log.h>
 
-#ifdef __WIN32__
+#if defined( __WIN32__ ) || defined( _WIN32 )
 #include <windows.h>
 #endif
 

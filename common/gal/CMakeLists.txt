@@ -21,6 +21,8 @@ set( GAL_MODEL_SRCS
     ../view/view_group.cpp
     ../view/view_overlay.cpp
     ../view/view_item.cpp
+    ../view/view_controls.cpp
+    ../view/zoom_controller.cpp
 
     ${FONT_SRCS}
 
@@ -41,9 +43,6 @@ set( GAL_SRCS
     hidpi_gl_canvas.cpp
     hidpi_gl_3D_canvas.cpp
     hidpi_gl_3D_canvas_wx.cpp
-
-    ../view/view_controls.cpp
-    ../view/zoom_controller.cpp
 
     # OpenGL GAL
     opengl/opengl_gal.cpp

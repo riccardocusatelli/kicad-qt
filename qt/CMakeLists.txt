@@ -105,6 +105,7 @@ set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_eeschema_kiface_objec
     eeschema/tools/sch_selection.cpp
     )
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_common
+    common/footprint_info.cpp
     common/tool/selection.cpp
     )
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_core

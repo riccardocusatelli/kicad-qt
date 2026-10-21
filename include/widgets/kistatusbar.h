@@ -48,7 +48,7 @@ class BITMAP_BUTTON;
  */
 
 
-class KICOMMON_API KISTATUSBAR : public wxStatusBar
+class KIQT_COMMON_API KISTATUSBAR : public wxStatusBar
 {
 public:
     enum STYLE_FLAGS : int
