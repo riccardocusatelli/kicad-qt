@@ -203,11 +203,14 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
 # The dialogs and widgets of KiCad built unchanged on the wxWidgets compatibility layer
 # (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_plugin_options_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_embedded_files_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_text_variables_base.fbp

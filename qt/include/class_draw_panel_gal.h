@@ -124,6 +124,22 @@ public:
         m_statusPopup = aPopup;
     }
 
+    void SetStatusPopup( wxWindow* aPopup )
+    {
+        m_statusPopup = aPopup ? aPopup->GetHandle() : nullptr;
+    }
+
+    void SetStatusPopup( std::nullptr_t )
+    {
+        m_statusPopup = nullptr;
+    }
+
+    /**
+     * An event of a window over the canvas (a popup) for the canvas (wxWidgets on macOS): the
+     * keys come to the canvas from Qt itself.
+     */
+    void OnEvent( wxEvent& aEvent ) {}
+
     /**
      * Switch method of rendering graphics.
      *

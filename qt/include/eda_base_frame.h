@@ -653,6 +653,9 @@ public:
 
     bool IsClosing() const { return m_isClosing; }
 
+    /// The frame is closing (wxWindow::IsBeingDeleted()).
+    bool IsBeingDeleted() const { return m_isClosing; }
+
     bool NonUserClose( bool aForce )
     {
         m_isNonUserClose = true;

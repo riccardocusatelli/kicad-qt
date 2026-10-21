@@ -100,6 +100,14 @@ public:
      * The text after a tab in the label is shown as the shortcut of the entry.
      */
     QAction* Add( const wxString& aLabel, int aId, BITMAPS aIcon );
+
+    /// An entry without icon (wxMenu::Append()); a check or radio item has a check mark.
+    QAction* Append( int aId, const wxString& aLabel, const wxString& aHelp = wxEmptyString,
+                     wxItemKind aKind = wxITEM_NORMAL )
+    {
+        return Add( aLabel, aHelp, aId, BITMAPS{},   // BITMAPS::INVALID_BITMAP
+                    aKind == wxITEM_CHECK || aKind == wxITEM_RADIO );
+    }
     QAction* Add( const wxString& aLabel, const wxString& aToolTip, int aId, BITMAPS aIcon,
                   bool aIsCheckmarkEntry = false );
 

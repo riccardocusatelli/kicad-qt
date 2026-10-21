@@ -420,6 +420,16 @@ public:
     bool IsDescendant( wxWindow* aWindow ) const;
     virtual bool Reparent( wxWindow* aParent );
 
+    /// Qt draws the widgets double buffered.
+    void SetDoubleBuffered( bool aOn ) {}
+
+    /// The size of the window changed: the parent lays its children out again.
+    void PostSizeEventToParent()
+    {
+        if( wxWindow* parent = GetParent() )
+            parent->Layout();
+    }
+
     /// A descendant with an id or a name (or this window), nullptr if none.
     wxWindow* FindWindow( long aId ) const;
     wxWindow* FindWindow( const wxString& aName ) const;

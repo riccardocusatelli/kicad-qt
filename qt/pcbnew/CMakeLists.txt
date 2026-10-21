@@ -34,10 +34,13 @@ install( TARGETS pcbnew_qt_kiface
 # Qt, with the Qt versions of the panels and dialogs.  The KIFACE links it once all of pcbnew is
 # ported (phase 3B.5).
 set( KIQT_PCBNEW_GUI_SRCS
+    api/api_handler_pcb.cpp
     array_pad_number_provider.cpp
     autorouter/ar_autoplacer.cpp
     autorouter/ar_matrix.cpp
+    autorouter/autoplace_tool.cpp
     autorouter/spread_footprints.cpp
+    board_commit_gui.cpp
     board_stackup_manager/board_stackup_reporter.cpp
     board_stackup_manager/dielectric_material.cpp
     board_tables/board_characteristics_table.cpp
@@ -64,9 +67,12 @@ set( KIQT_PCBNEW_GUI_SRCS
     footprint_wizard.cpp
     fp_tree_model_adapter.cpp
     generate_footprint_info.cpp
+    generators/pcb_tuning_pattern_edit.cpp
     git/kigit_pcb_merge.cpp
     graphics_cleaner.cpp
+    import_gfx/dialog_import_graphics.cpp
     import_gfx/graphics_importer_pcbnew.cpp
+    initpcb.cpp
     layer_pairs.cpp
     microwave/microwave_footprint.cpp
     microwave/microwave_inductor.cpp
@@ -74,38 +80,64 @@ set( KIQT_PCBNEW_GUI_SRCS
     netlist_reader/board_netlist_updater.cpp
     netlist_reader/netlist.cpp
     padstack.cpp
-    pcb_base_frame.cpp
     pcb_base_edit_frame.cpp
+    pcb_base_frame.cpp
     pcb_draw_panel_gal.cpp
     pcb_edit_frame.cpp
+    pcb_edit_frame_dialogs.cpp
+    pcb_edit_frame_export.cpp
+    pcb_fields_grid_table.cpp
     pcb_layer_box_selector.cpp
     pcb_origin_transforms.cpp
     pcb_screen.cpp
     pcbnew_settings.cpp
+    python/scripting/pcb_scripting_tool.cpp
+    python/scripting/pcbnew_scripting_helpers_gui.cpp
     ratsnest/ratsnest.cpp
     ratsnest/ratsnest_view_item.cpp
+    router/pns_kicad_iface.cpp
+    router/pns_tool_base.cpp
     toolbars_footprint_wizard.cpp
     tools/align_distribute_tool.cpp
+    tools/array_tool.cpp
+    tools/board_reannotate_tool.cpp
+    tools/convert_tool.cpp
+    tools/drawing_tool.cpp
+    tools/edit_tool.cpp
     tools/footprint_chooser_selection_tool.cpp
+    tools/generator_tool.cpp
     tools/generator_tool_pns_proxy.cpp
+    tools/global_edit_tool.cpp
     tools/item_modification_routine.cpp
+    tools/multichannel_tool.cpp
+    tools/pad_tool.cpp
+    tools/pcb_actions.cpp
+    tools/pcb_edit_table_tool.cpp
     tools/pcb_editor_conditions.cpp
     tools/pcb_grid_helper.cpp
+    tools/pcb_group_tool.cpp
+    tools/pcb_picker_tool.cpp
     tools/pcb_selection.cpp
     tools/pcb_selection_conditions.cpp
     tools/pcb_selection_tool.cpp
     tools/pcb_tool_base.cpp
     tools/pcb_tool_utils.cpp
+    tools/pcb_viewer_tools.cpp
+    tools/position_relative_tool.cpp
     tools/tool_event_utils.cpp
     tools/zone_create_helper.cpp
     tracks_cleaner.cpp
+    undo_redo.cpp
     widgets/appearance_controls.cpp
     widgets/pcb_design_block_preview_widget.cpp
     widgets/pcb_net_inspector_panel.cpp
     widgets/pcb_properties_panel.cpp
     widgets/pcb_search_pane.cpp
     widgets/search_handlers.cpp
+    zone_layer_properties_grid.cpp
     zone_manager/board_edges_bounding_item.cpp
+    zone_manager/dialog_zone_manager.cpp
+    zone_manager/model_zones_overview.cpp
     zone_settings_bag.cpp
     )
 
@@ -220,6 +252,8 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_zone_hatch_offsets_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_zones_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_zone_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/import_gfx/dialog_import_graphics_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/zone_manager/dialog_zone_manager_base.fbp
     )
 
 set( KIQT_PCBNEW_COMPAT_DIALOGS
@@ -331,7 +365,28 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_COMPAT_DIALOGS}
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
+    ${CMAKE_SOURCE_DIR}/common/api/api_handler_common.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
+    ${CMAKE_SOURCE_DIR}/common/libraries/lib_table_grid_data_model.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/polygon_geom_manager.cpp
+    ${CMAKE_SOURCE_DIR}/common/spacenav/libspnav_driver.cpp
+    ${CMAKE_SOURCE_DIR}/common/spacenav/spnav_2d_plugin.cpp
+    ${CMAKE_SOURCE_DIR}/common/status_popup.cpp
+    ${CMAKE_SOURCE_DIR}/common/tool/design_block_control.cpp
+    ${CMAKE_SOURCE_DIR}/common/tool/embed_tool.cpp
+    ${CMAKE_SOURCE_DIR}/common/tool/group_tool.cpp
+    ${CMAKE_SOURCE_DIR}/common/tool/properties_tool.cpp
+    ${CMAKE_SOURCE_DIR}/common/transline_calculations/coupled_microstrip.cpp
+    ${CMAKE_SOURCE_DIR}/common/transline_calculations/coupled_stripline.cpp
+    ${CMAKE_SOURCE_DIR}/common/transline_calculations/microstrip.cpp
+    ${CMAKE_SOURCE_DIR}/common/transline_calculations/stripline.cpp
+    ${CMAKE_SOURCE_DIR}/common/transline_calculations/transline_calculation_base.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/margin_offset_binder.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
     dialogs/dialog_export_step_process_qt.cpp
     dialogs/dialog_move_exact.cpp
@@ -365,6 +420,7 @@ target_include_directories( pcbnew_gui_qt BEFORE PRIVATE
     )
 target_include_directories( pcbnew_gui_qt PRIVATE
     $<TARGET_PROPERTY:pcbnew_kiface_objects,INCLUDE_DIRECTORIES>
+    ${CMAKE_SOURCE_DIR}/thirdparty/dxflib_qcad
     ${CMAKE_SOURCE_DIR}/3d-viewer
     )
 target_compile_definitions( pcbnew_gui_qt PRIVATE
