@@ -2194,6 +2194,27 @@ wxNotebook::wxNotebook( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
 }
 
 
+wxAuiNotebook::wxAuiNotebook( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
+                              const wxSize& aSize, long aStyle ) :
+        wxNotebook( aParent, aId, aPos, aSize, aStyle )
+{
+    setTabsClosable( aStyle & ( wxAUI_NB_CLOSE_BUTTON | wxAUI_NB_CLOSE_ON_ACTIVE_TAB
+                                | wxAUI_NB_CLOSE_ON_ALL_TABS ) );
+    setMovable( aStyle & wxAUI_NB_TAB_MOVE );
+
+    QObject::connect( this, &QTabWidget::tabCloseRequested, this,
+                      [this]( int aIndex )
+                      {
+                          wxBookCtrlEvent event( wxEVT_AUINOTEBOOK_PAGE_CLOSE, GetId(), aIndex );
+                          event.SetEventObject( this );
+                          ProcessEvent( event );
+
+                          if( event.IsAllowed() )
+                              DeletePage( size_t( aIndex ) );
+                      } );
+}
+
+
 int wxNotebook::SetSelection( size_t aPage )
 {
     int old = currentIndex();
@@ -2293,6 +2314,44 @@ wxButton* wxStdDialogButtonSizer::AddStandardButton( QDialogButtonBox::StandardB
     button->setProperty( STANDARD_BUTTON_PROPERTY, int( aButton ) );
     addButton( button, role );
     return button;
+}
+
+
+void wxStdDialogButtonSizer::AddButton( wxButton* aButton )
+{
+    static const std::pair<int, QDialogButtonBox::StandardButton> standardButtons[] = {
+        { wxID_OK, QDialogButtonBox::Ok },       { wxID_YES, QDialogButtonBox::Yes },
+        { wxID_SAVE, QDialogButtonBox::Save },   { wxID_APPLY, QDialogButtonBox::Apply },
+        { wxID_NO, QDialogButtonBox::No },       { wxID_CANCEL, QDialogButtonBox::Cancel },
+        { wxID_HELP, QDialogButtonBox::Help },   { wxID_CLOSE, QDialogButtonBox::Close }
+    };
+
+    QDialogButtonBox::StandardButton standardButton = QDialogButtonBox::NoButton;
+
+    for( const auto& [id, button] : standardButtons )
+    {
+        if( aButton->GetId() == id )
+            standardButton = button;
+    }
+
+    if( standardButton == QDialogButtonBox::NoButton )
+    {
+        addButton( aButton, ActionRole );
+        return;
+    }
+
+    // The role and the text of the standard button of Qt
+    QPushButton* standard = addButton( standardButton );
+    ButtonRole   role = buttonRole( standard );
+    QString      text = standard->text();
+    removeButton( standard );
+    delete standard;
+
+    if( aButton->text().isEmpty() )
+        aButton->setText( text );
+
+    aButton->setProperty( STANDARD_BUTTON_PROPERTY, int( standardButton ) );
+    addButton( aButton, role );
 }
 
 

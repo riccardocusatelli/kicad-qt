@@ -185,6 +185,7 @@ enum wxEventTypeCompat
     wxEVT_COLLAPSIBLEPANE_CHANGED,
     wxEVT_DIRCTRL_SELECTIONCHANGED,
     wxEVT_DIRCTRL_FILEACTIVATED,
+    wxEVT_AUINOTEBOOK_PAGE_CLOSE,
     wxEVT_USER_FIRST = 10000
 };
 
@@ -223,6 +224,8 @@ enum wxEventCategory
 #define wxEVT_COMMAND_SPINCTRL_UPDATED     wxEVT_SPINCTRL
 #define wxEVT_COMMAND_SPINCTRLDOUBLE_UPDATED wxEVT_SPINCTRLDOUBLE
 #define wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED wxEVT_NOTEBOOK_PAGE_CHANGED
+#define wxEVT_AUINOTEBOOK_PAGE_CHANGED wxEVT_NOTEBOOK_PAGE_CHANGED
+#define wxEVT_AUINOTEBOOK_PAGE_CHANGING wxEVT_NOTEBOOK_PAGE_CHANGING
 #define wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGING wxEVT_NOTEBOOK_PAGE_CHANGING
 #define wxEVT_COMMAND_HYPERLINK            wxEVT_HYPERLINK
 #define wxEVT_COMMAND_HTML_LINK_CLICKED    wxEVT_HTML_LINK_CLICKED
@@ -350,6 +353,9 @@ public:
 
     bool IsChecked() const { return m_int != 0; }
     int GetSelection() const { return m_int; }
+
+    /// An item is selected (not deselected) in a list.
+    bool IsSelection() const { return m_int >= 0; }
 
     void* GetClientData() const { return m_clientData; }
     void SetClientData( void* aData ) { m_clientData = aData; }
@@ -1095,6 +1101,7 @@ public:
     }
 
     bool Disconnect( int aId, wxEventType aType ) { return m_eventsCompat.Remove( aType, nullptr ); }
+    bool Disconnect( wxEventType aType ) { return m_eventsCompat.Remove( aType, nullptr ); }
 
     template <typename EVENT, typename CLASS, typename OBJECT = CLASS>
     bool Disconnect( wxEventType aType, void ( CLASS::*aMethod )( EVENT& ),

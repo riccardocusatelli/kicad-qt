@@ -379,6 +379,18 @@ public:
 
     int Append( const wxString& aItem ) { return Insert( aItem, GetCount(), static_cast<void*>( nullptr ) ); }
     int AppendString( const wxString& aItem ) { return Append( aItem ); }
+
+    void InsertItems( unsigned int aCount, const wxString* aItems, unsigned int aPos )
+    {
+        for( unsigned int i = 0; i < aCount; ++i )
+            Insert( aItems[i], aPos + i, static_cast<void*>( nullptr ) );
+    }
+
+    void InsertItems( const wxArrayString& aItems, unsigned int aPos )
+    {
+        for( unsigned int i = 0; i < aItems.size(); ++i )
+            Insert( aItems[i], aPos + i, static_cast<void*>( nullptr ) );
+    }
     int Append( const wxString& aItem, void* aClientData )
     {
         return Insert( aItem, GetCount(), aClientData );
@@ -891,6 +903,15 @@ private:
 };
 
 
+/// The drawing of the tabs of a wxAuiNotebook (wxAuiTabArt): Qt draws them.
+class wxAuiTabArt
+{
+public:
+    virtual ~wxAuiTabArt() = default;
+    virtual wxAuiTabArt* Clone() = 0;
+};
+
+
 class KIQT_API wxNotebook : public wxWindowCompat<QTabWidget>
 {
 public:
@@ -919,6 +940,7 @@ public:
     bool DeletePage( size_t aPage );
     bool DeleteAllPages();
     int FindPage( wxWidgetArgCompat aPage ) const { return indexOf( aPage ); }
+    int GetPageIndex( wxWidgetArgCompat aPage ) const { return indexOf( aPage ); }
 };
 
 using wxBookCtrlBase = wxNotebook;
@@ -1122,7 +1144,44 @@ public:
     void SetEffectTimeout( unsigned ) {}
     void ShowNewPage( wxWidgetArgCompat aPage ) { AddPage( aPage, wxEmptyString, true ); }
 };
-using wxAuiNotebook = wxNotebook;
+
+
+// The styles of wxAuiNotebook
+#define wxAUI_NB_TOP                 0x0001
+#define wxAUI_NB_TAB_SPLIT           0x0010
+#define wxAUI_NB_TAB_MOVE            0x0020
+#define wxAUI_NB_TAB_EXTERNAL_MOVE   0x0040
+#define wxAUI_NB_TAB_FIXED_WIDTH     0x0080
+#define wxAUI_NB_SCROLL_BUTTONS      0x0100
+#define wxAUI_NB_WINDOWLIST_BUTTON   0x0200
+#define wxAUI_NB_CLOSE_BUTTON        0x0400
+#define wxAUI_NB_CLOSE_ON_ACTIVE_TAB 0x0800
+#define wxAUI_NB_CLOSE_ON_ALL_TABS   0x1000
+#define wxAUI_NB_MIDDLE_CLICK_CLOSE  0x2000
+#define wxAUI_NB_DEFAULT_STYLE       ( wxAUI_NB_TOP | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE \
+                                       | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_CLOSE_ON_ACTIVE_TAB \
+                                       | wxAUI_NB_MIDDLE_CLICK_CLOSE )
+
+
+/**
+ * A notebook of AUI (wxAuiNotebook): a wxNotebook with tabs that the user closes (it asks with
+ * wxEVT_AUINOTEBOOK_PAGE_CLOSE, which the handlers can veto) and the drawing of its tabs (kept,
+ * Qt draws them).
+ */
+class KIQT_API wxAuiNotebook : public wxNotebook
+{
+public:
+    explicit wxAuiNotebook( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
+                            const wxPoint& aPos = wxDefaultPosition,
+                            const wxSize& aSize = wxDefaultSize,
+                            long aStyle = wxAUI_NB_DEFAULT_STYLE );
+
+    void SetArtProvider( wxAuiTabArt* aArt ) { m_artCompat.reset( aArt ); }
+    wxAuiTabArt* GetArtProvider() const { return m_artCompat.get(); }
+
+private:
+    std::unique_ptr<wxAuiTabArt> m_artCompat;
+};
 
 
 /**
@@ -1136,6 +1195,9 @@ public:
 
     /// Add a standard button (QDialogButtonBox::Ok...) with the code of KiCad (wxID_OK...).
     wxButton* AddStandardButton( QDialogButtonBox::StandardButton aButton, int aId );
+
+    /// Add a button made by the caller: its id (wxID_OK...) gives its role and default label.
+    void AddButton( wxButton* aButton );
 
     wxButton* GetAffirmativeButton() const;
     wxButton* GetApplyButton() const;

@@ -83,6 +83,7 @@ class wxFileName;
 class EDA_ITEM;
 enum class BITMAPS : unsigned int;
 class EDA_DRAW_PANEL_GAL;
+class DIALOG_EDIT_LIBRARY_TABLES;
 class BASE_SCREEN;
 class PAGE_INFO;
 class TITLE_BLOCK;
@@ -738,6 +739,14 @@ protected:
 
     /// The frame is being closed: release what it uses.
     virtual void doCloseWindow() { }
+
+public:
+    /// The hooks of the frames of wxWidgets (the frames of Qt handle the size and the keys
+    /// themselves).
+    virtual void OnSize( wxSizeEvent& aEvent ) { }
+    virtual void OnCharHook( wxKeyEvent& aKeyEvent ) { }
+
+protected:
 
     /**
      * Called when when the units setting has changed to allow for any derived classes

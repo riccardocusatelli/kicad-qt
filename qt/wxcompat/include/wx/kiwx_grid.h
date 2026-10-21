@@ -580,6 +580,12 @@ public:
     wxTextCtrl* Text() const { return static_cast<wxTextCtrl*>( m_control.data() ); }
 
 protected:
+    /// The creation of the text control (wxGridCellTextEditor::DoCreate()).
+    void DoCreate( wxWindow* aParent, int aId, wxEvtHandler* aEventHandler, long aStyle = 0 )
+    {
+        wxGridCellTextEditor::Create( aParent, aId, aEventHandler );
+    }
+
     wxString m_value;
     size_t   m_maxChars;
 };
@@ -860,6 +866,8 @@ public:
     void EnableDragCell( bool = true ) {}
     void DisableDragColSize() {}
     void DisableDragRowSize() {}
+    void DisableColResize( int aCol ) {}
+    void DisableRowResize( int aRow ) {}
     void SetMargins( int, int ) {}
     void SetScrollRate( int, int ) {}
     void SetTabBehaviour( TabBehaviour ) {}
@@ -879,6 +887,9 @@ public:
     void EndBatch();
     int GetBatchCount() const { return m_batchCount; }
     void ForceRefresh();
+
+    /// Draw a block of cells again (the grid is drawn again).
+    void RefreshBlock( int aTopRow, int aLeftCol, int aBottomRow, int aRightCol ) { ForceRefresh(); }
     void Refresh( bool aEraseBackground = true, const wxRect* aRect = nullptr ) { ForceRefresh(); }
 
     // The selection and the cursor

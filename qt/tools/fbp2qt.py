@@ -1532,7 +1532,7 @@ class FormClass:
             return var
 
         if cls in ( 'wxNotebook', 'wxAuiNotebook' ):
-            t = compat_klass( 'QTabWidget', 'wxNotebook' )
+            t = compat_klass( 'QTabWidget', cls )
             var = self.var( aObj, t, 'new %s( %s )' % ( t, aParent ) )
             self.common( aObj, var )
             selected = None

@@ -334,6 +334,12 @@ private:
  * of events: the handlers bound to it get the events made from the signals and the events of
  * its widget.
  */
+class KIQT_API wxWindow;
+
+/// The base of the windows of wxWidgets (wxWindowBase): the window.
+using wxWindowBase = wxWindow;
+
+
 class KIQT_API wxWindow : public wxEvtHandler
 {
 public:

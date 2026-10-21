@@ -205,6 +205,7 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
 kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_plugin_options_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_embedded_files_base.fbp
@@ -214,6 +215,8 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
 
 set( KIQT_COMMON_COMPAT_SRCS
     dialogs/dialog_configure_paths.cpp
+    dialogs/dialog_edit_library_tables.cpp
+    dialogs/dialog_plugin_options.cpp
     dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
     dialogs/panel_embedded_files.cpp
@@ -221,6 +224,8 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/panel_text_variables.cpp
     grid_tricks.cpp
     kidialog.cpp
+    lib_table_grid_tricks.cpp
+    lib_table_notebook_panel.cpp
     scintilla_tricks.cpp
     ui_events.cpp
     validators.cpp

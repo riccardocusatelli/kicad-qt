@@ -197,6 +197,7 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_edit_options_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_editor_field_defaults_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_editor_graphics_defaults_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_lib_table_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_properties_3d_model_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fp_user_layer_names_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_pcbnew_action_plugins_base.fbp
@@ -298,6 +299,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/panel_fp_editor_color_settings.cpp
     dialogs/panel_fp_editor_field_defaults.cpp
     dialogs/panel_fp_editor_graphics_defaults.cpp
+    dialogs/panel_fp_lib_table.cpp
     dialogs/panel_fp_properties_3d_model.cpp
     dialogs/panel_fp_user_layer_names.cpp
     dialogs/panel_pcbnew_action_plugins.cpp
