@@ -143,6 +143,8 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_2581.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_idf_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_odbpp_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_step_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_step_process_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_vrml_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_filter_selection_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_find_base.fbp
@@ -241,6 +243,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_export_2581.cpp
     dialogs/dialog_export_idf.cpp
     dialogs/dialog_export_odbpp.cpp
+    dialogs/dialog_export_step.cpp
     dialogs/dialog_export_vrml.cpp
     dialogs/dialog_filter_selection.cpp
     dialogs/dialog_find.cpp
@@ -328,6 +331,7 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
+    dialogs/dialog_export_step_process_qt.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
     pcb_edit_frame_qt.cpp

@@ -23,7 +23,7 @@
  */
 
 #include "dialog_export_step.h"
-#include "dialog_export_step_process.h"
+#include <dialog_export_step_process.h>
 
 #include <wx/log.h>
 #include <wx/stdpaths.h>
