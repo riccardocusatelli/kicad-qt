@@ -208,6 +208,7 @@ enum wxEventCategory
 };
 
 #define wxEVT_COMMAND_BUTTON_CLICKED       wxEVT_BUTTON
+#define wxEVT_COMMAND_DATAVIEW_SELECTION_CHANGED wxEVT_DATAVIEW_SELECTION_CHANGED
 #define wxEVT_COMMAND_MENU_SELECTED        wxEVT_MENU
 #define wxEVT_COMMAND_CHECKBOX_CLICKED     wxEVT_CHECKBOX
 #define wxEVT_COMMAND_CHOICE_SELECTED      wxEVT_CHOICE
@@ -422,6 +423,11 @@ public:
     void Check( bool aCheck );
     void Show( bool aShow );
     void SetText( const wxString& aText );
+
+    /// The interval of the updates of the user interface (the layer updates it when the
+    /// application is idle: the interval isn't used).
+    static long GetUpdateInterval() { return 0; }
+    static void SetUpdateInterval( long aMilliseconds ) {}
 };
 
 

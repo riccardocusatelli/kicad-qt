@@ -23,6 +23,7 @@
  */
 
 #include "pin_numbers.h"
+#include <cassert>
 #include <wx/crt.h>
 #include <wx/translation.h>
 

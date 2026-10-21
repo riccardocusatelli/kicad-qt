@@ -58,6 +58,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     drc/rule_editor/drc_re_panel_matcher.cpp
     drc/rule_editor/drc_re_rule_saver.cpp
     edit_track_width.cpp
+    edit_zone_helpers.cpp
     exporters/export_footprint_associations.cpp
     exporters/export_hyperlynx.cpp
     exporters/export_idf.cpp
@@ -67,12 +68,14 @@ set( KIQT_PCBNEW_GUI_SRCS
     footprint_wizard.cpp
     fp_tree_model_adapter.cpp
     generate_footprint_info.cpp
+    generators/pcb_tuning_pattern.cpp
     generators/pcb_tuning_pattern_edit.cpp
     git/kigit_pcb_merge.cpp
     graphics_cleaner.cpp
     import_gfx/dialog_import_graphics.cpp
     import_gfx/graphics_importer_pcbnew.cpp
     initpcb.cpp
+    kicad_clipboard_gui.cpp
     layer_pairs.cpp
     microwave/microwave_footprint.cpp
     microwave/microwave_inductor.cpp
@@ -92,11 +95,14 @@ set( KIQT_PCBNEW_GUI_SRCS
     pcb_screen.cpp
     pcbnew_settings.cpp
     python/scripting/pcb_scripting_tool.cpp
+    python/scripting/pcbnew_scripting.cpp
     python/scripting/pcbnew_scripting_helpers_gui.cpp
     ratsnest/ratsnest.cpp
     ratsnest/ratsnest_view_item.cpp
     router/pns_kicad_iface.cpp
     router/pns_tool_base.cpp
+    router/router_preview_item.cpp
+    router/router_tool.cpp
     toolbars_footprint_wizard.cpp
     tools/align_distribute_tool.cpp
     tools/array_tool.cpp
@@ -104,6 +110,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/convert_tool.cpp
     tools/drawing_tool.cpp
     tools/edit_tool.cpp
+    tools/edit_tool_move_fct.cpp
     tools/footprint_chooser_selection_tool.cpp
     tools/generator_tool.cpp
     tools/generator_tool_pns_proxy.cpp
@@ -117,6 +124,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/pcb_grid_helper.cpp
     tools/pcb_group_tool.cpp
     tools/pcb_picker_tool.cpp
+    tools/pcb_point_editor.cpp
     tools/pcb_selection.cpp
     tools/pcb_selection_conditions.cpp
     tools/pcb_selection_tool.cpp
@@ -366,13 +374,17 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
     ${CMAKE_SOURCE_DIR}/common/api/api_handler_common.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_multi_unit_entry.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
+    ${CMAKE_SOURCE_DIR}/common/drawing_sheet/ds_proxy_undo_item.cpp
+    ${CMAKE_SOURCE_DIR}/common/import_gfx/graphics_import_mgr.cpp
     ${CMAKE_SOURCE_DIR}/common/libraries/lib_table_grid_data_model.cpp
+    ${CMAKE_SOURCE_DIR}/common/pin_numbers.cpp
     ${CMAKE_SOURCE_DIR}/common/preview_items/polygon_geom_manager.cpp
     ${CMAKE_SOURCE_DIR}/common/spacenav/libspnav_driver.cpp
     ${CMAKE_SOURCE_DIR}/common/spacenav/spnav_2d_plugin.cpp
@@ -388,6 +400,8 @@ add_library( pcbnew_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/transline_calculation_base.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/margin_offset_binder.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/rc_tree_model.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/widget_save_restore.cpp
     dialogs/dialog_export_step_process_qt.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp

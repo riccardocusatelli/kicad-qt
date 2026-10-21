@@ -45,6 +45,7 @@
 #include <kiplatform/environment.h>
 
 #include <wx/app.h>
+#include <wx/log.h>
 
 #include <config.h>
 #include <core/ki_assert.h>
