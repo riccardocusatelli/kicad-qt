@@ -29,6 +29,7 @@
 
 #include <config_map.h>
 #include <dpi_scaling_common.h>
+#include <toolkit/toolkit_window_arg.h>
 #include <core/ki_log.h>
 
 using namespace KIGFX;
@@ -79,7 +80,8 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadWindowSettings( WINDOW_SETTINGS& aCfg )
 }
 
 
-void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings, TOOLKIT_WINDOW* aWindow )
+void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings,
+                                                 TOOLKIT_WINDOW_ARG aWindow )
 {
     KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading common config" ) );
 
@@ -94,7 +96,8 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings, TOO
 
 
 void GAL_DISPLAY_OPTIONS_IMPL::ReadConfig( COMMON_SETTINGS& aCommonConfig,
-                                           WINDOW_SETTINGS& aWindowConfig, TOOLKIT_WINDOW* aWindow )
+                                           WINDOW_SETTINGS& aWindowConfig,
+                                           TOOLKIT_WINDOW_ARG aWindow )
 {
     KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading common and app config" ) );
 

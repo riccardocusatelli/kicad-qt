@@ -98,7 +98,7 @@ public:
      * @param aOptions are the display options of the GAL
      * @param aGalType is the type of GAL to use (the Qt build draws with Cairo)
      */
-    EDA_DRAW_PANEL_GAL( QWidget* aParentWindow, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
+    EDA_DRAW_PANEL_GAL( wxWidgetArgCompat aParentWindow, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
                         GAL_TYPE aGalType = GAL_TYPE_OPENGL );
 
     /**
@@ -109,7 +109,7 @@ public:
      * @param aPosition is ignored: the panel is laid out by its parent.
      * @param aSize is the initial size of the panel (wxDefaultSize for none).
      */
-    EDA_DRAW_PANEL_GAL( QWidget* aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
+    EDA_DRAW_PANEL_GAL( wxWidgetArgCompat aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
                         const wxSize& aSize, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
                         GAL_TYPE aGalType = GAL_TYPE_OPENGL );
     ~EDA_DRAW_PANEL_GAL();
@@ -197,8 +197,9 @@ public:
             *aY = 0;
     }
 
-    /// The canvas has no scrollbars (wxWindow::ShowScrollbars()).
+    /// The canvas has no scrollbars (wxWindow::ShowScrollbars(), EnableScrolling()).
     void ShowScrollbars( int aHorizontal, int aVertical ) {}
+    void EnableScrolling( bool aHorizontal, bool aVertical ) {}
 
     /**
      * Force a redraw.

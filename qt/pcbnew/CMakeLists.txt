@@ -65,6 +65,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     footprint_editor_settings.cpp
     footprint_import_reconciler.cpp
     footprint_info_impl.cpp
+    footprint_preview_panel.cpp
     footprint_wizard.cpp
     fp_tree_model_adapter.cpp
     generate_footprint_info.cpp
@@ -146,6 +147,8 @@ set( KIQT_PCBNEW_GUI_SRCS
     zone_manager/board_edges_bounding_item.cpp
     zone_manager/dialog_zone_manager.cpp
     zone_manager/model_zones_overview.cpp
+    zone_manager/zone_preview_canvas.cpp
+    zone_manager/zone_preview_notebook.cpp
     zone_settings_bag.cpp
     )
 

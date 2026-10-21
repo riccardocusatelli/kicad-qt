@@ -17,16 +17,12 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
-
 /**
  * @file toolkit_window_arg.h
- * The window given to the functions of KiCad that show a dialog on it (confirm.h): a window
- * of wxWidgets.  The Qt build has its own version of this header, where it is a QWidget* or a
- * wxWindow* of its compatibility layer.
+ * The complete type of TOOLKIT_WINDOW_ARG (see toolkit_types.h), for the code that converts it
+ * to a window: with wxWidgets, a wxWindow*.
  */
 
-class wxWindow;
+#pragma once
 
-/// A window given as the parent of a dialog.
-using TOOLKIT_WINDOW_ARG = wxWindow*;
+#include <toolkit/toolkit_types.h>

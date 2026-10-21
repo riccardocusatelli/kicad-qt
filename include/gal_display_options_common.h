@@ -51,7 +51,7 @@ public:
      * @param aCommonSettings the common config store.
      * @param aWindow         the wx parent window (used for DPI scaling).
      */
-    void ReadCommonConfig( COMMON_SETTINGS& aCommonSettings, TOOLKIT_WINDOW* aWindow );
+    void ReadCommonConfig( COMMON_SETTINGS& aCommonSettings, TOOLKIT_WINDOW_ARG aWindow );
 
     /**
      * Read application and common configs.
@@ -62,7 +62,7 @@ public:
      * @param aWindow       the wx parent window (used for DPI scaling).
      */
     void ReadConfig( COMMON_SETTINGS& aCommonConfig, WINDOW_SETTINGS& aWindowConfig,
-                     TOOLKIT_WINDOW* aWindow );
+                     TOOLKIT_WINDOW_ARG aWindow );
 
     void WriteConfig( WINDOW_SETTINGS& aCfg );
 

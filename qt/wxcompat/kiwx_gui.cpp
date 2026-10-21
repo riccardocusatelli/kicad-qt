@@ -27,6 +27,7 @@
  */
 
 #include <wx/kiwx_gui.h>
+#include <wx/kiwx_listctrl.h>
 
 #include <atomic>
 
@@ -2251,10 +2252,29 @@ bool wxNotebook::InsertPage( size_t aIndex, wxWidgetArgCompat aPage, const wxStr
 {
     int index = insertTab( int( aIndex ), aPage, ToQString( aText ) );
 
+    if( aImage >= 0 )
+        SetPageImage( size_t( index ), aImage );
+
     if( aSelect )
         setCurrentIndex( index );
 
     return index >= 0;
+}
+
+
+void wxNotebook::AssignImageList( wxImageList* aImageList )
+{
+    m_imageListCompat.reset( aImageList );
+}
+
+
+bool wxNotebook::SetPageImage( size_t aPage, int aImage )
+{
+    if( !m_imageListCompat || int( aPage ) >= count() || aImage >= m_imageListCompat->GetImageCount() )
+        return false;
+
+    setTabIcon( int( aPage ), aImage >= 0 ? QIcon( m_imageListCompat->GetBitmap( aImage ) ) : QIcon() );
+    return true;
 }
 
 

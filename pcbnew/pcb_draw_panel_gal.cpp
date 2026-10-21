@@ -63,7 +63,7 @@
 using namespace std::placeholders;
 
 
-PCB_DRAW_PANEL_GAL::PCB_DRAW_PANEL_GAL( TOOLKIT_WINDOW* aParentWindow, wxWindowID aWindowId,
+PCB_DRAW_PANEL_GAL::PCB_DRAW_PANEL_GAL( TOOLKIT_WINDOW_ARG aParentWindow, wxWindowID aWindowId,
                                         const wxPoint& aPosition, const wxSize& aSize,
                                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType ) :
         EDA_DRAW_PANEL_GAL( aParentWindow, aWindowId, aPosition, aSize, aOptions, aGalType )
@@ -73,7 +73,7 @@ PCB_DRAW_PANEL_GAL::PCB_DRAW_PANEL_GAL( TOOLKIT_WINDOW* aParentWindow, wxWindowI
 
     FRAME_T frameType = FRAME_FOOTPRINT_PREVIEW;
 
-    if( EDA_BASE_FRAME* frame = dynamic_cast<EDA_BASE_FRAME*>( aParentWindow ) )
+    if( EDA_BASE_FRAME* frame = dynamic_cast<EDA_BASE_FRAME*>( static_cast<TOOLKIT_WINDOW*>( aParentWindow ) ) )
         frameType = frame->GetFrameType();
 
     m_painter = std::make_unique<KIGFX::PCB_PAINTER>( m_gal, frameType );

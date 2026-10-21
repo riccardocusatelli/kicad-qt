@@ -903,6 +903,9 @@ private:
 };
 
 
+class wxImageList;
+
+
 /// The drawing of the tabs of a wxAuiNotebook (wxAuiTabArt): Qt draws them.
 class wxAuiTabArt
 {
@@ -941,6 +944,15 @@ public:
     bool DeleteAllPages();
     int FindPage( wxWidgetArgCompat aPage ) const { return indexOf( aPage ); }
     int GetPageIndex( wxWidgetArgCompat aPage ) const { return indexOf( aPage ); }
+
+    /// The images of the tabs (the notebook takes the list): the image @a aImage of a page is
+    /// the icon of its tab.
+    void AssignImageList( wxImageList* aImageList );
+    wxImageList* GetImageList() const { return m_imageListCompat.get(); }
+    bool SetPageImage( size_t aPage, int aImage );
+
+private:
+    std::shared_ptr<wxImageList> m_imageListCompat;
 };
 
 using wxBookCtrlBase = wxNotebook;

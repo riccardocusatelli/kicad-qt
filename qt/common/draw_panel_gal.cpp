@@ -106,7 +106,7 @@ public:
 };
 
 
-EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( QWidget* aParentWindow,
+EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWidgetArgCompat aParentWindow,
                                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType ) :
         wxWindowCompat<QWidget>( aParentWindow ),
         m_parent( aParentWindow ),
@@ -146,7 +146,7 @@ EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( QWidget* aParentWindow,
 }
 
 
-EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( QWidget* aParentWindow, wxWindowID aWindowId,
+EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWidgetArgCompat aParentWindow, wxWindowID aWindowId,
                                         const wxPoint& aPosition, const wxSize& aSize,
                                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType ) :
         EDA_DRAW_PANEL_GAL( aParentWindow, aOptions, aGalType )

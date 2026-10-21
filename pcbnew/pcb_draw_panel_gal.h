@@ -39,7 +39,7 @@ class PROGRESS_REPORTER;
 class PCB_DRAW_PANEL_GAL : public EDA_DRAW_PANEL_GAL
 {
 public:
-    PCB_DRAW_PANEL_GAL( TOOLKIT_WINDOW* aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
+    PCB_DRAW_PANEL_GAL( TOOLKIT_WINDOW_ARG aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
                         const wxSize& aSize, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
                         GAL_TYPE aGalType = GAL_TYPE_OPENGL );
 

@@ -32,6 +32,12 @@ class QEvent;
 /// A window (a widget) of the user interface.
 using TOOLKIT_WINDOW = QWidget;
 
+class wxWidgetArgCompat;
+
+/// The parent of a window that the toolkit-independent code makes: a widget of Qt or a window
+/// of the wxWidgets compatibility layer.
+using TOOLKIT_WINDOW_ARG = wxWidgetArgCompat;
+
 /// An event of the user interface (an input event, given to the tool dispatcher).
 using TOOLKIT_EVENT = QEvent;
 
