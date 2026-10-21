@@ -29,6 +29,7 @@
 
 #include <class_draw_panel_gal.h>
 #include <toolkit/toolkit_types.h>
+#include <toolkit/toolkit_window_arg.h>
 #include <layer_ids.h>
 #include <pcb_view.h>
 

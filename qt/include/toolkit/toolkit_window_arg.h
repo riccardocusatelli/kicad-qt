@@ -17,13 +17,17 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/**
- * @file toolkit_window_arg.h
- * The complete type of TOOLKIT_WINDOW_ARG of the Qt build (include/toolkit/toolkit_window_arg.h
- * with wxWidgets): the window argument of the wxWidgets compatibility layer.
- */
-
 #pragma once
 
-#include <toolkit/toolkit_types.h>
+/**
+ * @file toolkit_window_arg.h
+ * The window given to the functions of KiCad that show a dialog on it (confirm.h), and the
+ * parent of the canvases made by the toolkit-independent code: the Qt version of
+ * include/toolkit/toolkit_window_arg.h.  It is a QWidget* or a wxWindow* of the
+ * compatibility layer (the code of the dialogs of KiCad gives wxWindows).
+ */
+
 #include <wx/kiwx_window.h>
+
+/// A window given as the parent of a dialog.
+using TOOLKIT_WINDOW_ARG = wxWidgetArgCompat;

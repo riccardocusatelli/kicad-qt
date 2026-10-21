@@ -31,6 +31,7 @@ class COMMON_SETTINGS;
 struct WINDOW_SETTINGS;
 class wxString;
 #include <toolkit/toolkit_types.h>
+#include <toolkit/toolkit_window_arg.h>
 
 
 class GAL_DISPLAY_OPTIONS_IMPL : public KIGFX::GAL_DISPLAY_OPTIONS

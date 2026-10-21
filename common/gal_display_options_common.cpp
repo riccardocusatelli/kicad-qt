@@ -29,7 +29,6 @@
 
 #include <config_map.h>
 #include <dpi_scaling_common.h>
-#include <toolkit/toolkit_window_arg.h>
 #include <core/ki_log.h>
 
 using namespace KIGFX;

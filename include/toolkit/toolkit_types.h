@@ -35,9 +35,6 @@ class wxEvent;
 /// A window (a widget) of the user interface.
 using TOOLKIT_WINDOW = wxWindow;
 
-/// The parent of a window that the toolkit-independent code makes.
-using TOOLKIT_WINDOW_ARG = wxWindow*;
-
 /// An event of the user interface (an input event, given to the tool dispatcher).
 using TOOLKIT_EVENT = wxEvent;
 
