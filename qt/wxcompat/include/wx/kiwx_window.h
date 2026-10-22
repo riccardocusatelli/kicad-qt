@@ -423,6 +423,10 @@ public:
     /// Qt draws the widgets double buffered.
     void SetDoubleBuffered( bool aOn ) {}
 
+    /// How the background is drawn (Qt paints it before the paint events).
+    bool SetBackgroundStyle( wxBackgroundStyle aStyle ) { return true; }
+    wxBackgroundStyle GetBackgroundStyle() const { return wxBG_STYLE_SYSTEM; }
+
     /// The size of the window changed: the parent lays its children out again.
     void PostSizeEventToParent()
     {

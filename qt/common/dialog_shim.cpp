@@ -574,6 +574,23 @@ void DIALOG_SHIM::RegisterUnitBinder( UNIT_BINDER* aUnitBinder, wxWidgetArgCompa
 }
 
 
+void DIALOG_SHIM::unregisterUnitBinders( wxWindow* aWindow )
+{
+    QWidget* window = aWindow ? aWindow->GetHandle() : nullptr;
+
+    if( !window )
+        return;
+
+    for( auto it = m_unitBinders.begin(); it != m_unitBinders.end(); )
+    {
+        if( it->first == window || window->isAncestorOf( it->first ) )
+            it = m_unitBinders.erase( it );
+        else
+            ++it;
+    }
+}
+
+
 void DIALOG_SHIM::UnregisterUnitBinder( UNIT_BINDER* aUnitBinder )
 {
     for( auto it = m_unitBinders.begin(); it != m_unitBinders.end(); )

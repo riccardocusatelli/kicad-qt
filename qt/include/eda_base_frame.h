@@ -656,6 +656,9 @@ public:
     /// The frame is closing (wxWindow::IsBeingDeleted()).
     bool IsBeingDeleted() const { return m_isClosing; }
 
+    /// The description of an action that runs it from the menus ("Run: menu > item").
+    wxString GetRunMenuCommandDescription( const TOOL_ACTION& aAction );
+
     bool NonUserClose( bool aForce )
     {
         m_isNonUserClose = true;

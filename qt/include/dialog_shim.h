@@ -74,6 +74,8 @@ public:
                  long aStyle = 0, const wxString& aName = wxEmptyString ) :
             DIALOG_SHIM( aParent, aTitle )
     {
+        m_initialSize = aSize;
+
         if( aSize.x > 0 && aSize.y > 0 )
             resize( aSize.x, aSize.y );
     }
@@ -247,6 +249,12 @@ protected:
      */
     void resetSize();
 
+    /// The content of the dialog changed (wxWidgets): the widgets of Qt keep their own undo.
+    void resetUndoRedoForNewContent( const wxWindowList& aChildren ) {}
+
+    /// Forget the unit binders of a window and of its children.
+    void unregisterUnitBinders( wxWindow* aWindow );
+
     /// Click the button @a aId if it is enabled and shown (wxDialog::EmulateButtonClickIfPresent()).
     bool EmulateButtonClickIfPresent( int aId );
 
@@ -255,6 +263,9 @@ protected:
 
     /// Keep the size computed by the dialog instead of the saved one.
     bool                   m_useCalculatedSize = false;
+
+    /// The size given to the constructor.
+    wxSize                 m_initialSize = wxDefaultSize;
 
     QWidget*               m_initialFocusTarget;
     QEventLoop*            m_qmodal_loop;  // points to nested event_loop, NULL means not qmodal

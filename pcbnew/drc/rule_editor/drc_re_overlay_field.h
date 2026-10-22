@@ -25,12 +25,12 @@
 #define DRC_RE_OVERLAY_FIELD_H
 
 #include <functional>
+#include <wx/control.h>
 #include <wx/string.h>
 
 #include "drc_re_overlay_types.h"
 
 class wxWindow;
-class wxControl;
 class wxStaticBitmap;
 class wxStaticText;
 class UNIT_BINDER;

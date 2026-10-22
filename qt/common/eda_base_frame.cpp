@@ -985,6 +985,39 @@ void EDA_BASE_FRAME::ReCreateMenuBar()
 }
 
 
+wxString EDA_BASE_FRAME::GetRunMenuCommandDescription( const TOOL_ACTION& aAction )
+{
+    wxString  menuItemLabel = aAction.GetMenuLabel();
+    QMenuBar* menuBar = menuWidget() ? qobject_cast<QMenuBar*>( menuWidget() ) : nullptr;
+
+    if( menuBar )
+    {
+        for( QAction* menuAction : menuBar->actions() )
+        {
+            QMenu* menu = menuAction->menu();
+
+            if( !menu )
+                continue;
+
+            for( QAction* item : menu->actions() )
+            {
+                if( wxStripMenuCodes( ToWxString( item->text() ) ) == menuItemLabel )
+                {
+                    wxString menuTitleLabel = wxStripMenuCodes( ToWxString( menuAction->text() ) );
+
+                    menuTitleLabel.Replace( wxS( "&" ), wxS( "&&" ) );
+                    menuItemLabel.Replace( wxS( "&" ), wxS( "&&" ) );
+
+                    return wxString::Format( _( "Run: %s > %s" ), menuTitleLabel, menuItemLabel );
+                }
+            }
+        }
+    }
+
+    return wxString::Format( _( "Run: %s" ), aAction.GetFriendlyName() );
+}
+
+
 void EDA_BASE_FRAME::ShowChangedLanguage()
 {
     TOOLS_HOLDER::ShowChangedLanguage();

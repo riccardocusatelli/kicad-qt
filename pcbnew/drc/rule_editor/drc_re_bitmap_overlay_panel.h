@@ -29,6 +29,7 @@
 #include <vector>
 
 #include <wx/bitmap.h>
+#include <wx/control.h>
 #include <wx/panel.h>
 
 #include <bitmaps.h>
@@ -36,7 +37,6 @@
 #include "drc_re_overlay_field.h"
 #include "drc_re_overlay_types.h"
 
-class wxControl;
 class wxCheckBox;
 class wxPaintEvent;
 class wxDPIChangedEvent;

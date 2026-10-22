@@ -867,6 +867,7 @@ public:
     void DisableDragColSize() {}
     void DisableDragRowSize() {}
     void DisableColResize( int aCol ) {}
+    void EnableScrolling( bool aHorizontal, bool aVertical ) {}
     void DisableRowResize( int aRow ) {}
     void SetMargins( int, int ) {}
     void SetScrollRate( int, int ) {}

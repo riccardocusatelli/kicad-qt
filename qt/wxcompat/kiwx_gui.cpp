@@ -105,6 +105,9 @@ void wxFillMouseEventCompat( wxMouseEvent& aEvent, QEvent* aQtEvent )
     {
         aEvent.m_x = int( mouse->position().x() );
         aEvent.m_y = int( mouse->position().y() );
+        aEvent.m_leftIsDown = mouse->buttons() & Qt::LeftButton;
+        aEvent.m_middleIsDown = mouse->buttons() & Qt::MiddleButton;
+        aEvent.m_rightIsDown = mouse->buttons() & Qt::RightButton;
         modifiers = mouse->modifiers();
     }
     else if( QWheelEvent* wheel = dynamic_cast<QWheelEvent*>( aQtEvent ) )
@@ -1036,6 +1039,11 @@ wxTextCtrl::wxTextCtrl( wxWidgetArgCompat aParent, int aId, const wxString& aVal
 
     if( aStyle & wxTE_PASSWORD )
         setEchoMode( QLineEdit::Password );
+
+    if( aStyle & wxTE_CENTER )
+        setAlignment( Qt::AlignHCenter | Qt::AlignVCenter );
+    else if( aStyle & wxTE_RIGHT )
+        setAlignment( Qt::AlignRight | Qt::AlignVCenter );
 
     if( aSize.x > 0 )
         setMinimumWidth( aSize.x );
@@ -2740,6 +2748,43 @@ QWidget* wxFindFocusCompat()
 void wxBell()
 {
     QApplication::beep();
+}
+
+
+wxWindowDisabler::wxWindowDisabler( bool aDisable )
+{
+    if( aDisable )
+        disable( nullptr, nullptr );
+}
+
+
+wxWindowDisabler::wxWindowDisabler( wxWindow* aToSkip, wxWindow* aToSkip2 )
+{
+    disable( aToSkip ? aToSkip->GetHandle()->window() : nullptr,
+             aToSkip2 ? aToSkip2->GetHandle()->window() : nullptr );
+}
+
+
+wxWindowDisabler::~wxWindowDisabler()
+{
+    for( const QPointer<QWidget>& window : m_disabled )
+    {
+        if( window )
+            window->setEnabled( true );
+    }
+}
+
+
+void wxWindowDisabler::disable( QWidget* aToSkip, QWidget* aToSkip2 )
+{
+    for( QWidget* window : QApplication::topLevelWidgets() )
+    {
+        if( window == aToSkip || window == aToSkip2 || !window->isVisible() || !window->isEnabled() )
+            continue;
+
+        window->setEnabled( false );
+        m_disabled.emplace_back( window );
+    }
 }
 
 

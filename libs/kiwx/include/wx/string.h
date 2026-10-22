@@ -844,6 +844,19 @@ struct hash<wxString>
 } // namespace std
 
 
+/// The hash and the equality of the strings, for the hash maps (wxStringHash, wxStringEqual of
+/// wx/hashmap.h).
+struct wxStringHash
+{
+    size_t operator()( const wxString& aStr ) const noexcept { return std::hash<wxString>()( aStr ); }
+};
+
+struct wxStringEqual
+{
+    bool operator()( const wxString& aA, const wxString& aB ) const { return aA == aB; }
+};
+
+
 // String helpers of wxWidgets
 inline size_t wxStrlen( const wxString& aStr )
 {

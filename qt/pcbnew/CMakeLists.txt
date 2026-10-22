@@ -55,8 +55,35 @@ set( KIQT_PCBNEW_GUI_SRCS
     cross-probing.cpp
     drc/drc_interactive_courtyard_clearance.cpp
     drc/drc_test_provider.cpp
+    drc/rule_editor/dialog_drc_rule_editor.cpp
+    drc/rule_editor/drc_re_abs_length_two_overlay_panel.cpp
+    drc/rule_editor/drc_re_allowed_orientation_overlay_panel.cpp
+    drc/rule_editor/drc_re_bitmap_overlay_panel.cpp
+    drc/rule_editor/drc_re_bool_input_overlay_panel.cpp
+    drc/rule_editor/drc_re_condition_group_panel.cpp
+    drc/rule_editor/drc_re_condition_row_panel.cpp
+    drc/rule_editor/drc_re_custom_rule_panel.cpp
+    drc/rule_editor/drc_re_matched_length_diff_pair_overlay_panel.cpp
+    drc/rule_editor/drc_re_min_txt_ht_th_overlay_panel.cpp
+    drc/rule_editor/drc_re_numeric_input_overlay_panel.cpp
+    drc/rule_editor/drc_re_object_selector_panel.cpp
+    drc/rule_editor/drc_re_overlay_field.cpp
     drc/rule_editor/drc_re_panel_matcher.cpp
+    drc/rule_editor/drc_re_permitted_layers_overlay_panel.cpp
+    drc/rule_editor/drc_re_routing_width_overlay_panel.cpp
+    drc/rule_editor/drc_re_rtg_diff_pair_overlay_panel.cpp
+    drc/rule_editor/drc_re_rule_loader.cpp
     drc/rule_editor/drc_re_rule_saver.cpp
+    drc/rule_editor/drc_re_validator_checkbox_list.cpp
+    drc/rule_editor/drc_re_validator_combo_ctrl.cpp
+    drc/rule_editor/drc_re_validator_min_max_ctrl.cpp
+    drc/rule_editor/drc_re_validator_min_preferred_max_ctrl.cpp
+    drc/rule_editor/drc_re_validator_numeric_ctrl.cpp
+    drc/rule_editor/drc_re_via_style_overlay_panel.cpp
+    drc/rule_editor/drc_re_vias_under_smd_overlay_panel.cpp
+    drc/rule_editor/drc_rule_editor_utils.cpp
+    drc/rule_editor/panel_drc_group_header.cpp
+    drc/rule_editor/panel_drc_rule_editor.cpp
     edit_track_width.cpp
     edit_zone_helpers.cpp
     exporters/export_footprint_associations.cpp
@@ -110,6 +137,8 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/board_reannotate_tool.cpp
     tools/convert_tool.cpp
     tools/drawing_tool.cpp
+    tools/drc_rule_editor_tool.cpp
+    tools/drc_tool.cpp
     tools/edit_tool.cpp
     tools/edit_tool_move_fct.cpp
     tools/footprint_chooser_selection_tool.cpp
@@ -263,6 +292,8 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_zone_hatch_offsets_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_zones_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_zone_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drc/rule_editor/panel_drc_group_header_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drc/rule_editor/panel_drc_rule_editor_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/import_gfx/dialog_import_graphics_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/zone_manager/dialog_zone_manager_base.fbp
     )
@@ -384,6 +415,7 @@ add_library( pcbnew_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/rule_editor_dialog_base.cpp
     ${CMAKE_SOURCE_DIR}/common/drawing_sheet/ds_proxy_undo_item.cpp
     ${CMAKE_SOURCE_DIR}/common/import_gfx/graphics_import_mgr.cpp
     ${CMAKE_SOURCE_DIR}/common/libraries/lib_table_grid_data_model.cpp

@@ -205,7 +205,7 @@ EVENTS = {
 COMPAT_CLASSES = {
     'wxStaticText': 'wxStaticText',
     'wxTextCtrl': 'wxTextCtrl',
-    'wxSearchCtrl': 'wxTextCtrl',
+    'wxSearchCtrl': 'wxSearchCtrl',
     'wxButton': 'wxButton',
     'wxToggleButton': 'wxToggleButton',
     'wxBitmapButton': 'wxBitmapButton',

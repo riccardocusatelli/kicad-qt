@@ -64,11 +64,11 @@ public:
      *                        value control gets the focus back
      */
     UNIT_BINDER( EDA_DRAW_FRAME* aParent,
-                 QLabel* aLabel, QWidget* aValueCtrl, QLabel* aUnitLabel,
+                 QLabel* aLabel, wxWidgetArgCompat aValueCtrl, QLabel* aUnitLabel,
                  bool aAllowEval = true, bool aBindFocusEvent = true );
 
     UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, wxWidgetArgCompat aEventSource,
-                 QLabel* aLabel, QWidget* aValueCtrl, QLabel* aUnitLabel,
+                 QLabel* aLabel, wxWidgetArgCompat aValueCtrl, QLabel* aUnitLabel,
                  bool aAllowEval = true, bool aBindFocusEvent = true );
 
     virtual ~UNIT_BINDER();

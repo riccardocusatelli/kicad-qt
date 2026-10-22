@@ -58,6 +58,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QRadioButton>
@@ -137,6 +138,16 @@ public:
                       const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                       long aStyle = 0, const wxString& aName = wxEmptyString );
 
+    /// Make the panel made by the default constructor a child of @a aParent (two-step creation).
+    bool Create( wxWidgetArgCompat aParent, int aId = wxID_ANY,
+                 const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+                 long aStyle = 0, const wxString& aName = wxEmptyString )
+    {
+        setParent( aParent.get() );
+        SetId( aId );
+        return true;
+    }
+
     /// The help of the panel at a point (the tooltip of the reset button of the paged dialogs).
     virtual wxString GetHelpTextAtPoint( const wxPoint& aPt, wxHelpEvent::Origin aOrigin ) const
     {
@@ -204,6 +215,24 @@ protected:
 };
 
 
+/// A search field (wxSearchCtrl): a wxTextCtrl with a clear button and a hint.
+class KIQT_API wxSearchCtrl : public wxTextCtrl
+{
+public:
+    using wxTextCtrl::wxTextCtrl;
+
+    /// Qt shows no search button (the field searches as the user types).
+    void ShowSearchButton( bool aShow ) {}
+    bool IsSearchButtonVisible() const { return false; }
+
+    void ShowCancelButton( bool aShow ) { setClearButtonEnabled( aShow ); }
+    bool IsCancelButtonVisible() const { return isClearButtonEnabled(); }
+
+    void SetDescriptiveText( const wxString& aText ) { setPlaceholderText( ToQString( aText ) ); }
+    wxString GetDescriptiveText() const { return ToWxString( placeholderText() ); }
+};
+
+
 /// A multi-line wxTextCtrl (wxTE_MULTILINE): a QPlainTextEdit.
 class KIQT_API wxTextCtrlMultiLine : public wxWindowCompat<QPlainTextEdit>, public wxTextEntry
 {
@@ -260,6 +289,14 @@ public:
     void SetLabel( const wxString& aLabel ) { setText( ToQString( aLabel ) ); }
     wxString GetLabel() const { return ToWxString( text() ); }
     wxString GetLabelText() const { return wxStripMenuCodes( GetLabel() ); }
+
+    /// The label as it is shown (no mnemonics: the ampersands are shown).
+    void SetLabelText( const wxString& aText )
+    {
+        wxString label = aText;
+        label.Replace( wxS( "&" ), wxS( "&&" ) );
+        SetLabel( label );
+    }
 
     void SetDefault() { setDefault( true ); }
 
@@ -1017,6 +1054,19 @@ enum wxSplitMode
 
 
 /// A window split in two (wxSplitterWindow).
+// The styles of wxSplitterWindow (Qt draws the sash itself)
+#define wxSP_NOBORDER       0x0000
+#define wxSP_THIN_SASH      0x0000
+#define wxSP_NOSASH         0x0010
+#define wxSP_PERMIT_UNSPLIT 0x0040
+#define wxSP_LIVE_UPDATE    0x0080
+#define wxSP_3DSASH         0x0100
+#define wxSP_3DBORDER       0x0200
+#define wxSP_NO_XP_THEME    0x0400
+#define wxSP_BORDER         wxSP_3DBORDER
+#define wxSP_3D             ( wxSP_3DBORDER | wxSP_3DSASH )
+
+
 class KIQT_API wxSplitterWindow : public wxWindowCompat<QSplitter>
 {
 public:
@@ -1425,6 +1475,27 @@ KIQT_API QWidget* wxFindFocusCompat();
 
 /// Ring the bell.
 KIQT_API void wxBell();
+
+
+/**
+ * Disable the top level windows while it exists, except one or two (wxWindowDisabler): the
+ * windows are enabled again when it is destroyed.
+ */
+class KIQT_API wxWindowDisabler
+{
+public:
+    explicit wxWindowDisabler( bool aDisable = true );
+    explicit wxWindowDisabler( wxWindow* aToSkip, wxWindow* aToSkip2 = nullptr );
+    ~wxWindowDisabler();
+
+    wxWindowDisabler( const wxWindowDisabler& ) = delete;
+    wxWindowDisabler& operator=( const wxWindowDisabler& ) = delete;
+
+private:
+    void disable( QWidget* aToSkip, QWidget* aToSkip2 );
+
+    std::vector<QPointer<QWidget>> m_disabled;
+};
 
 /// Open a document or a directory with the default application of the system.
 KIQT_API bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags = 0 );

@@ -186,6 +186,20 @@ enum wxEventTypeCompat
     wxEVT_DIRCTRL_SELECTIONCHANGED,
     wxEVT_DIRCTRL_FILEACTIVATED,
     wxEVT_AUINOTEBOOK_PAGE_CLOSE,
+    wxEVT_TREE_SEL_CHANGED,
+    wxEVT_TREE_SEL_CHANGING,
+    wxEVT_TREE_ITEM_ACTIVATED,
+    wxEVT_TREE_ITEM_RIGHT_CLICK,
+    wxEVT_TREE_ITEM_MENU,
+    wxEVT_TREE_ITEM_EXPANDED,
+    wxEVT_TREE_ITEM_EXPANDING,
+    wxEVT_TREE_ITEM_COLLAPSED,
+    wxEVT_TREE_ITEM_COLLAPSING,
+    wxEVT_TREE_BEGIN_DRAG,
+    wxEVT_TREE_END_DRAG,
+    wxEVT_TREE_BEGIN_LABEL_EDIT,
+    wxEVT_TREE_END_LABEL_EDIT,
+    wxEVT_TREE_KEY_DOWN,
     wxEVT_USER_FIRST = 10000
 };
 
@@ -488,14 +502,25 @@ public:
     bool RightDown() const { return GetEventType() == wxEVT_RIGHT_DOWN; }
     bool RightUp() const { return GetEventType() == wxEVT_RIGHT_UP; }
 
-    /// The mouse moves (the state of the buttons isn't kept: a drag is a move too).
-    bool Moving() const { return GetEventType() == wxEVT_MOTION; }
+    bool LeftIsDown() const { return m_leftIsDown; }
+    bool MiddleIsDown() const { return m_middleIsDown; }
+    bool RightIsDown() const { return m_rightIsDown; }
+    bool ButtonIsDown() const { return m_leftIsDown || m_middleIsDown || m_rightIsDown; }
+
+    /// The mouse moves without a button pressed.
+    bool Moving() const { return GetEventType() == wxEVT_MOTION && !ButtonIsDown(); }
+
+    /// The mouse moves with a button pressed.
+    bool Dragging() const { return GetEventType() == wxEVT_MOTION && ButtonIsDown(); }
     bool Entering() const { return GetEventType() == wxEVT_ENTER_WINDOW; }
     bool Leaving() const { return GetEventType() == wxEVT_LEAVE_WINDOW; }
 
     int  m_x, m_y;
     int  m_wheelRotation;
     bool m_shift, m_control, m_alt;
+    bool m_leftIsDown = false;
+    bool m_middleIsDown = false;
+    bool m_rightIsDown = false;
 };
 
 

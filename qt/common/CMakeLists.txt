@@ -64,6 +64,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_msgdlg.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_pickers.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_listctrl.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_treectrl.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_dataview.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_statusbar.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_display.cpp

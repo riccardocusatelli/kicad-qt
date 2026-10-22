@@ -96,7 +96,7 @@ private:
 };
 
 
-UNIT_BINDER::UNIT_BINDER( EDA_DRAW_FRAME* aParent, QLabel* aLabel, QWidget* aValueCtrl,
+UNIT_BINDER::UNIT_BINDER( EDA_DRAW_FRAME* aParent, QLabel* aLabel, wxWidgetArgCompat aValueCtrl,
                           QLabel* aUnitLabel, bool allowEval, bool aBindFrameEvents ) :
         UNIT_BINDER( aParent, aParent, aLabel, aValueCtrl, aUnitLabel, allowEval, aBindFrameEvents )
 {
@@ -104,7 +104,7 @@ UNIT_BINDER::UNIT_BINDER( EDA_DRAW_FRAME* aParent, QLabel* aLabel, QWidget* aVal
 
 
 UNIT_BINDER::UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, wxWidgetArgCompat aEventSource,
-                          QLabel* aLabel, QWidget* aValueCtrl, QLabel* aUnitLabel,
+                          QLabel* aLabel, wxWidgetArgCompat aValueCtrl, QLabel* aUnitLabel,
                           bool aAllowEval, bool aBindFocusEvent ) :
         m_bindFocusEvent( aBindFocusEvent ),
         m_label( aLabel ),

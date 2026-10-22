@@ -475,6 +475,11 @@ wxALLOW_COMBINING_ENUMS(wxSizerFlagBits, wxStretch)
 #define wxTE_PROCESS_ENTER  0x0400
 #define wxTE_PASSWORD       0x0800
 
+#define wxTE_LEFT           0x0000
+#define wxTE_CENTER         wxALIGN_CENTER_HORIZONTAL
+#define wxTE_CENTRE         wxTE_CENTER
+#define wxTE_RIGHT          wxALIGN_RIGHT
+
 /*
     wxButton flags (wx/button.h)
  */
