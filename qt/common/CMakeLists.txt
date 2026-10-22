@@ -65,6 +65,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_pickers.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_listctrl.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_treectrl.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_treelist.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_dataview.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_statusbar.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_display.cpp
@@ -204,10 +205,12 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
 # The dialogs and widgets of KiCad built unchanged on the wxWidgets compatibility layer
 # (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_autosave_recovery_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_page_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_plugin_options_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
@@ -218,11 +221,14 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     )
 
 set( KIQT_COMMON_COMPAT_SRCS
+    dialogs/dialog_autosave_recovery.cpp
     dialogs/dialog_configure_paths.cpp
     dialogs/dialog_edit_library_tables.cpp
+    dialogs/dialog_page_settings.cpp
     dialogs/dialog_plugin_options.cpp
     dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
+    dialogs/html_message_box.cpp
     dialogs/panel_embedded_files.cpp
     dialogs/panel_setup_severities.cpp
     dialogs/panel_text_variables.cpp
@@ -233,6 +239,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     scintilla_tricks.cpp
     ui_events.cpp
     validators.cpp
+    widgets/font_choice.cpp
     widgets/grid_bitmap_toggle.cpp
     widgets/grid_button.cpp
     widgets/grid_checkbox.cpp
@@ -243,6 +250,8 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/grid_text_helpers.cpp
     widgets/indicator_icon.cpp
     widgets/number_badge.cpp
+    widgets/split_button.cpp
+    widgets/widget_hotkey_list.cpp
     widgets/wx_dataviewctrl.cpp
     widgets/wx_grid.cpp
     )
@@ -255,13 +264,34 @@ add_library( kiqt_common STATIC
     ${KIQT_COMMON_TOOL_SRCS}
     ${KIQT_COMMON_FBP_SRCS}
 
+    ${CMAKE_SOURCE_DIR}/common/clipboard.cpp
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling.cpp
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling_common.cpp
+    ${CMAKE_SOURCE_DIR}/common/eda_doc.cpp
     ${CMAKE_SOURCE_DIR}/common/gal_display_options_common.cpp
+    ${CMAKE_SOURCE_DIR}/common/gui_reporters.cpp
     ${CMAKE_SOURCE_DIR}/common/hotkeys_basic.cpp
     ${CMAKE_SOURCE_DIR}/common/kiway_holder.cpp
+    ${CMAKE_SOURCE_DIR}/common/launch_ext.cpp
+    ${CMAKE_SOURCE_DIR}/common/origin_viewitem.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/anchor_debug.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/angle_item.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/arc_assistant.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/arc_geom_manager.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/bezier_assistant.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/bezier_geom_manager.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/centreline_rect_item.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/construction_geom.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/draw_context.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/item_drawing_utils.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/polygon_geom_manager.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/polygon_item.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/preview_utils.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/ruler_item.cpp
     ${CMAKE_SOURCE_DIR}/common/preview_items/selection_area.cpp
     ${CMAKE_SOURCE_DIR}/common/preview_items/simple_overlay_item.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/snap_indicator.cpp
+    ${CMAKE_SOURCE_DIR}/common/preview_items/two_point_assistant.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/msgpanel_item.cpp
 
     # the properties panels: the toolkit-independent logic, the values of the properties
@@ -290,6 +320,7 @@ add_library( kiqt_common STATIC
     widgets/paged_dialog_qt.cpp
     widgets/wx_treebook_qt.cpp
     eda_dde_qt.cpp
+    file_history_qt.cpp
     notifications_list_qt.cpp
     pgm_gui_qt.cpp
     ${CMAKE_SOURCE_DIR}/common/background_jobs_monitor.cpp
@@ -299,6 +330,7 @@ add_library( kiqt_common STATIC
     dialogs/dialog_unit_entry.cpp
     dialogs/eda_list_dialog.cpp
     dialogs/eda_view_switcher.cpp
+    dialogs/hotkey_cycle_popup.cpp
     draw_panel_gal.cpp
     eda_base_frame.cpp
     eda_base_frame_help.cpp
@@ -350,12 +382,18 @@ target_sources( kiqt_common PRIVATE
     )
 
 target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/scripting )
+
+# The actions of the project manager (as in common)
+target_sources( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/common/tool/common_control.cpp )
+target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/kicad )
 target_include_directories( kiqt_common SYSTEM PUBLIC ${PYTHON_INCLUDE_DIRS} )
 target_link_libraries( kiqt_common PUBLIC ${PYTHON_LIBRARIES} pybind11::embed )
 
 if( KICAD_IPC_API )
     target_sources( kiqt_common PRIVATE
         ${CMAKE_SOURCE_DIR}/common/api/api_handler.cpp
+        ${CMAKE_SOURCE_DIR}/common/api/api_handler_common.cpp
+        ${CMAKE_SOURCE_DIR}/common/api/api_handler_editor.cpp
         ${CMAKE_SOURCE_DIR}/common/api/api_plugin.cpp
         ${CMAKE_SOURCE_DIR}/common/api/api_plugin_manager.cpp
         ${CMAKE_SOURCE_DIR}/common/api/api_server.cpp

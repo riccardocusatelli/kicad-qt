@@ -29,6 +29,8 @@
 #include <QMainWindow>
 #include <QTimer>
 
+#include <wx/kiwx_window.h>
+
 #include <app_monitor.h>
 #include <confirm.h>
 #include <eda_base_frame.h>
@@ -341,15 +343,16 @@ void KIWAY::ProjectChanged()
 }
 
 
-QWidget* KIWAY::GetBlockingDialog()
+wxWindow* KIWAY::GetBlockingDialog()
 {
-    return m_blockingDialog.data();
+    // the windows of the compatibility layer are a QWidget and a wxWindow
+    return dynamic_cast<wxWindow*>( m_blockingDialog.data() );
 }
 
 
-void KIWAY::SetBlockingDialog( QWidget* aWin )
+void KIWAY::SetBlockingDialog( wxWindow* aWin )
 {
-    m_blockingDialog = aWin;
+    m_blockingDialog = aWin ? aWin->GetHandle() : nullptr;
 }
 
 

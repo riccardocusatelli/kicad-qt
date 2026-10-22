@@ -46,7 +46,6 @@
 #include <trace_helpers.h>
 #include <length_delay_calculation/length_delay_calculation.h>
 #include <lockfile.h>
-#include <wx/snglinst.h>
 #include <pcbnew_id.h>
 #include <wildcards_and_files_ext.h>
 #include <tool/tool_manager.h>

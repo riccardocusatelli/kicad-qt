@@ -44,12 +44,45 @@
 #include <tool/tool_event.h>
 
 class QAction;
+class wxBitmapBundle;
+class wxMenuItem;
 class KIFACE_BASE;
 class TOOL_INTERACTIVE;
 class TOOLS_HOLDER;
 class TOOL_MANAGER;
 
 enum class BITMAPS : unsigned int;
+
+/**
+ * An entry of an ACTION_MENU, as the Add() functions return it: its QAction, with the API of the
+ * wxMenuItem the menus of wxWidgets return (the code making the menus is the same).
+ */
+class ACTION_MENU_ITEM
+{
+public:
+    ACTION_MENU_ITEM( QAction* aAction = nullptr ) : m_action( aAction ) {}
+
+    operator QAction*() const { return m_action; }
+    explicit operator bool() const { return m_action != nullptr; }
+
+    /// The wxMenuItem of the entry (it lives as long as the action).
+    operator wxMenuItem*() const;
+
+    ACTION_MENU_ITEM* operator->() { return this; }
+
+    /// The ID of the entry (wxID_NONE for the separators and the submenus).
+    int GetId() const;
+
+    void Enable( bool aEnable = true );
+    bool IsEnabled() const;
+    void Check( bool aCheck = true );
+    bool IsChecked() const;
+    void SetItemLabel( const wxString& aLabel );
+
+private:
+    QAction* m_action;
+};
+
 
 /**
  * Define the structure of a menu based on ACTIONs.
@@ -99,17 +132,18 @@ public:
      * #TA_CHOICE_MENU_UPDATE / #TA_CHOICE_MENU_CHOICE action and the ID as the parameter.
      * The text after a tab in the label is shown as the shortcut of the entry.
      */
-    QAction* Add( const wxString& aLabel, int aId, BITMAPS aIcon );
+    ACTION_MENU_ITEM Add( const wxString& aLabel, int aId, BITMAPS aIcon );
 
     /// An entry without icon (wxMenu::Append()); a check or radio item has a check mark.
-    QAction* Append( int aId, const wxString& aLabel, const wxString& aHelp = wxEmptyString,
-                     wxItemKind aKind = wxITEM_NORMAL )
+    ACTION_MENU_ITEM Append( int aId, const wxString& aLabel,
+                             const wxString& aHelp = wxEmptyString,
+                             wxItemKind aKind = wxITEM_NORMAL )
     {
         return Add( aLabel, aHelp, aId, BITMAPS{},   // BITMAPS::INVALID_BITMAP
                     aKind == wxITEM_CHECK || aKind == wxITEM_RADIO );
     }
-    QAction* Add( const wxString& aLabel, const wxString& aToolTip, int aId, BITMAPS aIcon,
-                  bool aIsCheckmarkEntry = false );
+    ACTION_MENU_ITEM Add( const wxString& aLabel, const wxString& aToolTip, int aId,
+                          BITMAPS aIcon, bool aIsCheckmarkEntry = false );
 
     /**
      * Add an entry to the menu based on the #TOOL_ACTION object.
@@ -122,8 +156,8 @@ public:
      * @param aOverrideLabel is the label to show in the menu (overriding the action's menu text)
      *                       when non-empty.
      */
-    QAction* Add( const TOOL_ACTION& aAction, bool aIsCheckmarkEntry = false,
-                  const wxString& aOverrideLabel = wxEmptyString );
+    ACTION_MENU_ITEM Add( const TOOL_ACTION& aAction, bool aIsCheckmarkEntry = false,
+                          const wxString& aOverrideLabel = wxEmptyString );
 
     /**
      * Add an action menu as a submenu.
@@ -133,7 +167,7 @@ public:
      * @param aMenu is the submenu to be added. This should be a new instance (use Clone()) if
      *              required.
      */
-    QAction* Add( ACTION_MENU* aMenu );
+    ACTION_MENU_ITEM Add( ACTION_MENU* aMenu );
 
     /// Add a separator.
     void AppendSeparator();
@@ -347,3 +381,15 @@ protected:
 
     friend class TOOL_INTERACTIVE;
 };
+
+
+namespace KIUI
+{
+/**
+ * Create and append an entry with an icon to an ACTION_MENU (include/widgets/ui_common.h does it
+ * for the wxMenus): its id is the command run by the frame (wxID_ANY for a new id).
+ */
+ACTION_MENU_ITEM AddMenuItem( ACTION_MENU* aMenu, int aId, const wxString& aText,
+                              const wxString& aHelpText, const wxBitmapBundle& aImage,
+                              wxItemKind aType = wxITEM_NORMAL );
+}

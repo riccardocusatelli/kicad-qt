@@ -33,6 +33,7 @@
 
 #include <kiway.h>
 #include <kiway_mail.h>
+#include <wx/kiwx_window.h>
 #include <core/ki_assert.h>
 
 
@@ -97,11 +98,11 @@ void KIWAY_PLAYER::KiwayMailIn( KIWAY_MAIL_EVENT& aEvent )
 }
 
 
-bool KIWAY_PLAYER::ShowModal( wxString* aResult, QWidget* aResultantFocusWindow )
+bool KIWAY_PLAYER::ShowModal( wxString* aResult, wxWindow* aResultantFocusWindow )
 {
     KI_ASSERT_MSG( IsModal(), wxT( "ShowModal() shouldn't be called on non-modal frame" ) );
 
-    m_modal_resultant_parent = aResultantFocusWindow;
+    m_modal_resultant_parent = aResultantFocusWindow ? aResultantFocusWindow->GetHandle() : nullptr;
 
     // The other windows of the application wait for this one (as a modal dialog)
     setWindowModality( Qt::ApplicationModal );
@@ -121,11 +122,11 @@ bool KIWAY_PLAYER::ShowModal( wxString* aResult, QWidget* aResultantFocusWindow 
     if( aResult )
         *aResult = m_modal_string;
 
-    if( aResultantFocusWindow )
+    if( QWidget* focusWindow = m_modal_resultant_parent )
     {
-        aResultantFocusWindow->raise();
-        aResultantFocusWindow->activateWindow();
-        aResultantFocusWindow->setFocus();
+        focusWindow->raise();
+        focusWindow->activateWindow();
+        focusWindow->setFocus();
     }
 
     return m_modal_ret_val;

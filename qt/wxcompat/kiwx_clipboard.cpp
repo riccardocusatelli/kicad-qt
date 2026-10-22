@@ -25,7 +25,9 @@
 
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QImage>
 #include <QMimeData>
+#include <QUrl>
 
 #include <qt_strings.h>
 
@@ -72,19 +74,10 @@ bool wxClipboard::SetData( wxDataObject* aData )
     if( !clipboard || !data )
         return false;
 
-    if( wxTextDataObject* text = dynamic_cast<wxTextDataObject*>( data.get() ) )
-    {
-        clipboard->setText( ToQString( text->GetText() ), clipboardMode( m_primary ) );
-        return true;
-    }
-
-    if( wxBitmapDataObject* bitmap = dynamic_cast<wxBitmapDataObject*>( data.get() ) )
-    {
-        clipboard->setPixmap( bitmap->GetBitmap(), clipboardMode( m_primary ) );
-        return true;
-    }
-
-    return false;
+    QMimeData* mime = new QMimeData;
+    data->ToMimeDataCompat( *mime );
+    clipboard->setMimeData( mime, clipboardMode( m_primary ) );
+    return true;
 }
 
 
@@ -97,28 +90,7 @@ bool wxClipboard::GetData( wxDataObject& aData )
 
     const QMimeData* mime = clipboard->mimeData( clipboardMode( m_primary ) );
 
-    if( !mime )
-        return false;
-
-    if( wxTextDataObject* text = dynamic_cast<wxTextDataObject*>( &aData ) )
-    {
-        if( !mime->hasText() )
-            return false;
-
-        text->SetText( ToWxString( mime->text() ) );
-        return true;
-    }
-
-    if( wxBitmapDataObject* bitmap = dynamic_cast<wxBitmapDataObject*>( &aData ) )
-    {
-        if( !mime->hasImage() )
-            return false;
-
-        bitmap->SetBitmap( wxBitmap( QPixmap::fromImage( clipboard->image( clipboardMode( m_primary ) ) ) ) );
-        return true;
-    }
-
-    return false;
+    return mime && aData.FromMimeDataCompat( *mime );
 }
 
 
@@ -144,7 +116,11 @@ bool wxClipboard::IsSupported( const wxDataFormat& aFormat )
     case wxDF_PNG:          return mime->hasImage();
     case wxDF_FILENAME:     return mime->hasUrls();
     case wxDF_HTML:         return mime->hasHtml();
-    default:                return false;
+    default:
+    {
+        wxString type = aFormat.GetMimeTypeCompat();
+        return !type.empty() && mime->hasFormat( ToQString( type ) );
+    }
     }
 }
 
@@ -153,4 +129,154 @@ void wxClipboard::Clear()
 {
     if( QClipboard* clipboard = QGuiApplication::clipboard() )
         clipboard->clear( clipboardMode( m_primary ) );
+}
+
+
+// The formats and the data objects ---------------------------------------------------------
+
+wxString wxDataFormat::GetMimeTypeCompat() const
+{
+    switch( m_id )
+    {
+    case wxDF_TEXT:
+    case wxDF_UNICODETEXT:
+    case wxDF_OEMTEXT:  return wxS( "text/plain" );
+    case wxDF_BITMAP:
+    case wxDF_DIB:
+    case wxDF_PNG:      return wxS( "image/png" );
+    case wxDF_FILENAME: return wxS( "text/uri-list" );
+    case wxDF_HTML:     return wxS( "text/html" );
+    default:            return m_mimeType;
+    }
+}
+
+
+void wxTextDataObject::ToMimeDataCompat( QMimeData& aMime ) const
+{
+    aMime.setText( ToQString( m_text ) );
+}
+
+
+bool wxTextDataObject::FromMimeDataCompat( const QMimeData& aMime )
+{
+    if( !aMime.hasText() )
+        return false;
+
+    m_text = ToWxString( aMime.text() );
+    return true;
+}
+
+
+void wxBitmapDataObject::ToMimeDataCompat( QMimeData& aMime ) const
+{
+    aMime.setImageData( m_bitmap.toImage() );
+}
+
+
+bool wxBitmapDataObject::FromMimeDataCompat( const QMimeData& aMime )
+{
+    if( !aMime.hasImage() )
+        return false;
+
+    m_bitmap = wxBitmap( QPixmap::fromImage( qvariant_cast<QImage>( aMime.imageData() ) ) );
+    return m_bitmap.IsOk();
+}
+
+
+void wxFileDataObject::ToMimeDataCompat( QMimeData& aMime ) const
+{
+    QList<QUrl> urls;
+
+    for( const wxString& file : m_filenames )
+        urls.append( QUrl::fromLocalFile( ToQString( file ) ) );
+
+    aMime.setUrls( urls );
+}
+
+
+bool wxFileDataObject::FromMimeDataCompat( const QMimeData& aMime )
+{
+    m_filenames.Clear();
+
+    for( const QUrl& url : aMime.urls() )
+    {
+        if( url.isLocalFile() )
+            m_filenames.Add( ToWxString( url.toLocalFile() ) );
+    }
+
+    return !m_filenames.empty();
+}
+
+
+void wxCustomDataObject::ToMimeDataCompat( QMimeData& aMime ) const
+{
+    wxString type = m_format.GetMimeTypeCompat();
+
+    if( !type.empty() )
+        aMime.setData( ToQString( type ), QByteArray( m_data.data(), qsizetype( m_data.size() ) ) );
+}
+
+
+bool wxCustomDataObject::FromMimeDataCompat( const QMimeData& aMime )
+{
+    QString type = ToQString( m_format.GetMimeTypeCompat() );
+
+    if( type.isEmpty() || !aMime.hasFormat( type ) )
+        return false;
+
+    QByteArray bytes = aMime.data( type );
+    m_data.assign( bytes.constData(), bytes.constData() + bytes.size() );
+    return true;
+}
+
+
+void wxDataObjectComposite::Add( wxDataObject* aData, bool aPreferred )
+{
+    // The preferred object is read first
+    if( aPreferred )
+        m_objects.emplace( m_objects.begin(), aData );
+    else
+        m_objects.emplace_back( aData );
+}
+
+
+bool wxDataObjectComposite::IsSupported( const wxDataFormat& aFormat ) const
+{
+    for( const std::unique_ptr<wxDataObject>& object : m_objects )
+    {
+        if( object->IsSupported( aFormat ) )
+            return true;
+    }
+
+    return false;
+}
+
+
+void wxDataObjectComposite::ToMimeDataCompat( QMimeData& aMime ) const
+{
+    for( const std::unique_ptr<wxDataObject>& object : m_objects )
+        object->ToMimeDataCompat( aMime );
+}
+
+
+bool wxDataObjectComposite::FromMimeDataCompat( const QMimeData& aMime )
+{
+    for( const std::unique_ptr<wxDataObject>& object : m_objects )
+    {
+        if( object->FromMimeDataCompat( aMime ) )
+        {
+            if( wxCustomDataObject* custom = dynamic_cast<wxCustomDataObject*>( object.get() ) )
+                m_receivedFormat = custom->GetFormat();
+            else if( dynamic_cast<wxTextDataObject*>( object.get() ) )
+                m_receivedFormat = wxDF_UNICODETEXT;
+            else if( dynamic_cast<wxBitmapDataObject*>( object.get() ) )
+                m_receivedFormat = wxDF_BITMAP;
+            else if( dynamic_cast<wxFileDataObject*>( object.get() ) )
+                m_receivedFormat = wxDF_FILENAME;
+
+            return true;
+        }
+    }
+
+    return false;
 }

@@ -34,6 +34,7 @@ install( TARGETS pcbnew_qt_kiface
 # Qt, with the Qt versions of the panels and dialogs.  The KIFACE links it once all of pcbnew is
 # ported (phase 3B.5).
 set( KIQT_PCBNEW_GUI_SRCS
+    action_plugin.cpp
     api/api_handler_pcb.cpp
     array_pad_number_provider.cpp
     autorouter/ar_autoplacer.cpp
@@ -51,6 +52,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     component_classes/component_class_assignment_rule.cpp
     component_classes/component_class_cache_proxy.cpp
     component_classes/component_class_manager.cpp
+    connectivity/topo_match.cpp
     convert_shape_list_to_polygon.cpp
     cross-probing.cpp
     drc/drc_interactive_courtyard_clearance.cpp
@@ -89,6 +91,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     exporters/export_footprint_associations.cpp
     exporters/export_hyperlynx.cpp
     exporters/export_idf.cpp
+    files.cpp
     footprint_editor_settings.cpp
     footprint_import_reconciler.cpp
     footprint_info_impl.cpp
@@ -100,13 +103,17 @@ set( KIQT_PCBNEW_GUI_SRCS
     generators/pcb_tuning_pattern_edit.cpp
     git/kigit_pcb_merge.cpp
     graphics_cleaner.cpp
+    grid_layer_box_helpers.cpp
     import_gfx/dialog_import_graphics.cpp
     import_gfx/graphics_importer_pcbnew.cpp
     initpcb.cpp
     kicad_clipboard_gui.cpp
     layer_pairs.cpp
+    load_select_footprint.cpp
+    menubar_pcb_editor.cpp
     microwave/microwave_footprint.cpp
     microwave/microwave_inductor.cpp
+    microwave/microwave_polygon.cpp
     microwave/microwave_tool.cpp
     netlist_reader/board_netlist_updater.cpp
     netlist_reader/netlist.cpp
@@ -121,8 +128,10 @@ set( KIQT_PCBNEW_GUI_SRCS
     pcb_layer_box_selector.cpp
     pcb_origin_transforms.cpp
     pcb_screen.cpp
+    pcbnew_config.cpp
     pcbnew_settings.cpp
     python/scripting/pcb_scripting_tool.cpp
+    python/scripting/pcbnew_action_plugins.cpp
     python/scripting/pcbnew_scripting.cpp
     python/scripting/pcbnew_scripting_helpers_gui.cpp
     ratsnest/ratsnest.cpp
@@ -131,9 +140,13 @@ set( KIQT_PCBNEW_GUI_SRCS
     router/pns_tool_base.cpp
     router/router_preview_item.cpp
     router/router_tool.cpp
+    sel_layer.cpp
     toolbars_footprint_wizard.cpp
+    toolbars_pcb_editor.cpp
     tools/align_distribute_tool.cpp
     tools/array_tool.cpp
+    tools/board_editor_control.cpp
+    tools/board_inspection_tool.cpp
     tools/board_reannotate_tool.cpp
     tools/convert_tool.cpp
     tools/drawing_tool.cpp
@@ -142,6 +155,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/edit_tool.cpp
     tools/edit_tool_move_fct.cpp
     tools/footprint_chooser_selection_tool.cpp
+    tools/footprint_editor_control.cpp
     tools/generator_tool.cpp
     tools/generator_tool_pns_proxy.cpp
     tools/global_edit_tool.cpp
@@ -149,6 +163,8 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/multichannel_tool.cpp
     tools/pad_tool.cpp
     tools/pcb_actions.cpp
+    tools/pcb_control.cpp
+    tools/pcb_design_block_control.cpp
     tools/pcb_edit_table_tool.cpp
     tools/pcb_editor_conditions.cpp
     tools/pcb_grid_helper.cpp
@@ -164,6 +180,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/position_relative_tool.cpp
     tools/tool_event_utils.cpp
     tools/zone_create_helper.cpp
+    tools/zone_filler_tool.cpp
     tracks_cleaner.cpp
     undo_redo.cpp
     widgets/appearance_controls.cpp
@@ -191,7 +208,9 @@ kiqt_generate_fbp( KIQT_PCBNEW_GUI_FBP_SRCS
 
 # The dialogs of pcbnew built unchanged on the wxWidgets compatibility layer (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_assign_netclass_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_HTML_reporter_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_choose_project_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_color_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options_base.fbp
@@ -237,6 +256,7 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_import_netlist_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_import_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_imported_layers_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_layer_selection_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_migrate_3d_models_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_multichannel_generate_rule_areas_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_multichannel_repeat_layout_base.fbp
@@ -402,27 +422,68 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
 
 list( TRANSFORM KIQT_PCBNEW_COMPAT_DIALOGS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/ )
 
+# The push and shove router (the pnsrouter library of pcbnew, compiled with the Qt headers here)
+set( KIQT_PNS_SRCS
+    pns_algo_base.cpp
+    pns_arc.cpp
+    pns_component_dragger.cpp
+    pns_diff_pair.cpp
+    pns_diff_pair_placer.cpp
+    pns_dp_meander_placer.cpp
+    pns_dragger.cpp
+    pns_hole.cpp
+    pns_index.cpp
+    pns_item.cpp
+    pns_itemset.cpp
+    pns_line.cpp
+    pns_line_placer.cpp
+    pns_logger.cpp
+    pns_meander.cpp
+    pns_meander_placer.cpp
+    pns_meander_placer_base.cpp
+    pns_meander_skew_placer.cpp
+    pns_mouse_trail_tracer.cpp
+    pns_multi_dragger.cpp
+    pns_node.cpp
+    pns_optimizer.cpp
+    pns_router.cpp
+    pns_routing_settings.cpp
+    pns_shove.cpp
+    pns_sizes_settings.cpp
+    pns_solid.cpp
+    pns_topology.cpp
+    pns_utils.cpp
+    pns_via.cpp
+    pns_walkaround.cpp
+    router_status_view_item.cpp
+    time_limit.cpp
+    )
+
+list( TRANSFORM KIQT_PNS_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/router/ )
+
 add_library( pcbnew_gui_qt STATIC
+    ${KIQT_PNS_SRCS}
     ${KIQT_PCBNEW_COMPAT_FBP_SRCS}
     ${KIQT_PCBNEW_COMPAT_DIALOGS}
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
-    ${CMAKE_SOURCE_DIR}/common/api/api_handler_common.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_choose_project.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_multi_unit_entry.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_color_settings.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_image_editor.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/rule_editor_dialog_base.cpp
+    ${CMAKE_SOURCE_DIR}/common/drawing_sheet/ds_data_model_io.cpp
     ${CMAKE_SOURCE_DIR}/common/drawing_sheet/ds_proxy_undo_item.cpp
+    ${CMAKE_SOURCE_DIR}/common/import_gfx/dxf_import_plugin.cpp
     ${CMAKE_SOURCE_DIR}/common/import_gfx/graphics_import_mgr.cpp
     ${CMAKE_SOURCE_DIR}/common/libraries/lib_table_grid_data_model.cpp
     ${CMAKE_SOURCE_DIR}/common/pin_numbers.cpp
-    ${CMAKE_SOURCE_DIR}/common/preview_items/polygon_geom_manager.cpp
-    ${CMAKE_SOURCE_DIR}/common/spacenav/libspnav_driver.cpp
-    ${CMAKE_SOURCE_DIR}/common/spacenav/spnav_2d_plugin.cpp
     ${CMAKE_SOURCE_DIR}/common/status_popup.cpp
     ${CMAKE_SOURCE_DIR}/common/tool/design_block_control.cpp
     ${CMAKE_SOURCE_DIR}/common/tool/embed_tool.cpp
@@ -433,10 +494,13 @@ add_library( pcbnew_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/microstrip.cpp
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/stripline.cpp
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/transline_calculation_base.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/area_selector.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/margin_offset_binder.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/netclass_selector.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/rc_tree_model.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/widget_save_restore.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/wx_html_report_panel.cpp
     dialogs/dialog_export_step_process_qt.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
@@ -450,6 +514,15 @@ add_library( pcbnew_gui_qt STATIC
     widgets/pcb_properties_panel_qt.cpp
     widgets/vertex_editor_pane.cpp
     )
+
+# The 3D mice through libspnav (Linux), as in kicommon and common
+if( UNIX AND NOT APPLE )
+    target_sources( pcbnew_gui_qt PRIVATE
+        ${CMAKE_SOURCE_DIR}/common/spacenav/libspnav_driver.cpp
+        ${CMAKE_SOURCE_DIR}/common/spacenav/spnav_2d_plugin.cpp
+        )
+    target_link_libraries( pcbnew_gui_qt PRIVATE ${SPNAV_LIBRARIES} )
+endif()
 
 set_target_properties( pcbnew_gui_qt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 
@@ -479,6 +552,10 @@ target_compile_definitions( pcbnew_gui_qt PRIVATE
 target_link_libraries( pcbnew_gui_qt
     PRIVATE
         kiqt_common
+        dxflib_qcad
+        markdown_lib
+        nanosvg
+        tinyspline_lib
         nlohmann_json
         Boost::headers
     )

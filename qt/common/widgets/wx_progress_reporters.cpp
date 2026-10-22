@@ -35,7 +35,7 @@
 #include <qt_strings.h>
 
 
-WX_PROGRESS_REPORTER::WX_PROGRESS_REPORTER( QWidget* aParent, const wxString& aTitle,
+WX_PROGRESS_REPORTER::WX_PROGRESS_REPORTER( wxWidgetArgCompat aParent, const wxString& aTitle,
                                             int aNumPhases, int aCanAbort,
                                             bool aReserveSpaceForMessage ) :
         PROGRESS_REPORTER_BASE( aNumPhases ),

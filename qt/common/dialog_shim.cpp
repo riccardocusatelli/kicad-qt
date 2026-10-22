@@ -102,6 +102,9 @@ DIALOG_SHIM::DIALOG_SHIM( wxWidgetArgCompat aParent, const wxString& aTitle ) :
             SetKiway( this, &m_parentFrame->Kiway() );
     }
 
+    if( HasKiway() )
+        Kiway().SetBlockingDialog( this );
+
     // The keys of the dialog and of its controls (as the event table of wxWidgets: the handlers
     // bound by the dialogs come first)
     Bind( wxEVT_CHAR_HOOK, &DIALOG_SHIM::OnCharHook, this );

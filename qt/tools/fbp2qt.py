@@ -232,6 +232,7 @@ COMPAT_CLASSES = {
     'wxGrid': 'wxGrid',
     'wxStyledTextCtrl': 'wxStyledTextCtrl',
     'wxGenericDirCtrl': 'wxGenericDirCtrl',
+    'wxDatePickerCtrl': 'wxDatePickerCtrl',
 }
 
 # The events of the compatibility mode: name -> (class of the event, type of the event, how it
@@ -1355,6 +1356,9 @@ class FormClass:
             qt = 'QDateEdit'
             var, t = make( qt )
             self.code.append( '    %s->setCalendarPopup( true );' % var )
+
+            if self.gen.compat:
+                self.include( '<wx/datectrl.h>' )
 
         elif cls == 'wxInfoBar':
             qt = 'QFrame'

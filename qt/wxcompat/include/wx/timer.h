@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include <wx/datetime.h>       // wxGetLocalTimeMillis(), declared by wx/stopwatch.h in wxWidgets
 #include <wx/kiwx_events.h>
 
 #include <memory>

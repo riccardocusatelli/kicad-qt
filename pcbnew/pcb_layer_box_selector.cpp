@@ -34,8 +34,9 @@
 #include <dpi_scaling_common.h>
 
 
-PCB_LAYER_BOX_SELECTOR::PCB_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW* parent, wxWindowID id, const wxString& value,
-                                                const wxPoint& pos, const wxSize& size, int n,
+PCB_LAYER_BOX_SELECTOR::PCB_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW_ARG parent, wxWindowID id,
+                                                const wxString& value, const wxPoint& pos,
+                                                const wxSize& size, int n,
                                                 const wxString choices[], int style ) :
         LAYER_BOX_SELECTOR( parent, id, pos, size, n, choices ),
         m_boardFrame( nullptr ),

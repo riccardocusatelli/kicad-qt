@@ -71,6 +71,10 @@ public:
 
     ~KISTATUSBAR() override;
 
+    /// A destroyed status bar is not referenced any more (the wxWeakRef of the layer are
+    /// QPointer): it is never seen while being deleted.
+    bool IsBeingDeleted() const { return false; }
+
     /// Show a text in a field of the frame (as wxStatusBar::SetStatusText()).
     void SetStatusText( const wxString& aText, int aField = 0 );
     wxString GetStatusText( int aField = 0 ) const;

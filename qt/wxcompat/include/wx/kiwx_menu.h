@@ -37,12 +37,14 @@
 #include <vector>
 
 #include <QMenu>
+#include <QMenuBar>
 
 #include <wx/defs.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
+#include <wx/kiwx_window.h>
 
 class QAction;
 class wxMenu;
@@ -55,6 +57,10 @@ public:
     wxMenuItem( wxMenu* aParentMenu = nullptr, int aId = wxID_SEPARATOR,
                 const wxString& aText = wxEmptyString, const wxString& aHelp = wxEmptyString,
                 wxItemKind aKind = wxITEM_NORMAL, wxMenu* aSubMenu = nullptr );
+    /// The item of an action of a menu of Qt that is not a wxMenu (an ACTION_MENU): the item
+    /// doesn't own the action.
+    wxMenuItem( QAction* aAction, int aId );
+
     ~wxMenuItem();
 
     wxMenuItem( const wxMenuItem& ) = delete;
@@ -98,6 +104,7 @@ private:
     wxItemKind m_kind;
     wxMenu*    m_subMenu;
     QAction*   m_action;
+    bool       m_ownsAction = true;
 };
 
 
@@ -175,6 +182,19 @@ private:
 
     wxMenu*                                  m_parentMenu;
     std::vector<std::unique_ptr<wxMenuItem>> m_items;
+};
+
+
+/// The menu bar of a frame (wxMenuBar).
+class KIQT_API wxMenuBar : public wxWindowCompat<QMenuBar>
+{
+public:
+    explicit wxMenuBar( long aStyle = 0 ) {}
+
+    /// Append a menu, with its title (a & marks the mnemonic).
+    bool Append( wxMenu* aMenu, const wxString& aTitle );
+
+    size_t GetMenuCount() const { return actions().size(); }
 };
 
 

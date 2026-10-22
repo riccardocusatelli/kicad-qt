@@ -42,7 +42,6 @@
 #include <toolkit/gui_timer.h>
 #include <widgets/wx_infobar_message_type.h>
 
-class QAbstractButton;
 class QHBoxLayout;
 class QLabel;
 class QToolButton;
@@ -87,12 +86,12 @@ public:
     void AddCloseButton( const wxString& aTooltip = _( "Hide this message." ) );
 
     /**
-     * Add an already created button to the infobar.
+     * Add an already created button (or a link, wxHyperlinkCtrl) to the infobar.
      * New buttons are added in the right-most position.
      *
      * @param aButton is the button to add
      */
-    void AddButton( QAbstractButton* aButton );
+    void AddButton( QWidget* aButton );
 
     /**
      * Add a button with a label (shown as a link) that runs a function when it is clicked.

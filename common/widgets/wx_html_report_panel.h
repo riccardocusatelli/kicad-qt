@@ -57,7 +57,7 @@ private:
  * Used in numerous dialogs in Eeschema and Pcbnew. Provides error filtering functionality
  * and saving report files.  The messages are reported through a #REPORTER object
  */
-class KICOMMON_API WX_HTML_REPORT_PANEL : public WX_HTML_REPORT_PANEL_BASE
+class KIQT_COMMON_API WX_HTML_REPORT_PANEL : public WX_HTML_REPORT_PANEL_BASE
 {
 public:
     WX_HTML_REPORT_PANEL( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition,

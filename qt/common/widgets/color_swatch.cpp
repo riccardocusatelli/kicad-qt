@@ -133,11 +133,13 @@ QPixmap COLOR_SWATCH::MakeBitmap( const COLOR4D& aColor, const COLOR4D& aBackgro
 }
 
 
+wxDEFINE_EVENT( COLOR_SWATCH_CHANGED, wxCommandEvent );
+
+
 COLOR_SWATCH::COLOR_SWATCH( wxWidgetArgCompat aParent, const COLOR4D& aColor, int aID,
                             const COLOR4D& aBackground, const COLOR4D& aDefault,
                             SWATCH_SIZE aSwatchSize, bool aTriggerWithSingleClick ) :
-        QLabel( aParent.get() ),
-        m_id( aID ),
+        wxWindowCompat<QLabel>( aParent.get() ),
         m_color( aColor ),
         m_background( aBackground ),
         m_default( aDefault ),
@@ -147,6 +149,8 @@ COLOR_SWATCH::COLOR_SWATCH( wxWidgetArgCompat aParent, const COLOR4D& aColor, in
 {
     KI_ASSERT_MSG( aSwatchSize != SWATCH_EXPAND,
                    wxS( "SWATCH_EXPAND not supported in COLOR_SWATCH" ) );
+
+    SetId( aID );
 
     switch( aSwatchSize )
     {
@@ -161,8 +165,7 @@ COLOR_SWATCH::COLOR_SWATCH( wxWidgetArgCompat aParent, const COLOR4D& aColor, in
 
 
 COLOR_SWATCH::COLOR_SWATCH( wxWidgetArgCompat aParent ) :
-        QLabel( aParent.get() ),
-        m_id( -1 ),
+        wxWindowCompat<QLabel>( aParent.get() ),
         m_userColors( nullptr ),
         m_readOnly( false ),
         m_supportsOpacity( true )
@@ -201,6 +204,10 @@ void COLOR_SWATCH::sendChanged()
                                {
                                    if( m_changedCallback )
                                        m_changedCallback();
+
+                                   wxCommandEvent event( COLOR_SWATCH_CHANGED, GetId() );
+                                   event.SetEventObject( this );
+                                   ProcessEvent( event );
                                },
                                Qt::QueuedConnection );
 }

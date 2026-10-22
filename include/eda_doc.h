@@ -34,6 +34,7 @@
 #include <kicommon.h>
 
 class EMBEDDED_FILES;
+class wxWindow;
 
 /**
  * Open a document (file) with the suitable browser.
@@ -46,9 +47,9 @@ class EMBEDDED_FILES;
  * @param aDocName filename of file to open (Full filename or short filename).
  * @param aPaths Additional paths to search for local disk datasheet files
 */
-bool KICOMMON_API GetAssociatedDocument( wxWindow* aParent, const wxString& aDocName, PROJECT* aProject,
-                            SEARCH_STACK* aPaths = nullptr,
-                            std::vector<EMBEDDED_FILES*> aFilesStack = {} );
+bool KIQT_COMMON_API GetAssociatedDocument( wxWindow* aParent, const wxString& aDocName,
+                                            PROJECT* aProject, SEARCH_STACK* aPaths = nullptr,
+                                            std::vector<EMBEDDED_FILES*> aFilesStack = {} );
 
 
 #endif /* __INCLUDE__EDA_DOC_H__ */

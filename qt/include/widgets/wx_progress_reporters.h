@@ -38,6 +38,7 @@
 #include <QProgressDialog>
 
 #include <core/throttle.h>
+#include <wx/kiwx_window.h>      // wxWidgetArgCompat
 #include <widgets/progress_reporter_base.h>
 
 #define PR_NO_ABORT 0
@@ -65,9 +66,12 @@ public:
      * @param aCanAbort indicates if the Cancel button should be shown (PR_CAN_ABORT)
      * @param aReserveSpaceForMessage lays the dialog out for status messages from the start
      */
-    WX_PROGRESS_REPORTER( QWidget* aParent, const wxString& aTitle, int aNumPhases, int aCanAbort,
-                          bool aReserveSpaceForMessage = true );
+    WX_PROGRESS_REPORTER( wxWidgetArgCompat aParent, const wxString& aTitle, int aNumPhases,
+                          int aCanAbort, bool aReserveSpaceForMessage = true );
     ~WX_PROGRESS_REPORTER();
+
+    /// Hide the dialog (wxWindow::Hide()).
+    void Hide() { hide(); }
 
     /**
      * Change the title displayed on the window caption.

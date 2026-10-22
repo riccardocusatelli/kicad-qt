@@ -30,6 +30,7 @@
 #define WX_MENUBAR_H_
 
 #include <QMenuBar>
+#include <wx/kiwx_menu.h>
 
 #include <tool/action_menu.h>
 #include <qt_strings.h>
@@ -41,7 +42,7 @@
  * The shortcuts of the menus are shown but not used by the menu bar: the hotkeys go to the
  * tools (TOOL_DISPATCHER), as with the menu bar of wxWidgets without accelerator table.
  */
-class WX_MENUBAR : public QMenuBar
+class WX_MENUBAR : public wxMenuBar
 {
 public:
     WX_MENUBAR() = default;

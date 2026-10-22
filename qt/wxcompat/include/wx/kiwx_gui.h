@@ -300,6 +300,9 @@ public:
 
     void SetDefault() { setDefault( true ); }
 
+    /// The size of a button with a short label, in the style of the application.
+    static wxSize GetDefaultSize( wxWindow* aWindow = nullptr );
+
     void SetBitmap( const QIcon& aBitmap ) { setIcon( aBitmap ); }
     void SetBitmapLabel( const QIcon& aBitmap ) { setIcon( aBitmap ); }
     void SetBitmapPosition( int ) {}
@@ -834,6 +837,14 @@ public:
                 const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                 const wxArrayString& aChoices = wxArrayString(), int aMajorDimension = 0,
                 long aStyle = wxRA_SPECIFY_COLS );
+
+    wxRadioBox( wxWidgetArgCompat aParent, int aId, const wxString& aLabel, const wxPoint& aPos,
+                const wxSize& aSize, int aCount, const wxString aChoices[],
+                int aMajorDimension = 0, long aStyle = wxRA_SPECIFY_COLS ) :
+            wxRadioBox( aParent, aId, aLabel, aPos, aSize,
+                        wxArrayString( size_t( aCount ), aChoices ), aMajorDimension, aStyle )
+    {
+    }
 
     int GetSelection() const;
 
@@ -1496,12 +1507,6 @@ private:
 
     std::vector<QPointer<QWidget>> m_disabled;
 };
-
-/// Open a document or a directory with the default application of the system.
-KIQT_API bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags = 0 );
-
-/// Open a URL with the default browser of the system.
-KIQT_API bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags = 0 );
 
 /// The tooltips of the application (wxToolTip): Qt shows them always.
 class wxToolTip

@@ -45,6 +45,8 @@
 #include <lib_id.h>
 
 class QLabel;
+class HOTKEY_CYCLE_POPUP;
+struct PLUGIN_ACTION;
 class wxFileName;
 class EDA_ITEM;
 class EDA_MSG_PANEL;
@@ -489,6 +491,29 @@ public:
 
     virtual PLUGIN_ACTION_SCOPE PluginActionScope() const { return PLUGIN_ACTION_SCOPE::INVALID; }
 
+    static bool IsPluginActionButtonVisible( const PLUGIN_ACTION& aAction,
+                                             APP_SETTINGS_BASE* aCfg );
+
+    /**
+     * Return ordered list of plugin actions for display in the toolbar.
+     *
+     * @param aCfg is the settings to read the plugin ordering from.
+     */
+    static std::vector<const PLUGIN_ACTION*> GetOrderedPluginActions( PLUGIN_ACTION_SCOPE aScope,
+                                                                      APP_SETTINGS_BASE* aCfg );
+
+    /**
+     * Append actions from API plugins to the given toolbar.
+     *
+     * @param aToolbar is the toolbar to add the plugins to
+     */
+    virtual void AddApiPluginTools( ACTION_TOOLBAR* aToolbar );
+
+    /// The popup of the hotkeys that cycle through options (created by CreateHotkeyPopup()).
+    HOTKEY_CYCLE_POPUP* GetHotkeyPopup() { return m_hotkeyPopup; }
+
+    virtual void CreateHotkeyPopup();
+
 protected:
     virtual std::unique_ptr<MSG_PANEL_CONTEXT> createMsgPanelContext();
 
@@ -573,6 +598,7 @@ protected:
     SEARCH_PANE*         m_searchPane;
     PROPERTIES_PANEL*    m_propertiesPanel;
     NET_INSPECTOR_PANEL* m_netInspectorPanel;
+    HOTKEY_CYCLE_POPUP*  m_hotkeyPopup;
 
     /// The current canvas type.
     EDA_DRAW_PANEL_GAL::GAL_TYPE    m_canvasType;

@@ -48,6 +48,7 @@
 
 class QMainWindow;
 class QWidget;
+class wxWindow;
 class KIWAY_PLAYER;
 class TOOL_ACTION;
 class LOCAL_HISTORY;
@@ -156,8 +157,9 @@ public:
 
     void OnKiCadExit();
 
-    QWidget* GetBlockingDialog();
-    void SetBlockingDialog( QWidget* aWin );
+    /// The dialog that blocks the frames (a DIALOG_SHIM), shown when the user activates them.
+    wxWindow* GetBlockingDialog();
+    void SetBlockingDialog( wxWindow* aWin );
 
 private:
     /// Get the frame of a player, or nullptr if it doesn't exist (anymore).

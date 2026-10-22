@@ -33,6 +33,8 @@
 
 #include <QAbstractScrollArea>
 #include <QApplication>
+#include <QBuffer>
+#include <QFontDatabase>
 #include <QFontMetrics>
 #include <QPainter>
 #include <QPalette>
@@ -41,6 +43,8 @@
 #include <QStyleOptionComboBox>
 #include <QStyleOptionFocusRect>
 #include <QWidget>
+
+#include <wx/stream.h>
 
 #include <wx/defs.h>
 #include <wx/kiwx_window.h>
@@ -204,6 +208,16 @@ wxFont::wxFont( int aPointSize, wxFontFamily aFamily, wxFontStyle aStyle, wxFont
 
     if( !aFaceName.IsEmpty() )
         setFamily( ToQString( aFaceName ) );
+}
+
+
+wxFont::wxFont( const wxFontInfo& aInfo ) :
+        wxFont( 0, aInfo.GetFamily(), aInfo.IsItalic() ? wxFONTSTYLE_ITALIC : wxFONTSTYLE_NORMAL,
+                aInfo.IsBold() ? wxFONTWEIGHT_BOLD : wxFONTWEIGHT_NORMAL, aInfo.IsUnderlined(),
+                aInfo.GetFaceName() )
+{
+    if( aInfo.GetPointSize() > 0 )
+        setPointSizeF( aInfo.GetPointSize() );
 }
 
 
@@ -413,6 +427,78 @@ bool wxImage::SaveFile( const wxString& aName, int aType ) const
 }
 
 
+/// The format of an image file for Qt.
+static const char* imageFormat( wxBitmapType aType )
+{
+    switch( aType )
+    {
+    case wxBITMAP_TYPE_BMP:  return "BMP";
+    case wxBITMAP_TYPE_JPEG: return "JPG";
+    case wxBITMAP_TYPE_GIF:  return "GIF";
+    case wxBITMAP_TYPE_TIFF: return "TIFF";
+    case wxBITMAP_TYPE_XPM:  return "XPM";
+    case wxBITMAP_TYPE_ICO:  return "ICO";
+    default:                 return "PNG";
+    }
+}
+
+
+bool wxImage::LoadFile( wxInputStream& aStream, wxBitmapType aType )
+{
+    QByteArray bytes;
+    char       buffer[16384];
+
+    while( aStream.CanRead() )
+    {
+        aStream.Read( buffer, sizeof( buffer ) );
+
+        if( aStream.LastRead() == 0 )
+            break;
+
+        bytes.append( buffer, qsizetype( aStream.LastRead() ) );
+    }
+
+    // Qt finds the format from the data
+    return loadFromData( bytes, aType == wxBITMAP_TYPE_ANY ? nullptr : imageFormat( aType ) );
+}
+
+
+bool wxImage::SaveFile( wxOutputStream& aStream, wxBitmapType aType ) const
+{
+    QByteArray bytes;
+    QBuffer    buffer( &bytes );
+
+    buffer.open( QIODevice::WriteOnly );
+
+    if( !save( &buffer, imageFormat( aType ) ) )
+        return false;
+
+    aStream.Write( bytes.constData(), size_t( bytes.size() ) );
+    return aStream.LastWrite() == size_t( bytes.size() );
+}
+
+
+void wxImage::SetOption( const wxString& aName, int aValue )
+{
+    m_options[aName] = wxString::Format( wxS( "%d" ), aValue );
+}
+
+
+wxString wxImage::GetOption( const wxString& aName ) const
+{
+    auto it = m_options.find( aName );
+    return it == m_options.end() ? wxString() : it->second;
+}
+
+
+int wxImage::GetOptionInt( const wxString& aName ) const
+{
+    long value = 0;
+    GetOption( aName ).ToLong( &value );
+    return int( value );
+}
+
+
 wxBitmap::wxBitmap( const wxImage& aImage, int aDepth, double aScale ) :
         QPixmap( QPixmap::fromImage( aImage ) )
 {
@@ -430,6 +516,18 @@ wxBitmap::wxBitmap( int aWidth, int aHeight, int aDepth ) :
 wxSize wxBitmap::GetLogicalSize() const
 {
     return wxSize( int( GetLogicalWidth() + 0.5 ), int( GetLogicalHeight() + 0.5 ) );
+}
+
+
+bool wxBitmap::LoadFile( const wxString& aName, wxBitmapType aType )
+{
+    return load( ToQString( aName ) );
+}
+
+
+bool wxBitmap::SaveFile( const wxString& aName, wxBitmapType aType ) const
+{
+    return save( ToQString( aName ) );
 }
 
 
@@ -615,6 +713,17 @@ int wxSystemSettings::GetMetric( wxSystemMetric aIndex, const QWidget* aWindow )
     case wxSYS_CARET_ON_MSEC:
     case wxSYS_CARET_OFF_MSEC:  return QApplication::cursorFlashTime() / 2;
     default:                    return -1;
+    }
+}
+
+
+wxFont wxSystemSettings::GetFont( wxSystemFont aIndex )
+{
+    switch( aIndex )
+    {
+    case wxSYS_OEM_FIXED_FONT:
+    case wxSYS_ANSI_FIXED_FONT: return QFontDatabase::systemFont( QFontDatabase::FixedFont );
+    default:                    return QApplication::font();
     }
 }
 
@@ -846,6 +955,26 @@ void wxDC::GetTextExtent( const wxString& aText, int* aWidth, int* aHeight ) con
 }
 
 
+void wxDC::GetTextExtent( const wxString& aText, int* aWidth, int* aHeight, int* aDescent,
+                          int* aExternalLeading, const wxFont* aFont ) const
+{
+    QFontMetrics metrics( aFont ? *aFont : m_font );
+    QSize        size = metrics.size( Qt::TextSingleLine, ToQString( aText ) );
+
+    if( aWidth )
+        *aWidth = size.width();
+
+    if( aHeight )
+        *aHeight = size.height();
+
+    if( aDescent )
+        *aDescent = metrics.descent();
+
+    if( aExternalLeading )
+        *aExternalLeading = metrics.leading();
+}
+
+
 wxSize wxDC::GetTextExtent( const wxString& aText ) const
 {
     QFontMetrics metrics( m_font );
@@ -877,6 +1006,61 @@ void wxDC::SetClippingRegion( int aX, int aY, int aWidth, int aHeight )
 void wxDC::DestroyClippingRegion()
 {
     m_painter->setClipping( false );
+}
+
+
+void wxDC::SetUserScale( double aX, double aY )
+{
+    // the scale is on the transformation the painter had (the origin of a window, a cell...)
+    if( !m_userScaled )
+    {
+        m_baseTransform = m_painter->worldTransform();
+        m_userScaled = true;
+    }
+
+    m_userScaleX = aX;
+    m_userScaleY = aY;
+    m_painter->setWorldTransform( QTransform::fromScale( aX, aY ) * m_baseTransform );
+}
+
+
+void wxDC::GetUserScale( double* aX, double* aY ) const
+{
+    if( aX )
+        *aX = m_userScaleX;
+
+    if( aY )
+        *aY = m_userScaleY;
+}
+
+
+bool wxDC::Blit( wxCoord aXDest, wxCoord aYDest, wxCoord aWidth, wxCoord aHeight, wxDC* aSource,
+                 wxCoord aXSrc, wxCoord aYSrc, wxRasterOperationMode aMode, bool aUseMask,
+                 wxCoord aXSrcMask, wxCoord aYSrcMask )
+{
+    const QImage* image = aSource ? aSource->GetImageCompat() : nullptr;
+
+    if( !image || !m_painter )
+        return false;
+
+    QPainter::CompositionMode oldMode = m_painter->compositionMode();
+
+    switch( aMode )
+    {
+    case wxXOR: m_painter->setCompositionMode( QPainter::RasterOp_SourceXorDestination ); break;
+    case wxAND: m_painter->setCompositionMode( QPainter::RasterOp_SourceAndDestination ); break;
+    case wxOR:  m_painter->setCompositionMode( QPainter::RasterOp_SourceOrDestination ); break;
+    default:
+        // with the mask the transparent pixels are not copied
+        m_painter->setCompositionMode( aUseMask ? QPainter::CompositionMode_SourceOver
+                                                : QPainter::CompositionMode_Source );
+        break;
+    }
+
+    m_painter->drawImage( QRect( aXDest, aYDest, aWidth, aHeight ), *image,
+                          QRect( aXSrc, aYSrc, aWidth, aHeight ) );
+    m_painter->setCompositionMode( oldMode );
+    return true;
 }
 
 
@@ -962,6 +1146,15 @@ void wxRendererNative::DrawPushButton( QWidget* aWindow, wxDC& aDC, const wxRect
 
 void wxRendererNative::DrawComboBoxDropButton( QWidget* aWindow, wxDC& aDC, const wxRect& aRect,
                                                int aFlags )
+{
+    QStyleOption option;
+    initStyleOption( option, aWindow, aRect, aFlags );
+    styleOf( aWindow )->drawPrimitive( QStyle::PE_IndicatorArrowDown, &option, aDC.GetPainter(),
+                                       aWindow );
+}
+
+
+void wxRendererNative::DrawDropArrow( QWidget* aWindow, wxDC& aDC, const wxRect& aRect, int aFlags )
 {
     QStyleOption option;
     initStyleOption( option, aWindow, aRect, aFlags );

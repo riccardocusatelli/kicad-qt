@@ -131,6 +131,7 @@ add_subdirectory( qa )
 
 set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_KEPT_TARGETS
     kiqt kiqt_common libcontext 3d-viewer_qt pcbnew_gui_qt kinng
+    dxflib_qcad markdown_lib tinyspline_lib     # the graphics import, the help of the rules
     pcbnew_qt_kiface pcbnew_qt_kiface_iface
     eeschema_qt_kiface eeschema_qt_kiface_iface
     kicad-qt

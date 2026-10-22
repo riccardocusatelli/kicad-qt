@@ -31,6 +31,7 @@
 #include <wx/string.h>      // wxString (kiwx)
 
 #include <kiqt.h>
+#include <wx/kiwx_window.h>      // wxWidgetArgCompat
 
 class QColor;
 class QTreeView;
@@ -79,7 +80,7 @@ namespace KIPLATFORM
          * Make a window stay above its parent window (the windows of KiCad that float over a
          * frame, as the quasi-modal dialogs).
          */
-        KIQT_API void ReparentWindow( QWidget* aWindow, QWidget* aParent );
+        KIQT_API void ReparentWindow( QWidget* aWindow, wxWidgetArgCompat aParent );
 
         /**
          * Tries to determine the pixel scaling factor currently in use for the window.

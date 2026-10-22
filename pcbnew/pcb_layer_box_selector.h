@@ -29,6 +29,7 @@
 
 #include <lset.h>
 #include <toolkit/toolkit_types.h>
+#include <toolkit/toolkit_window_arg.h>
 #include <widgets/layer_box_selector.h>
 
 class PCB_BASE_FRAME;
@@ -44,7 +45,7 @@ public:
     // If you are thinking the constructor is a bit curious, just remember it is automatically
     // generated when used in wxFormBuilder files, and so must have the same signature as the
     // wxBitmapComboBox constructor.  In particular, value and style are not used by this class.
-    PCB_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW* parent, wxWindowID id,
+    PCB_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW_ARG parent, wxWindowID id,
                             const wxString& value = wxEmptyString,
                             const wxPoint& pos = wxDefaultPosition,
                             const wxSize& size = wxDefaultSize, int n = 0,

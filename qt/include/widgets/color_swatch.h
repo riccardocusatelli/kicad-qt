@@ -59,14 +59,18 @@ const static wxSize SWATCH_SIZE_LARGE_DU( 24, 16 );
 const static wxSize CHECKERBOARD_SIZE_DU( 3, 3 );
 
 
+/// The color of a swatch changed (sent from the event loop, after the changed callback).
+wxDECLARE_EVENT( COLOR_SWATCH_CHANGED, wxCommandEvent );
+
+
 /**
  * A simple color swatch of the kind used to set layer colors.
  *
  * A double click (or a single click in a dialog) opens the color picker; the changed callback
- * is called when the user chose a color (from the event loop, as the COLOR_SWATCH_CHANGED event
- * of the wxWidgets build).
+ * is called and the COLOR_SWATCH_CHANGED event is sent when the user chose a color (from the
+ * event loop).
  */
-class COLOR_SWATCH : public QLabel
+class COLOR_SWATCH : public wxWindowCompat<QLabel>
 {
 public:
     /**
@@ -96,15 +100,6 @@ public:
         SetWindowID( aId );
     }
 
-    /// Enable or disable the swatch (wxWindow::Enable()).
-    bool Enable( bool aEnable = true )
-    {
-        setEnabled( aEnable );
-        return true;
-    }
-
-    bool Disable() { return Enable( false ); }
-
     /**
      * Set the current swatch color directly.
      */
@@ -125,10 +120,8 @@ public:
      */
     KIGFX::COLOR4D GetSwatchColor() const;
 
-    /// The id given at the creation (the layer of the appearance panels).
-    int GetId() const { return m_id; }
-
-    void SetWindowID( int aId ) { m_id = aId; }
+    /// The id given at the creation (the layer of the appearance panels) is the id of the window.
+    void SetWindowID( int aId ) { SetId( aId ); }
 
     /**
      * Prompt for a new colour, using the colour picker dialog.
@@ -185,10 +178,9 @@ private:
 
     void showBitmap();
 
-    /// Call the changed callback, from the event loop.
+    /// Call the changed callback and send COLOR_SWATCH_CHANGED, from the event loop.
     void sendChanged();
 
-    int                   m_id;
     KIGFX::COLOR4D        m_color;
     KIGFX::COLOR4D        m_background;
     KIGFX::COLOR4D        m_default;

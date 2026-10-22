@@ -225,6 +225,31 @@ wxFileDialog::wxFileDialog( wxWidgetArgCompat aParent, const wxString& aMessage,
 }
 
 
+wxFileDialog::~wxFileDialog()
+{
+    deleteExtraControl();
+}
+
+
+void wxFileDialog::deleteExtraControl()
+{
+    if( m_extraControl )
+        delete m_extraControl->GetHandle();
+
+    m_extraControl = nullptr;
+}
+
+
+/// Add a widget below the controls of a file dialog of Qt (not a native one).
+static void addBelowFileDialog( QFileDialog& aDialog, QWidget* aWidget )
+{
+    if( QGridLayout* grid = qobject_cast<QGridLayout*>( aDialog.layout() ) )
+        grid->addWidget( aWidget, grid->rowCount(), 0, 1, grid->columnCount() );
+    else if( aDialog.layout() )
+        aDialog.layout()->addWidget( aWidget );
+}
+
+
 int wxFileDialog::ShowModal()
 {
     QFileDialog dialog( m_parent, ToQString( m_message ), ToQString( m_directory ) );
@@ -265,14 +290,30 @@ int wxFileDialog::ShowModal()
         QWidget* container = new QWidget( &dialog );
         customizer = std::make_unique<wxFileDialogCustomize>( container );
         m_hook->AddCustomControls( *customizer );
-
-        if( QGridLayout* grid = qobject_cast<QGridLayout*>( dialog.layout() ) )
-            grid->addWidget( container, grid->rowCount(), 0, 1, grid->columnCount() );
-        else if( dialog.layout() )
-            dialog.layout()->addWidget( container );
+        addBelowFileDialog( dialog, container );
     }
 
-    if( dialog.exec() != QDialog::Accepted )
+    if( m_extraCreator )
+    {
+        dialog.setOption( QFileDialog::DontUseNativeDialog );
+
+        deleteExtraControl();
+        m_extraControl = m_extraCreator( nullptr );
+
+        if( m_extraControl )
+            addBelowFileDialog( dialog, m_extraControl->GetHandle() );
+    }
+
+    int result = dialog.exec();
+
+    // The extra control outlives the dialog of Qt
+    if( m_extraControl )
+    {
+        m_extraControl->GetHandle()->hide();
+        m_extraControl->GetHandle()->setParent( nullptr );
+    }
+
+    if( result != QDialog::Accepted )
         return wxID_CANCEL;
 
     if( m_hook )

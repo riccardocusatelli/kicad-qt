@@ -67,6 +67,17 @@ public:
     /// The text of the selection.
     wxString SelectionToText() const;
 
+    void SelectAll() { selectAll(); }
+
+    /// The scrolling of wxScrolledWindow, in scroll units of a pixel.
+    void GetScrollPixelsPerUnit( int* aX, int* aY ) const;
+    int  GetScrollRange( int aOrientation ) const;
+    void Scroll( int aX, int aY );
+
+    /// The size of the whole page (wxWindow::GetVirtualSize()).
+    void GetVirtualSize( int* aWidth, int* aHeight ) const;
+    using wxWindow::GetVirtualSize;
+
 protected:
     void changeEvent( QEvent* aEvent ) override;
 

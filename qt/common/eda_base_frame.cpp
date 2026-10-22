@@ -56,6 +56,9 @@
 #include <bitmap_store.h>
 #include <dialogs/eda_view_switcher.h>
 #include <confirm.h>
+#include <dialogs/dialog_autosave_recovery.h>
+#include <file_history.h>
+#include <id.h>
 #include <kiface_base.h>
 #include <kiway.h>
 #include <local_history.h>
@@ -79,7 +82,10 @@
 #include <trace_helpers.h>
 #include <widgets/wx_infobar.h>
 #include <widgets/wx_menubar.h>
+#include <wx/filefn.h>
 #include <wx/filename.h>
+#include <wx/kiwx_menu.h>
+#include <wx/log.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
@@ -180,7 +186,8 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
     m_tbRight           = nullptr;
     m_tbLeft            = nullptr;
 
-    m_autoSaveTimer.SetHandler( [this]() { onAutoSaveTimer(); } );
+    m_autoSaveTimer = std::make_unique<GUI_TIMER>();
+    m_autoSaveTimer->SetHandler( [this]() { onAutoSaveTimer(); } );
 
     new VIEW_SWITCHER_KEY_FILTER( this,
                                   [this]( int aSwitchKey )
@@ -275,7 +282,7 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxSt
 
 EDA_BASE_FRAME::~EDA_BASE_FRAME()
 {
-    m_autoSaveTimer.Stop();
+    m_autoSaveTimer->Stop();
 
     ClearUndoRedoList();
 
@@ -648,7 +655,12 @@ bool EDA_BASE_FRAME::RunMenuCommand( int aId )
     auto it = m_menuCommands.find( aId );
 
     if( it == m_menuCommands.end() )
-        return false;
+    {
+        // The handlers bound to the menu events of the frame (Bind( wxEVT_MENU, handler, aId ))
+        wxCommandEvent event( wxEVT_MENU, aId );
+        event.SetEventObject( this );
+        return ProcessEvent( event );
+    }
 
     // A copy: the handler can bind the commands again (a menu bar created again)
     std::function<void()> handler = it->second;
@@ -674,7 +686,7 @@ void EDA_BASE_FRAME::onAutoSaveTimer()
     // a later tick retries.
     if( !doAutoSave() && isAutoSaveRequired() && GetAutoSaveInterval() > 0 )
     {
-        m_autoSaveTimer.StartOnce( GetAutoSaveInterval() * 1000 );
+        m_autoSaveTimer->StartOnce( GetAutoSaveInterval() * 1000 );
         m_autoSavePending = true;
     }
     else
@@ -949,6 +961,18 @@ void EDA_BASE_FRAME::InstallMenuBar( WX_MENUBAR* aMenuBar )
 }
 
 
+wxMenuBar* EDA_BASE_FRAME::GetMenuBar() const
+{
+    return menuWidget() ? dynamic_cast<wxMenuBar*>( menuWidget() ) : nullptr;
+}
+
+
+void EDA_BASE_FRAME::SetMenuBar( wxMenuBar* aMenuBar )
+{
+    setMenuBar( aMenuBar );
+}
+
+
 void EDA_BASE_FRAME::AddMenuLanguageList( ACTION_MENU* aMasterMenu, TOOL_INTERACTIVE* aControlTool )
 {
     ACTION_MENU* langsMenu = new ACTION_MENU( false, aControlTool );
@@ -1100,6 +1124,18 @@ void EDA_BASE_FRAME::HandleSystemColorChange()
 }
 
 
+void EDA_BASE_FRAME::LoadWindowState( const wxString& aFileName )
+{
+    if( !Pgm().GetCommonSettings()->m_Session.remember_open_files )
+        return;
+
+    const PROJECT_FILE_STATE* state = Prj().GetLocalSettings().GetFileState( aFileName );
+
+    if( state != nullptr )
+        LoadWindowState( state->window );
+}
+
+
 void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
 {
     bool  wasDefault = false;
@@ -1220,6 +1256,14 @@ void EDA_BASE_FRAME::SaveWindowSettings( WINDOW_SETTINGS* aCfg )
 void EDA_BASE_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 {
     LoadWindowSettings( GetWindowSettings( aCfg ) );
+
+    // Get file history size from common settings
+    int fileHistorySize = Pgm().GetCommonSettings()->m_System.file_history_size;
+
+    // Load the recently used files into the history menu
+    m_fileHistory = std::make_unique<FILE_HISTORY>( (unsigned) std::max( 1, fileHistorySize ),
+                                                    ID_FILE1, ID_FILE_LIST_CLEAR );
+    m_fileHistory->Load( *aCfg );
 }
 
 
@@ -1239,6 +1283,159 @@ void EDA_BASE_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
         rfn.MakeRelativeTo( Prj().GetProjectPath() );
         Prj().GetLocalSettings().SaveFileState( rfn.GetFullPath(), &aCfg->m_Window, fileOpen );
     }
+
+    // Save the recently used files list
+    if( m_fileHistory )
+    {
+        // Save the currently opened file in the file history
+        if( !currentlyOpenedFile.IsEmpty() )
+            UpdateFileHistory( currentlyOpenedFile );
+
+        m_fileHistory->Save( *aCfg );
+    }
+}
+
+
+/// The name of a recovered copy of a file: <name>.recovered.<date>[.<n>].<ext>.
+static wxString buildRecoveredFileName( const wxFileName& aSrcFn, const wxDateTime& aStamp )
+{
+    wxString stamp = aStamp.IsValid() ? aStamp.Format( wxS( "%Y-%m-%d_%H%M%S" ) )
+                                      : wxString( wxS( "unknown-time" ) );
+
+    wxFileName recovered( aSrcFn );
+    recovered.SetName( aSrcFn.GetName() + wxS( ".recovered." ) + stamp );
+
+    int seq = 1;
+
+    while( recovered.FileExists() )
+    {
+        recovered.SetName( aSrcFn.GetName() + wxS( ".recovered." ) + stamp
+                           + wxString::Format( wxS( ".%d" ), seq++ ) );
+    }
+
+    return recovered.GetFullPath();
+}
+
+
+void EDA_BASE_FRAME::CheckForAutosaveFiles( const wxString& aProjectPath,
+                                            const std::vector<wxString>& aExtensions )
+{
+    auto stale = Kiway().LocalHistory().FindStaleAutosaveFiles( aProjectPath, aExtensions );
+
+    if( stale.empty() )
+        return;
+
+    DIALOG_AUTOSAVE_RECOVERY dlg( this, stale );
+    dlg.ShowModal();
+
+    auto selected = dlg.GetSelectedStale();
+
+    switch( dlg.GetChoice() )
+    {
+    case AUTOSAVE_RECOVERY_CHOICE::RESTORE:
+        for( const auto& [autosavePath, srcPath] : selected )
+        {
+            if( !wxCopyFile( autosavePath, srcPath, true ) )
+            {
+                wxLogError( _( "Failed to recover auto-saved file '%s'." ), srcPath );
+                continue;
+            }
+
+            wxRemoveFile( autosavePath );
+        }
+        break;
+
+    case AUTOSAVE_RECOVERY_CHOICE::KEEP_CURRENT:
+        for( const auto& [autosavePath, srcPath] : selected )
+        {
+            if( wxFileExists( autosavePath ) )
+                wxRemoveFile( autosavePath );
+        }
+        break;
+
+    case AUTOSAVE_RECOVERY_CHOICE::KEEP_BOTH:
+        for( const auto& [autosavePath, srcPath] : selected )
+        {
+            wxFileName autosaveFn( autosavePath );
+            wxFileName srcFn( srcPath );
+            wxDateTime stamp = autosaveFn.FileExists() ? autosaveFn.GetModificationTime()
+                                                       : wxDateTime::Now();
+
+            wxString target = buildRecoveredFileName( srcFn, stamp );
+
+            if( !wxCopyFile( autosavePath, target, true ) )
+            {
+                wxLogError( _( "Failed to write recovered file '%s'." ), target );
+                continue;
+            }
+
+            wxRemoveFile( autosavePath );
+        }
+        break;
+
+    case AUTOSAVE_RECOVERY_CHOICE::CANCEL:
+        // Leave all autosaves on disk so the dialog can offer them again next open.
+        break;
+    }
+}
+
+
+wxString EDA_BASE_FRAME::GetFileFromHistory( int cmdId, const wxString& type,
+                                             FILE_HISTORY* aFileHistory )
+{
+    if( !aFileHistory )
+        aFileHistory = m_fileHistory.get();
+
+    KI_CHECK( aFileHistory, wxEmptyString );
+
+    int baseId = aFileHistory->GetBaseId();
+
+    KI_CHECK( cmdId >= baseId && cmdId < baseId + (int) aFileHistory->GetCount(), wxEmptyString );
+    int i = cmdId - baseId;
+
+    wxString fn = aFileHistory->GetHistoryFile( i );
+
+    if( !wxFileName::FileExists( fn ) )
+    {
+        wxString msg = wxString::Format( _( "File '%s' was not found.\n" ), fn )
+                       + _( "Do you want to remove it from list of recently opened files?" );
+
+        if( IsOK( this, msg ) )
+            aFileHistory->RemoveFileFromHistory( i );
+
+        fn.Clear();
+    }
+
+    // Update the menubar to update the file history menu
+    ReCreateMenuBar();
+
+    return fn;
+}
+
+
+void EDA_BASE_FRAME::ClearFileHistory()
+{
+    KI_CHECK( m_fileHistory, /* void */ );
+
+    m_fileHistory->ClearFileHistory();
+
+    // Update the menubar to update the file history menu
+    ReCreateMenuBar();
+}
+
+
+void EDA_BASE_FRAME::UpdateFileHistory( const wxString& FullFileName, FILE_HISTORY* aFileHistory )
+{
+    if( !aFileHistory )
+        aFileHistory = m_fileHistory.get();
+
+    KI_CHECK( aFileHistory, /* void */ );
+
+    aFileHistory->AddFileToHistory( FullFileName );
+
+    // Update the menubar to update the file history menu
+    if( !m_isClosing )
+        ReCreateMenuBar();
 }
 
 
@@ -1469,7 +1666,7 @@ void EDA_BASE_FRAME::OnModify()
     if( !m_isClosing && m_supportsAutoSave && !m_autoSavePending && GetAutoSaveInterval() > 0 )
     {
         KI_LOG_TRACE( traceAutoSave, wxT( "Starting auto save timer." ) );
-        m_autoSaveTimer.StartOnce( GetAutoSaveInterval() * 1000 );
+        m_autoSaveTimer->StartOnce( GetAutoSaveInterval() * 1000 );
         m_autoSavePending = true;
         m_autoSaveDeferredSince = wxInvalidDateTime;
     }

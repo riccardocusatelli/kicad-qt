@@ -32,7 +32,11 @@
 #include <widgets/kistatusbar.h>
 
 #include <cmath>
+#include <map>
+#include <ranges>
+#include <set>
 
+#include <QAction>
 #include <QBoxLayout>
 #include <QFontMetrics>
 #include <QKeyEvent>
@@ -40,21 +44,28 @@
 #include <QStatusBar>
 #include <QWidget>
 
+#include <api/api_plugin.h>
+#include <api/api_plugin_manager.h>
 #include <base_screen.h>
 #include <bitmaps/bitmap_types.h>
 #include <confirm.h>
+#include <dialogs/hotkey_cycle_popup.h>
 #include <core/kicad_algo.h>
 #include <eda_search_data.h>
 #include <gal/graphics_abstraction_layer.h>
+#include <gui_reporters.h>
 #include <kiface_base.h>
+#include <kiplatform/ui.h>
 #include <kiway.h>
 #include <lockfile.h>
 #include <math/util.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <settings/app_settings.h>
 #include <settings/color_settings.h>
 #include <settings/common_settings.h>
 #include <settings/settings_manager.h>
+#include <tool/action_toolbar.h>
 #include <tool/actions.h>
 #include <tool/common_tools.h>
 #include <tool/editor_conditions.h>
@@ -116,6 +127,7 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameT
     m_searchPane          = nullptr;
     m_propertiesPanel     = nullptr;
     m_netInspectorPanel   = nullptr;
+    m_hotkeyPopup         = nullptr;
 
     SetUserUnits( EDA_UNITS::MM );
 
@@ -361,15 +373,15 @@ void EDA_DRAW_FRAME::CommonSettingsChanged( int aFlags )
     COMMON_SETTINGS*      settings = Pgm().GetCommonSettings();
     KIGFX::VIEW_CONTROLS* viewControls = GetCanvas()->GetViewControls();
 
-    if( m_supportsAutoSave && m_autoSaveTimer.IsRunning() )
+    if( m_supportsAutoSave && m_autoSaveTimer->IsRunning() )
     {
         if( GetAutoSaveInterval() > 0 )
         {
-            m_autoSaveTimer.StartOnce( GetAutoSaveInterval() * 1000 );
+            m_autoSaveTimer->StartOnce( GetAutoSaveInterval() * 1000 );
         }
         else
         {
-            m_autoSaveTimer.Stop();
+            m_autoSaveTimer->Stop();
             m_autoSavePending = false;
         }
     }
@@ -1061,4 +1073,99 @@ bool EDA_DRAW_FRAME::SaveCanvasImageToFile( const wxString& aFileName, BITMAP_TY
     }
 
     return image.save( ToQString( aFileName ), format );
+}
+
+
+void EDA_DRAW_FRAME::CreateHotkeyPopup()
+{
+    m_hotkeyPopup = new HOTKEY_CYCLE_POPUP( this );
+}
+
+
+bool EDA_DRAW_FRAME::IsPluginActionButtonVisible( const PLUGIN_ACTION& aAction,
+                                                  APP_SETTINGS_BASE* aCfg )
+{
+    KI_CHECK( aCfg, aAction.show_button );
+
+    for( const auto& [identifier, visible] : aCfg->m_Plugins.actions )
+    {
+        if( identifier == aAction.identifier )
+            return visible;
+    }
+
+    return aAction.show_button;
+}
+
+
+std::vector<const PLUGIN_ACTION*> EDA_DRAW_FRAME::GetOrderedPluginActions( PLUGIN_ACTION_SCOPE aScope,
+                                                                           APP_SETTINGS_BASE* aCfg )
+{
+    std::vector<const PLUGIN_ACTION*> actions;
+    KI_CHECK( aCfg, actions );
+
+#ifdef KICAD_IPC_API
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+    std::vector<const PLUGIN_ACTION*> unsorted = mgr.GetActionsForScope( aScope );
+    std::map<wxString, const PLUGIN_ACTION*> actionMap;
+    std::set<const PLUGIN_ACTION*> handled;
+
+    for( const PLUGIN_ACTION* action : unsorted )
+        actionMap[action->identifier] = action;
+
+    // First the actions in the order of the settings, then the others
+    for( const auto& identifier : aCfg->m_Plugins.actions | std::views::keys )
+    {
+        if( actionMap.contains( identifier ) )
+        {
+            const PLUGIN_ACTION* action = actionMap[ identifier ];
+            actions.emplace_back( action );
+            handled.insert( action );
+        }
+    }
+
+    for( const auto& action : actionMap | std::views::values )
+    {
+        if( !handled.contains( action ) )
+            actions.emplace_back( action );
+    }
+#endif
+
+    return actions;
+}
+
+
+void EDA_DRAW_FRAME::AddApiPluginTools( ACTION_TOOLBAR* aToolbar )
+{
+#ifdef KICAD_IPC_API
+    std::vector<const PLUGIN_ACTION*> actions = GetOrderedPluginActions( PluginActionScope(),
+                                                                         config() );
+
+    for( const PLUGIN_ACTION* action : actions )
+    {
+        if( !IsPluginActionButtonVisible( *action, config() ) )
+            continue;
+
+        const wxBitmapBundle& icon = KIPLATFORM::UI::IsDarkTheme() && action->icon_dark.IsOk()
+                                             ? action->icon_dark
+                                             : action->icon_light;
+
+        QAction* button = aToolbar->addAction( icon, ToQString( action->name ) );
+        wxString identifier = action->identifier;
+
+        // The button runs the action of the plugin (OnApiPluginInvoke() with wxWidgets)
+        QObject::connect( button, &QAction::triggered, this,
+                          [this, identifier]()
+                          {
+                              std::shared_ptr<REPORTER> reporter;
+
+                              if( KISTATUSBAR* bar = GetStatusBar() )
+                              {
+                                  reporter = std::make_shared<STATUSBAR_WARNING_REPORTER>(
+                                          bar, wxS( "plugin" ) );
+                              }
+
+                              PgmGui().GetPluginManager().InvokeAction( identifier, reporter );
+                          } );
+    }
+#endif
 }

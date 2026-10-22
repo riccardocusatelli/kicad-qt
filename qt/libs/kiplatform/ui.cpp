@@ -94,7 +94,7 @@ bool KIPLATFORM::UI::IsWindowActive( QWidget* aWindow )
 }
 
 
-void KIPLATFORM::UI::ReparentWindow( QWidget* aWindow, QWidget* aParent )
+void KIPLATFORM::UI::ReparentWindow( QWidget* aWindow, wxWidgetArgCompat aParent )
 {
     if( aWindow && aParent && aWindow->windowHandle() && aParent->window()->windowHandle() )
         aWindow->windowHandle()->setTransientParent( aParent->window()->windowHandle() );

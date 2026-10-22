@@ -25,7 +25,6 @@
 
 #include <widgets/wx_infobar.h>
 
-#include <QAbstractButton>
 #include <QApplication>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -190,7 +189,7 @@ void WX_INFOBAR::Dismiss()
 }
 
 
-void WX_INFOBAR::AddButton( QAbstractButton* aButton )
+void WX_INFOBAR::AddButton( QWidget* aButton )
 {
     aButton->setParent( this );
     m_buttons->addWidget( aButton );

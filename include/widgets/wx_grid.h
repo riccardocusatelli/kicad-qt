@@ -41,7 +41,7 @@ class wxTextEntryBase;
 class ROW_ICON_PROVIDER;
 
 
-class KICOMMON_API WX_GRID_TABLE_BASE : public wxGridTableBase
+class KIQT_COMMON_API WX_GRID_TABLE_BASE : public wxGridTableBase
 {
 public:
     ~WX_GRID_TABLE_BASE() override

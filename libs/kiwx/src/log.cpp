@@ -483,3 +483,11 @@ void wxOnAssert( const char* aFile, int aLine, const char* aFunc, const char* aC
     wxOnAssert( wxString( aFile ), aLine, wxString( aFunc ), wxString( aCond ),
                 aMsg ? wxString( aMsg ) : wxString() );
 }
+
+
+void wxSafeShowMessage( const wxString& aTitle, const wxString& aText )
+{
+    std::fprintf( stderr, "%s: %s\n", aTitle.utf8_string().c_str(),
+                  aText.utf8_string().c_str() );
+    std::fflush( stderr );
+}

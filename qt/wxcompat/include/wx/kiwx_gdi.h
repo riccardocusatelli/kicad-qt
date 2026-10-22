@@ -36,6 +36,7 @@
 
 #include <kiqt.h>
 
+#include <map>
 #include <memory>
 
 #include <QColor>
@@ -43,6 +44,7 @@
 #include <QIcon>
 #include <QImage>
 #include <QPixmap>
+#include <QTransform>
 
 #include <wx/gdicmn.h>
 #include <wx/string.h>
@@ -167,6 +169,14 @@ enum
 class KIQT_API wxColour
 {
 public:
+    /// A component blended over another one with an opacity.
+    static unsigned char AlphaBlend( unsigned char aForeground, unsigned char aBackground,
+                                     double aAlpha )
+    {
+        double result = aForeground * aAlpha + aBackground * ( 1.0 - aAlpha );
+        return static_cast<unsigned char>( std::clamp( result + 0.5, 0.0, 255.0 ) );
+    }
+
     wxColour() :
             m_color(),
             m_ok( false )
@@ -316,11 +326,42 @@ KIQT_API extern const wxBrush wxNullBrush;
 
 
 /// A font: a QFont with the API of wxWidgets.
+/// The description of a font (wxFontInfo), given to the constructor of wxFont.
+class wxFontInfo
+{
+public:
+    wxFontInfo() = default;
+    explicit wxFontInfo( double aPointSize ) : m_pointSize( aPointSize ) {}
+
+    wxFontInfo& Family( wxFontFamily aFamily ) { m_family = aFamily; return *this; }
+    wxFontInfo& FaceName( const wxString& aFaceName ) { m_faceName = aFaceName; return *this; }
+    wxFontInfo& Bold( bool aBold = true ) { m_bold = aBold; return *this; }
+    wxFontInfo& Italic( bool aItalic = true ) { m_italic = aItalic; return *this; }
+    wxFontInfo& Underlined( bool aUnderlined = true ) { m_underlined = aUnderlined; return *this; }
+
+    double          GetPointSize() const { return m_pointSize; }
+    wxFontFamily    GetFamily() const { return m_family; }
+    const wxString& GetFaceName() const { return m_faceName; }
+    bool            IsBold() const { return m_bold; }
+    bool            IsItalic() const { return m_italic; }
+    bool            IsUnderlined() const { return m_underlined; }
+
+private:
+    double       m_pointSize = -1;
+    wxFontFamily m_family = wxFONTFAMILY_DEFAULT;
+    wxString     m_faceName;
+    bool         m_bold = false;
+    bool         m_italic = false;
+    bool         m_underlined = false;
+};
+
+
 class KIQT_API wxFont : public QFont
 {
 public:
     wxFont() = default;
     wxFont( const QFont& aFont ) : QFont( aFont ) {}
+    wxFont( const wxFontInfo& aInfo );
 
     wxFont( int aPointSize, wxFontFamily aFamily, wxFontStyle aStyle, wxFontWeight aWeight,
             bool aUnderline = false, const wxString& aFaceName = wxEmptyString );
@@ -374,6 +415,41 @@ enum wxImageResizeQuality
 };
 
 
+/// The formats of the image files (wxBitmapType): Qt finds the format from the file.
+enum wxBitmapType
+{
+    wxBITMAP_TYPE_INVALID = 0,
+    wxBITMAP_TYPE_BMP = 1,
+    wxBITMAP_TYPE_ICO = 3,
+    wxBITMAP_TYPE_CUR = 5,
+    wxBITMAP_TYPE_XBM = 7,
+    wxBITMAP_TYPE_XPM = 9,
+    wxBITMAP_TYPE_TIFF = 11,
+    wxBITMAP_TYPE_TIF = wxBITMAP_TYPE_TIFF,
+    wxBITMAP_TYPE_GIF = 13,
+    wxBITMAP_TYPE_PNG = 15,
+    wxBITMAP_TYPE_JPEG = 17,
+    wxBITMAP_TYPE_PNM = 19,
+    wxBITMAP_TYPE_PCX = 21,
+    wxBITMAP_TYPE_ICON = 25,
+    wxBITMAP_TYPE_TGA = 29,
+    wxBITMAP_TYPE_ANY = 50
+};
+
+
+class wxInputStream;
+class wxOutputStream;
+
+/// The options of the image files (kept by the image, the encoders of Qt choose).
+#define wxIMAGE_OPTION_PNG_COMPRESSION_LEVEL        wxString( wxS( "PngZL" ) )
+#define wxIMAGE_OPTION_PNG_COMPRESSION_MEM_LEVEL    wxString( wxS( "PngZM" ) )
+#define wxIMAGE_OPTION_PNG_COMPRESSION_STRATEGY     wxString( wxS( "PngZS" ) )
+#define wxIMAGE_OPTION_PNG_COMPRESSION_BUFFER_SIZE  wxString( wxS( "PngZB" ) )
+#define wxIMAGE_OPTION_PNG_FILTER                   wxString( wxS( "PngF" ) )
+#define wxIMAGE_OPTION_QUALITY                      wxString( wxS( "quality" ) )
+#define wxIMAGE_OPTION_RESOLUTION                   wxString( wxS( "Resolution" ) )
+
+
 /// An image (wxImage): a QImage with the API of wxWidgets, RGB with an optional alpha.
 class KIQT_API wxImage : public QImage
 {
@@ -382,6 +458,17 @@ public:
     wxImage( const QImage& aImage ) : QImage( aImage ) {}
     wxImage( int aWidth, int aHeight, bool aClear = true );
     wxImage( const wxSize& aSize, bool aClear = true ) : wxImage( aSize.x, aSize.y, aClear ) {}
+
+    explicit wxImage( const wxString& aName, wxBitmapType aType = wxBITMAP_TYPE_ANY,
+                      int aIndex = -1 )
+    {
+        LoadFile( aName, aType );
+    }
+
+    wxImage( wxInputStream& aStream, wxBitmapType aType = wxBITMAP_TYPE_ANY, int aIndex = -1 )
+    {
+        LoadFile( aStream, aType );
+    }
 
     bool IsOk() const { return !isNull(); }
     int GetWidth() const { return width(); }
@@ -415,6 +502,19 @@ public:
 
     bool LoadFile( const wxString& aName, int aType = -1 );
     bool SaveFile( const wxString& aName, int aType = -1 ) const;
+
+    /// The image files in streams (the format of @a aType, PNG if it's not known).
+    bool LoadFile( wxInputStream& aStream, wxBitmapType aType = wxBITMAP_TYPE_ANY );
+    bool SaveFile( wxOutputStream& aStream, wxBitmapType aType ) const;
+
+    void SetOption( const wxString& aName, const wxString& aValue ) { m_options[aName] = aValue; }
+    void SetOption( const wxString& aName, int aValue );
+    wxString GetOption( const wxString& aName ) const;
+    int GetOptionInt( const wxString& aName ) const;
+    bool HasOption( const wxString& aName ) const { return m_options.count( aName ) > 0; }
+
+private:
+    std::map<wxString, wxString> m_options;
 };
 
 
@@ -452,6 +552,9 @@ public:
 
     wxImage ConvertToImage() const { return wxImage( toImage() ); }
     bool HasAlpha() const { return hasAlphaChannel(); }
+
+    bool LoadFile( const wxString& aName, wxBitmapType aType = wxBITMAP_TYPE_ANY );
+    bool SaveFile( const wxString& aName, wxBitmapType aType ) const;
 };
 
 /// The null bitmap (wxNullBitmap), made on its first use: a pixmap needs the application of Qt.
@@ -484,7 +587,27 @@ public:
     wxBitmap GetBitmapFor( const QWidget* aWindow ) const;
 
     static wxBitmapBundle FromBitmap( const wxBitmap& aBitmap ) { return wxBitmapBundle( aBitmap ); }
+
+    /// The images of the icon at two scales.
+    static wxBitmapBundle FromBitmaps( const wxBitmap& aBitmap1, const wxBitmap& aBitmap2 )
+    {
+        wxBitmapBundle bundle( aBitmap1 );
+        bundle.addPixmap( aBitmap2 );
+        return bundle;
+    }
 };
+
+
+/// The changes of the bitmaps (wxBitmapHelpers).
+namespace wxBitmapHelpers
+{
+/// Scale a bitmap to a size (in pixels).
+inline void Rescale( wxBitmap& aBitmap, const wxSize& aSize )
+{
+    aBitmap = wxBitmap( aBitmap.scaled( aSize.x, aSize.y, Qt::IgnoreAspectRatio,
+                                        Qt::SmoothTransformation ) );
+}
+}
 
 
 using wxIcon = wxBitmap;
@@ -584,13 +707,50 @@ enum wxSystemMetric
 };
 
 
+/// The fonts of the system (wxSystemFont of wxWidgets).
+enum wxSystemFont
+{
+    wxSYS_OEM_FIXED_FONT = 10,
+    wxSYS_ANSI_FIXED_FONT,
+    wxSYS_ANSI_VAR_FONT,
+    wxSYS_SYSTEM_FONT,
+    wxSYS_DEVICE_DEFAULT_FONT,
+    wxSYS_DEFAULT_GUI_FONT = 17
+};
+
+
 class KIQT_API wxSystemSettings
 {
 public:
     static wxColour GetColour( wxSystemColour aIndex );
 
+    /// The font of the application, or its fixed pitch font.
+    static wxFont GetFont( wxSystemFont aIndex );
+
     /// A metric of the style of Qt (in logical pixels), -1 if unknown.
     static int GetMetric( wxSystemMetric aIndex, const QWidget* aWindow = nullptr );
+};
+
+
+/// The raster operations of the copies between device contexts (wxRasterOperationMode).
+enum wxRasterOperationMode
+{
+    wxCLEAR,
+    wxXOR,
+    wxINVERT,
+    wxOR_REVERSE,
+    wxAND_REVERSE,
+    wxCOPY,
+    wxAND,
+    wxAND_INVERT,
+    wxNO_OP,
+    wxNOR,
+    wxEQUIV,
+    wxSRC_INVERT,
+    wxOR_INVERT,
+    wxNAND,
+    wxOR,
+    wxSET
 };
 
 
@@ -640,12 +800,40 @@ public:
     void Clear();
 
     void GetTextExtent( const wxString& aText, int* aWidth, int* aHeight ) const;
+    void GetTextExtent( const wxString& aText, int* aWidth, int* aHeight, int* aDescent,
+                        int* aExternalLeading = nullptr, const wxFont* aFont = nullptr ) const;
     wxSize GetTextExtent( const wxString& aText ) const;
     wxSize GetMultiLineTextExtent( const wxString& aText ) const;
 
     void SetClippingRegion( const wxRect& aRect );
     void SetClippingRegion( int aX, int aY, int aWidth, int aHeight );
+
+    void SetClippingRegion( const wxPoint& aPos, const wxSize& aSize )
+    {
+        SetClippingRegion( aPos.x, aPos.y, aSize.x, aSize.y );
+    }
     void DestroyClippingRegion();
+
+    /// The scale of the logical coordinates (on the transformation of the painter when the DC
+    /// was given it).
+    void SetUserScale( double aX, double aY );
+    void GetUserScale( double* aX, double* aY ) const;
+
+    /// Copy a part of a memory DC (the only DCs that keep their drawing).
+    bool Blit( wxCoord aXDest, wxCoord aYDest, wxCoord aWidth, wxCoord aHeight, wxDC* aSource,
+               wxCoord aXSrc, wxCoord aYSrc, wxRasterOperationMode aMode = wxCOPY,
+               bool aUseMask = false, wxCoord aXSrcMask = -1, wxCoord aYSrcMask = -1 );
+
+    bool Blit( const wxPoint& aDest, const wxSize& aSize, wxDC* aSource, const wxPoint& aSrc,
+               wxRasterOperationMode aMode = wxCOPY, bool aUseMask = false,
+               const wxPoint& aSrcMask = wxDefaultPosition )
+    {
+        return Blit( aDest.x, aDest.y, aSize.x, aSize.y, aSource, aSrc.x, aSrc.y, aMode, aUseMask,
+                     aSrcMask.x, aSrcMask.y );
+    }
+
+    /// The image a DC draws on, if it keeps it (wxMemoryDC).
+    virtual const QImage* GetImageCompat() const { return nullptr; }
 
     wxSize GetSize() const;
 
@@ -664,6 +852,11 @@ private:
     wxColour  m_textForeground;
     wxColour  m_textBackground;
     wxBrush   m_background;
+
+    bool       m_userScaled = false;
+    double     m_userScaleX = 1.0;
+    double     m_userScaleY = 1.0;
+    QTransform m_baseTransform;
 
 protected:
     void SetPainterCompat( QPainter* aPainter ) { m_painter = aPainter; }
@@ -717,6 +910,8 @@ public:
     /// Draw on a copy of a constant bitmap (wxNullBitmap: on nothing).
     void SelectObject( const wxBitmap& aBitmap ) { SelectObjectAsSource( aBitmap ); }
     void SelectObjectAsSource( const wxBitmap& aBitmap );
+
+    const QImage* GetImageCompat() const override { return &m_image; }
 
 private:
     void release();
@@ -775,6 +970,7 @@ public:
     void DrawPushButton( QWidget* aWindow, wxDC& aDC, const wxRect& aRect, int aFlags = 0 );
     void DrawComboBoxDropButton( QWidget* aWindow, wxDC& aDC, const wxRect& aRect, int aFlags = 0 );
     void DrawFocusRect( QWidget* aWindow, wxDC& aDC, const wxRect& aRect, int aFlags = 0 );
+    void DrawDropArrow( QWidget* aWindow, wxDC& aDC, const wxRect& aRect, int aFlags = 0 );
     wxSize GetCheckBoxSize( QWidget* aWindow, int aFlags = 0 );
 };
 

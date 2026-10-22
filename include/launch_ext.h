@@ -29,6 +29,6 @@ class wxString;
  * Launches the given file or folder in the host OS
  * @param aPath is a path to a file or folder
  */
-KICOMMON_API bool LaunchExternal( const wxString& aPath );
+KIQT_COMMON_API bool LaunchExternal( const wxString& aPath );
 
 #endif

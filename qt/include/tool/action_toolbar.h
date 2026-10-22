@@ -45,6 +45,8 @@
 #include <frame_type.h>
 #include <tool/action_toolbar_control.h>
 #include <core/ki_assert.h>
+#include <wx/aui/auibar.h>
+#include <wx/kiwx_gdi.h>        // wxBitmapBundle
 
 class QAction;
 class QToolButton;
@@ -174,6 +176,23 @@ public:
      * Add a separator.
      */
     void AddScaledSeparator( QWidget* aWindow );
+
+    /// Repaint the toolbar (wxWindow::Refresh()).
+    void Refresh() { update(); }
+
+    /// The window of the toolbar (wxWindow::GetParent()).
+    QWidget* GetParent() const { return parentWidget(); }
+
+    /**
+     * Add a tool that is not an action (wxAuiToolBar::AddTool()): a click runs the command of
+     * its id in the frame (EDA_BASE_FRAME::RunMenuCommand()).
+     *
+     * @param aId is the id of the tool, wxID_ANY for a new one.
+     * @return the item of the tool (owned by the toolbar).
+     */
+    wxAuiToolBarItem* AddTool( int aId, const wxString& aLabel, const wxBitmapBundle& aBitmap,
+                               const wxString& aShortHelp = wxEmptyString,
+                               wxItemKind aKind = wxITEM_NORMAL );
 
     /// Add an empty space of @a aSize pixels.
     void AddSpacer( int aSize );
@@ -332,6 +351,9 @@ protected:
 
     std::map<int, std::unique_ptr<ACTION_GROUP>> m_actionGroups;
     std::map<int, std::unique_ptr<ACTION_MENU>>  m_toolMenus;
+
+    /// The tools that are not actions (AddTool())
+    std::map<int, std::unique_ptr<wxAuiToolBarItem>> m_auiItems;
 
     /// Selected action per group name
     std::map<std::string, std::string> m_groupSelections;

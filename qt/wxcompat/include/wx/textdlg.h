@@ -30,15 +30,51 @@
 #pragma once
 
 #include <wx/kiwx_gui.h>
+#include <wx/kiwx_validators.h>
+
+#include <memory>
 
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QMessageBox>
 
 #include <qt_strings.h>
 
 
 #define wxGetTextFromUserPromptStr wxS( "Input Text" )
 #define wxTextEntryDialogStyle ( wxOK | wxCANCEL | wxCENTRE )
+
+
+/// The dialog of wxTextEntryDialog: the validator checks the text before the dialog closes.
+class wxTextEntryDialogCompat : public QInputDialog
+{
+public:
+    using QInputDialog::QInputDialog;
+
+    void SetValidator( const wxTextValidator& aValidator )
+    {
+        m_validator.reset( static_cast<wxTextValidator*>( aValidator.Clone() ) );
+    }
+
+    void done( int aResult ) override
+    {
+        if( aResult == QDialog::Accepted && m_validator )
+        {
+            wxString error = m_validator->IsValid( ToWxString( textValue() ) );
+
+            if( !error.empty() )
+            {
+                QMessageBox::warning( this, windowTitle(), ToQString( error ) );
+                return;
+            }
+        }
+
+        QInputDialog::done( aResult );
+    }
+
+private:
+    std::unique_ptr<wxTextValidator> m_validator;
+};
 
 
 class wxTextEntryDialog
@@ -64,8 +100,18 @@ public:
     wxString GetValue() const { return ToWxString( m_dialog.textValue() ); }
     void SetValue( const wxString& aValue ) { m_dialog.setTextValue( ToQString( aValue ) ); }
 
+    void SetTextValidator( const wxTextValidator& aValidator )
+    {
+        m_dialog.SetValidator( aValidator );
+    }
+
+    void SetTextValidator( long aStyle = wxFILTER_NONE )
+    {
+        m_dialog.SetValidator( wxTextValidator( aStyle ) );
+    }
+
 private:
-    QInputDialog m_dialog;
+    wxTextEntryDialogCompat m_dialog;
 };
 
 

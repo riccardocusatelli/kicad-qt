@@ -24,7 +24,7 @@
 /**
  * @file kiwx_clipboard.h
  * The clipboard of the wxWidgets compatibility layer of the Qt build (wxcompat): wxTheClipboard
- * on QClipboard, with the text and bitmap data objects.
+ * on QClipboard, with the data objects of wxWidgets on QMimeData.
  */
 
 #ifndef KIWX_CLIPBOARD_H
@@ -33,34 +33,67 @@
 #include <kiqt.h>
 
 #include <memory>
+#include <vector>
 
+#include <wx/arrstr.h>
 #include <wx/defs.h>
 #include <wx/string.h>
 #include <wx/kiwx_gdi.h>
 
+class QMimeData;
 
-/// The format of the data (wxDataFormat): the ids of wxWidgets (wxDF_TEXT...).
-class wxDataFormat
+
+/// The format of the data (wxDataFormat): an id of wxWidgets (wxDF_TEXT...) or a MIME type.
+class KIQT_API wxDataFormat
 {
 public:
     wxDataFormat( wxDataFormatId aId = wxDF_INVALID ) : m_id( aId ) {}
+    wxDataFormat( const wxString& aMimeType ) : m_id( wxDF_PRIVATE ), m_mimeType( aMimeType ) {}
+    wxDataFormat( const wchar_t* aMimeType ) : wxDataFormat( wxString( aMimeType ) ) {}
+    wxDataFormat( const char* aMimeType ) : wxDataFormat( wxString( aMimeType ) ) {}
 
     wxDataFormatId GetType() const { return m_id; }
-    bool operator==( const wxDataFormat& aOther ) const { return m_id == aOther.m_id; }
+    wxString GetId() const { return m_mimeType; }
+    void SetId( const wxString& aMimeType )
+    {
+        m_id = wxDF_PRIVATE;
+        m_mimeType = aMimeType;
+    }
+
+    /// The MIME type of the format on the clipboard of Qt.
+    wxString GetMimeTypeCompat() const;
+
+    bool operator==( const wxDataFormat& aOther ) const
+    {
+        return m_id == aOther.m_id && m_mimeType == aOther.m_mimeType;
+    }
+
+    bool operator!=( const wxDataFormat& aOther ) const { return !( *this == aOther ); }
     bool operator==( wxDataFormatId aId ) const { return m_id == aId; }
+    bool operator!=( wxDataFormatId aId ) const { return m_id != aId; }
 
 private:
     wxDataFormatId m_id;
+    wxString       m_mimeType;
 };
 
 
-/// The data of the clipboard (wxDataObject).
+/**
+ * The data of the clipboard (wxDataObject): an object puts its formats into the data of Qt
+ * (QMimeData), and reads them back.
+ */
 class KIQT_API wxDataObject
 {
 public:
     virtual ~wxDataObject() = default;
 
     virtual bool IsSupported( const wxDataFormat& aFormat ) const = 0;
+
+    /// Put the data into @a aMime.
+    virtual void ToMimeDataCompat( QMimeData& aMime ) const = 0;
+
+    /// Read the data from @a aMime: false if it has none of the formats.
+    virtual bool FromMimeDataCompat( const QMimeData& aMime ) = 0;
 };
 
 
@@ -77,6 +110,9 @@ public:
     {
         return aFormat == wxDF_TEXT || aFormat == wxDF_UNICODETEXT;
     }
+
+    void ToMimeDataCompat( QMimeData& aMime ) const override;
+    bool FromMimeDataCompat( const QMimeData& aMime ) override;
 
 private:
     wxString m_text;
@@ -96,8 +132,99 @@ public:
         return aFormat == wxDF_BITMAP;
     }
 
+    void ToMimeDataCompat( QMimeData& aMime ) const override;
+    bool FromMimeDataCompat( const QMimeData& aMime ) override;
+
 private:
     wxBitmap m_bitmap;
+};
+
+
+/// The names of files (wxFileDataObject): the URLs of the data of Qt.
+class KIQT_API wxFileDataObject : public wxDataObject
+{
+public:
+    const wxArrayString& GetFilenames() const { return m_filenames; }
+    void AddFile( const wxString& aFilename ) { m_filenames.Add( aFilename ); }
+
+    bool IsSupported( const wxDataFormat& aFormat ) const override
+    {
+        return aFormat == wxDF_FILENAME;
+    }
+
+    void ToMimeDataCompat( QMimeData& aMime ) const override;
+    bool FromMimeDataCompat( const QMimeData& aMime ) override;
+
+private:
+    wxArrayString m_filenames;
+};
+
+
+/// Bytes in a format (wxCustomDataObject): the data of its MIME type (wxDF_BITMAP: a PNG).
+class KIQT_API wxCustomDataObject : public wxDataObject
+{
+public:
+    explicit wxCustomDataObject( const wxDataFormat& aFormat = wxDF_PRIVATE ) :
+            m_format( aFormat )
+    {
+    }
+
+    const wxDataFormat& GetFormat() const { return m_format; }
+    void SetFormat( const wxDataFormat& aFormat ) { m_format = aFormat; }
+
+    bool Alloc( size_t aSize )
+    {
+        m_data.resize( aSize );
+        return true;
+    }
+
+    void Free() { m_data.clear(); }
+
+    bool SetData( size_t aSize, const void* aData )
+    {
+        const char* bytes = static_cast<const char*>( aData );
+        m_data.assign( bytes, bytes + aSize );
+        return true;
+    }
+
+    void TakeData( size_t aSize, void* aData )
+    {
+        SetData( aSize, aData );
+        delete[] static_cast<char*>( aData );
+    }
+
+    const void* GetData() const { return m_data.data(); }
+    size_t GetSize() const { return m_data.size(); }
+    size_t GetDataSize() const { return m_data.size(); }
+
+    bool IsSupported( const wxDataFormat& aFormat ) const override { return aFormat == m_format; }
+
+    void ToMimeDataCompat( QMimeData& aMime ) const override;
+    bool FromMimeDataCompat( const QMimeData& aMime ) override;
+
+private:
+    wxDataFormat      m_format;
+    std::vector<char> m_data;
+};
+
+
+/// Several data objects (wxDataObjectComposite), each with its formats.
+class KIQT_API wxDataObjectComposite : public wxDataObject
+{
+public:
+    /// Add a data object (the composite takes it).
+    void Add( wxDataObject* aData, bool aPreferred = false );
+
+    /// The format of the object that got data in the last FromMimeDataCompat().
+    wxDataFormat GetReceivedFormat() const { return m_receivedFormat; }
+
+    bool IsSupported( const wxDataFormat& aFormat ) const override;
+    void ToMimeDataCompat( QMimeData& aMime ) const override;
+    bool FromMimeDataCompat( const QMimeData& aMime ) override;
+
+private:
+    std::vector<std::unique_ptr<wxDataObject>> m_objects;
+    wxDataFormat                               m_receivedFormat;
 };
 
 

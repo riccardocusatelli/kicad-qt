@@ -136,6 +136,7 @@ ACTION_TOOLBAR::~ACTION_TOOLBAR()
     m_toolCancellable.clear();
     m_toolKinds.clear();
     m_toolActions.clear();
+    m_auiItems.clear();
 }
 
 
@@ -338,6 +339,33 @@ void ACTION_TOOLBAR::AddButton( const TOOL_ACTION& aAction )
     // A large button, with its text
     if( QToolButton* button = qobject_cast<QToolButton*>( widgetForAction( m_items[aAction.GetUIId()] ) ) )
         button->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+}
+
+
+wxAuiToolBarItem* ACTION_TOOLBAR::AddTool( int aId, const wxString& aLabel,
+                                           const wxBitmapBundle& aBitmap,
+                                           const wxString& aShortHelp, wxItemKind aKind )
+{
+    int toolId = aId == wxID_ANY ? wxWindowIDNew() : aId;
+
+    QAction* item = new QAction( aBitmap, ToQString( aLabel ), this );
+    item->setData( toolId );
+    item->setToolTip( ToQString( aShortHelp.IsEmpty() ? aLabel : aShortHelp ) );
+    item->setCheckable( aKind == wxITEM_CHECK || aKind == wxITEM_RADIO );
+
+    // The command of the tool is run by the frame (the menu events of wxWidgets)
+    QObject::connect( item, &QAction::triggered, this,
+                      [this, toolId]()
+                      {
+                          m_parent->RunMenuCommand( toolId );
+                      } );
+
+    addAction( item );
+    m_items[ toolId ] = item;
+
+    std::unique_ptr<wxAuiToolBarItem>& tool = m_auiItems[ toolId ];
+    tool = std::make_unique<wxAuiToolBarItem>( toolId, item );
+    return tool.get();
 }
 
 

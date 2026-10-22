@@ -272,6 +272,9 @@ inline void wxLogTrace( const wchar_t* aMask, const wxString& aFormat, const ARG
     wxLogTrace( wxString( aMask ), aFormat, aArgs... );
 }
 
+/// Show a message without the GUI (it can be called in any state): on the standard error.
+void wxSafeShowMessage( const wxString& aTitle, const wxString& aText );
+
 #define wxLOG_IS_ENABLED( level ) wxLog::IsLevelEnabled( wxLOG_##level )
 
 #define wxLogGeneric( level, ... )                                                             \

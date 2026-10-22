@@ -22,6 +22,7 @@
  */
 
 #include <wx/kiwx_pickers.h>
+#include <wx/datectrl.h>
 
 #include <QDesktopServices>
 #include <QDir>
@@ -475,4 +476,44 @@ void wxGenericDirCtrl::applyFilter( int aIndex )
     }
 
     m_model->setNameFilters( patterns );
+}
+
+
+// The date picker ---------------------------------------------------------------------------
+
+wxDatePickerCtrl::wxDatePickerCtrl( wxWidgetArgCompat aParent, int aId, const wxDateTime& aDate,
+                                    const wxPoint& aPos, const wxSize& aSize, long aStyle ) :
+        wxWindowCompat<QDateEdit>( aParent.get() )
+{
+    SetId( aId );
+    setCalendarPopup( true );
+    SetValue( aDate );
+
+    QObject::connect( this, &QDateEdit::dateChanged, this,
+                      [this]()
+                      {
+                          wxCommandEvent event( wxEVT_DATE_CHANGED, GetId() );
+                          event.SetEventObject( this );
+                          ProcessEvent( event );
+                      } );
+}
+
+
+void wxDatePickerCtrl::SetValue( const wxDateTime& aDate )
+{
+    QSignalBlocker blocker( this );
+
+    if( aDate.IsValid() )
+        setDate( QDate( aDate.GetYear(), int( aDate.GetMonth() ) + 1, aDate.GetDay() ) );
+    else
+        setDate( QDate::currentDate() );
+}
+
+
+wxDateTime wxDatePickerCtrl::GetValue() const
+{
+    QDate value = date();
+
+    return wxDateTime( static_cast<wxDateTime::wxDateTime_t>( value.day() ),
+                       static_cast<wxDateTime::Month>( value.month() - 1 ), value.year() );
 }

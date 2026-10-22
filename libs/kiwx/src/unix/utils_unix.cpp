@@ -643,6 +643,31 @@ bool wxShell( const wxString& aCommand )
 }
 
 
+/// Open a document or a URL with the opener of the desktop (open on macOS, xdg-open elsewhere).
+static bool launchDefault( const wxString& aTarget )
+{
+#ifdef __APPLE__
+    std::vector<std::string> args{ "open", aTarget.utf8_string() };
+#else
+    std::vector<std::string> args{ "xdg-open", aTarget.utf8_string() };
+#endif
+
+    return run( args, wxEXEC_ASYNC, nullptr, nullptr, nullptr ) > 0;
+}
+
+
+bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags )
+{
+    return launchDefault( aDocument );
+}
+
+
+bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags )
+{
+    return launchDefault( aUrl );
+}
+
+
 bool wxFileName::GetTimes( wxDateTime* aAccess, wxDateTime* aMod, wxDateTime* aCreate ) const
 {
     struct stat st;

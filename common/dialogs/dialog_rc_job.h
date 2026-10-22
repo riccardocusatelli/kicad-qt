@@ -23,7 +23,7 @@
 #include <jobs/job_rc.h>
 #include <dialogs/dialog_rc_job_base.h>
 
-class KICOMMON_API DIALOG_RC_JOB : public DIALOG_RC_JOB_BASE
+class KIQT_COMMON_API DIALOG_RC_JOB : public DIALOG_RC_JOB_BASE
 {
 public:
     DIALOG_RC_JOB( wxWindow* aParent, JOB_RC* aJob, const wxString& aTitle );

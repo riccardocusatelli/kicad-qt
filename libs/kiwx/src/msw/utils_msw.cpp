@@ -46,6 +46,7 @@
 #include <io.h>
 #include <sys/stat.h>
 #include <windows.h>
+#include <shellapi.h>
 
 
 namespace
@@ -744,6 +745,29 @@ bool wxShell( const wxString& aCommand )
 
     wxString cmd = aCommand.empty() ? shell : shell + wxT( " /c " ) + aCommand;
     return wxExecute( cmd, wxEXEC_SYNC ) == 0;
+}
+
+
+/// Open a document or a URL with the shell, as a double click in the Explorer.
+static bool launchDefault( const wxString& aTarget )
+{
+    HINSTANCE ret = ShellExecuteW( nullptr, L"open", aTarget.wc_str(), nullptr, nullptr,
+                                   SW_SHOWNORMAL );
+
+    // greater than 32 on success (a HINSTANCE for compatibility with the 16 bit Windows)
+    return reinterpret_cast<INT_PTR>( ret ) > 32;
+}
+
+
+bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags )
+{
+    return launchDefault( aDocument );
+}
+
+
+bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags )
+{
+    return launchDefault( aUrl );
 }
 
 

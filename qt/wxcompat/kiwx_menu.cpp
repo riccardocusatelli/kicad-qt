@@ -65,8 +65,25 @@ wxMenuItem::wxMenuItem( wxMenu* aParentMenu, int aId, const wxString& aText,
 }
 
 
+wxMenuItem::wxMenuItem( QAction* aAction, int aId ) :
+        m_parentMenu( nullptr ),
+        m_id( aId ),
+        m_text( ToWxString( aAction->text() ) ),
+        m_help( ToWxString( aAction->toolTip() ) ),
+        m_kind( aAction->isSeparator() ? wxITEM_SEPARATOR
+                                       : aAction->isCheckable() ? wxITEM_CHECK : wxITEM_NORMAL ),
+        m_subMenu( nullptr ),
+        m_action( aAction ),
+        m_ownsAction( false )
+{
+}
+
+
 wxMenuItem::~wxMenuItem()
 {
+    if( !m_ownsAction )
+        return;
+
     if( m_action )
     {
         m_action->setProperty( ITEM_PROPERTY, QVariant() );
@@ -617,4 +634,14 @@ int wxPopupMenuSelectionCompat( QWidget* aWindow, wxMenu* aMenu, const wxPoint& 
         return wxID_NONE;
 
     return item->GetId();
+}
+
+
+bool wxMenuBar::Append( wxMenu* aMenu, const wxString& aTitle )
+{
+    // The menu bar owns its menus
+    aMenu->setParent( this, aMenu->windowFlags() );
+    aMenu->setTitle( ToQString( aTitle ) );
+    addMenu( aMenu );
+    return true;
 }

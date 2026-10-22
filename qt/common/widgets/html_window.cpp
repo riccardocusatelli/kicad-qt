@@ -30,6 +30,7 @@
 #include <widgets/html_window.h>
 
 #include <QEvent>
+#include <QScrollBar>
 #include <QTextCursor>
 
 #include <qt_strings.h>
@@ -114,4 +115,42 @@ void HTML_WINDOW::changeEvent( QEvent* aEvent )
         ThemeChanged();
 
     QTextBrowser::changeEvent( aEvent );
+}
+
+
+void HTML_WINDOW::GetScrollPixelsPerUnit( int* aX, int* aY ) const
+{
+    if( aX )
+        *aX = 1;
+
+    if( aY )
+        *aY = 1;
+}
+
+
+int HTML_WINDOW::GetScrollRange( int aOrientation ) const
+{
+    // The range covers the page: the maximum position and the visible part
+    QScrollBar* bar = aOrientation == wxHORIZONTAL ? horizontalScrollBar() : verticalScrollBar();
+    return bar->maximum() + bar->pageStep();
+}
+
+
+void HTML_WINDOW::Scroll( int aX, int aY )
+{
+    if( aX >= 0 )
+        horizontalScrollBar()->setValue( aX );
+
+    if( aY >= 0 )
+        verticalScrollBar()->setValue( aY );
+}
+
+
+void HTML_WINDOW::GetVirtualSize( int* aWidth, int* aHeight ) const
+{
+    if( aWidth )
+        *aWidth = horizontalScrollBar()->maximum() + horizontalScrollBar()->pageStep();
+
+    if( aHeight )
+        *aHeight = verticalScrollBar()->maximum() + verticalScrollBar()->pageStep();
 }

@@ -24,8 +24,8 @@
 /**
  * @file ui_common_qt.cpp
  * The functions of KIUI (include/widgets/ui_common.h) with Qt (common/widgets/ui_common.cpp
- * with wxWidgets): the fonts, the sizes of the texts and the state of the controls.  The menu
- * functions of wxWidgets have no Qt version (the menus of the Qt build are ACTION_MENUs).
+ * with wxWidgets): the fonts, the sizes of the texts and the state of the controls, and the items
+ * of the menus of the compatibility layer (wxMenu; the menus of the tools are ACTION_MENUs).
  */
 
 #include <widgets/ui_common.h>
@@ -44,8 +44,11 @@
 #include <QTableWidget>
 #include <QTextEdit>
 
+#include <pgm_base.h>
+#include <settings/common_settings.h>
 #include <string_utils.h>
 #include <wx/kiwx_gui.h>
+#include <wx/kiwx_menu.h>
 
 #include <qt_strings.h>
 #include <qt_ui.h>
@@ -291,4 +294,56 @@ void KIUI::Disable( wxWindow* aWindowCompat )
         for( QWidget* child : aWindow->findChildren<QWidget*>( Qt::FindDirectChildrenOnly ) )
             Disable( wxWindowFromQt( child ) );
     }
+}
+
+
+void KIUI::AddBitmapToMenuItem( wxMenuItem* aMenu, const wxBitmapBundle& aImage )
+{
+    // Retrieve the global application show icon option:
+    bool useImagesInMenus = Pgm().GetCommonSettings()
+                            && Pgm().GetCommonSettings()->m_Appearance.use_icons_in_menus;
+
+    wxItemKind menu_type = aMenu->GetKind();
+
+    if( useImagesInMenus && menu_type != wxITEM_CHECK && menu_type != wxITEM_RADIO )
+        aMenu->SetBitmap( aImage );
+}
+
+
+wxMenuItem* KIUI::AddMenuItem( wxMenu* aMenu, int aId, const wxString& aText,
+                               const wxBitmapBundle& aImage, wxItemKind aType )
+{
+    return AddMenuItem( aMenu, aId, aText, wxEmptyString, aImage, aType );
+}
+
+
+wxMenuItem* KIUI::AddMenuItem( wxMenu* aMenu, int aId, const wxString& aText,
+                               const wxString& aHelpText, const wxBitmapBundle& aImage,
+                               wxItemKind aType )
+{
+    wxMenuItem* item = new wxMenuItem( aMenu, aId, aText, aHelpText, aType );
+    AddBitmapToMenuItem( item, aImage );
+
+    aMenu->Append( item );
+
+    return item;
+}
+
+
+wxMenuItem* KIUI::AddMenuItem( wxMenu* aMenu, wxMenu* aSubMenu, int aId, const wxString& aText,
+                               const wxBitmapBundle& aImage )
+{
+    return AddMenuItem( aMenu, aSubMenu, aId, aText, wxEmptyString, aImage );
+}
+
+
+wxMenuItem* KIUI::AddMenuItem( wxMenu* aMenu, wxMenu* aSubMenu, int aId, const wxString& aText,
+                               const wxString& aHelpText, const wxBitmapBundle& aImage )
+{
+    wxMenuItem* item = new wxMenuItem( aMenu, aId, aText, aHelpText, wxITEM_NORMAL, aSubMenu );
+    AddBitmapToMenuItem( item, aImage );
+
+    aMenu->Append( item );
+
+    return item;
 }

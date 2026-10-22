@@ -97,7 +97,9 @@ class APP_SETTINGS_BASE;
 struct WINDOW_SETTINGS;
 struct WINDOW_STATE;
 class ACTION_MENU;
+class FILE_HISTORY;
 class WX_MENUBAR;
+class wxMenuBar;
 class TOOL_INTERACTIVE;
 class WX_INFOBAR;
 class APPEARANCE_CONTROLS_3D;
@@ -456,6 +458,11 @@ public:
     virtual WINDOW_SETTINGS* GetWindowSettings( APP_SETTINGS_BASE* aCfg );
 
     /**
+     * Load the state of the frame saved for a file of the project (its position and size).
+     */
+    void LoadWindowState( const wxString& aFileName );
+
+    /**
      * Load frame state info from a configuration file
      */
     virtual void LoadWindowState( const WINDOW_STATE& aState );
@@ -481,6 +488,43 @@ public:
      * settings.  This is called by #SaveProjectSettings.
      */
     virtual void SaveProjectLocalSettings() {};
+
+    /**
+     * Look for the autosave files of a project newer than their files, and offer to recover them.
+     */
+    void CheckForAutosaveFiles( const wxString& aProjectPath,
+                                const std::vector<wxString>& aExtensions );
+
+    /**
+     * Fetch the file name from the file history list (the menu item of id @a cmdId).
+     *
+     * If the file doesn't exist, the user can remove it from the history.
+     *
+     * @param aFileHistory The FILE_HISTORY in use. If null, the main application file
+     *                     history is used
+     * @return the selected filename, empty if it doesn't exist
+     */
+    wxString GetFileFromHistory( int cmdId, const wxString& type,
+                                 FILE_HISTORY* aFileHistory = nullptr );
+
+    /**
+     * Remove all files from the file history.
+     */
+    virtual void ClearFileHistory();
+
+    /**
+     * Update the list of recently opened files (and the menus showing it).
+     *
+     * @param FullFileName The full file name including the path.
+     * @param aFileHistory The FILE_HISTORY in use.  If NULL, the main application file
+     *                     history is used.
+     */
+    void UpdateFileHistory( const wxString& FullFileName, FILE_HISTORY* aFileHistory = nullptr );
+
+    /**
+     * Get the frame's main file history.
+     */
+    FILE_HISTORY& GetFileHistory() { return *m_fileHistory; }
 
     void SetMruPath( const wxString& aPath ) { m_mruPath = aPath; }
 
@@ -514,6 +558,12 @@ public:
      * Show @a aMenuBar in the frame, and delete its previous menu bar.
      */
     void InstallMenuBar( WX_MENUBAR* aMenuBar );
+
+    /// The menu bar of the frame (wxFrame::GetMenuBar()), nullptr if it has none.
+    wxMenuBar* GetMenuBar() const;
+
+    /// Give a menu bar to the frame: the previous one is deleted later (it can be deleted now).
+    void SetMenuBar( wxMenuBar* aMenuBar );
 
     /**
      * Create a menu list for language choice, and add it as submenu to \a MasterMenu.
@@ -835,7 +885,7 @@ protected:
     bool                    m_supportsAutoSave;
     bool                    m_autoSavePending;
     bool                    m_autoSaveRequired;
-    GUI_TIMER               m_autoSaveTimer;
+    std::unique_ptr<GUI_TIMER> m_autoSaveTimer;  // A pointer, as the wxTimer of wxWidgets
     bool                    m_autoSavePermissionError;
     wxDateTime              m_autoSaveDeferredSince;
 
@@ -844,6 +894,8 @@ protected:
     UNDO_REDO_CONTAINER     m_redoList;          // Objects list for the redo command (old data)
 
     wxString                m_mruPath;           // Most recently used path.
+
+    std::unique_ptr<FILE_HISTORY> m_fileHistory; // The frame's recently opened file list
 
     ORIGIN_TRANSFORMS       m_originTransforms;  // Default display origin transforms object.
 

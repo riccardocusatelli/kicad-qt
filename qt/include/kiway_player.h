@@ -93,7 +93,7 @@ public:
      *         aRetVal of true.
      */
     virtual bool ShowModal( wxString* aResult = nullptr,
-                            QWidget* aResultantFocusWindow = nullptr );
+                            wxWindow* aResultantFocusWindow = nullptr );
 
     /**
      * Receive #KIWAY_MAIL_EVENT messages from other players.

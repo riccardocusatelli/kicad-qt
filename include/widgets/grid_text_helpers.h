@@ -163,7 +163,7 @@ protected:
 };
 
 
-class KICOMMON_API GRID_CELL_NULLABLE_INTERFACE
+class KIQT_COMMON_API GRID_CELL_NULLABLE_INTERFACE
 {
 public:
     GRID_CELL_NULLABLE_INTERFACE() :
@@ -186,7 +186,7 @@ protected:
 //---- Grid helpers: custom wxGridCellTextEditor ------------------------------------------
 //
 // Note: This is used to mark WX_GRID cell as nullable
-class KICOMMON_API GRID_CELL_MARK_AS_NULLABLE : public wxGridCellTextEditor, public GRID_CELL_NULLABLE_INTERFACE
+class KIQT_COMMON_API GRID_CELL_MARK_AS_NULLABLE : public wxGridCellTextEditor, public GRID_CELL_NULLABLE_INTERFACE
 {
 public:
     GRID_CELL_MARK_AS_NULLABLE() :

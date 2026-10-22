@@ -202,6 +202,11 @@ public:
                   long aStyle = wxFD_DEFAULT_STYLE, const wxPoint& aPos = wxDefaultPosition,
                   const wxSize& aSize = wxDefaultSize, const wxString& aName = wxEmptyString );
 
+    ~wxFileDialog();
+
+    wxFileDialog( const wxFileDialog& ) = delete;
+    wxFileDialog& operator=( const wxFileDialog& ) = delete;
+
     /// Show the dialog: wxID_OK or wxID_CANCEL.
     int ShowModal();
 
@@ -229,8 +234,24 @@ public:
         return true;
     }
 
+    /// A window of KiCad shown in the dialog (made by @a aCreator when the dialog is shown); it
+    /// lives until the wxFileDialog is deleted, to be read after the dialog.
+    typedef wxWindow* ( *ExtraControlCreatorFunction )( wxWindow* );
+
+    bool SetExtraControlCreator( ExtraControlCreatorFunction aCreator )
+    {
+        m_extraCreator = aCreator;
+        return true;
+    }
+
+    wxWindow* GetExtraControl() const { return m_extraControl; }
+
 private:
-    wxFileDialogCustomizeHook* m_hook = nullptr;
+    void deleteExtraControl();
+
+    wxFileDialogCustomizeHook*  m_hook = nullptr;
+    ExtraControlCreatorFunction m_extraCreator = nullptr;
+    wxWindow*                   m_extraControl = nullptr;
     QWidget*      m_parent;
     wxString      m_message;
     wxString      m_directory;

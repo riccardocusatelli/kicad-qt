@@ -57,7 +57,6 @@
 #include <io/kicad/kicad_io_utils.h>
 #include <view/view_controls.h>
 #include <wx/filedlg.h>
-#include <wx/fswatcher.h>
 #include <wx/msgdlg.h>
 #include <kiway.h>
 

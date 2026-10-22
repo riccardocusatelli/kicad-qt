@@ -59,6 +59,7 @@ add_library( kiwx SHARED
     src/init.cpp
     src/intl.cpp
     src/log.cpp
+    src/mimetype.cpp
     src/msgout.cpp
     src/regex.cpp
     src/stdpaths.cpp

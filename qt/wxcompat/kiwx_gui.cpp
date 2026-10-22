@@ -39,8 +39,6 @@
 #include <QResizeEvent>
 #include <QWheelEvent>
 #include <QApplication>
-#include <QDesktopServices>
-#include <QUrl>
 #include <QMessageBox>
 #include <QScreen>
 #include <QScrollBar>
@@ -1133,6 +1131,18 @@ wxButton::wxButton( wxWidgetArgCompat aParent, int aId, const wxString& aLabel, 
     SetId( aId );
     SetLabel( aLabel );
     setAutoDefault( false );
+}
+
+
+wxSize wxButton::GetDefaultSize( wxWindow* aWindow )
+{
+    QPushButton button( QStringLiteral( "MMMMMM" ) );
+
+    if( aWindow )
+        button.setFont( aWindow->GetHandle()->font() );
+
+    QSize size = button.sizeHint();
+    return wxSize( size.width(), size.height() );
 }
 
 
@@ -2785,18 +2795,6 @@ void wxWindowDisabler::disable( QWidget* aToSkip, QWidget* aToSkip2 )
         window->setEnabled( false );
         m_disabled.emplace_back( window );
     }
-}
-
-
-bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags )
-{
-    return QDesktopServices::openUrl( QUrl::fromLocalFile( ToQString( aDocument ) ) );
-}
-
-
-bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags )
-{
-    return QDesktopServices::openUrl( QUrl::fromUserInput( ToQString( aUrl ) ) );
 }
 
 

@@ -186,6 +186,14 @@ enum wxEventTypeCompat
     wxEVT_DIRCTRL_SELECTIONCHANGED,
     wxEVT_DIRCTRL_FILEACTIVATED,
     wxEVT_AUINOTEBOOK_PAGE_CLOSE,
+    wxEVT_DATE_CHANGED,
+    wxEVT_TREELIST_SELECTION_CHANGED,
+    wxEVT_TREELIST_ITEM_EXPANDING,
+    wxEVT_TREELIST_ITEM_EXPANDED,
+    wxEVT_TREELIST_ITEM_CHECKED,
+    wxEVT_TREELIST_ITEM_ACTIVATED,
+    wxEVT_TREELIST_ITEM_CONTEXT_MENU,
+    wxEVT_TREELIST_COLUMN_SORTED,
     wxEVT_TREE_SEL_CHANGED,
     wxEVT_TREE_SEL_CHANGING,
     wxEVT_TREE_ITEM_ACTIVATED,
@@ -487,6 +495,16 @@ public:
     }
 
     wxPoint GetPosition() const { return wxPoint( m_x, m_y ); }
+
+    void GetPosition( int* aX, int* aY ) const
+    {
+        if( aX )
+            *aX = m_x;
+
+        if( aY )
+            *aY = m_y;
+    }
+
     int GetX() const { return m_x; }
     int GetY() const { return m_y; }
     int GetWheelRotation() const { return m_wheelRotation; }
@@ -524,6 +542,18 @@ public:
 };
 
 
+/// The categories of the keys (wxKeyEvent::IsKeyInCategory()).
+enum wxKeyCategoryFlags
+{
+    WXK_CATEGORY_ARROW = 1,
+    WXK_CATEGORY_PAGING = 2,
+    WXK_CATEGORY_JUMP = 4,
+    WXK_CATEGORY_TAB = 8,
+    WXK_CATEGORY_CUT = 16,
+    WXK_CATEGORY_NAVIGATION = WXK_CATEGORY_ARROW | WXK_CATEGORY_PAGING | WXK_CATEGORY_JUMP
+};
+
+
 class wxKeyEvent : public wxEvent
 {
 public:
@@ -548,7 +578,35 @@ public:
     bool CmdDown() const { return m_modifiers & wxMOD_CMD; }
     bool AltDown() const { return m_modifiers & wxMOD_ALT; }
     bool MetaDown() const { return m_modifiers & wxMOD_META; }
-    bool IsKeyInCategory( int aCategory ) const { return false; }
+
+    /// The key is in a category of keys (WXK_CATEGORY_TAB...).
+    bool IsKeyInCategory( int aCategory ) const
+    {
+        switch( m_keyCode )
+        {
+        case WXK_LEFT: case WXK_RIGHT: case WXK_UP: case WXK_DOWN:
+        case WXK_NUMPAD_LEFT: case WXK_NUMPAD_RIGHT: case WXK_NUMPAD_UP: case WXK_NUMPAD_DOWN:
+            return aCategory & WXK_CATEGORY_ARROW;
+
+        case WXK_PAGEDOWN: case WXK_PAGEUP: case WXK_NUMPAD_PAGEUP: case WXK_NUMPAD_PAGEDOWN:
+            return aCategory & WXK_CATEGORY_PAGING;
+
+        case WXK_HOME: case WXK_END: case WXK_NUMPAD_HOME: case WXK_NUMPAD_END:
+            return aCategory & WXK_CATEGORY_JUMP;
+
+        case WXK_TAB: case WXK_NUMPAD_TAB:
+            return aCategory & WXK_CATEGORY_TAB;
+
+        case WXK_BACK: case WXK_DELETE: case WXK_NUMPAD_DELETE:
+            return aCategory & WXK_CATEGORY_CUT;
+
+        default:
+            return false;
+        }
+    }
+
+    /// The character event follows the key event anyway (Qt sends both).
+    void DoAllowNextEvent() {}
 
     int    m_keyCode;
     int    m_modifiers;

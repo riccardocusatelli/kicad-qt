@@ -44,6 +44,9 @@
 #include <QLayout>
 #include <QWidget>
 
+class QDialog;
+class QMainWindow;
+
 #include <wx/defs.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
@@ -462,6 +465,17 @@ public:
     wxSize GetSize() const;
     void GetSize( int* aWidth, int* aHeight ) const;
     wxSize GetClientSize() const;
+
+    /// Where a point (in client coordinates) is in the window.
+    wxHitTest HitTest( const wxPoint& aPos ) const
+    {
+        wxSize size = GetClientSize();
+        bool   inside = aPos.x >= 0 && aPos.y >= 0 && aPos.x < size.x && aPos.y < size.y;
+
+        return inside ? wxHT_WINDOW_INSIDE : wxHT_WINDOW_OUTSIDE;
+    }
+
+    wxHitTest HitTest( int aX, int aY ) const { return HitTest( wxPoint( aX, aY ) ); }
     void GetClientSize( int* aWidth, int* aHeight ) const;
     wxRect GetClientRect() const;
     wxSize GetBestSize() const;
@@ -650,22 +664,71 @@ QWidget* wxWidgetArgCompat::widgetOf( T* aWindow )
 }
 
 
+/// The windows that are not children (wxNonOwnedWindow).
+class KIQT_API wxNonOwnedWindow : public wxWindow
+{
+};
+
+
+/// The top level windows (wxTopLevelWindow): the frames and the dialogs.
+class KIQT_API wxTopLevelWindow : public wxNonOwnedWindow
+{
+public:
+    void Maximize( bool aMaximize = true )
+    {
+        aMaximize ? GetHandle()->showMaximized() : GetHandle()->showNormal();
+    }
+
+    bool IsMaximized() const { return GetHandle()->isMaximized(); }
+
+    void Iconize( bool aIconize = true )
+    {
+        aIconize ? GetHandle()->showMinimized() : GetHandle()->showNormal();
+    }
+
+    bool IsIconized() const { return GetHandle()->isMinimized(); }
+
+    void Restore() { GetHandle()->showNormal(); }
+};
+
+
+/// The window class of the layer for a widget of Qt: the dialogs and the main windows are top
+/// level windows (as wxDialog and wxFrame).
+template <class QT>
+struct wxWindowClassCompat
+{
+    using type = wxWindow;
+};
+
+template <>
+struct wxWindowClassCompat<QDialog>
+{
+    using type = wxTopLevelWindow;
+};
+
+template <>
+struct wxWindowClassCompat<QMainWindow>
+{
+    using type = wxTopLevelWindow;
+};
+
+
 /**
  * A control of the layer: a widget of Qt (@a QT) that is a window.  The constructors forward
  * their arguments to the widget.
  */
 template <class QT>
-class wxWindowCompat : public QT, public wxWindow
+class wxWindowCompat : public QT, public wxWindowClassCompat<QT>::type
 {
 public:
     template <typename... ARGS>
     explicit wxWindowCompat( ARGS&&... aArgs ) :
             QT( std::forward<ARGS>( aArgs )... )
     {
-        registerWindowCompat();
+        this->registerWindowCompat();
     }
 
-    ~wxWindowCompat() override { unregisterWindowCompat(); }
+    ~wxWindowCompat() override { this->unregisterWindowCompat(); }
 
     // The Qt widgets are not copyable; keep the forwarding constructor from taking over copies
     wxWindowCompat( const wxWindowCompat& ) = delete;

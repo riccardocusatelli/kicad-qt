@@ -49,6 +49,7 @@
 #include <core/ki_assert.h>
 
 #include <qt_strings.h>
+#include <wx/kiwx_menu.h>
 
 using namespace std::placeholders;
 
@@ -60,6 +61,81 @@ static int itemId( const QAction* aAction )
     int  id = aAction->data().toInt( &ok );
 
     return ok ? id : -1;
+}
+
+
+namespace
+{
+/// The wxMenuItem of an action of an ACTION_MENU: a child of the action, deleted with it.
+class MENU_ITEM_HOLDER : public QObject
+{
+public:
+    MENU_ITEM_HOLDER( QAction* aAction ) :
+            QObject( aAction ),
+            m_item( aAction, itemId( aAction ) >= 0 ? itemId( aAction ) : int( wxID_NONE ) )
+    {
+    }
+
+    wxMenuItem* Item() { return &m_item; }
+
+private:
+    wxMenuItem m_item;
+};
+}
+
+
+ACTION_MENU_ITEM::operator wxMenuItem*() const
+{
+    if( !m_action )
+        return nullptr;
+
+    MENU_ITEM_HOLDER* holder = m_action->findChild<MENU_ITEM_HOLDER*>( QString(),
+                                                                       Qt::FindDirectChildrenOnly );
+
+    if( !holder )
+        holder = new MENU_ITEM_HOLDER( m_action );
+
+    return holder->Item();
+}
+
+
+int ACTION_MENU_ITEM::GetId() const
+{
+    int id = m_action ? itemId( m_action ) : -1;
+    return id >= 0 ? id : int( wxID_NONE );
+}
+
+
+void ACTION_MENU_ITEM::Enable( bool aEnable )
+{
+    if( m_action )
+        m_action->setEnabled( aEnable );
+}
+
+
+bool ACTION_MENU_ITEM::IsEnabled() const
+{
+    return m_action && m_action->isEnabled();
+}
+
+
+void ACTION_MENU_ITEM::Check( bool aCheck )
+{
+    if( m_action )
+        m_action->setChecked( aCheck );
+}
+
+
+bool ACTION_MENU_ITEM::IsChecked() const
+{
+    return m_action && m_action->isChecked();
+}
+
+
+void ACTION_MENU_ITEM::SetItemLabel( const wxString& aLabel )
+{
+    if( m_action )
+        m_action->setText( ToQString( aLabel ) );
 }
 
 
@@ -183,7 +259,7 @@ QAction* ACTION_MENU::newItem( int aId, const wxString& aLabel, const wxString& 
 }
 
 
-QAction* ACTION_MENU::Add( const wxString& aLabel, int aId, BITMAPS aIcon )
+ACTION_MENU_ITEM ACTION_MENU::Add( const wxString& aLabel, int aId, BITMAPS aIcon )
 {
     KI_ASSERT_MSG( FindItem( aId ) == nullptr, wxS( "Duplicate menu IDs!" ) );
 
@@ -193,8 +269,8 @@ QAction* ACTION_MENU::Add( const wxString& aLabel, int aId, BITMAPS aIcon )
 }
 
 
-QAction* ACTION_MENU::Add( const wxString& aLabel, const wxString& aTooltip, int aId,
-                           BITMAPS aIcon, bool aIsCheckmarkEntry )
+ACTION_MENU_ITEM ACTION_MENU::Add( const wxString& aLabel, const wxString& aTooltip, int aId,
+                                   BITMAPS aIcon, bool aIsCheckmarkEntry )
 {
     KI_ASSERT_MSG( FindItem( aId ) == nullptr, wxS( "Duplicate menu IDs!" ) );
 
@@ -204,8 +280,8 @@ QAction* ACTION_MENU::Add( const wxString& aLabel, const wxString& aTooltip, int
 }
 
 
-QAction* ACTION_MENU::Add( const TOOL_ACTION& aAction, bool aIsCheckmarkEntry,
-                           const wxString& aOverrideLabel )
+ACTION_MENU_ITEM ACTION_MENU::Add( const TOOL_ACTION& aAction, bool aIsCheckmarkEntry,
+                                   const wxString& aOverrideLabel )
 {
     // ID numbers for tool actions are assigned above ACTION_BASE_UI_ID inside TOOL_EVENT
     BITMAPS icon = aAction.GetIcon();
@@ -223,7 +299,7 @@ QAction* ACTION_MENU::Add( const TOOL_ACTION& aAction, bool aIsCheckmarkEntry,
 }
 
 
-QAction* ACTION_MENU::Add( ACTION_MENU* aMenu )
+ACTION_MENU_ITEM ACTION_MENU::Add( ACTION_MENU* aMenu )
 {
     m_submenus.push_back( aMenu );
     aMenu->m_parentMenu = this;
@@ -705,4 +781,20 @@ QAction* ACTION_MENU::appendCopy( const ACTION_MENU& aMenu, const QAction* aSour
 
     addAction( newItem );
     return newItem;
+}
+
+
+ACTION_MENU_ITEM KIUI::AddMenuItem( ACTION_MENU* aMenu, int aId, const wxString& aText,
+                                    const wxString& aHelpText, const wxBitmapBundle& aImage,
+                                    wxItemKind aType )
+{
+    int id = aId == wxID_ANY ? wxWindowIDNew() : aId;
+
+    ACTION_MENU_ITEM item = aMenu->Add( aText, aHelpText, id, BITMAPS::INVALID_BITMAP,
+                                        aType == wxITEM_CHECK || aType == wxITEM_RADIO );
+
+    if( Pgm().GetCommonSettings() && Pgm().GetCommonSettings()->m_Appearance.use_icons_in_menus )
+        static_cast<QAction*>( item )->setIcon( aImage );
+
+    return item;
 }

@@ -106,6 +106,12 @@ long wxExecute( const wchar_t* const* aArgv, int aFlags = wxEXEC_ASYNC, wxProces
                 const wxExecuteEnv* aEnv = nullptr );
 bool wxShell( const wxString& aCommand = wxString() );
 
+/// Open a document or a directory with the default application of the system.
+bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags = 0 );
+
+/// Open a URL (or a file) with the default browser of the system.
+bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags = 0 );
+
 /// Yielding to the GUI: nothing to do without a GUI.
 inline bool wxYield() { return true; }
 inline bool wxSafeYield( void* = nullptr, bool = false ) { return true; }

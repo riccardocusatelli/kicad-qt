@@ -34,7 +34,7 @@ class STATUSBAR_WARNING_REPORTER_IMPL;
  * A wrapper for reporting to a wxTextCtrl object (any text entry: a multi-line text control
  * of the Qt compatibility layer is not a wxTextCtrl).
  */
-class KICOMMON_API WX_TEXT_CTRL_REPORTER : public REPORTER
+class KIQT_COMMON_API WX_TEXT_CTRL_REPORTER : public REPORTER
 {
 public:
     WX_TEXT_CTRL_REPORTER( wxTextEntry* aTextCtrl ) :
@@ -58,7 +58,7 @@ private:
 /**
  * A wrapper for reporting to a specific text location in a statusbar.
  */
-class KICOMMON_API STATUSBAR_REPORTER : public REPORTER
+class KIQT_COMMON_API STATUSBAR_REPORTER : public REPORTER
 {
 public:
     STATUSBAR_REPORTER( wxStatusBar* aStatusBar, int aPosition = 0 )
@@ -75,7 +75,7 @@ private:
 };
 
 
-class KICOMMON_API STATUSBAR_WARNING_REPORTER : public REPORTER
+class KIQT_COMMON_API STATUSBAR_WARNING_REPORTER : public REPORTER
 {
 public:
     STATUSBAR_WARNING_REPORTER( KISTATUSBAR* aStatusBar, const wxString& aSource );
