@@ -860,6 +860,7 @@ public:
     void EnableDragRowSize( bool = true ) {}
     void EnableDragColSize( bool = true ) {}
     void EnableDragGridSize( bool = true ) {}
+    void DisableDragGridSize() {}
     void EnableDragColMove( bool = true ) {}
     void EnableDragRowMove( bool = true ) {}
     bool CanDragRowMove() const { return false; }

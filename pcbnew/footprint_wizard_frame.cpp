@@ -48,7 +48,6 @@
 #include <footprint_edit_frame.h>
 #include <footprint_editor_settings.h>
 #include <pcbnew_id.h>
-#include <widgets/aui_json_serializer.h>
 
 #include <pgm_base.h>
 #include <settings/color_settings.h>
@@ -65,29 +64,13 @@
 #include <toolbars_footprint_wizard.h>
 #include <python/scripting/pcb_scripting_tool.h>
 #include <core/ki_assert.h>
+#include <toolkit/gui_services.h>
 #include <kiway.h>
-
-
-BEGIN_EVENT_TABLE( FOOTPRINT_WIZARD_FRAME, PCB_BASE_EDIT_FRAME )
-
-    // Window events
-    EVT_SIZE( FOOTPRINT_WIZARD_FRAME::OnSize )
-    EVT_ACTIVATE( FOOTPRINT_WIZARD_FRAME::OnActivate )
-
-     // Toolbar events
-    EVT_TOOL( ID_FOOTPRINT_WIZARD_SELECT_WIZARD, FOOTPRINT_WIZARD_FRAME::SelectCurrentWizard )
-    EVT_TOOL( ID_FOOTPRINT_WIZARD_DONE, FOOTPRINT_WIZARD_FRAME::ExportSelectedFootprint )
-
-    // listbox events
-    EVT_LISTBOX( ID_FOOTPRINT_WIZARD_PAGE_LIST, FOOTPRINT_WIZARD_FRAME::ClickOnPageList )
-    EVT_GRID_CMD_CELL_CHANGED( ID_FOOTPRINT_WIZARD_PARAMETER_LIST,
-                               FOOTPRINT_WIZARD_FRAME::ParametersUpdated )
-END_EVENT_TABLE()
 
 
 // Note: our FOOTPRINT_WIZARD_FRAME is always modal.
 
-FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, wxWindow* aParent,
+FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent,
                                                 FRAME_T aFrameType ) :
         PCB_BASE_EDIT_FRAME( aKiway, aParent, aFrameType, _( "Footprint Wizard" ),
                              wxDefaultPosition, wxDefaultSize,
@@ -102,9 +85,7 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, wxWindow* aParent
     SetModal( true );
 
     // Give an icon
-    wxIcon  icon;
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::module_wizard ) );
-    SetIcon( icon );
+    SetFrameIcons( { { BITMAPS::module_wizard, -1 } } );
 
     m_wizardName.Empty();
 
@@ -124,8 +105,6 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, wxWindow* aParent
     GetScreen()->m_Center = true;      // Center coordinate origins on screen.
 
     LoadSettings( config() );
-
-    SetSize( m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
 
     // Set some display options here, because the FOOTPRINT_WIZARD_FRAME
     // does not have a config menu to do that:
@@ -196,18 +175,7 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, wxWindow* aParent
 
     DisplayWizardInfos();
 
-    m_auimgr.SetManagedWindow( this );
-
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" ).Top().Layer(6) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ).Bottom().Layer(6)
-                      .BestSize( -1, m_msgFrameHeight ) );
-
-    m_auimgr.AddPane( m_parametersPanel, EDA_PANE().Palette().Name( "Params" ).Left().Position(0)
-                      .Caption( _( "Parameters" ) ).MinSize( 360, 180 ) );
-    m_auimgr.AddPane( m_buildMessageBox, EDA_PANE().Palette().Name( "Output" ).Left().Position(1)
-                      .CaptionVisible( false ).MinSize( 360, -1 ) );
-
-    m_auimgr.AddPane( GetCanvas(), wxAuiPaneInfo().Name( "DrawFrame" ).CentrePane() );
+    setupLayout();
 
     auto& galOpts = GetGalDisplayOptions();
     galOpts.SetCursorMode( KIGFX::CROSS_HAIR_MODE::FULLSCREEN_CROSS );
@@ -223,6 +191,8 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, wxWindow* aParent
 
     SetActiveLayer( F_Cu );
     GetToolManager()->PostAction( ACTIONS::zoomFitScreen );
+
+    setupToolkitEvents();
 
     // Do not Run a dialog here: on some Window Managers, it creates issues.
     // Reason: the FOOTPRINT_WIZARD_FRAME is run as modal;
@@ -240,7 +210,7 @@ FOOTPRINT_WIZARD_FRAME::~FOOTPRINT_WIZARD_FRAME()
 
     GetCanvas()->StopDrawing();
     // Be sure any event cannot be fired after frame deletion:
-    GetCanvas()->SetEvtHandlerEnabled( false );
+    TOOLKIT::SetEventsEnabled( GetCanvas(), false );
 
     // Be sure a active tool (if exists) is deactivated:
     if( m_toolManager )
@@ -282,15 +252,6 @@ void FOOTPRINT_WIZARD_FRAME::OnGridSize( wxSizeEvent& aSizeEvent )
     ResizeParamColumns();
 
     aSizeEvent.Skip();
-}
-
-
-void FOOTPRINT_WIZARD_FRAME::OnSize( wxSizeEvent& SizeEv )
-{
-    if( m_auimgr.GetManagedWindow() )
-        m_auimgr.Update();
-
-    SizeEv.Skip();
 }
 
 
@@ -532,22 +493,7 @@ void FOOTPRINT_WIZARD_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
     PCB_BASE_FRAME::SaveSettings( cfg );
 
-#if wxCHECK_VERSION( 3, 3, 0 )
-    {
-        WX_AUI_JSON_SERIALIZER serializer( m_auimgr );
-        nlohmann::json state = serializer.Serialize();
-
-        if( state.is_null() || state.empty() )
-            cfg->m_FootprintViewer.aui_state = nlohmann::json();
-        else
-            cfg->m_FootprintViewer.aui_state = state;
-
-        cfg->m_FootprintViewer.perspective.clear();
-    }
-#else
-    cfg->m_FootprintViewer.perspective = m_auimgr.SavePerspective().ToStdString();
-    cfg->m_FootprintViewer.aui_state = nlohmann::json();
-#endif
+    saveLayout( cfg );
 }
 
 
@@ -561,16 +507,23 @@ WINDOW_SETTINGS* FOOTPRINT_WIZARD_FRAME::GetWindowSettings( APP_SETTINGS_BASE* a
 }
 
 
-void FOOTPRINT_WIZARD_FRAME::OnActivate( wxActivateEvent& event )
+void FOOTPRINT_WIZARD_FRAME::handleActivateEvent( bool aActive )
 {
     // Ensure we do not have old selection:
-    if( !event.GetActive() )
+    if( !aActive )
         return;
 
     if( !m_wizardListShown )
     {
         m_wizardListShown = true;
-        wxPostEvent( this, wxCommandEvent( wxEVT_TOOL, ID_FOOTPRINT_WIZARD_SELECT_WIZARD ) );
+
+        // Later, from the event loop
+        CallAfter(
+                [this]()
+                {
+                    wxCommandEvent dummy;
+                    SelectCurrentWizard( dummy );
+                } );
     }
 #if 0
     // Currently, we do not have a way to see if a Python wizard has changed,

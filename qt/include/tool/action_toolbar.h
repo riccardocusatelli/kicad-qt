@@ -180,6 +180,9 @@ public:
     /// Repaint the toolbar (wxWindow::Refresh()).
     void Refresh() { update(); }
 
+    /// Give the focus to the toolbar (wxWindow::SetFocus()).
+    void SetFocus() { setFocus(); }
+
     /// The window of the toolbar (wxWindow::GetParent()).
     QWidget* GetParent() const { return parentWidget(); }
 

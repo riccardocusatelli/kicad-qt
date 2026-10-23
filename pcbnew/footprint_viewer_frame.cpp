@@ -41,7 +41,6 @@
 #include <widgets/kistatusbar.h>
 #include <widgets/msgpanel.h>
 #include <widgets/wx_listbox.h>
-#include <widgets/wx_aui_utils.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <pad.h>
 #include <pcb_draw_panel_gal.h>
@@ -79,32 +78,11 @@
 #include "invoke_pcb_dialog.h"
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <toolkit/gui_services.h>
 
 using namespace std::placeholders;
 
-BEGIN_EVENT_TABLE( FOOTPRINT_VIEWER_FRAME, PCB_BASE_FRAME )
-    // Window events
-    EVT_SIZE( FOOTPRINT_VIEWER_FRAME::OnSize )
-    EVT_ACTIVATE( FOOTPRINT_VIEWER_FRAME::OnActivate )
-
-    EVT_MENU( wxID_EXIT, FOOTPRINT_VIEWER_FRAME::OnExitKiCad )
-    EVT_MENU( wxID_CLOSE, FOOTPRINT_VIEWER_FRAME::CloseFootprintViewer )
-
-    // Toolbar events
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, FOOTPRINT_VIEWER_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, FOOTPRINT_VIEWER_FRAME::OnSelectGrid )
-
-    EVT_TEXT( ID_MODVIEW_LIB_FILTER, FOOTPRINT_VIEWER_FRAME::OnLibFilter )
-    EVT_TEXT( ID_MODVIEW_FOOTPRINT_FILTER, FOOTPRINT_VIEWER_FRAME::OnFPFilter )
-
-    // listbox events
-    EVT_LISTBOX( ID_MODVIEW_LIB_LIST, FOOTPRINT_VIEWER_FRAME::ClickOnLibList )
-    EVT_LISTBOX( ID_MODVIEW_FOOTPRINT_LIST, FOOTPRINT_VIEWER_FRAME::ClickOnFootprintList )
-
-END_EVENT_TABLE()
-
-
-FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     PCB_BASE_FRAME( aKiway, aParent, FRAME_FOOTPRINT_VIEWER, _( "Footprint Library Browser" ),
                     wxDefaultPosition, wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE,
                     FOOTPRINT_VIEWER_FRAME_NAME ),
@@ -123,9 +101,7 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent
     m_configName = FOOTPRINT_VIEWER_FRAME_NAME;
 
     // Give an icon
-    wxIcon  icon;
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_footprint_browser ) );
-    SetIcon( icon );
+    SetFrameIcons( { { BITMAPS::icon_footprint_browser, -1 } } );
 
     m_libListWidth = 200;
     m_fpListWidth = 300;
@@ -259,29 +235,13 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent
 
     drawPanel->DisplayBoard( m_pcb );
 
-    m_auimgr.SetManagedWindow( this );
-
-    // Horizontal items; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().VToolbar().Name( "TopMainToolbar" ).Top().Layer(6) );
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" ).Left().Layer(3) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ).Bottom().Layer(6) );
-
-    // Vertical items; layers 1 - 3
-    m_auimgr.AddPane( libPanel, EDA_PANE().Palette().Name( "Libraries" ).Left().Layer(2)
-                      .CaptionVisible( false ).MinSize( 100, -1 ).BestSize( 200, -1 ) );
-    m_auimgr.AddPane( fpPanel, EDA_PANE().Palette().Name( "Footprints" ).Left().Layer(1)
-                      .CaptionVisible( false ).MinSize( 100, -1 ).BestSize( 300, -1 ) );
-
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" ).Center() );
-
-    // after changing something to the aui manager call Update() to reflect the changes
-    m_auimgr.Update();
+    setupLayout( libPanel, fpPanel );
 
     if( m_libListWidth > 0 )
-        SetAuiPaneSize( m_auimgr, m_auimgr.GetPane( "Libraries" ), m_libListWidth, -1 );
+        SetPaneSize( wxS( "Libraries" ), m_libListWidth, -1 );
 
     if( m_fpListWidth > 0 )
-        SetAuiPaneSize( m_auimgr, m_auimgr.GetPane( "Footprints" ), m_fpListWidth, -1 );
+        SetPaneSize( wxS( "Footprints" ), m_fpListWidth, -1 );
 
     // The canvas should not steal the focus from the list boxes
     GetCanvas()->SetCanFocus( false );
@@ -294,6 +254,8 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent
 
     updateView();
     setupUnits( config() );
+
+    setupToolkitEvents();
 
     ReCreateFootprintList();
     Raise();            // On some window managers, this is needed
@@ -310,7 +272,7 @@ FOOTPRINT_VIEWER_FRAME::~FOOTPRINT_VIEWER_FRAME()
     GetCanvas()->StopDrawing();
     GetCanvas()->GetView()->Clear();
     // Be sure any event cannot be fired after frame deletion:
-    GetCanvas()->SetEvtHandlerEnabled( false );
+    TOOLKIT::SetEventsEnabled( GetCanvas(), false );
     m_fpList->Disconnect( wxEVT_LEFT_DCLICK,
                           wxMouseEventHandler( FOOTPRINT_VIEWER_FRAME::DClickOnFootprintList ),
                           nullptr, this );
@@ -392,15 +354,6 @@ void FOOTPRINT_VIEWER_FRAME::doCloseWindow()
     GetCanvas()->StopDrawing();
 
     Destroy();
-}
-
-
-void FOOTPRINT_VIEWER_FRAME::OnSize( wxSizeEvent& SizeEv )
-{
-    if( m_auimgr.GetManagedWindow() )
-        m_auimgr.Update();
-
-    SizeEv.Skip();
 }
 
 
@@ -913,9 +866,9 @@ void FOOTPRINT_VIEWER_FRAME::setCurFootprintName( const wxString& aName )
 }
 
 
-void FOOTPRINT_VIEWER_FRAME::OnActivate( wxActivateEvent& event )
+void FOOTPRINT_VIEWER_FRAME::handleActivateEvent( bool aActive )
 {
-    if( event.GetActive() )
+    if( aActive )
     {
         // Ensure we have the right library list:
         std::vector< wxString > libNicknames = PROJECT_PCB::FootprintLibAdapter( &Prj() )->GetLibraryNames();
@@ -942,7 +895,7 @@ void FOOTPRINT_VIEWER_FRAME::OnActivate( wxActivateEvent& event )
         }
     }
 
-    event.Skip();    // required under wxMAC
+    PCB_BASE_FRAME::handleActivateEvent( aActive );
 }
 
 
@@ -1085,13 +1038,13 @@ void FOOTPRINT_VIEWER_FRAME::updateView()
 }
 
 
-void FOOTPRINT_VIEWER_FRAME::OnExitKiCad( wxCommandEvent& event )
+void FOOTPRINT_VIEWER_FRAME::OnExitKiCad()
 {
     Kiway().OnKiCadExit();
 }
 
 
-void FOOTPRINT_VIEWER_FRAME::CloseFootprintViewer( wxCommandEvent& event )
+void FOOTPRINT_VIEWER_FRAME::CloseFootprintViewer()
 {
     Close( false );
 }

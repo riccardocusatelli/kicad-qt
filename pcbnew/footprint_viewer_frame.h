@@ -106,7 +106,7 @@ public:
     void HardRedraw() override;
 
 protected:
-    FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
     MAGNETIC_SETTINGS m_magneticItems;
 
@@ -133,8 +133,8 @@ private:
     void displayFootprint( FOOTPRINT* aFootprint );
 
     void doCloseWindow() override;
-    void CloseFootprintViewer( wxCommandEvent& event );
-    void OnExitKiCad( wxCommandEvent& event );
+    void CloseFootprintViewer();
+    void OnExitKiCad();
 
     void OnLibFilter( wxCommandEvent& aEvent );
     void OnFPFilter( wxCommandEvent& aEvent );
@@ -157,18 +157,23 @@ private:
      * Called when the frame frame is activate to reload the libraries and component lists
      * that can be changed by the schematic editor or the library editor.
      */
-    void OnActivate( wxActivateEvent& event );
+    void handleActivateEvent( bool aActive ) override;
 
     /// @copydoc PCB_BASE_FRAME::Update3DView
     void Update3DView( bool aMarkDirty, bool aRefresh, const wxString* aTitle = nullptr ) override;
 
     void updateView();
 
-    DECLARE_EVENT_TABLE()
-
     friend struct PCB::IFACE;       // constructor called from here only
 
 private:
+    /// The panes of the frame: the lists of the libraries and of the footprints, the canvas
+    /// (footprint_viewer_frame_wx.cpp and the Qt build).
+    void setupLayout( wxPanel* aLibPanel, wxPanel* aFpPanel );
+
+    /// The events of the frame that the toolkit gives to it (menu commands, filters, lists...).
+    void setupToolkitEvents();
+
     wxSearchCtrl*       m_libFilter;
     WX_LISTBOX*         m_libList;        // The list of library names.
     int                 m_libListWidth;   // Last width of the window.

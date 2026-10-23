@@ -42,6 +42,7 @@ class wxListBox;
 class WX_GRID;
 class wxGridEvent;
 class FOOTPRINT_EDIT_FRAME;
+class PCBNEW_SETTINGS;
 
 
 enum WizardParameterColumnNames
@@ -54,7 +55,7 @@ enum WizardParameterColumnNames
 class FOOTPRINT_WIZARD_FRAME : public PCB_BASE_EDIT_FRAME
 {
 public:
-    FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, wxWindow* parent, FRAME_T aFrameType );
+    FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* parent, FRAME_T aFrameType );
 
     ~FOOTPRINT_WIZARD_FRAME();
 
@@ -166,7 +167,7 @@ private:
      * Called when the frame frame is activate to reload the libraries and component lists
      * that can be changed by the schematic editor or the library editor.
      */
-    void OnActivate( wxActivateEvent& event );
+    void handleActivateEvent( bool aActive ) override;
 
     /**
      * Update the footprint python parameters values from the values in grid.
@@ -176,7 +177,15 @@ private:
     /// @copydoc PCB_BASE_FRAME::Update3DView
     void Update3DView( bool aMarkDirty, bool aRefresh, const wxString* aTitle = nullptr ) override;
 
-    DECLARE_EVENT_TABLE()
+    /// The panes of the frame: the parameters, the output of the wizard and the canvas
+    /// (footprint_wizard_frame_wx.cpp and the Qt build).
+    void setupLayout();
+
+    /// The events of the frame that the toolkit gives to it (the page list, the parameters...).
+    void setupToolkitEvents();
+
+    /// Store the layout of the panes in the settings (the wxWidgets build).
+    void saveLayout( PCBNEW_SETTINGS* aCfg );
 
 protected:
     wxString        m_wizardName;           ///< name of the current wizard

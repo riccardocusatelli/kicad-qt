@@ -1537,6 +1537,15 @@ wxListBox::wxListBox( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, c
 }
 
 
+wxListBox::wxListBox( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+                      int aCount, const wxString aChoices[], long aStyle ) :
+        wxListBox( aParent, aId, aPos, aSize,
+                   aChoices ? wxArrayString( size_t( aCount ), aChoices ) : wxArrayString(),
+                   aStyle )
+{
+}
+
+
 wxString wxListBox::GetString( unsigned int aIndex ) const
 {
     QListWidgetItem* it = item( int( aIndex ) );
@@ -1585,6 +1594,18 @@ void wxListBox::SetSelection( int aIndex, bool aSelect )
 
     if( QListWidgetItem* it = item( aIndex ) )
         it->setSelected( aSelect );
+}
+
+
+bool wxListBox::SetStringSelection( const wxString& aString, bool aSelect )
+{
+    int index = FindString( aString );
+
+    if( index == wxNOT_FOUND )
+        return false;
+
+    SetSelection( index, aSelect );
+    return true;
 }
 
 

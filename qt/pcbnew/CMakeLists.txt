@@ -92,6 +92,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     exporters/export_hyperlynx.cpp
     exporters/export_idf.cpp
     files.cpp
+    footprint_chooser_frame.cpp
     footprint_edit_frame.cpp
     footprint_editor_utils.cpp
     footprint_editor_settings.cpp
@@ -99,7 +100,10 @@ set( KIQT_PCBNEW_GUI_SRCS
     footprint_libraries_utils.cpp
     footprint_info_impl.cpp
     footprint_preview_panel.cpp
+    footprint_viewer_frame.cpp
     footprint_wizard.cpp
+    footprint_wizard_frame.cpp
+    footprint_wizard_frame_functions.cpp
     fp_tree_model_adapter.cpp
     fp_tree_synchronizing_adapter.cpp
     generate_footprint_info.cpp
@@ -148,6 +152,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     router/router_tool.cpp
     sel_layer.cpp
     toolbars_footprint_editor.cpp
+    toolbars_footprint_viewer.cpp
     toolbars_footprint_wizard.cpp
     toolbars_pcb_editor.cpp
     tools/align_distribute_tool.cpp
@@ -164,6 +169,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/edit_tool_move_fct.cpp
     tools/footprint_chooser_selection_tool.cpp
     tools/footprint_editor_control.cpp
+    tools/footprint_wizard_tools.cpp
     tools/generator_tool.cpp
     tools/generator_tool_pns_proxy.cpp
     tools/global_edit_tool.cpp
@@ -357,6 +363,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_footprint_checker.cpp
     dialogs/dialog_footprint_properties.cpp
     dialogs/dialog_footprint_properties_fp_editor.cpp
+    dialogs/dialog_footprint_wizard_list.cpp
     dialogs/dialog_fp_edit_pad_table.cpp
     dialogs/dialog_gen_footprint_position.cpp
     dialogs/dialog_gencad_export_options.cpp
@@ -518,6 +525,8 @@ add_library( pcbnew_gui_qt STATIC
     pcb_base_edit_frame_qt.cpp
     footprint_edit_frame_qt.cpp
     footprint_tree_pane_qt.cpp
+    footprint_viewer_frame_qt.cpp
+    footprint_wizard_frame_qt.cpp
     pcb_edit_frame_qt.cpp
     pcb_layer_box_selector_qt.cpp
     widgets/appearance_controls_qt.cpp

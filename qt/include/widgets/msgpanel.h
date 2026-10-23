@@ -47,6 +47,9 @@ public:
     EDA_MSG_PANEL( QWidget* aParent );
     ~EDA_MSG_PANEL();
 
+    /// Hide the panel (wxWindow::Hide()).
+    void Hide() { hide(); }
+
     /**
      * Clear all messages from the message panel.
      */

@@ -479,7 +479,7 @@ public:
         return strings;
     }
 
-    int FindString( const wxString& aString, bool aCaseSensitive = false ) const
+    virtual int FindString( const wxString& aString, bool aCaseSensitive = false ) const
     {
         for( unsigned int i = 0; i < GetCount(); ++i )
         {
@@ -502,7 +502,7 @@ public:
         return sel >= 0 ? GetString( sel ) : wxString();
     }
 
-    bool SetStringSelection( const wxString& aString )
+    virtual bool SetStringSelection( const wxString& aString )
     {
         int index = FindString( aString );
 
@@ -673,6 +673,8 @@ public:
                         const wxPoint& aPos = wxDefaultPosition,
                         const wxSize& aSize = wxDefaultSize,
                         const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
+    wxListBox( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+               int aCount, const wxString aChoices[], long aStyle = 0 );
 
     unsigned int GetCount() const override { return count(); }
     wxString GetString( unsigned int aIndex ) const override;
@@ -692,6 +694,11 @@ public:
     void DeselectAll();
     void EnsureVisible( int aIndex );
     void SetFirstItem( int aIndex ) { EnsureVisible( aIndex ); }
+
+    using wxItemContainerCompat<QListWidget>::SetStringSelection;
+
+    /// Select or deselect the item of a string.
+    virtual bool SetStringSelection( const wxString& aString, bool aSelect );
 
     using wxItemContainerCompat<QListWidget>::Insert;
     using wxItemContainerCompat<QListWidget>::GetClientData;

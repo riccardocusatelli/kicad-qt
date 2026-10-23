@@ -232,6 +232,7 @@ set( PCBNEW_DIALOGS
     dialogs/panel_zone_properties_base.cpp
     footprint_wizard.cpp
     footprint_wizard_frame.cpp
+    footprint_wizard_frame_wx.cpp
     footprint_wizard_frame_functions.cpp
     )
 
@@ -412,6 +413,7 @@ set( PCBNEW_CLASS_SRCS
     footprint_import_reconciler.cpp
     footprint_libraries_utils.cpp
     footprint_viewer_frame.cpp
+    footprint_viewer_frame_wx.cpp
     fp_tree_model_adapter.cpp
     generate_footprint_info.cpp
     graphics_cleaner.cpp

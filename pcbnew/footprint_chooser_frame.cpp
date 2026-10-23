@@ -56,6 +56,8 @@
 #include <tools/pcb_editor_conditions.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+#include <toolkit/gui_services.h>
+#include <widgets/msgpanel.h>
 #include <tool/action_manager.h>
 
 
@@ -94,7 +96,7 @@ END_EVENT_TABLE()
                       | wxWANTS_CHARS | wxFRAME_NO_TASKBAR )
 
 
-FOOTPRINT_CHOOSER_FRAME::FOOTPRINT_CHOOSER_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+FOOTPRINT_CHOOSER_FRAME::FOOTPRINT_CHOOSER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         PCB_BASE_FRAME( aKiway, aParent, FRAME_FOOTPRINT_CHOOSER, _( "Footprint Chooser" ),
                         wxDefaultPosition, wxDefaultSize, aParent ? PARENT_STYLE : MODAL_STYLE,
                         FOOTPRINT_CHOOSER_FRAME_NAME ),
@@ -328,7 +330,7 @@ void FOOTPRINT_CHOOSER_FRAME::quiescePreview()
         m_preview3DCanvas->Show();
 
         m_preview3DCanvas->ReleaseOpenGL();
-        m_preview3DCanvas->SetEvtHandlerEnabled( false );
+        TOOLKIT::SetEventsEnabled( m_preview3DCanvas, false );
     }
 
     if( m_chooserPanel )

@@ -69,7 +69,13 @@ int FOOTPRINT_WIZARD_TOOLS::SelectNextWizardPage( const TOOL_EVENT& aEvent )
 
 int FOOTPRINT_WIZARD_TOOLS::ExportFpToEditor( const TOOL_EVENT& aEvent )
 {
-    wxPostEvent( frame(), wxCommandEvent( wxEVT_TOOL, ID_FOOTPRINT_WIZARD_DONE ) );
+    // Later, from the event loop
+    frame()->CallAfter(
+            [frame = frame()]()
+            {
+                wxCommandEvent dummy;
+                frame->ExportSelectedFootprint( dummy );
+            } );
     return 0;
 }
 

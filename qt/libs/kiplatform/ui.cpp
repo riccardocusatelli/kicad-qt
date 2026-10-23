@@ -69,7 +69,7 @@ bool KIPLATFORM::UI::IsDarkTheme()
 }
 
 
-void KIPLATFORM::UI::ForceFocus( QWidget* aWindow )
+void KIPLATFORM::UI::ForceFocus( wxWidgetArgCompat aWindow )
 {
     if( !aWindow )
         return;

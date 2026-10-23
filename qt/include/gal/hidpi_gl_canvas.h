@@ -109,6 +109,12 @@ public:
     /// Show or hide the canvas; a shown canvas is raised.
     bool ShowCanvas( bool aShow );
 
+    /// Show or hide the canvas (wxWindow::Show()).
+    bool Show( bool aShow = true ) { return ShowCanvas( aShow ); }
+
+    /// The canvas is not hidden (its parents can be) (wxWindow::IsShown()).
+    bool IsShown() const { return !isHidden(); }
+
     /// The canvas is shown on the screen, with a size.
     bool IsCanvasVisible() const;
 

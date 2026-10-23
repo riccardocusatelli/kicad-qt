@@ -74,7 +74,7 @@ public:
     void UpdateStatusBar() override {}
 
 protected:
-    FOOTPRINT_CHOOSER_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    FOOTPRINT_CHOOSER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
 private:
     bool filterByPinCount();

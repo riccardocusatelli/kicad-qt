@@ -55,7 +55,7 @@ namespace KIPLATFORM
          *
          * @param aWindow is the window to pass focus to
          */
-        KIQT_API void ForceFocus( QWidget* aWindow );
+        KIQT_API void ForceFocus( wxWidgetArgCompat aWindow );
 
         /**
          * Let a file dialog show the network file systems (GTK): the dialogs of Qt show them.

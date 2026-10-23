@@ -117,6 +117,9 @@ public:
     /// Give the focus to the canvas.
     void SetFocus();
 
+    /// Let the canvas take the focus (with the mouse and the keyboard), or not.
+    void SetCanFocus( bool aCanFocus ) { setFocusPolicy( aCanFocus ? Qt::StrongFocus : Qt::NoFocus ); }
+
     bool StatusPopupHasFocus();
 
     void SetStatusPopup( QWidget* aPopup )
