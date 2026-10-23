@@ -27,6 +27,8 @@
 #include <lib_id.h>
 #include <eda_units.h>
 #include <gal/color4d.h>
+#include <toolkit/toolkit_types.h>
+#include <toolkit/toolkit_window_arg.h>
 
 class FOOTPRINT_PREVIEW_PANEL_BASE;
 class BOARD;
@@ -160,7 +162,7 @@ public:
      * Return a footprint preview panel instance via Kiface. May return null if Kiway is not
      * available or there is any error on load.
      */
-    static FOOTPRINT_PREVIEW_PANEL_BASE* Create( wxWindow* aParent, KIWAY& aKiway );
+    static FOOTPRINT_PREVIEW_PANEL_BASE* Create( TOOLKIT_WINDOW_ARG aParent, KIWAY& aKiway );
 };
 
 

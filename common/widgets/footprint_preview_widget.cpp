@@ -143,10 +143,10 @@ void FOOTPRINT_PREVIEW_WIDGET::RefreshAll()
 }
 
 
-FOOTPRINT_PREVIEW_PANEL_BASE* FOOTPRINT_PREVIEW_PANEL_BASE::Create( wxWindow* aParent,
+FOOTPRINT_PREVIEW_PANEL_BASE* FOOTPRINT_PREVIEW_PANEL_BASE::Create( TOOLKIT_WINDOW_ARG aParent,
                                                                     KIWAY& aKiway )
 {
-    wxWindow* panel = nullptr;
+    TOOLKIT_WINDOW* panel = nullptr;
 
     try
     {

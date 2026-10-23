@@ -26,8 +26,9 @@
  * @file lib_tree.h
  * LIB_TREE of the Qt build: the tree of the libraries of the choosers and of the library editors,
  * with its search field, its sort menu and the details of the selected item.  The interface is
- * the one of include/widgets/lib_tree.h; the EVT_LIBITEM_SELECTED and EVT_LIBITEM_CHOSEN events
- * of the wxWidgets build are callbacks.
+ * the one of include/widgets/lib_tree.h.  The selected and the chosen items go to callbacks, and
+ * as the EVT_LIBITEM_SELECTED and EVT_LIBITEM_CHOSEN events of the wxWidgets build to the windows
+ * of the compatibility layer that contain the tree.
  */
 
 #ifndef LIB_TREE_H
@@ -42,6 +43,7 @@
 #include <vector>
 
 #include <lib_tree_model_adapter.h>
+#include <wx/event.h>
 #include <widgets/html_window.h>
 
 class BITMAP_BUTTON;
@@ -166,10 +168,15 @@ public:
      */
     void RefreshLibTree();
 
-    QWidget* GetFocusTarget();
+    /// No painting until Thaw() (the changes of the tree paint as a single final state).
+    void Freeze() { setUpdatesEnabled( false ); }
+    void Thaw() { setUpdatesEnabled( true ); }
 
-    /// The layout of the filters (FILTERS flag), or nullptr.
-    QVBoxLayout* GetFiltersSizer() { return m_filtersSizer; }
+    /// The window of the search field, or of the tree.
+    wxWindow* GetFocusTarget();
+
+    /// The sizer of the filters (FILTERS flag), or nullptr.
+    wxBoxSizer* GetFiltersSizer() { return m_filtersSizer; }
 
     void FocusSearchFieldIfExists();
 
@@ -216,6 +223,10 @@ protected:
      * Post #SYMBOL_SELECTED event to notify the selection handler that a part has been selected.
      */
     void postSelectEvent();
+
+    /// Give a command event to the windows of the compatibility layer that contain the tree,
+    /// from the nearest one to its top level window, until a window processes it.
+    void sendEventToParents( wxEventType aType );
 
     /**
      * Structure storing state of the symbol tree widget.
@@ -271,12 +282,18 @@ protected:
 
     wxString         m_recentSearchesKey;
 
-    QVBoxLayout*     m_filtersSizer;
+    wxBoxSizer*      m_filtersSizer;
 
     bool             m_previewDisabled;
 
     std::function<void()> m_selectedHandler;
     std::function<void()> m_chosenHandler;
 };
+
+/// The user selected an item of the tree (the windows that contain the tree get it).
+wxDECLARE_EVENT( EVT_LIBITEM_SELECTED, wxCommandEvent );
+
+/// The user chose an item of the tree: double click or Enter.
+wxDECLARE_EVENT( EVT_LIBITEM_CHOSEN, wxCommandEvent );
 
 #endif /* LIB_TREE_H */

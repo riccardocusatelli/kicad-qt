@@ -177,6 +177,7 @@ set( KIQT_COMMON_TOOL_SRCS
     editor_conditions.cpp
     grid_helper.cpp
     grid_menu.cpp
+    library_editor_control.cpp
     picker_tool.cpp
     point_editor_behavior.cpp
     selection_conditions.cpp
@@ -269,9 +270,13 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling.cpp
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling_common.cpp
     ${CMAKE_SOURCE_DIR}/common/eda_doc.cpp
+    ${CMAKE_SOURCE_DIR}/common/executable_names.cpp
     ${CMAKE_SOURCE_DIR}/common/gal_display_options_common.cpp
+    ${CMAKE_SOURCE_DIR}/common/gestfich_gui.cpp
     ${CMAKE_SOURCE_DIR}/common/gui_reporters.cpp
+    ${CMAKE_SOURCE_DIR}/common/hotkey_store.cpp
     ${CMAKE_SOURCE_DIR}/common/hotkeys_basic.cpp
+    ${CMAKE_SOURCE_DIR}/common/io/csv.cpp
     ${CMAKE_SOURCE_DIR}/common/kiway_holder.cpp
     ${CMAKE_SOURCE_DIR}/common/launch_ext.cpp
     ${CMAKE_SOURCE_DIR}/common/origin_viewitem.cpp

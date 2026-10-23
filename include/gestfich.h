@@ -53,7 +53,7 @@ class EDA_LIST_DIALOG;
  * @retval true if PDF viewer found.
  * @retval false if no PDF viewer found.
  */
-KICOMMON_API bool OpenPDF( const wxString& file );
+KIQT_COMMON_API bool OpenPDF( const wxString& file );
 
 /**
  * @param aSrcPath is the full filename of the source.
@@ -84,9 +84,9 @@ KICOMMON_API void CopySexprFile( const wxString& aSrcPath, const wxString& aDest
  * In this case aFileName is a shortname and FindKicadFile() is called to return the path.
  * In the other case, aFileName is a full file name (passed prefixed with the path).
  */
-KICOMMON_API int ExecuteFile( const wxString& aEditorName,
-                              const wxString& aFileName = wxEmptyString,
-                              wxProcess* aCallback = nullptr, bool aFileForKicad = true );
+KIQT_COMMON_API int ExecuteFile( const wxString& aEditorName,
+                                 const wxString& aFileName = wxEmptyString,
+                                 wxProcess* aCallback = nullptr, bool aFileForKicad = true );
 
 /**
  * Run a user-supplied command line through the platform shell so glob expansion, pipes, and

@@ -195,7 +195,7 @@ LIB_TREE::LIB_TREE( QWidget* aParent, const wxString& aRecentSearchesKey,
 
     if( aFlags & FILTERS )
     {
-        m_filtersSizer = new QVBoxLayout();
+        m_filtersSizer = new wxBoxSizer( wxVERTICAL );
         m_filtersSizer->setContentsMargins( 4, 0, 0, 0 );
         sizer->addLayout( m_filtersSizer );
     }
@@ -535,12 +535,12 @@ void LIB_TREE::RefreshLibTree()
 }
 
 
-QWidget* LIB_TREE::GetFocusTarget()
+wxWindow* LIB_TREE::GetFocusTarget()
 {
     if( m_query_ctrl )
-        return m_query_ctrl;
+        return wxWindowFromQt( m_query_ctrl );
     else
-        return m_tree_ctrl;
+        return wxWindowFromQt( m_tree_ctrl );
 }
 
 
@@ -601,6 +601,8 @@ void LIB_TREE::postSelectEvent()
             {
                 if( m_chosenHandler )
                     m_chosenHandler();
+
+                sendEventToParents( EVT_LIBITEM_CHOSEN );
             },
             Qt::QueuedConnection );
 }
@@ -807,7 +809,32 @@ void LIB_TREE::onPreselect()
 
     if( m_selectedHandler )
         m_selectedHandler();
+
+    sendEventToParents( EVT_LIBITEM_SELECTED );
 }
+
+
+void LIB_TREE::sendEventToParents( wxEventType aType )
+{
+    wxCommandEvent event( aType );
+    event.SetEventObject( this );
+
+    for( QWidget* widget = parentWidget(); widget; widget = widget->parentWidget() )
+    {
+        if( wxWindow* window = wxFindWindowFromQtCompat( widget ) )
+        {
+            if( window->ProcessEvent( event ) )
+                return;
+        }
+
+        if( widget->isWindow() )
+            return;
+    }
+}
+
+
+wxDEFINE_EVENT( EVT_LIBITEM_SELECTED, wxCommandEvent );
+wxDEFINE_EVENT( EVT_LIBITEM_CHOSEN, wxCommandEvent );
 
 
 void LIB_TREE::onItemContextMenu( const QPoint& aPos )

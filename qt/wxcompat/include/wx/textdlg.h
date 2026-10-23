@@ -34,9 +34,12 @@
 
 #include <memory>
 
-#include <QInputDialog>
+#include <QDialogButtonBox>
+#include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
+#include <QVBoxLayout>
+
+#include <dialog_shim.h>
 
 #include <qt_strings.h>
 
@@ -45,73 +48,60 @@
 #define wxTextEntryDialogStyle ( wxOK | wxCANCEL | wxCENTRE )
 
 
-/// The dialog of wxTextEntryDialog: the validator checks the text before the dialog closes.
-class wxTextEntryDialogCompat : public QInputDialog
-{
-public:
-    using QInputDialog::QInputDialog;
-
-    void SetValidator( const wxTextValidator& aValidator )
-    {
-        m_validator.reset( static_cast<wxTextValidator*>( aValidator.Clone() ) );
-    }
-
-    void done( int aResult ) override
-    {
-        if( aResult == QDialog::Accepted && m_validator )
-        {
-            wxString error = m_validator->IsValid( ToWxString( textValue() ) );
-
-            if( !error.empty() )
-            {
-                QMessageBox::warning( this, windowTitle(), ToQString( error ) );
-                return;
-            }
-        }
-
-        QInputDialog::done( aResult );
-    }
-
-private:
-    std::unique_ptr<wxTextValidator> m_validator;
-};
-
-
-class wxTextEntryDialog
+/**
+ * A dialog asking a line of text (wxTextEntryDialog): a dialog of KiCad (DIALOG_SHIM) with a
+ * message, a text control and the OK and Cancel buttons.  As wxWidgets, the derived dialogs can
+ * check the text in TransferDataFromWindow() (the dialog stays open if it returns false).
+ */
+class wxTextEntryDialog : public DIALOG_SHIM
 {
 public:
     wxTextEntryDialog( wxWidgetArgCompat aParent, const wxString& aMessage,
                        const wxString& aCaption = wxGetTextFromUserPromptStr,
                        const wxString& aValue = wxEmptyString, long aStyle = wxTextEntryDialogStyle,
                        const wxPoint& aPos = wxDefaultPosition ) :
-            m_dialog( aParent.get() )
+            DIALOG_SHIM( aParent, aCaption )
     {
-        m_dialog.setInputMode( QInputDialog::TextInput );
-        m_dialog.setLabelText( ToQString( aMessage ) );
-        m_dialog.setWindowTitle( ToQString( aCaption ) );
-        m_dialog.setTextValue( ToQString( aValue ) );
+        QVBoxLayout* mainSizer = new QVBoxLayout( this );
+
+        QLabel* label = new QLabel( ToQString( aMessage ), this );
+        mainSizer->addWidget( label );
+
+        m_textctrl = new wxTextCtrl( this, wxID_ANY, aValue );
+        m_textctrl->setMinimumWidth( 300 );
 
         if( aStyle & wxTE_PASSWORD )
-            m_dialog.setTextEchoMode( QLineEdit::Password );
+            m_textctrl->setEchoMode( QLineEdit::Password );
+
+        mainSizer->addWidget( m_textctrl );
+
+        wxStdDialogButtonSizer* buttons = new wxStdDialogButtonSizer( this );
+        connectStandardButton( buttons->AddStandardButton( QDialogButtonBox::Ok, wxID_OK ),
+                               wxID_OK );
+        connectStandardButton( buttons->AddStandardButton( QDialogButtonBox::Cancel, wxID_CANCEL ),
+                               wxID_CANCEL );
+        mainSizer->addWidget( buttons );
+
+        SetupStandardButtons();
+        SetInitialFocus( m_textctrl );
+        m_textctrl->selectAll();
     }
 
-    int ShowModal() { return m_dialog.exec() == QDialog::Accepted ? wxID_OK : wxID_CANCEL; }
-
-    wxString GetValue() const { return ToWxString( m_dialog.textValue() ); }
-    void SetValue( const wxString& aValue ) { m_dialog.setTextValue( ToQString( aValue ) ); }
+    wxString GetValue() const { return m_textctrl->GetValue(); }
+    void SetValue( const wxString& aValue ) { m_textctrl->SetValue( aValue ); }
 
     void SetTextValidator( const wxTextValidator& aValidator )
     {
-        m_dialog.SetValidator( aValidator );
+        m_textctrl->SetValidator( aValidator );
     }
 
     void SetTextValidator( long aStyle = wxFILTER_NONE )
     {
-        m_dialog.SetValidator( wxTextValidator( aStyle ) );
+        m_textctrl->SetValidator( wxTextValidator( aStyle ) );
     }
 
-private:
-    wxTextEntryDialogCompat m_dialog;
+protected:
+    wxTextCtrl* m_textctrl;
 };
 
 

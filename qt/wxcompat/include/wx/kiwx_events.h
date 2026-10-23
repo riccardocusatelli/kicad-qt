@@ -95,6 +95,13 @@ enum wxEventTypeCompat
     wxEVT_HYPERLINK,
     wxEVT_SCROLL_CHANGED,
     wxEVT_SCROLL_THUMBTRACK,
+    wxEVT_SCROLL_THUMBRELEASE,
+    wxEVT_SCROLL_TOP,
+    wxEVT_SCROLL_BOTTOM,
+    wxEVT_SCROLL_LINEUP,
+    wxEVT_SCROLL_LINEDOWN,
+    wxEVT_SCROLL_PAGEUP,
+    wxEVT_SCROLL_PAGEDOWN,
     wxEVT_LIST_ITEM_SELECTED,
     wxEVT_LIST_ITEM_DESELECTED,
     wxEVT_LIST_ITEM_ACTIVATED,
@@ -482,6 +489,42 @@ public:
 private:
     double m_value;
 };
+
+
+/// The state of the mouse and of the modifier keys now (wxMouseState).
+class wxMouseState
+{
+public:
+    bool LeftIsDown() const { return m_left; }
+    bool MiddleIsDown() const { return m_middle; }
+    bool RightIsDown() const { return m_right; }
+    bool ControlDown() const { return m_control; }
+    bool ShiftDown() const { return m_shift; }
+    bool AltDown() const { return m_alt; }
+    bool MetaDown() const { return m_meta; }
+    bool CmdDown() const { return m_control; }
+
+    wxCoord GetX() const { return m_position.x; }
+    wxCoord GetY() const { return m_position.y; }
+    wxPoint GetPosition() const { return m_position; }
+
+    // Public as the setters of wxWidgets would be (filled by wxGetMouseState())
+    bool    m_left = false;
+    bool    m_middle = false;
+    bool    m_right = false;
+    bool    m_control = false;
+    bool    m_shift = false;
+    bool    m_alt = false;
+    bool    m_meta = false;
+    wxPoint m_position;
+};
+
+
+/// The state of the mouse (its buttons and its position on the screen) and of the modifiers.
+KIQT_API wxMouseState wxGetMouseState();
+
+/// The position of the mouse on the screen.
+KIQT_API wxPoint wxGetMousePosition();
 
 
 class wxMouseEvent : public wxEvent
@@ -908,6 +951,7 @@ public:
     }
 
     int GetPosition() const { return GetInt(); }
+    void SetPosition( int aPos ) { SetInt( aPos ); }
 };
 
 

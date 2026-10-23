@@ -70,6 +70,9 @@ KIQT_API void wxSetWindowIdCompat( QObject* aWindow, int aId );
 /// The window of a widget: the window of a control of the layer, or one for a plain widget.
 KIQT_API wxWindow* wxWindowFromQt( QWidget* aWidget );
 
+/// The window of a widget if it has one (a control of the layer or a widget made a window).
+KIQT_API wxWindow* wxFindWindowFromQtCompat( QWidget* aWidget );
+
 
 /**
  * A window given as a QWidget* or as a wxWindow* (the parents of the controls, the windows of

@@ -125,6 +125,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     padstack.cpp
     pcb_base_edit_frame.cpp
     pcb_base_frame.cpp
+    pcb_design_block_utils.cpp
     pcb_draw_panel_gal.cpp
     pcb_edit_frame.cpp
     pcb_edit_frame_dialogs.cpp
@@ -152,6 +153,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/align_distribute_tool.cpp
     tools/array_tool.cpp
     tools/board_editor_control.cpp
+    tools/board_editor_control_export.cpp
     tools/board_inspection_tool.cpp
     tools/board_reannotate_tool.cpp
     tools/convert_tool.cpp
@@ -190,6 +192,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     tracks_cleaner.cpp
     undo_redo.cpp
     widgets/appearance_controls.cpp
+    widgets/panel_footprint_chooser.cpp
     widgets/pcb_design_block_preview_widget.cpp
     widgets/pcb_net_inspector_panel.cpp
     widgets/pcb_properties_panel.cpp
@@ -475,6 +478,7 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_assign_netclass.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_choose_project.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_multi_unit_entry.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special.cpp
@@ -501,6 +505,8 @@ add_library( pcbnew_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/stripline.cpp
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/transline_calculation_base.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/area_selector.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/footprint_diff_widget.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/footprint_preview_widget.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/margin_offset_binder.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/netclass_selector.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp

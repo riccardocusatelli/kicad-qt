@@ -80,6 +80,14 @@ wxWindow* wxWindowFromQt( QWidget* aWidget )
 }
 
 
+wxWindow* wxFindWindowFromQtCompat( QWidget* aWidget )
+{
+    QVariant window = aWidget ? aWidget->property( WINDOW_PROPERTY ) : QVariant();
+
+    return window.isValid() ? static_cast<wxWindow*>( window.value<void*>() ) : nullptr;
+}
+
+
 wxEvtHandler* wxEvtHandlerCompat( QWidget* aWidget )
 {
     return wxWindowFromQt( aWidget );

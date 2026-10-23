@@ -620,6 +620,9 @@ public:
     using wxChoice::SetSelection;
     using wxLineEditTextEntryCompat::SetSelection;
 
+    /// The selected item, as wxWidgets (not the selected text).
+    using wxChoice::GetStringSelection;
+
 
     void Popup() { showPopup(); }
     void Dismiss() { hidePopup(); }

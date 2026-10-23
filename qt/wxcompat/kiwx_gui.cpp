@@ -39,6 +39,8 @@
 #include <QResizeEvent>
 #include <QWheelEvent>
 #include <QApplication>
+#include <QCursor>
+#include <QGuiApplication>
 #include <QMessageBox>
 #include <QScreen>
 #include <QScrollBar>
@@ -319,6 +321,31 @@ void sendCompat( QWidget* aWidget, wxCompatEventSink* aSink, wxEventType aType,
 
 
 // The handlers of events ---------------------------------------------------------------------
+
+wxMouseState wxGetMouseState()
+{
+    wxMouseState          state;
+    Qt::MouseButtons      buttons = QGuiApplication::mouseButtons();
+    Qt::KeyboardModifiers modifiers = QGuiApplication::queryKeyboardModifiers();
+
+    state.m_left = buttons & Qt::LeftButton;
+    state.m_middle = buttons & Qt::MiddleButton;
+    state.m_right = buttons & Qt::RightButton;
+    state.m_control = modifiers & Qt::ControlModifier;
+    state.m_shift = modifiers & Qt::ShiftModifier;
+    state.m_alt = modifiers & Qt::AltModifier;
+    state.m_meta = modifiers & Qt::MetaModifier;
+    state.m_position = wxGetMousePosition();
+    return state;
+}
+
+
+wxPoint wxGetMousePosition()
+{
+    QPoint pos = QCursor::pos();
+    return wxPoint( pos.x(), pos.y() );
+}
+
 
 void wxCallAfterCompat( std::function<void()> aFunction, std::weak_ptr<bool> aAlive )
 {
@@ -685,6 +712,76 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
                                               std::function<void( wxCommandEvent& )>(
                                                       [&]( wxCommandEvent& e ) { e.SetInt( aValue ); } ) );
                               } );
+        }
+
+        break;
+
+    // The scroll events of a slider (the ones of a scroll bar are those of wxScrolledWindow)
+    case wxEVT_SCROLL_CHANGED:
+    case wxEVT_SCROLL_THUMBTRACK:
+    case wxEVT_SCROLL_THUMBRELEASE:
+    case wxEVT_SCROLL_TOP:
+    case wxEVT_SCROLL_BOTTOM:
+    case wxEVT_SCROLL_LINEUP:
+    case wxEVT_SCROLL_LINEDOWN:
+    case wxEVT_SCROLL_PAGEUP:
+    case wxEVT_SCROLL_PAGEDOWN:
+        if( QAbstractSlider* slider = qobject_cast<QAbstractSlider*>( w ) )
+        {
+            auto send =
+                    [w, aSink, slider]( wxEventType aEventType )
+                    {
+                        sendCompat<wxScrollEvent>( w, aSink, aEventType,
+                                                   [slider]( wxScrollEvent& e )
+                                                   {
+                                                       e.SetPosition( slider->sliderPosition() );
+                                                   } );
+                    };
+
+            if( aType == wxEVT_SCROLL_CHANGED )
+            {
+                // At the end of a change: not while the user drags the thumb
+                QObject::connect( slider, &QAbstractSlider::valueChanged, slider,
+                                  [slider, send]()
+                                  {
+                                      if( !slider->isSliderDown() )
+                                          send( wxEVT_SCROLL_CHANGED );
+                                  } );
+                QObject::connect( slider, &QAbstractSlider::sliderReleased, slider,
+                                  [send]() { send( wxEVT_SCROLL_CHANGED ); } );
+            }
+            else if( aType == wxEVT_SCROLL_THUMBTRACK )
+            {
+                QObject::connect( slider, &QAbstractSlider::sliderMoved, slider,
+                                  [send]() { send( wxEVT_SCROLL_THUMBTRACK ); } );
+            }
+            else if( aType == wxEVT_SCROLL_THUMBRELEASE )
+            {
+                QObject::connect( slider, &QAbstractSlider::sliderReleased, slider,
+                                  [send]() { send( wxEVT_SCROLL_THUMBRELEASE ); } );
+            }
+            else
+            {
+                QObject::connect( slider, &QAbstractSlider::actionTriggered, slider,
+                                  [send, aType]( int aAction )
+                                  {
+                                      wxEventType type = wxEVT_NULL;
+
+                                      switch( aAction )
+                                      {
+                                      case QAbstractSlider::SliderToMinimum:     type = wxEVT_SCROLL_TOP;      break;
+                                      case QAbstractSlider::SliderToMaximum:     type = wxEVT_SCROLL_BOTTOM;   break;
+                                      case QAbstractSlider::SliderSingleStepSub: type = wxEVT_SCROLL_LINEUP;   break;
+                                      case QAbstractSlider::SliderSingleStepAdd: type = wxEVT_SCROLL_LINEDOWN; break;
+                                      case QAbstractSlider::SliderPageStepSub:   type = wxEVT_SCROLL_PAGEUP;   break;
+                                      case QAbstractSlider::SliderPageStepAdd:   type = wxEVT_SCROLL_PAGEDOWN; break;
+                                      default: break;
+                                      }
+
+                                      if( type == aType )
+                                          send( type );
+                                  } );
+            }
         }
 
         break;
