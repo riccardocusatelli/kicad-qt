@@ -90,8 +90,8 @@ public:
 
     bool canCloseWindow( CLOSE_REQUEST& aRequest ) override;
     void doCloseWindow() override;
-    void CloseFootprintEditor( wxCommandEvent& Event );
-    void OnExitKiCad( wxCommandEvent& aEvent );
+    void CloseFootprintEditor();
+    void OnExitKiCad();
 
     /**
      * Switch the currently used canvas (Cairo / OpenGL).
@@ -127,7 +127,7 @@ public:
     // The Tool Framework initialization, for GAL mode
     void setupTools();
 
-    void OnSaveFootprintAsPng( wxCommandEvent& event );
+    void OnSaveFootprintAsPng();
 
     bool IsLibraryTreeShown() const override;
     void ToggleLibraryTree() override;
@@ -302,11 +302,9 @@ public:
 
     void KiwayMailIn( KIWAY_MAIL_EVENT& mail ) override;
 
-    DECLARE_EVENT_TABLE()
-
 protected:
     /// protected so only friend PCB::IFACE::CreateWindow() can act as sole factory.
-    FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
     /**
      * Determines the Canvas type to load (with prompt if required) and initializes m_canvasType
@@ -343,6 +341,12 @@ protected:
 
 private:
     friend struct PCB::IFACE;
+
+    /// The panes of the frame, around its canvas (footprint_edit_frame_wx.cpp and the Qt build).
+    void setupLayout();
+
+    /// The events of the frame that the toolkit gives to it (menu commands, keys, sizes...).
+    void setupToolkitEvents();
 
     FOOTPRINT_TREE_PANE*        m_treePane;
     LIB_ID                      m_centerItemOnIdle;

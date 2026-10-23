@@ -198,7 +198,6 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_unit_entry_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_view_switcher_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_color_picker_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/widgets/search_pane_base.fbp
     )
 
@@ -206,6 +205,7 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
 # (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_autosave_recovery_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
@@ -228,6 +228,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/dialog_plugin_options.cpp
     dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
+    dialogs/eda_list_dialog.cpp
     dialogs/html_message_box.cpp
     dialogs/panel_embedded_files.cpp
     dialogs/panel_setup_severities.cpp
@@ -328,7 +329,6 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/pgm_gui.cpp
     dialogs/dialog_color_picker.cpp
     dialogs/dialog_unit_entry.cpp
-    dialogs/eda_list_dialog.cpp
     dialogs/eda_view_switcher.cpp
     dialogs/hotkey_cycle_popup.cpp
     draw_panel_gal.cpp

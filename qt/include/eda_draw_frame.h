@@ -54,6 +54,7 @@ class GRID_HELPER;
 class COLOR_SETTINGS;
 class LOCKFILE;
 class TOOL_MENU;
+class FILEDLG_HOOK_NEW_LIBRARY;
 class APP_SETTINGS_BASE;
 class LIB_TREE;
 class PROPERTIES_PANEL;
@@ -221,6 +222,21 @@ public:
      * @param aForceRefresh will force a reload of the theme from the settings manager.
      */
     virtual COLOR_SETTINGS* GetColorSettings( bool aForceRefresh = false ) const;
+
+    /**
+     * Let the user choose a library (a file or a directory) to open or to create.
+     *
+     * @param aFilename for New may contain a default name; in both cases return the chosen
+     *                  filename.
+     * @param wildcard a wildcard to filter the displayed files
+     * @param ext the library file extension
+     * @param isDirectory indicates the library files are directories
+     * @param aFileDlgHook optional; adds customized controls to dialog
+     * @return true for OK; false for Cancel.
+     */
+    bool LibraryFileBrowser( const wxString& aTitle, bool doOpen, wxFileName& aFilename,
+                             const wxString& wildcard, const wxString& ext, bool isDirectory,
+                             FILEDLG_HOOK_NEW_LIBRARY* aFileDlgHook = nullptr );
 
     void CommonSettingsChanged( int aFlags ) override;
 
@@ -566,6 +582,9 @@ protected:
      * Store the canvas type in the application settings.
      */
     bool saveCanvasTypeSetting( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType );
+
+    /// Has any failure occurred when switching to OpenGL in any EDA_DRAW_FRAME?
+    static bool m_openGLFailureOccured;
 
     void handleActivateEvent( bool aActive ) override;
 

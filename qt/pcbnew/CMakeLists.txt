@@ -92,12 +92,16 @@ set( KIQT_PCBNEW_GUI_SRCS
     exporters/export_hyperlynx.cpp
     exporters/export_idf.cpp
     files.cpp
+    footprint_edit_frame.cpp
+    footprint_editor_utils.cpp
     footprint_editor_settings.cpp
     footprint_import_reconciler.cpp
+    footprint_libraries_utils.cpp
     footprint_info_impl.cpp
     footprint_preview_panel.cpp
     footprint_wizard.cpp
     fp_tree_model_adapter.cpp
+    fp_tree_synchronizing_adapter.cpp
     generate_footprint_info.cpp
     generators/pcb_tuning_pattern.cpp
     generators/pcb_tuning_pattern_edit.cpp
@@ -110,6 +114,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     kicad_clipboard_gui.cpp
     layer_pairs.cpp
     load_select_footprint.cpp
+    menubar_footprint_editor.cpp
     menubar_pcb_editor.cpp
     microwave/microwave_footprint.cpp
     microwave/microwave_inductor.cpp
@@ -141,6 +146,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     router/router_preview_item.cpp
     router/router_tool.cpp
     sel_layer.cpp
+    toolbars_footprint_editor.cpp
     toolbars_footprint_wizard.cpp
     toolbars_pcb_editor.cpp
     tools/align_distribute_tool.cpp
@@ -504,6 +510,8 @@ add_library( pcbnew_gui_qt STATIC
     dialogs/dialog_export_step_process_qt.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
+    footprint_edit_frame_qt.cpp
+    footprint_tree_pane_qt.cpp
     pcb_edit_frame_qt.cpp
     pcb_layer_box_selector_qt.cpp
     widgets/appearance_controls_qt.cpp

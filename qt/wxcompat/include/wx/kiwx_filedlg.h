@@ -191,6 +191,16 @@ public:
 KIQT_API wxString wxWildcardToQtFiltersCompat( const wxString& aWildcard );
 
 
+/**
+ * Split a wildcard of wxWidgets ("description|pattern|description|pattern...") in its
+ * descriptions and its patterns.
+ *
+ * @return the number of the filters.
+ */
+KIQT_API int wxParseCommonDialogsFilter( const wxString& aFilterStr, wxArrayString& aDescriptions,
+                                         wxArrayString& aFilters );
+
+
 /// A dialog choosing files (wxFileDialog).
 class KIQT_API wxFileDialog
 {

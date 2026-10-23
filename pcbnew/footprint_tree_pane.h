@@ -53,8 +53,13 @@ public:
      */
     void FocusSearchFieldIfExists();
 
-protected:
+    /// Load the footprint selected in the tree, later (as if the user chose it).
+    void PostFootprintChosen();
 
+protected:
+#ifdef KICAD_WX_FREE
+    void onFootprintChosen();
+#else
     /**
      * Handle parent menu events to block preview updates while the menu is open.
      */
@@ -63,6 +68,7 @@ protected:
 
     void onComponentSelected( wxCommandEvent& aEvent );
     void onUpdateUI( wxUpdateUIEvent& aEvent );
+#endif
 
     FOOTPRINT_EDIT_FRAME* m_frame;
     LIB_TREE*             m_tree;             ///< component search tree widget

@@ -114,6 +114,9 @@
 #define WXDLLIMPEXP_FWD_CORE
 
 #define WXUNUSED( identifier )
+
+// The calling convention of the callbacks (the comparisons of the sorts): the default one
+#define wxCALLBACK
 #define wxOVERRIDE override
 #define wxFINAL final
 #define wxNOEXCEPT noexcept

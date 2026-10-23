@@ -795,6 +795,22 @@ bool wxListCtrl::DeleteItem( long aItem )
 }
 
 
+bool wxListCtrl::SortItems( wxListCtrlCompare aCompare, wxIntPtr aSortData )
+{
+    if( IsVirtual() || !aCompare )
+        return false;
+
+    m_model->beginResetModel();
+    std::stable_sort( m_model->m_rows.begin(), m_model->m_rows.end(),
+                      [&]( const KIWX_LIST_MODEL::ROW& aA, const KIWX_LIST_MODEL::ROW& aB )
+                      {
+                          return aCompare( wxIntPtr( aA.data ), wxIntPtr( aB.data ), aSortData ) < 0;
+                      } );
+    m_model->endResetModel();
+    return true;
+}
+
+
 bool wxListCtrl::DeleteAllItems()
 {
     m_model->beginResetModel();

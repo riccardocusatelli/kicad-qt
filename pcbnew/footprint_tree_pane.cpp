@@ -61,6 +61,13 @@ void FOOTPRINT_TREE_PANE::FocusSearchFieldIfExists()
 }
 
 
+void FOOTPRINT_TREE_PANE::PostFootprintChosen()
+{
+    wxCommandEvent event( EVT_LIBITEM_CHOSEN );
+    wxPostEvent( this, event );
+}
+
+
 FOOTPRINT_TREE_PANE::~FOOTPRINT_TREE_PANE()
 {
     m_frame->Unbind( wxEVT_MENU_OPEN, &FOOTPRINT_TREE_PANE::onMenuOpen, this );

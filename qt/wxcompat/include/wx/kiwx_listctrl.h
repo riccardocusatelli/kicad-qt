@@ -123,6 +123,10 @@ private:
 };
 
 
+/// The comparison of the data of two items of wxListCtrl::SortItems().
+typedef int ( *wxListCtrlCompare )( wxIntPtr aItem1, wxIntPtr aItem2, wxIntPtr aSortData );
+
+
 /// An item (or a column) of a list (wxListItem).
 class KIQT_API wxListItem
 {
@@ -131,10 +135,10 @@ public:
 
     void Clear() { *this = wxListItem(); }
 
-    void SetId( long aId ) { m_id = aId; }
-    long GetId() const { return m_id; }
-    void SetColumn( int aColumn ) { m_column = aColumn; }
-    int GetColumn() const { return m_column; }
+    void SetId( long aId ) { m_itemId = aId; }
+    long GetId() const { return m_itemId; }
+    void SetColumn( int aColumn ) { m_col = aColumn; }
+    int GetColumn() const { return m_col; }
     void SetMask( long aMask ) { m_mask = aMask; }
     long GetMask() const { return m_mask; }
 
@@ -161,9 +165,9 @@ public:
     void SetBackgroundColour( const wxColour& aColour ) { m_backgroundColour = aColour; }
     wxColour GetBackgroundColour() const { return m_backgroundColour; }
 
-private:
-    long               m_id = 0;
-    int                m_column = 0;
+    // Public as the ones of wxWidgets
+    long               m_itemId = 0;
+    int                m_col = 0;
     long               m_mask = 0;
     wxString           m_text;
     int                m_image = -1;
@@ -311,6 +315,9 @@ public:
     void SetWindowStyleFlag( long aStyle ) override;
 
     bool IsVirtual() const { return HasFlag( wxLC_VIRTUAL ); }
+
+    /// Sort the items with the comparison of their data (the item data of SetItemData()).
+    bool SortItems( wxListCtrlCompare aCompare, wxIntPtr aSortData );
 
     /// The texts and images of a virtual list: override them.
     virtual wxString OnGetItemText( long aItem, long aColumn ) const { return wxString(); }

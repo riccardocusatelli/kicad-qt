@@ -56,6 +56,9 @@
 #include <gui_reporters.h>
 #include <kiface_base.h>
 #include <kiplatform/ui.h>
+#include <widgets/filedlg_hook_new_library.h>
+#include <wx/dirdlg.h>
+#include <wx/filedlg.h>
 #include <kiway.h>
 #include <lockfile.h>
 #include <math/util.h>
@@ -100,6 +103,9 @@ enum STATUS_FIELD
     STATUS_CONSTRAINT,
     STATUS_FIELD_COUNT
 };
+
+
+bool EDA_DRAW_FRAME::m_openGLFailureOccured = false;
 
 
 EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType,
@@ -363,6 +369,55 @@ void EDA_DRAW_FRAME::ToggleUserUnits()
     {
         ChangeUserUnits( GetUserUnits() == EDA_UNITS::INCH ? EDA_UNITS::MM : EDA_UNITS::INCH );
     }
+}
+
+
+bool EDA_DRAW_FRAME::LibraryFileBrowser( const wxString& aTitle, bool doOpen, wxFileName& aFilename,
+                                         const wxString& wildcard, const wxString& ext,
+                                         bool isDirectory, FILEDLG_HOOK_NEW_LIBRARY* aFileDlgHook )
+{
+    aFilename.SetExt( ext );
+
+    wxString defaultDir = aFilename.GetPath();
+
+    if( defaultDir.IsEmpty() )
+        defaultDir = GetMruPath();
+
+    if( isDirectory && doOpen )
+    {
+        wxDirDialog dlg( this, aTitle, defaultDir, wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST );
+
+        if( dlg.ShowModal() == wxID_CANCEL )
+            return false;
+
+        aFilename = dlg.GetPath();
+        aFilename.SetExt( ext );
+    }
+    else
+    {
+        // Ensure the file has a dummy name, otherwise GTK will display the regex from the filter
+        if( aFilename.GetName().empty() )
+            aFilename.SetName( wxS( "Library" ) );
+
+        wxFileDialog dlg( this, aTitle, defaultDir, aFilename.GetFullName(), wildcard,
+                          doOpen ? wxFD_OPEN | wxFD_FILE_MUST_EXIST
+                                 : wxFD_SAVE | wxFD_CHANGE_DIR | wxFD_OVERWRITE_PROMPT );
+
+        if( aFileDlgHook )
+            dlg.SetCustomizeHook( *aFileDlgHook );
+
+        KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
+
+        if( dlg.ShowModal() == wxID_CANCEL )
+            return false;
+
+        aFilename = dlg.GetPath();
+        aFilename.SetExt( ext );
+    }
+
+    SetMruPath( aFilename.GetPath() );
+
+    return true;
 }
 
 

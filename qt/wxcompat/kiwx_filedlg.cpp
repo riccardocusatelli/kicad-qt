@@ -37,6 +37,33 @@
 #include <qt_strings.h>
 
 
+int wxParseCommonDialogsFilter( const wxString& aFilterStr, wxArrayString& aDescriptions,
+                                wxArrayString& aFilters )
+{
+    aDescriptions.Clear();
+    aFilters.Clear();
+
+    wxArrayString parts = wxSplit( aFilterStr, '|', '\0' );
+
+    // A single pattern is its own description
+    if( parts.size() == 1 )
+    {
+        aDescriptions.Add( parts[0] );
+        aFilters.Add( parts[0] );
+    }
+    else
+    {
+        for( size_t i = 0; i + 1 < parts.size(); i += 2 )
+        {
+            aDescriptions.Add( parts[i] );
+            aFilters.Add( parts[i + 1] );
+        }
+    }
+
+    return int( aFilters.size() );
+}
+
+
 wxString wxWildcardToQtFiltersCompat( const wxString& aWildcard )
 {
     QStringList parts = ToQString( aWildcard ).split( '|' );

@@ -370,8 +370,7 @@ void FOOTPRINT_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             if( m_treePane )
             {
                 m_treePane->GetLibTree()->SelectLibId( fpId );
-                wxCommandEvent event( EVT_LIBITEM_CHOSEN );
-                wxPostEvent( m_treePane, event );
+                m_treePane->PostFootprintChosen();
             }
         }
 

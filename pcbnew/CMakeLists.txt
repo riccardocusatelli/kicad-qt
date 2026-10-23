@@ -408,6 +408,7 @@ set( PCBNEW_CLASS_SRCS
     fp_tree_synchronizing_adapter.cpp
     footprint_chooser_frame.cpp
     footprint_edit_frame.cpp
+    footprint_edit_frame_wx.cpp
     footprint_import_reconciler.cpp
     footprint_libraries_utils.cpp
     footprint_viewer_frame.cpp

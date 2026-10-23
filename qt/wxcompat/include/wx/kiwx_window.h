@@ -143,6 +143,15 @@ public:
     std::vector<wxWindow*>::const_iterator begin() const { return m_windows.begin(); }
     std::vector<wxWindow*>::const_iterator end() const { return m_windows.end(); }
 
+    /// Remove a window from the list (the window stays a child of its parent).
+    bool DeleteObject( wxWindow* aWindow );
+
+    /**
+     * Insert a window at the start of the list.  The children of a window are in the order of
+     * the keyboard navigation: the windows of the list take the order of the list.
+     */
+    Node* Insert( wxWindow* aWindow );
+
 private:
     explicit wxWindowList( const std::vector<wxWindow*>& aWindows );
     void makeNodes();
@@ -237,6 +246,15 @@ public:
     {
         Insert( 0, aSizer, aProportion, aFlag, aBorder );
     }
+
+    /// Prepend a spacer.
+    void Prepend( int aWidth, int aHeight, int aProportion = 0, int aFlag = 0, int aBorder = 0 )
+    {
+        Insert( 0, aWidth, aHeight, aProportion, aFlag, aBorder );
+    }
+
+    virtual void Insert( size_t aIndex, int aWidth, int aHeight, int aProportion = 0,
+                         int aFlag = 0, int aBorder = 0, void* aUserData = nullptr );
 
     virtual void AddSpacer( int aSize );
     virtual void AddStretchSpacer( int aProportion = 1 );
@@ -461,6 +479,10 @@ public:
     wxSize GetMinSize() const;
     wxSize GetMaxSize() const;
     wxSize GetMinClientSize() const { return GetMinSize(); }
+    int GetMinWidth() const { return GetMinSize().x; }
+    int GetMinHeight() const { return GetMinSize().y; }
+    int GetMaxWidth() const { return GetMaxSize().x; }
+    int GetMaxHeight() const { return GetMaxSize().y; }
     wxSize GetEffectiveMinSize() const;
     wxSize GetSize() const;
     void GetSize( int* aWidth, int* aHeight ) const;

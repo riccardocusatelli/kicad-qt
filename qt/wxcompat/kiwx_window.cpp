@@ -144,6 +144,38 @@ void wxWindowList::makeNodes()
 }
 
 
+bool wxWindowList::DeleteObject( wxWindow* aWindow )
+{
+    auto it = std::find( m_windows.begin(), m_windows.end(), aWindow );
+
+    if( it == m_windows.end() )
+        return false;
+
+    m_windows.erase( it );
+    makeNodes();
+    return true;
+}
+
+
+wxWindowList::Node* wxWindowList::Insert( wxWindow* aWindow )
+{
+    m_windows.insert( m_windows.begin(), aWindow );
+    makeNodes();
+
+    // The keyboard navigation follows the list
+    for( size_t i = 0; i + 1 < m_windows.size(); ++i )
+    {
+        QWidget* first = m_windows[i] ? m_windows[i]->GetHandle() : nullptr;
+        QWidget* second = m_windows[i + 1] ? m_windows[i + 1]->GetHandle() : nullptr;
+
+        if( first && second && first->window() == second->window() )
+            QWidget::setTabOrder( first, second );
+    }
+
+    return GetFirst();
+}
+
+
 // The sizer of a window --------------------------------------------------------------------
 
 // The objects of the events ----------------------------------------------------------------
@@ -279,6 +311,25 @@ void wxSizer::Insert( size_t aIndex, wxSizer* aSizer, int aProportion, int aFlag
     else
     {
         layout->addItem( aSizer->GetLayoutCompat() );
+    }
+}
+
+
+void wxSizer::Insert( size_t aIndex, int aWidth, int aHeight, int aProportion, int aFlag,
+                      int aBorder, void* aUserData )
+{
+    if( QBoxLayout* box = boxLayout( this ) )
+    {
+        int index = int( std::min<size_t>( aIndex, box->count() ) );
+
+        if( aProportion > 0 )
+            box->insertStretch( index, aProportion );
+        else
+            box->insertSpacing( index, isVertical( box ) ? aHeight : aWidth );
+    }
+    else if( QLayout* layout = GetLayoutCompat() )
+    {
+        layout->addItem( new QSpacerItem( std::max( aWidth, 0 ), std::max( aHeight, 0 ) ) );
     }
 }
 

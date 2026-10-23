@@ -24,6 +24,7 @@
 
 #pragma once
 #include <dialogs/eda_list_dialog_base.h>
+#include <toolkit/toolkit_window_arg.h>
 
 
 class EDA_DRAW_FRAME;
@@ -46,11 +47,11 @@ public:
      * @param aItemList A wxArrayString of the list of elements.
      * @param aPreselectText An item name if an item must be preselected.
      */
-    EDA_LIST_DIALOG( wxWindow* aParent, const wxString& aTitle, const wxArrayString& aItemHeaders,
+    EDA_LIST_DIALOG( TOOLKIT_WINDOW_ARG aParent, const wxString& aTitle, const wxArrayString& aItemHeaders,
                      const std::vector<wxArrayString>& aItemList, const wxString& aPreselectText = wxEmptyString,
                      bool aSortList = true );
 
-    EDA_LIST_DIALOG( wxWindow* aParent, const wxString& aTitle, bool aSortList = true );
+    EDA_LIST_DIALOG( TOOLKIT_WINDOW_ARG aParent, const wxString& aTitle, bool aSortList = true );
 
     void SetListLabel( const wxString& aLabel );
     void SetOKLabel( const wxString& aLabel );

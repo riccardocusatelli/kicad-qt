@@ -76,31 +76,14 @@
 #include <widgets/panel_selection_filter.h>
 #include <widgets/pcb_properties_panel.h>
 #include <wildcards_and_files_ext.h>
-#include <widgets/wx_aui_utils.h>
 #include <toolbars_footprint_editor.h>
 
 #include <wx/filedlg.h>
+#include <toolkit/gui_services.h>
 #include <wx/hyperlink.h>
 #include <core/ki_assert.h>
 
-BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
-    EVT_MENU( wxID_CLOSE, FOOTPRINT_EDIT_FRAME::CloseFootprintEditor )
-    EVT_MENU( wxID_EXIT, FOOTPRINT_EDIT_FRAME::OnExitKiCad )
-
-    EVT_SIZE( FOOTPRINT_EDIT_FRAME::OnSize )
-
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectGrid )
-
-    EVT_TOOL( ID_FPEDIT_SAVE_PNG, FOOTPRINT_EDIT_FRAME::OnSaveFootprintAsPng )
-
-    // Drop files event
-    EVT_DROP_FILES( FOOTPRINT_EDIT_FRAME::OnDropFiles )
-
-END_EVENT_TABLE()
-
-
-FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     PCB_BASE_EDIT_FRAME( aKiway, aParent, FRAME_FOOTPRINT_EDITOR, wxEmptyString,
                          wxDefaultPosition, wxDefaultSize,
                          KICAD_DEFAULT_DRAWFRAME_STYLE, GetFootprintEditorFrameName() ),
@@ -111,21 +94,11 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_editorSettings = nullptr;
 
     // Give an icon
-    wxIcon icon;
-    wxIconBundle icon_bundle;
-
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_modedit, 48 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_modedit, 128 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_modedit, 256 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_modedit_32 ) );
-    icon_bundle.AddIcon( icon );
-    icon.CopyFromBitmap( KiBitmap( BITMAPS::icon_modedit_16 ) );
-    icon_bundle.AddIcon( icon );
-
-    SetIcons( icon_bundle );
+    SetFrameIcons( { { BITMAPS::icon_modedit, 48 },
+                     { BITMAPS::icon_modedit, 128 },
+                     { BITMAPS::icon_modedit, 256 },
+                     { BITMAPS::icon_modedit_32, -1 },
+                     { BITMAPS::icon_modedit_16, -1 } } );
 
     // Create GAL canvas
     m_canvasType = loadCanvasTypeSetting();
@@ -208,81 +181,18 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
         aui_cfg.right_panel_width = -1;
     }
 
-    m_auimgr.SetManagedWindow( this );
-
-    unsigned int auiFlags = wxAUI_MGR_DEFAULT;
-#if !defined( _WIN32 )
-    // Windows cannot redraw the UI fast enough during a live resize and may lead to all kinds
-    // of graphical glitches
-    auiFlags |= wxAUI_MGR_LIVE_RESIZE;
-#endif
-    m_auimgr.SetFlags( auiFlags );
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-                      .Top().Layer( 6 ) );
-
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" )
-                      .Bottom().Layer( 6 ) );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_treePane, EDA_PANE().Palette().Name( "Footprints" )
-                      .Left().Layer( 4 )
-                      .Caption( _( "Libraries" ) )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( FromDIP( 250 ), FromDIP( 80 ) )
-                      .BestSize( FromDIP( 250 ), -1 ) );
-    m_auimgr.AddPane( m_propertiesPanel, EDA_PANE().Name( PropertiesPaneName() )
-                      .Left().Layer( 3 )
-                      .Caption( _( "Properties" ) ).PaneBorder( false )
-                      .MinSize( FromDIP( wxSize( 240, 60 ) ) ).BestSize( FromDIP( wxSize( 300, 200 ) ) ) );
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" )
-                      .Left().Layer( 2 ) );
-
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
-                      .Right().Layer(2) );
-    m_auimgr.AddPane( m_appearancePanel, EDA_PANE().Name( "LayersManager" )
-                      .Right().Layer( 3 )
-                      .Caption( _( "Appearance" ) ).PaneBorder( false )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( FromDIP( 180 ), FromDIP( 80 ) )
-                      .BestSize( FromDIP( 180 ), -1 ) );
-    m_auimgr.AddPane( m_selectionFilterPanel, EDA_PANE().Palette().Name( "SelectionFilter" )
-                      .Right().Layer( 3 ).Position( 2 )
-                      .Caption( _( "Selection Filter" ) ).PaneBorder( false )
-                      // Fixed-size pane; -1 for MinSize height is required
-                      .MinSize( FromDIP( 180 ), -1 )
-                      .BestSize( FromDIP( 180 ), -1 ) );
-
-    // Center
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" )
-                      .Center() );
-
-    RestoreAuiLayout();
-
-    m_auimgr.GetPane( "LayersManager" ).Show( m_show_layer_manager_tools );
-    m_auimgr.GetPane( "SelectionFilter" ).Show( m_show_layer_manager_tools );
-    m_auimgr.GetPane( PropertiesPaneName() ).Show( GetSettings()->m_AuiPanels.show_properties );
-
-    // The selection filter doesn't need to grow in the vertical direction when docked
-    m_auimgr.GetPane( "SelectionFilter" ).dock_proportion = 0;
-
     m_acceptedExts.emplace( FILEEXT::KiCadFootprintLibPathExtension, &ACTIONS::ddAddLibrary );
     m_acceptedExts.emplace( FILEEXT::KiCadFootprintFileExtension, &PCB_ACTIONS::ddImportFootprint );
     DragAcceptFiles( true );
 
-    FinishAUIInitialization();
+    setupLayout();
 
     // Apply saved visibility stuff at the end
-    wxAuiPaneInfo& treePane = m_auimgr.GetPane( "Footprints" );
-    wxAuiPaneInfo& layersManager = m_auimgr.GetPane( "LayersManager" );
-
     if( libWidth > 0 )
-        SetAuiPaneSize( m_auimgr, treePane, libWidth, -1 );
+        SetPaneSize( wxS( "Footprints" ), libWidth, -1 );
 
     if( aui_cfg.right_panel_width > 0 )
-        SetAuiPaneSize( m_auimgr, layersManager, aui_cfg.right_panel_width, -1 );
-
+        SetPaneSize( wxS( "LayersManager" ), aui_cfg.right_panel_width, -1 );
     m_appearancePanel->SetTabIndex( aui_cfg.appearance_panel_tab );
 
     if( FOOTPRINT_EDITOR_SETTINGS* cfg = dynamic_cast<FOOTPRINT_EDITOR_SETTINGS*>( GetSettings() ) )
@@ -308,10 +218,7 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     // Default shutdown reason until a file is loaded
     KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Footprint changes are unsaved" ) );
 
-    // Catch unhandled accelerator command characters that were no handled by the library tree
-    // panel.
-    Bind( wxEVT_CHAR, &TOOL_DISPATCHER::DispatchWxEvent, m_toolDispatcher );
-    Bind( wxEVT_CHAR_HOOK, &TOOL_DISPATCHER::DispatchWxEvent, m_toolDispatcher );
+    setupToolkitEvents();
 
     // Ensure the window is on top
     Raise();
@@ -402,18 +309,17 @@ void FOOTPRINT_EDIT_FRAME::HardRedraw()
 
 void FOOTPRINT_EDIT_FRAME::ToggleLibraryTree()
 {
-    wxAuiPaneInfo& treePane = m_auimgr.GetPane( m_treePane );
-    treePane.Show( !IsLibraryTreeShown() );
+    ShowPane( wxS( "Footprints" ), !IsLibraryTreeShown() );
 
     if( IsLibraryTreeShown() )
     {
-        // SetAuiPaneSize also updates m_auimgr
-        SetAuiPaneSize( m_auimgr, treePane, m_editorSettings->m_LibWidth, -1 );
+        // SetPaneSize also updates the panes
+        SetPaneSize( wxS( "Footprints" ), m_editorSettings->m_LibWidth, -1 );
     }
     else
     {
-        m_editorSettings->m_LibWidth = m_treePane->GetSize().x;
-        m_auimgr.Update();
+        m_editorSettings->m_LibWidth = GetPaneSize( wxS( "Footprints" ) ).x;
+        UpdatePanes();
     }
 }
 
@@ -427,29 +333,27 @@ void FOOTPRINT_EDIT_FRAME::FocusLibraryTreeInput()
 void FOOTPRINT_EDIT_FRAME::ToggleLayersManager()
 {
     FOOTPRINT_EDITOR_SETTINGS* settings = GetSettings();
-    wxAuiPaneInfo&             layersManager = m_auimgr.GetPane( "LayersManager" );
-    wxAuiPaneInfo&             selectionFilter = m_auimgr.GetPane( "SelectionFilter" );
 
     // show auxiliary Vertical layers and visibility manager toolbar
     m_show_layer_manager_tools = !m_show_layer_manager_tools;
-    layersManager.Show( m_show_layer_manager_tools );
-    selectionFilter.Show( m_show_layer_manager_tools );
+    ShowPane( wxS( "LayersManager" ), m_show_layer_manager_tools );
+    ShowPane( wxS( "SelectionFilter" ), m_show_layer_manager_tools );
 
     if( m_show_layer_manager_tools )
     {
-        SetAuiPaneSize( m_auimgr, layersManager, settings->m_AuiPanels.right_panel_width, -1 );
+        SetPaneSize( wxS( "LayersManager" ), settings->m_AuiPanels.right_panel_width, -1 );
     }
     else
     {
-        settings->m_AuiPanels.right_panel_width = m_appearancePanel->GetSize().x;
-        m_auimgr.Update();
+        settings->m_AuiPanels.right_panel_width = GetPaneSize( wxS( "LayersManager" ) ).x;
+        UpdatePanes();
     }
 }
 
 
 bool FOOTPRINT_EDIT_FRAME::IsLibraryTreeShown() const
 {
-    return const_cast<wxAuiManager&>( m_auimgr ).GetPane( m_treePane ).IsShown();
+    return IsPaneShown( wxS( "Footprints" ) );
 }
 
 
@@ -835,7 +739,7 @@ void FOOTPRINT_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
         cfg->m_DesignSettings  = GetDesignSettings();
         cfg->m_Display         = m_displayOptions;
-        cfg->m_LibWidth        = m_treePane->GetSize().x;
+        cfg->m_LibWidth        = GetPaneSize( wxS( "Footprints" ) ).x;
 
         if( TOOL_MANAGER* toolMgr = GetToolManager() )
         {
@@ -847,8 +751,8 @@ void FOOTPRINT_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
         if( m_propertiesPanel )
         {
-            cfg->m_AuiPanels.show_properties        = m_propertiesPanel->IsShownOnScreen();
-            cfg->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
+            cfg->m_AuiPanels.show_properties        = TOOLKIT::IsShownOnScreen( m_propertiesPanel );
+            cfg->m_AuiPanels.properties_panel_width = GetPaneSize( PropertiesPaneName() ).x;
             cfg->m_AuiPanels.properties_splitter    = m_propertiesPanel->SplitterProportion();
         }
 
@@ -856,7 +760,7 @@ void FOOTPRINT_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
         if( m_appearancePanel )
         {
-            cfg->m_AuiPanels.right_panel_width    = m_appearancePanel->GetSize().x;
+            cfg->m_AuiPanels.right_panel_width    = GetPaneSize( wxS( "LayersManager" ) ).x;
             cfg->m_AuiPanels.appearance_panel_tab = m_appearancePanel->GetTabIndex();
             cfg->m_LayerPresets                   = m_appearancePanel->GetUserLayerPresets();
             cfg->m_ActiveLayerPreset              = m_appearancePanel->GetActiveLayerPreset();
@@ -1011,20 +915,20 @@ void FOOTPRINT_EDIT_FRAME::doCloseWindow()
     // Do not show the layer manager during closing to avoid flicker
     // on some platforms (Windows) that generate useless redraw of items in
     // the Layer Manager
-    m_auimgr.GetPane( wxT( "LayersManager" ) ).Show( false );
-    m_auimgr.GetPane( wxT( "SelectionFilter" ) ).Show( false );
+    ShowPane( wxT( "LayersManager" ), false );
+    ShowPane( wxT( "SelectionFilter" ), false );
 
     Clear_Pcb( false );
 }
 
 
-void FOOTPRINT_EDIT_FRAME::OnExitKiCad( wxCommandEvent& event )
+void FOOTPRINT_EDIT_FRAME::OnExitKiCad()
 {
     Kiway().OnKiCadExit();
 }
 
 
-void FOOTPRINT_EDIT_FRAME::CloseFootprintEditor( wxCommandEvent& Event )
+void FOOTPRINT_EDIT_FRAME::CloseFootprintEditor()
 {
     Close();
 }
@@ -1038,23 +942,20 @@ void FOOTPRINT_EDIT_FRAME::ShowChangedLanguage()
     // We have 2 panes to update.
     // For some obscure reason, the AUI manager hides the first modified pane.
     // So force show panes
-    wxAuiPaneInfo& tree_pane_info = m_auimgr.GetPane( m_treePane );
-    bool tree_shown = tree_pane_info.IsShown();
-    tree_pane_info.Caption( _( "Libraries" ) );
+    bool tree_shown = IsPaneShown( wxS( "Footprints" ) );
+    SetPaneCaption( wxS( "Footprints" ), _( "Libraries" ) );
 
-    wxAuiPaneInfo& lm_pane_info = m_auimgr.GetPane( m_appearancePanel );
-    bool lm_shown = lm_pane_info.IsShown();
-    lm_pane_info.Caption( _( "Appearance" ) );
-    wxAuiPaneInfo& sf_pane_info = m_auimgr.GetPane( m_selectionFilterPanel );
-    sf_pane_info.Caption( _( "Selection Filter" ) );
+    bool lm_shown = IsPaneShown( wxS( "LayersManager" ) );
+    SetPaneCaption( wxS( "LayersManager" ), _( "Appearance" ) );
+    SetPaneCaption( wxS( "SelectionFilter" ), _( "Selection Filter" ) );
 
     // update the layer manager
     UpdateUserInterface();
 
     // Now restore the visibility:
-    lm_pane_info.Show( lm_shown );
-    tree_pane_info.Show( tree_shown );
-    m_auimgr.Update();
+    ShowPane( wxS( "LayersManager" ), lm_shown );
+    ShowPane( wxS( "Footprints" ), tree_shown );
+    UpdatePanes();
 
     GetLibTree()->ShowChangedLanguage();
 
@@ -1411,13 +1312,13 @@ void FOOTPRINT_EDIT_FRAME::setupUIConditions()
     auto layerManagerCond =
             [this]( const SELECTION& )
             {
-                return m_auimgr.GetPane( "LayersManager" ).IsShown();
+                return IsPaneShown( wxS( "LayersManager" ) );
             };
 
     auto propertiesCond =
             [this] ( const SELECTION& )
             {
-                return m_auimgr.GetPane( PropertiesPaneName() ).IsShown();
+                return IsPaneShown( PropertiesPaneName() );
             };
 
     mgr->SetConditions( ACTIONS::highContrastMode,          CHECK( highContrastCond ) );
@@ -1547,7 +1448,7 @@ std::unique_ptr<GRID_HELPER> FOOTPRINT_EDIT_FRAME::MakeGridHelper()
 }
 
 
-void FOOTPRINT_EDIT_FRAME::OnSaveFootprintAsPng( wxCommandEvent& event )
+void FOOTPRINT_EDIT_FRAME::OnSaveFootprintAsPng()
 {
     LIB_ID id = GetLoadedFPID();
 

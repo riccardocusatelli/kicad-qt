@@ -210,6 +210,10 @@ public:
     void MarkDirty() { setModified( true ); }
     void DiscardEdits() { setModified( false ); }
 
+    /// The text of a line (a single-line control has the line 0 only).
+    wxString GetLineText( long aLine ) const { return aLine == 0 ? GetValue() : wxString(); }
+    int GetNumberOfLines() const { return 1; }
+
 protected:
     QLineEdit* lineEditCompat() const override { return const_cast<wxTextCtrl*>( this ); }
 };
