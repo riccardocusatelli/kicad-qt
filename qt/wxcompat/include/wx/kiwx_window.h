@@ -616,6 +616,9 @@ public:
 
     /// The icon of a top level window.
     void SetIcon( const wxBitmap& aIcon ) { GetHandle()->setWindowIcon( QIcon( aIcon ) ); }
+
+    /// The icon of the window, at its largest size.
+    wxBitmap GetIcon() const;
     void SetIcons( const wxBitmapBundle& aIcons ) { GetHandle()->setWindowIcon( aIcons ); }
     void SetLayoutDirection( int aDirection ) {}
 

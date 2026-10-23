@@ -32,6 +32,7 @@
 #include <QEvent>
 #include <QScrollBar>
 #include <QTextCursor>
+#include <QTextDocument>
 
 #include <qt_strings.h>
 #include <ui_hooks.h>
@@ -57,6 +58,22 @@ HTML_WINDOW::HTML_WINDOW( wxWidgetArgCompat aParent, wxWindowID aId, const wxPoi
 
 HTML_WINDOW::~HTML_WINDOW()
 {
+}
+
+
+void HTML_WINDOW::SetStandardFonts( int aSize, const wxString& aNormalFace,
+                                    const wxString& aFixedFace )
+{
+    QFont font = this->font();
+
+    if( aSize > 0 )
+        font.setPointSize( aSize );
+
+    if( !aNormalFace.IsEmpty() )
+        font.setFamily( ToQString( aNormalFace ) );
+
+    setFont( font );
+    document()->setDefaultFont( font );
 }
 
 

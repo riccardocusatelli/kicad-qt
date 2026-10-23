@@ -66,6 +66,7 @@
 #include <trace_helpers.h>
 #include <view/view.h>
 #include <drawing_sheet/ds_draw_item.h>
+#include <drawing_sheet/ds_painter.h>
 #include <view/view_controls.h>
 #include <widgets/kistatusbar.h>
 #include <widgets/msgpanel.h>
@@ -1248,34 +1249,6 @@ void EDA_DRAW_FRAME::FocusOnLocation( const VECTOR2I& aPos, bool aAllowScroll )
     }
 
     GetCanvas()->GetViewControls()->SetCrossHairCursorPosition( aPos );
-}
-
-
-void PrintDrawingSheet( const RENDER_SETTINGS* aSettings, const PAGE_INFO& aPageInfo,
-                        const wxString& aSheetName, const wxString& aSheetPath,
-                        const wxString& aFileName, const TITLE_BLOCK& aTitleBlock,
-                        const std::map<wxString, wxString>* aProperties, int aSheetCount,
-                        const wxString& aPageNumber, double aMils2Iu, const PROJECT* aProject,
-                        const wxString& aSheetLayer, bool aIsFirstPage )
-{
-    DS_DRAW_ITEM_LIST drawList( unityScale );
-
-    drawList.SetDefaultPenSize( aSettings->GetDefaultPenWidth() );
-    drawList.SetPlotterMilsToIUfactor( aMils2Iu );
-    drawList.SetPageNumber( aPageNumber );
-    drawList.SetSheetCount( aSheetCount );
-    drawList.SetFileName( aFileName );
-    drawList.SetSheetName( aSheetName );
-    drawList.SetSheetPath( aSheetPath );
-    drawList.SetSheetLayer( aSheetLayer );
-    drawList.SetProject( aProject );
-    drawList.SetIsFirstPage( aIsFirstPage );
-    drawList.SetProperties( aProperties );
-
-    drawList.BuildDrawItemsList( aPageInfo, aTitleBlock );
-
-    // Draw item list
-    drawList.Print( aSettings );
 }
 
 

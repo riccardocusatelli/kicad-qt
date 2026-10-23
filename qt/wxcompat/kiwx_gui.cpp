@@ -37,6 +37,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QResizeEvent>
+#include <QTextBrowser>
 #include <QWheelEvent>
 #include <QApplication>
 #include <QCursor>
@@ -321,6 +322,12 @@ void sendCompat( QWidget* aWidget, wxCompatEventSink* aSink, wxEventType aType,
 
 
 // The handlers of events ---------------------------------------------------------------------
+
+wxVersionInfo wxGetLibraryVersionInfo()
+{
+    return wxVersionInfo( wxS( "Qt" ), QT_VERSION_MAJOR, QT_VERSION_MINOR, QT_VERSION_PATCH );
+}
+
 
 wxMouseState wxGetMouseState()
 {
@@ -782,6 +789,21 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
                                           send( type );
                                   } );
             }
+        }
+
+        break;
+
+    case wxEVT_HTML_LINK_CLICKED:
+        if( QTextBrowser* browser = qobject_cast<QTextBrowser*>( w ) )
+        {
+            QObject::connect( browser, &QTextBrowser::anchorClicked, browser,
+                              [w, aSink]( const QUrl& aLink )
+                              {
+                                  wxHtmlLinkEvent event( wxGetWindowIdCompat( w ),
+                                                         wxHtmlLinkInfo( ToWxString( aLink.toString() ) ) );
+                                  event.SetEventObject( w );
+                                  aSink->Process( event );
+                              } );
         }
 
         break;
@@ -2406,6 +2428,15 @@ void wxNotebook::AssignImageList( wxImageList* aImageList )
 
 bool wxNotebook::SetPageImage( size_t aPage, int aImage )
 {
+    if( !m_imagesCompat.empty() )
+    {
+        if( int( aPage ) >= count() || aImage >= int( m_imagesCompat.size() ) )
+            return false;
+
+        setTabIcon( int( aPage ), aImage >= 0 ? QIcon( m_imagesCompat[aImage] ) : QIcon() );
+        return true;
+    }
+
     if( !m_imageListCompat || int( aPage ) >= count() || aImage >= m_imageListCompat->GetImageCount() )
         return false;
 

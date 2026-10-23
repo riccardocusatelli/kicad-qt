@@ -52,6 +52,11 @@ public:
     ~HTML_WINDOW() override;
 
     virtual bool SetPage( const wxString& aSource );
+
+    /// The font of the text: its size in points and its face (wxHtmlWindow::SetStandardFonts());
+    /// the fixed face is the one of Qt.
+    void SetStandardFonts( int aSize = -1, const wxString& aNormalFace = wxEmptyString,
+                           const wxString& aFixedFace = wxEmptyString );
     bool AppendToPage( const wxString& aSource );
 
     /*

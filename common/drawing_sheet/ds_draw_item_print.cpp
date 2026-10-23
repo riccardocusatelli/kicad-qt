@@ -57,6 +57,7 @@
 
 #include <bitmap_base.h>
 #include <drawing_sheet/ds_data_item.h>
+#include <drawing_sheet/ds_painter.h>
 #include <gr_basic.h>
 #include <render_settings.h>
 #include <wx/dc.h>
@@ -158,4 +159,32 @@ void DS_DRAW_ITEM_LIST::Print( const RENDER_SETTINGS* aSettings )
 
     for( DS_DRAW_ITEM_BASE* item : second_items )
         item->PrintWsItem( aSettings );
+}
+
+
+void PrintDrawingSheet( const RENDER_SETTINGS* aSettings, const PAGE_INFO& aPageInfo,
+                        const wxString& aSheetName, const wxString& aSheetPath,
+                        const wxString& aFileName, const TITLE_BLOCK& aTitleBlock,
+                        const std::map<wxString, wxString>* aProperties, int aSheetCount,
+                        const wxString& aPageNumber, double aMils2Iu, const PROJECT* aProject,
+                        const wxString& aSheetLayer, bool aIsFirstPage )
+{
+    DS_DRAW_ITEM_LIST drawList( unityScale );
+
+    drawList.SetDefaultPenSize( aSettings->GetDefaultPenWidth() );
+    drawList.SetPlotterMilsToIUfactor( aMils2Iu );
+    drawList.SetPageNumber( aPageNumber );
+    drawList.SetSheetCount( aSheetCount );
+    drawList.SetFileName( aFileName );
+    drawList.SetSheetName( aSheetName );
+    drawList.SetSheetPath( aSheetPath );
+    drawList.SetSheetLayer( aSheetLayer );
+    drawList.SetProject( aProject );
+    drawList.SetIsFirstPage( aIsFirstPage );
+    drawList.SetProperties( aProperties );
+
+    drawList.BuildDrawItemsList( aPageInfo, aTitleBlock );
+
+    // Draw item list
+    drawList.Print( aSettings );
 }

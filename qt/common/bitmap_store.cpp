@@ -38,6 +38,7 @@
 #include <core/ki_assert.h>
 
 #include <qt_strings.h>
+#include <wx/kiwx_gdi.h>
 
 // s_imageNotFound, s_dummyItem
 #include "../../common/bitmap_store_images.h"
@@ -317,6 +318,12 @@ BITMAP_STORE* GetBitmapStore()
 QPixmap KiBitmap( BITMAPS aBitmap, int aHeightTag )
 {
     return GetBitmapStore()->GetBitmap( aBitmap, aHeightTag );
+}
+
+
+wxBitmap* KiBitmapNew( BITMAPS aBitmap )
+{
+    return new wxBitmap( KiBitmap( aBitmap ) );
 }
 
 

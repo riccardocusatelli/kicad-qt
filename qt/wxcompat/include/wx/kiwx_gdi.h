@@ -36,8 +36,10 @@
 
 #include <kiqt.h>
 
+#include <algorithm>
 #include <map>
 #include <memory>
+#include <vector>
 
 #include <QColor>
 #include <QFont>
@@ -254,6 +256,10 @@ KIQT_API extern const wxColour* wxCYAN;
 KIQT_API extern const wxColour* wxGREY;
 
 
+/// A length of the dashes of a pen (wxPen::SetDashes()).
+typedef signed char wxDash;
+
+
 class KIQT_API wxPen
 {
 public:
@@ -280,10 +286,21 @@ public:
     wxPenStyle GetStyle() const { return m_style; }
     void SetStyle( wxPenStyle aStyle ) { m_style = aStyle; }
 
+    /// The dashes of a wxPENSTYLE_USER_DASH pen: the lengths of the dashes and of the spaces,
+    /// in widths of the pen.
+    void SetDashes( int aCount, const wxDash* aDashes )
+    {
+        m_dashes.assign( aDashes, aDashes + std::max( aCount, 0 ) );
+    }
+
+    int GetDashCount() const { return int( m_dashes.size() ); }
+    const std::vector<wxDash>& GetDashesCompat() const { return m_dashes; }
+
 private:
-    wxColour   m_colour;
-    int        m_width;
-    wxPenStyle m_style;
+    wxColour            m_colour;
+    int                 m_width;
+    wxPenStyle          m_style;
+    std::vector<wxDash> m_dashes;
 };
 
 
@@ -404,6 +421,13 @@ KIQT_API extern const wxFont wxNullFont;
 #define wxIMAGE_ALPHA_THRESHOLD 0x80
 #define wxIMAGE_ALPHA_OPAQUE 0xff
 
+/// How wxImage::Paste() pastes the alpha channel of an image.
+enum wxImageAlphaBlendMode
+{
+    wxIMAGE_ALPHA_BLEND_OVER = 0,   ///< Replace the pixels
+    wxIMAGE_ALPHA_BLEND_COMPOSE = 1 ///< Compose the pixels on the image
+};
+
 enum wxImageResizeQuality
 {
     wxIMAGE_QUALITY_NEAREST = 0,
@@ -497,6 +521,14 @@ public:
     wxImage Copy() const { return wxImage( copy() ); }
     wxImage GetSubImage( const wxRect& aRect ) const;
     wxImage ConvertToGreyscale() const;
+
+    /// Set the colour of the pixels of a rectangle.
+    void SetRGB( const wxRect& aRect, unsigned char aRed, unsigned char aGreen,
+                 unsigned char aBlue );
+
+    /// Paste an image at a position.
+    void Paste( const wxImage& aImage, int aX, int aY,
+                wxImageAlphaBlendMode aAlphaBlend = wxIMAGE_ALPHA_BLEND_OVER );
     wxImage ConvertToDisabled( unsigned char aBrightness = 255 ) const;
     void Clear( unsigned char aValue = 0 );
 
@@ -754,9 +786,56 @@ enum wxRasterOperationMode
 };
 
 
+/// The fill of the polygons (wxDC::DrawPolygon()).
+enum wxPolygonFillMode
+{
+    wxODDEVEN_RULE = 1,
+    wxWINDING_RULE
+};
+
+
+/// An affine transformation of the coordinates (wxAffineMatrix2D): a QTransform.
+class wxAffineMatrix2D
+{
+public:
+    wxAffineMatrix2D() = default;
+    explicit wxAffineMatrix2D( const QTransform& aTransform ) : m_transform( aTransform ) {}
+
+    void Translate( double aDx, double aDy ) { m_transform = QTransform::fromTranslate( aDx, aDy ) * m_transform; }
+    void Scale( double aX, double aY ) { m_transform = QTransform::fromScale( aX, aY ) * m_transform; }
+    void Rotate( double aRadians ) { m_transform = QTransform().rotateRadians( aRadians ) * m_transform; }
+    void Mirror( int aDirection = wxHORIZONTAL )
+    {
+        Scale( ( aDirection & wxHORIZONTAL ) ? -1 : 1, ( aDirection & wxVERTICAL ) ? -1 : 1 );
+    }
+
+    bool Invert()
+    {
+        bool invertible = false;
+        QTransform inverted = m_transform.inverted( &invertible );
+
+        if( invertible )
+            m_transform = inverted;
+
+        return invertible;
+    }
+
+    bool IsIdentity() const { return m_transform.isIdentity(); }
+
+    const QTransform& GetTransformCompat() const { return m_transform; }
+
+private:
+    QTransform m_transform;
+};
+
+
 /**
  * The device context of the drawings of the cells of the grids and of the custom controls
  * (wxDC): a QPainter.
+ *
+ * The logical coordinates are mapped to the coordinates of the device (the ones of the painter
+ * when the DC was given it) as wxWidgets: (logical - logical origin) * user scale * axis sign
+ * + device origin.
  */
 class KIQT_API wxDC
 {
@@ -785,6 +864,25 @@ public:
     void DrawLine( int aX1, int aY1, int aX2, int aY2 );
     void DrawLine( const wxPoint& aP1, const wxPoint& aP2 ) { DrawLine( aP1.x, aP1.y, aP2.x, aP2.y ); }
     void DrawCircle( int aX, int aY, int aRadius );
+    void DrawEllipse( int aX, int aY, int aWidth, int aHeight );
+    void DrawEllipse( const wxRect& aRect ) { DrawEllipse( aRect.x, aRect.y, aRect.width, aRect.height ); }
+
+    /**
+     * Draw an arc from @a aX1, @a aY1 to @a aX2, @a aY2, counterclockwise on the device, around
+     * the center @a aXc, @a aYc: a pie filled with the brush.  The same start and end draw a
+     * circle.
+     */
+    void DrawArc( int aX1, int aY1, int aX2, int aY2, int aXc, int aYc );
+    void DrawArc( const wxPoint& aStart, const wxPoint& aEnd, const wxPoint& aCenter )
+    {
+        DrawArc( aStart.x, aStart.y, aEnd.x, aEnd.y, aCenter.x, aCenter.y );
+    }
+
+    void DrawPolygon( int aCount, const wxPoint aPoints[], wxCoord aXOffset = 0,
+                      wxCoord aYOffset = 0, wxPolygonFillMode aFillStyle = wxODDEVEN_RULE );
+    void DrawLines( int aCount, const wxPoint aPoints[], wxCoord aXOffset = 0,
+                    wxCoord aYOffset = 0 );
+    void DrawPoint( int aX, int aY );
     void DrawText( const wxString& aText, int aX, int aY );
     void DrawText( const wxString& aText, const wxPoint& aPos ) { DrawText( aText, aPos.x, aPos.y ); }
 
@@ -818,6 +916,33 @@ public:
     /// was given it).
     void SetUserScale( double aX, double aY );
     void GetUserScale( double* aX, double* aY ) const;
+
+    /// The origin of the logical coordinates, and the device coordinates of that origin.
+    void SetLogicalOrigin( wxCoord aX, wxCoord aY );
+    void GetLogicalOrigin( wxCoord* aX, wxCoord* aY ) const;
+    wxPoint GetLogicalOrigin() const { return m_logicalOrigin; }
+    void SetDeviceOrigin( wxCoord aX, wxCoord aY );
+    void GetDeviceOrigin( wxCoord* aX, wxCoord* aY ) const;
+    wxPoint GetDeviceOrigin() const { return m_deviceOrigin; }
+
+    /// The directions of the axes: the x axis from the left to the right, the y axis from the
+    /// bottom to the top (or else the opposite).
+    void SetAxisOrientation( bool aXLeftRight, bool aYBottomUp );
+
+    wxCoord DeviceToLogicalX( wxCoord aX ) const;
+    wxCoord DeviceToLogicalY( wxCoord aY ) const;
+    wxCoord DeviceToLogicalXRel( wxCoord aX ) const;
+    wxCoord DeviceToLogicalYRel( wxCoord aY ) const;
+    wxCoord LogicalToDeviceX( wxCoord aX ) const;
+    wxCoord LogicalToDeviceY( wxCoord aY ) const;
+    wxCoord LogicalToDeviceXRel( wxCoord aX ) const;
+    wxCoord LogicalToDeviceYRel( wxCoord aY ) const;
+
+    /// No matrix of transformation: the users of the DC use the scale and the origins.
+    bool CanUseTransformMatrix() const { return false; }
+    wxAffineMatrix2D GetTransformMatrix() const { return wxAffineMatrix2D(); }
+    bool SetTransformMatrix( const wxAffineMatrix2D& aMatrix ) { return false; }
+    void ResetTransformMatrix() {}
 
     /// Copy a part of a memory DC (the only DCs that keep their drawing).
     bool Blit( wxCoord aXDest, wxCoord aYDest, wxCoord aWidth, wxCoord aHeight, wxDC* aSource,
@@ -853,13 +978,20 @@ private:
     wxColour  m_textBackground;
     wxBrush   m_background;
 
-    bool       m_userScaled = false;
+    /// Map the logical coordinates to the ones of the device on the painter.
+    void applyTransformCompat();
+
+    bool       m_userScaled = false;    ///< The transformation of the painter is the DC's one
     double     m_userScaleX = 1.0;
     double     m_userScaleY = 1.0;
+    int        m_signX = 1;
+    int        m_signY = 1;
+    wxPoint    m_logicalOrigin;
+    wxPoint    m_deviceOrigin;
     QTransform m_baseTransform;
 
 protected:
-    void SetPainterCompat( QPainter* aPainter ) { m_painter = aPainter; }
+    void SetPainterCompat( QPainter* aPainter );
 };
 
 using wxGCDC = wxDC;

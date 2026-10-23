@@ -24,7 +24,9 @@
 
 #include <boost/version.hpp>
 #include <wx/aboutdlg.h>
+#include <wx/app.h>
 #include <wx/arrimpl.cpp>
+#include <wx/platinfo.h>
 #include <wx/textctrl.h>
 #include <wx/utils.h>
 

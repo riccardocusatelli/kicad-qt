@@ -27,6 +27,7 @@
 #include <wx/defs.h>
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 /// The array API of the wxWidgets WX_DEFINE_ARRAY() classes, on a std::vector.
@@ -129,6 +130,80 @@ private:
     }
 
 typedef kiwxArray<void*> wxArrayPtrVoid;
+
+
+/**
+ * A WX_DECLARE_OBJARRAY() class: an array of objects it owns.  Add() takes a copy of an object,
+ * or the object given by a pointer; a copy of the array copies its objects.
+ */
+template <typename T>
+class kiwxObjArray
+{
+public:
+    kiwxObjArray() = default;
+
+    kiwxObjArray( const kiwxObjArray& aOther ) { *this = aOther; }
+
+    kiwxObjArray& operator=( const kiwxObjArray& aOther )
+    {
+        if( this != &aOther )
+        {
+            m_items.clear();
+
+            for( const std::unique_ptr<T>& item : aOther.m_items )
+                m_items.push_back( std::make_unique<T>( *item ) );
+        }
+
+        return *this;
+    }
+
+    kiwxObjArray( kiwxObjArray&& ) = default;
+    kiwxObjArray& operator=( kiwxObjArray&& ) = default;
+
+    size_t GetCount() const { return m_items.size(); }
+    size_t size() const { return m_items.size(); }
+    bool   IsEmpty() const { return m_items.empty(); }
+    void   Empty() { m_items.clear(); }
+    void   Clear() { m_items.clear(); }
+
+    /// The objects of an array are not const (as wxWidgets), even in a const array.
+    T& Item( size_t aIndex ) const { return *m_items[aIndex]; }
+    T& operator[]( size_t aIndex ) const { return *m_items[aIndex]; }
+    T& Last() const { return *m_items.back(); }
+
+    void Add( const T& aItem, size_t aCount = 1 )
+    {
+        for( size_t i = 0; i < aCount; ++i )
+            m_items.push_back( std::make_unique<T>( aItem ) );
+    }
+
+    /// The array takes the object.
+    void Add( const T* aItem ) { m_items.emplace_back( const_cast<T*>( aItem ) ); }
+
+    void Insert( const T& aItem, size_t aIndex )
+    {
+        m_items.insert( m_items.begin() + aIndex, std::make_unique<T>( aItem ) );
+    }
+
+    void RemoveAt( size_t aIndex, size_t aCount = 1 )
+    {
+        m_items.erase( m_items.begin() + aIndex, m_items.begin() + aIndex + aCount );
+    }
+
+private:
+    std::vector<std::unique_ptr<T>> m_items;
+};
+
+
+#define WX_DECLARE_OBJARRAY( T, name )                                                           \
+    class name : public kiwxObjArray<T>                                                          \
+    {                                                                                            \
+    public:                                                                                      \
+        using kiwxObjArray<T>::kiwxObjArray;                                                     \
+    }
+
+/// The objects of the arrays are defined with their class (see WX_DECLARE_OBJARRAY()).
+#define WX_DEFINE_OBJARRAY( name )
 
 #ifndef _WIN32
 #pragma GCC visibility pop

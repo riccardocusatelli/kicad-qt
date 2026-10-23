@@ -30,7 +30,7 @@ class WX_HTML_REPORT_PANEL;
 /**
  * A wrapper for reporting to a wx HTML window.
  */
-class KICOMMON_API WX_HTML_PANEL_REPORTER : public REPORTER
+class KIQT_COMMON_API WX_HTML_PANEL_REPORTER : public REPORTER
 {
 public:
     WX_HTML_PANEL_REPORTER( WX_HTML_REPORT_PANEL* aPanel ) :

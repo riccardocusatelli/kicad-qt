@@ -28,6 +28,7 @@
 
 #include <wx/kiwx_gdi.h>
 
+#include <cmath>
 #include <map>
 #include <set>
 
@@ -37,6 +38,7 @@
 #include <QFontDatabase>
 #include <QFontMetrics>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPalette>
 #include <QStyle>
 #include <QStyleOptionButton>
@@ -370,6 +372,34 @@ wxImage& wxImage::Rescale( int aWidth, int aHeight, wxImageResizeQuality aQualit
 wxImage wxImage::GetSubImage( const wxRect& aRect ) const
 {
     return wxImage( copy( aRect.x, aRect.y, aRect.width, aRect.height ) );
+}
+
+
+void wxImage::SetRGB( const wxRect& aRect, unsigned char aRed, unsigned char aGreen,
+                      unsigned char aBlue )
+{
+    QRect rect = QRect( aRect.x, aRect.y, aRect.width, aRect.height ).intersected( this->rect() );
+
+    for( int y = rect.top(); y <= rect.bottom(); ++y )
+    {
+        for( int x = rect.left(); x <= rect.right(); ++x )
+            SetRGB( x, y, aRed, aGreen, aBlue );
+    }
+}
+
+
+void wxImage::Paste( const wxImage& aImage, int aX, int aY, wxImageAlphaBlendMode aAlphaBlend )
+{
+    if( format() != QImage::Format_ARGB32 && format() != QImage::Format_ARGB32_Premultiplied )
+        *this = wxImage( convertToFormat( QImage::Format_ARGB32 ) );
+
+    QPainter painter( this );
+
+    // Over: the pixels of the image replace the ones under them, with their alpha
+    painter.setCompositionMode( aAlphaBlend == wxIMAGE_ALPHA_BLEND_COMPOSE
+                                        ? QPainter::CompositionMode_SourceOver
+                                        : QPainter::CompositionMode_Source );
+    painter.drawImage( aX, aY, aImage );
 }
 
 
@@ -815,12 +845,36 @@ void wxDC::SetPen( const wxPen& aPen )
     QPen pen( QColor( aPen.GetColour() ) );
     pen.setWidth( aPen.GetWidth() );
 
+    // The ends and the joins of the pens of wxWidgets
+    pen.setCapStyle( Qt::RoundCap );
+    pen.setJoinStyle( Qt::RoundJoin );
+
     switch( aPen.GetStyle() )
     {
     case wxPENSTYLE_DOT:        pen.setStyle( Qt::DotLine );     break;
     case wxPENSTYLE_LONG_DASH:
     case wxPENSTYLE_SHORT_DASH: pen.setStyle( Qt::DashLine );    break;
     case wxPENSTYLE_DOT_DASH:   pen.setStyle( Qt::DashDotLine ); break;
+
+    case wxPENSTYLE_USER_DASH:
+    {
+        // The dashes of Qt are in widths of the pen too, but need an even count
+        QList<qreal> pattern;
+
+        for( wxDash dash : aPen.GetDashesCompat() )
+            pattern << std::max<qreal>( dash, 1 );
+
+        if( pattern.size() % 2 )
+            pattern << pattern.back();
+
+        if( pattern.isEmpty() )
+            pen.setStyle( Qt::SolidLine );
+        else
+            pen.setDashPattern( pattern );
+
+        break;
+    }
+
     default:                    pen.setStyle( Qt::SolidLine );   break;
     }
 
@@ -880,6 +934,86 @@ void wxDC::DrawLine( int aX1, int aY1, int aX2, int aY2 )
 void wxDC::DrawCircle( int aX, int aY, int aRadius )
 {
     m_painter->drawEllipse( QPoint( aX, aY ), aRadius, aRadius );
+}
+
+
+void wxDC::DrawEllipse( int aX, int aY, int aWidth, int aHeight )
+{
+    m_painter->drawEllipse( QRect( aX, aY, aWidth, aHeight ) );
+}
+
+
+void wxDC::DrawArc( int aX1, int aY1, int aX2, int aY2, int aXc, int aYc )
+{
+    // The arc goes counterclockwise on the device: on a mirrored device, it goes clockwise in
+    // the logical coordinates (from the end to the start counterclockwise)
+    if( m_painter->worldTransform().determinant() < 0 )
+    {
+        std::swap( aX1, aX2 );
+        std::swap( aY1, aY2 );
+    }
+
+    double dx = aX1 - aXc;
+    double dy = aY1 - aYc;
+    double radius = std::hypot( dx, dy );
+
+    // The angles of Qt are counterclockwise, the y axis going down
+    double startAngle = std::atan2( -dy, dx ) * 180.0 / M_PI;
+    double endAngle = std::atan2( -( aY2 - aYc ), aX2 - aXc ) * 180.0 / M_PI;
+    double sweep = endAngle - startAngle;
+
+    if( aX1 == aX2 && aY1 == aY2 )
+        sweep = 360.0;
+    else if( sweep <= 0.0 )
+        sweep += 360.0;
+
+    QRectF bounds( aXc - radius, aYc - radius, 2 * radius, 2 * radius );
+
+    if( m_brush.IsOk() && !m_brush.IsTransparent() )
+    {
+        // A pie: the arc and its radii
+        QPainterPath path( QPointF( aXc, aYc ) );
+        path.arcTo( bounds, startAngle, sweep );
+        path.closeSubpath();
+        m_painter->drawPath( path );
+    }
+    else
+    {
+        QPainterPath path;
+        path.arcMoveTo( bounds, startAngle );
+        path.arcTo( bounds, startAngle, sweep );
+        m_painter->drawPath( path );
+    }
+}
+
+
+void wxDC::DrawPolygon( int aCount, const wxPoint aPoints[], wxCoord aXOffset, wxCoord aYOffset,
+                        wxPolygonFillMode aFillStyle )
+{
+    QPolygon polygon;
+
+    for( int i = 0; i < aCount; ++i )
+        polygon << QPoint( aPoints[i].x + aXOffset, aPoints[i].y + aYOffset );
+
+    m_painter->drawPolygon( polygon, aFillStyle == wxWINDING_RULE ? Qt::WindingFill
+                                                                  : Qt::OddEvenFill );
+}
+
+
+void wxDC::DrawLines( int aCount, const wxPoint aPoints[], wxCoord aXOffset, wxCoord aYOffset )
+{
+    QPolygon polyline;
+
+    for( int i = 0; i < aCount; ++i )
+        polyline << QPoint( aPoints[i].x + aXOffset, aPoints[i].y + aYOffset );
+
+    m_painter->drawPolyline( polyline );
+}
+
+
+void wxDC::DrawPoint( int aX, int aY )
+{
+    m_painter->drawPoint( aX, aY );
 }
 
 
@@ -1009,18 +1143,143 @@ void wxDC::DestroyClippingRegion()
 }
 
 
-void wxDC::SetUserScale( double aX, double aY )
+/// The rounded coordinate of a value.
+static wxCoord KiROUNDCompat( double aValue )
 {
-    // the scale is on the transformation the painter had (the origin of a window, a cell...)
+    return wxCoord( std::lround( aValue ) );
+}
+
+
+void wxDC::SetPainterCompat( QPainter* aPainter )
+{
+    m_painter = aPainter;
+
+    // The transformation of the new painter, with the scale and the origins of the DC
+    m_userScaled = false;
+
+    if( m_painter && ( m_userScaleX != 1.0 || m_userScaleY != 1.0 || m_signX != 1 || m_signY != 1
+                       || m_logicalOrigin != wxPoint() || m_deviceOrigin != wxPoint() ) )
+    {
+        applyTransformCompat();
+    }
+}
+
+
+void wxDC::applyTransformCompat()
+{
+    // The transformation is on the one the painter had (the origin of a window, a cell...)
     if( !m_userScaled )
     {
         m_baseTransform = m_painter->worldTransform();
         m_userScaled = true;
     }
 
+    double sx = m_userScaleX * m_signX;
+    double sy = m_userScaleY * m_signY;
+
+    // device = ( logical - logical origin ) * scale + device origin
+    QTransform transform( sx, 0, 0, sy, m_deviceOrigin.x - m_logicalOrigin.x * sx,
+                          m_deviceOrigin.y - m_logicalOrigin.y * sy );
+
+    m_painter->setWorldTransform( transform * m_baseTransform );
+}
+
+
+void wxDC::SetUserScale( double aX, double aY )
+{
     m_userScaleX = aX;
     m_userScaleY = aY;
-    m_painter->setWorldTransform( QTransform::fromScale( aX, aY ) * m_baseTransform );
+    applyTransformCompat();
+}
+
+
+void wxDC::SetLogicalOrigin( wxCoord aX, wxCoord aY )
+{
+    m_logicalOrigin = wxPoint( aX, aY );
+    applyTransformCompat();
+}
+
+
+void wxDC::GetLogicalOrigin( wxCoord* aX, wxCoord* aY ) const
+{
+    if( aX )
+        *aX = m_logicalOrigin.x;
+
+    if( aY )
+        *aY = m_logicalOrigin.y;
+}
+
+
+void wxDC::SetDeviceOrigin( wxCoord aX, wxCoord aY )
+{
+    m_deviceOrigin = wxPoint( aX, aY );
+    applyTransformCompat();
+}
+
+
+void wxDC::GetDeviceOrigin( wxCoord* aX, wxCoord* aY ) const
+{
+    if( aX )
+        *aX = m_deviceOrigin.x;
+
+    if( aY )
+        *aY = m_deviceOrigin.y;
+}
+
+
+void wxDC::SetAxisOrientation( bool aXLeftRight, bool aYBottomUp )
+{
+    m_signX = aXLeftRight ? 1 : -1;
+    m_signY = aYBottomUp ? -1 : 1;
+    applyTransformCompat();
+}
+
+
+wxCoord wxDC::DeviceToLogicalX( wxCoord aX ) const
+{
+    return KiROUNDCompat( ( aX - m_deviceOrigin.x ) / ( m_userScaleX * m_signX ) ) + m_logicalOrigin.x;
+}
+
+
+wxCoord wxDC::DeviceToLogicalY( wxCoord aY ) const
+{
+    return KiROUNDCompat( ( aY - m_deviceOrigin.y ) / ( m_userScaleY * m_signY ) ) + m_logicalOrigin.y;
+}
+
+
+wxCoord wxDC::DeviceToLogicalXRel( wxCoord aX ) const
+{
+    return KiROUNDCompat( aX / m_userScaleX );
+}
+
+
+wxCoord wxDC::DeviceToLogicalYRel( wxCoord aY ) const
+{
+    return KiROUNDCompat( aY / m_userScaleY );
+}
+
+
+wxCoord wxDC::LogicalToDeviceX( wxCoord aX ) const
+{
+    return KiROUNDCompat( ( aX - m_logicalOrigin.x ) * m_userScaleX * m_signX ) + m_deviceOrigin.x;
+}
+
+
+wxCoord wxDC::LogicalToDeviceY( wxCoord aY ) const
+{
+    return KiROUNDCompat( ( aY - m_logicalOrigin.y ) * m_userScaleY * m_signY ) + m_deviceOrigin.y;
+}
+
+
+wxCoord wxDC::LogicalToDeviceXRel( wxCoord aX ) const
+{
+    return KiROUNDCompat( aX * m_userScaleX );
+}
+
+
+wxCoord wxDC::LogicalToDeviceYRel( wxCoord aY ) const
+{
+    return KiROUNDCompat( aY * m_userScaleY );
 }
 
 

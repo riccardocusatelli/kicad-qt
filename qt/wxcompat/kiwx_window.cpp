@@ -1078,6 +1078,23 @@ void wxWindow::SetSizeHints( int aMinW, int aMinH, int aMaxW, int aMaxH, int aIn
 }
 
 
+wxBitmap wxWindow::GetIcon() const
+{
+    QIcon               icon = GetHandle()->windowIcon();
+    const QList<QSize>  sizes = icon.availableSizes();
+
+    if( sizes.isEmpty() )
+        return wxBitmap();
+
+    QSize largest = *std::max_element( sizes.begin(), sizes.end(),
+                                       []( const QSize& aA, const QSize& aB )
+                                       {
+                                           return aA.width() * aA.height() < aB.width() * aB.height();
+                                       } );
+    return wxBitmap( icon.pixmap( largest ) );
+}
+
+
 wxSize wxWindow::GetMinSize() const
 {
     QWidget* widget = GetHandle();

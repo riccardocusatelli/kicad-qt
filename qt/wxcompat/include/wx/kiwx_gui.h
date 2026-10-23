@@ -78,6 +78,9 @@
 #include <wx/utils.h>
 #include <wx/filename.h>
 #include <wx/translation.h>
+#include <wx/log.h>
+#include <wx/vector.h>
+#include <wx/versioninfo.h>
 #include <wx/kiwx_events.h>
 #include <wx/kiwx_gdi.h>
 #include <wx/kiwx_menu.h>
@@ -1013,9 +1016,17 @@ public:
     wxImageList* GetImageList() const { return m_imageListCompat.get(); }
     bool SetPageImage( size_t aPage, int aImage );
 
+    /// The images of the tabs, as bundles (in place of an image list).
+    void SetImages( const std::vector<wxBitmapBundle>& aImages ) { m_imagesCompat = aImages; }
+
 private:
     std::shared_ptr<wxImageList> m_imageListCompat;
+    std::vector<wxBitmapBundle>  m_imagesCompat;
 };
+
+/// The version of the GUI library: Qt (wxGetLibraryVersionInfo()).
+KIQT_API wxVersionInfo wxGetLibraryVersionInfo();
+
 
 using wxBookCtrlBase = wxNotebook;
 

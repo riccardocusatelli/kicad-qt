@@ -35,6 +35,7 @@ class wxString;
 
 class QIcon;
 class QPixmap;
+class wxBitmap;
 class BITMAP_STORE;
 
 enum class BITMAPS : unsigned int;
@@ -55,6 +56,9 @@ KICOMMON_API BITMAP_STORE* GetBitmapStore();
  * @param aHeightTag is the height of the image, or -1 for the default size.
  */
 KICOMMON_API QPixmap KiBitmap( BITMAPS aBitmap, int aHeightTag = -1 );
+
+/// A new bitmap of an icon at its default size (the caller takes it).
+KICOMMON_API wxBitmap* KiBitmapNew( BITMAPS aBitmap );
 
 /// An icon with all its sizes from @a aMinHeight (all if -1).
 KICOMMON_API QIcon KiBitmapBundle( BITMAPS aBitmap, int aMinHeight = -1 );

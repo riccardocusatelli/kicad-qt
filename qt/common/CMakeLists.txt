@@ -205,6 +205,7 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
 # The dialogs and widgets of KiCad built unchanged on the wxWidgets compatibility layer
 # (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/common/dialog_about/dialog_about_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_autosave_recovery_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter_base.fbp
@@ -222,9 +223,12 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     )
 
 set( KIQT_COMMON_COMPAT_SRCS
+    dialog_about/AboutDialog_main.cpp
+    dialog_about/dialog_about.cpp
     dialogs/dialog_autosave_recovery.cpp
     dialogs/dialog_configure_paths.cpp
     dialogs/dialog_edit_library_tables.cpp
+    dialogs/dialog_hotkey_list.cpp
     dialogs/dialog_page_settings.cpp
     dialogs/dialog_plugin_options.cpp
     dialogs/dialog_design_block_properties.cpp
@@ -232,6 +236,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/eda_list_dialog.cpp
     dialogs/html_message_box.cpp
     dialogs/panel_embedded_files.cpp
+    dialogs/panel_hotkeys_editor.cpp
     dialogs/panel_setup_severities.cpp
     dialogs/panel_text_variables.cpp
     grid_tricks.cpp
@@ -241,6 +246,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     scintilla_tricks.cpp
     ui_events.cpp
     validators.cpp
+    widgets/button_row_panel.cpp
     widgets/font_choice.cpp
     widgets/grid_bitmap_toggle.cpp
     widgets/grid_button.cpp
@@ -256,6 +262,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/widget_hotkey_list.cpp
     widgets/wx_dataviewctrl.cpp
     widgets/wx_grid.cpp
+    widgets/wx_listbox.cpp
     )
 
 list( TRANSFORM KIQT_COMMON_COMPAT_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/ )
@@ -266,13 +273,18 @@ add_library( kiqt_common STATIC
     ${KIQT_COMMON_TOOL_SRCS}
     ${KIQT_COMMON_FBP_SRCS}
 
+    ${CMAKE_SOURCE_DIR}/common/bitmap_base_dc.cpp
     ${CMAKE_SOURCE_DIR}/common/clipboard.cpp
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling.cpp
     ${CMAKE_SOURCE_DIR}/common/dpi_scaling_common.cpp
+    ${CMAKE_SOURCE_DIR}/common/drawing_sheet/ds_draw_item_print.cpp
     ${CMAKE_SOURCE_DIR}/common/eda_doc.cpp
+    ${CMAKE_SOURCE_DIR}/common/eda_text_print.cpp
     ${CMAKE_SOURCE_DIR}/common/executable_names.cpp
     ${CMAKE_SOURCE_DIR}/common/gal_display_options_common.cpp
     ${CMAKE_SOURCE_DIR}/common/gestfich_gui.cpp
+    ${CMAKE_SOURCE_DIR}/common/gr_basic.cpp
+    ${CMAKE_SOURCE_DIR}/common/gr_text_print.cpp
     ${CMAKE_SOURCE_DIR}/common/gui_reporters.cpp
     ${CMAKE_SOURCE_DIR}/common/hotkey_store.cpp
     ${CMAKE_SOURCE_DIR}/common/hotkeys_basic.cpp
