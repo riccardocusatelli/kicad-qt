@@ -669,6 +669,12 @@ int main( int argc, char** argv )
     // The results show up even if the test crashes
     std::setvbuf( stdout, nullptr, _IOLBF, 0 );
 
+    // The settings of the test, not the ones of the user (the test changes them)
+    QTemporaryDir configHome;
+
+    if( !qEnvironmentVariableIsSet( "KICAD_CONFIG_HOME" ) )
+        qputenv( "KICAD_CONFIG_HOME", configHome.path().toUtf8() );
+
     // The application object of a program with a user interface (Pgm().IsGUI())
     KIQT_APP      kiqtApp;
     wxInitializer wxBase( argc, argv );

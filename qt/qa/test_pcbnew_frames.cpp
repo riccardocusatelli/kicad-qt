@@ -26,6 +26,7 @@
 
 #include <kicad_gl/kiglad.h> // Must be included first (OpenGL GAL)
 #include <cstdio>
+#include <functional>
 #include <string>
 #include <vector>
 #include <kiqt.h>     // Qt, without its METHOD macro
@@ -34,6 +35,9 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QScreen>
+#include <QTimer>
+#include <QDialog>
+#include <QPushButton>
 #include <QTemporaryDir>
 #include <wx/init.h>
 
@@ -51,6 +55,9 @@
 #include <pgm_gui.h>
 #include <settings/settings_manager.h>
 #include <tool/actions.h>
+#include <tools/pcb_actions.h>
+#include <tools/pcb_selection_tool.h>
+#include <zone.h>
 #include <tool/tool_manager.h>
 
 
@@ -95,6 +102,49 @@ void settle( int aMilliseconds = 50 )
 
     while( timer.elapsed() < aMilliseconds )
         QCoreApplication::processEvents( QEventLoop::AllEvents, 10 );
+}
+
+
+/// Run a function on the next dialog that opens (modal, or quasi-modal: a dialog with its own
+/// event loop, which is not a modal widget).
+void onNextDialog( std::function<void( QDialog* )> aFunction )
+{
+    QTimer* poll = new QTimer();
+
+    QObject::connect( poll, &QTimer::timeout, poll,
+                      [poll, aFunction]()
+                      {
+                          for( QWidget* widget : QApplication::topLevelWidgets() )
+                          {
+                              QDialog* dialog = qobject_cast<QDialog*>( widget );
+
+                              if( dialog && dialog->isVisible() )
+                              {
+                                  poll->stop();
+                                  poll->deleteLater();
+                                  aFunction( dialog );
+                                  return;
+                              }
+                          }
+                      } );
+
+    poll->start( 20 );
+}
+
+
+/// Press a button of a dialog, by its label.
+bool pressButton( QWidget* aDialog, const QString& aLabel )
+{
+    for( QPushButton* button : aDialog->findChildren<QPushButton*>() )
+    {
+        if( button->text().remove( QLatin1Char( '&' ) ) == aLabel )
+        {
+            button->click();
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -173,6 +223,59 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
         }
     }
 
+    // The tools of the editor on the board
+    if( TOOL_MANAGER* toolMgr = frame->GetToolManager(); toolMgr && board )
+    {
+        PCB_SELECTION_TOOL* selTool = toolMgr->GetTool<PCB_SELECTION_TOOL>();
+        size_t              footprints = board->Footprints().size();
+        size_t              tracks = board->Tracks().size();
+
+        toolMgr->RunAction( ACTIONS::selectAll );
+        settle( 100 );
+        check( selTool && selTool->GetSelection().Size() > 0, "select all" );
+
+        toolMgr->RunAction( ACTIONS::doDelete );
+        settle( 100 );
+        check( board->Footprints().empty() && board->Tracks().empty(), "delete the selection" );
+
+        toolMgr->RunAction( ACTIONS::undo );
+        settle( 100 );
+        check( board->Footprints().size() == footprints && board->Tracks().size() == tracks,
+               "undo the deletion" );
+
+        toolMgr->RunAction( ACTIONS::selectionClear );
+        settle( 50 );
+
+        toolMgr->RunAction( PCB_ACTIONS::zoneFillAll );
+        settle( 300 );
+
+        bool filled = !board->Zones().empty();
+
+        for( ZONE* zone : board->Zones() )
+        {
+            if( !zone->GetIsRuleArea() && !zone->IsFilled() )
+                filled = false;
+        }
+
+        check( filled, "fill the zones" );
+
+        // The board setup dialog (quasi-modal): shown, then cancelled
+        bool shown = false;
+        bool cancelled = false;
+
+        onNextDialog( [&]( QDialog* aDialog )
+                      {
+                          shown = true;
+                          settle( 200 );
+                          cancelled = pressButton( aDialog, QStringLiteral( "Cancel" ) );
+                      } );
+
+        toolMgr->RunAction( PCB_ACTIONS::boardSetup );
+        settle( 100 );
+        check( shown, "the board setup dialog is shown" );
+        check( cancelled, "the board setup dialog is cancelled" );
+    }
+
     if( !aScreenshot.isEmpty() )
     {
         // From the display: the grab of the widgets has no OpenGL window (a native window)
@@ -184,6 +287,8 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
         frame->grab().save( path );
     }
 
+    // The changes of the test are not saved (the editor would ask)
+    frame->GetScreen()->SetContentModified( false );
     frame->Close( true );
     settle( 100 );
 }
@@ -222,6 +327,12 @@ int main( int argc, char** argv )
 
     // The results show up even if the test crashes
     std::setvbuf( stdout, nullptr, _IOLBF, 0 );
+
+    // The settings of the test, not the ones of the user (the test changes them)
+    QTemporaryDir configHome;
+
+    if( !qEnvironmentVariableIsSet( "KICAD_CONFIG_HOME" ) )
+        qputenv( "KICAD_CONFIG_HOME", configHome.path().toUtf8() );
 
     // The application object of a program with a user interface (Pgm().IsGUI())
     KIQT_APP      kiqtApp;
