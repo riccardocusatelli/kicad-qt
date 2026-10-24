@@ -261,18 +261,34 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
 
         // The board setup dialog (quasi-modal): shown, then cancelled
         bool shown = false;
+        bool fits = false;
         bool cancelled = false;
 
         onNextDialog( [&]( QDialog* aDialog )
                       {
                           shown = true;
                           settle( 200 );
+
+                          // The page is not squeezed: the dialog has the size of its content
+                          QSize content = aDialog->minimumSizeHint();
+                          fits = aDialog->width() >= content.width()
+                                 && aDialog->height() >= content.height();
+
+                          if( !aScreenshot.isEmpty() )
+                          {
+                              QString path = aScreenshot;
+                              path.replace( QStringLiteral( ".png" ),
+                                            QStringLiteral( "-board-setup.png" ) );
+                              aDialog->grab().save( path );
+                          }
+
                           cancelled = pressButton( aDialog, QStringLiteral( "Cancel" ) );
                       } );
 
         toolMgr->RunAction( PCB_ACTIONS::boardSetup );
         settle( 100 );
         check( shown, "the board setup dialog is shown" );
+        check( fits, "the board setup dialog fits its page" );
         check( cancelled, "the board setup dialog is cancelled" );
     }
 

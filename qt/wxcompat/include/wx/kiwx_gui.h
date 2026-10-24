@@ -1074,9 +1074,30 @@ public:
     void FitInside();
     void SetTargetWindow( wxWidgetArgCompat ) {}
 
+    /**
+     * The best size of wxWidgets (wxScrolled::DoGetBestSize): the size of the content in the
+     * directions without scrolling, the minimum size and a scroll bar in the directions with
+     * scrolling (a scroll rate).
+     */
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+
+protected:
+    /// The layout of the content changed: so do the sizes of the window, for the layout which
+    /// holds it (a scroll area does not tell it).
+    bool eventFilter( QObject* aObject, QEvent* aEvent ) override;
+
 private:
-    int m_rateX = 1;
-    int m_rateY = 1;
+    /// The directions with scrolling: a scroll rate, and a scroll bar.
+    bool scrollsX() const;
+    bool scrollsY() const;
+
+    /// The size of the content, and of the frame of the window.
+    QSize contentSizeHint() const;
+
+    // The scroll steps, in pixels (0: no scrolling in the direction, as wxWidgets)
+    int m_rateX = 0;
+    int m_rateY = 0;
 };
 
 using wxScrolledCanvas = wxScrolledWindow;

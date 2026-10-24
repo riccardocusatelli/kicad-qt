@@ -1533,7 +1533,19 @@ class FormClass:
         if cls == 'wxScrolledWindow' and self.gen.compat and not sub:
             # The sizer is in the content of the scroll area, which holds the children; they are
             # created in the window (their parent with wxWidgets), the layout moves them
-            var = self.var( aObj, 'wxScrolledWindow', 'new wxScrolledWindow( %s )' % aParent )
+            # The style (the directions of scrolling) and the scroll rates, as wxFormBuilder
+            # writes them: they make the best size of the window (wxScrolled::DoGetBestSize)
+            style = self.wx_style( p )
+
+            if style == '0':
+                style = 'wxHSCROLL|wxVSCROLL'
+
+            var = self.var( aObj, 'wxScrolledWindow',
+                            'new wxScrolledWindow( %s, wxID_ANY, wxDefaultPosition, wxDefaultSize, '
+                            '%s )' % ( aParent, style ) )
+            self.code.append( '    %s->SetScrollRate( %s, %s );'
+                              % ( var, p.get( 'scroll_rate_x', '5' ) or '5',
+                                  p.get( 'scroll_rate_y', '5' ) or '5' ) )
             self.qt( 'QWidget' )
             content = self.tmp( 'scrolled' )
             self.code.append( '    QWidget* %s = %s->GetClientWidgetCompat();' % ( content, var ) )

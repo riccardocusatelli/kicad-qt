@@ -54,6 +54,10 @@ public:
         {
             m_contents = m_lazyCtor( this );
             m_layout->addWidget( m_contents->GetHandle(), 1 );
+
+            // A window made in a shown page is hidden until it is shown (and a hidden window
+            // has no size in the layout): shown as the page, as wxWidgets does
+            m_contents->GetHandle()->setVisible( !isHidden() );
             m_layout->activate();
 
             wxTransferDataToWindowCompat( m_contents->GetHandle() );

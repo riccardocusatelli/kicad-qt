@@ -36,10 +36,12 @@
 
 #include <QApplication>
 #include <QKeyEvent>
+#include <QLayout>
 #include <QScreen>
 #include <QTableWidget>
 
 #include <QTextBlock>
+#include <QTimer>
 
 #include <launch_ext.h>
 #include <string_utils.h>
@@ -56,6 +58,70 @@
 // This is not a simple page index because some dialogs have dynamic page sets.
 static std::map<wxString, wxString> g_lastPage;
 static std::map<wxString, wxString> g_lastParentPage;
+
+
+/**
+ * Fit a paged dialog to its page, as wxWidgets: the minimum size is the best size, within the
+ * screen, and the dialog grows to it.
+ */
+static void fitPagedDialog( QWidget* aDialog )
+{
+    if( QLayout* layout = aDialog->layout() )
+        layout->activate();
+
+    QSize hint = aDialog->sizeHint().expandedTo( aDialog->minimumSizeHint() );
+    hint = hint.expandedTo( QSize( 600, 500 ) ).boundedTo( QSize( 1500, 900 ) );
+
+    if( QScreen* screen = aDialog->screen() )
+    {
+        QRect area = screen->availableGeometry();
+        hint = hint.boundedTo( QSize( std::max( 0, area.width() - 40 ),
+                                      std::max( 0, area.height() - 80 ) ) );
+    }
+
+    // The dialog only grows: the sizes of the pages already shown stay
+    hint = hint.expandedTo( aDialog->minimumSize() );
+
+    if( hint != aDialog->minimumSize() )
+        aDialog->setMinimumSize( hint );
+
+    if( aDialog->width() < hint.width() || aDialog->height() < hint.height() )
+        aDialog->resize( aDialog->size().expandedTo( hint ) );
+}
+
+
+/**
+ * The sizes of the content of a page reach the dialog later than its page change (the layouts
+ * take them through their events, the content of a page is sized when it is shown): the dialog
+ * fits its page again after the requests of its layout.
+ */
+class FIT_FILTER : public QObject
+{
+public:
+    explicit FIT_FILTER( QWidget* aDialog ) : QObject( aDialog ), m_dialog( aDialog ) {}
+
+    bool eventFilter( QObject* aObject, QEvent* aEvent ) override
+    {
+        if( aObject == m_dialog && aEvent->type() == QEvent::LayoutRequest && !m_pending )
+        {
+            // After the layout has handled the request
+            m_pending = true;
+
+            QTimer::singleShot( 0, this,
+                                [this]()
+                                {
+                                    m_pending = false;
+                                    fitPagedDialog( m_dialog );
+                                } );
+        }
+
+        return false;
+    }
+
+private:
+    QWidget* m_dialog;
+    bool     m_pending = false;
+};
 
 
 PAGED_DIALOG::PAGED_DIALOG( wxWindow* aParent, const wxString& aTitle, bool aShowReset,
@@ -140,6 +206,8 @@ PAGED_DIALOG::PAGED_DIALOG( wxWindow* aParent, const wxString& aTitle, bool aSho
     m_treebook->Bind( wxEVT_CHAR_HOOK, &PAGED_DIALOG::onCharHook, this );
     m_treebook->Bind( wxEVT_TREEBOOK_PAGE_CHANGED, &PAGED_DIALOG::onPageChanged, this );
     m_treebook->Bind( wxEVT_TREEBOOK_PAGE_CHANGING, &PAGED_DIALOG::onPageChanging, this );
+
+    installEventFilter( new FIT_FILTER( this ) );
 }
 
 
@@ -381,20 +449,28 @@ void PAGED_DIALOG::onPageChanged( wxBookCtrlEvent& event )
 
     UpdateResetButton( page );
 
-    // Make sure the dialog size is enough to fit the page content, within the screen
-    QSize hint = sizeHint().expandedTo( QSize( 600, 500 ) ).boundedTo( QSize( 1500, 900 ) );
-
-    if( QScreen* screen = this->screen() )
+    // Make sure the dialog size is enough to fit the page content, within the screen.  A lazy
+    // page is made now (as wxWidgets shows the page when it is selected, even in a dialog not
+    // shown yet), and the layouts are activated: their sizes are the ones of the content.
+    if( wxWindow* pageWindow = m_treebook->ResolvePage( page ) )
     {
-        QRect area = screen->availableGeometry();
-        hint = hint.boundedTo( QSize( std::max( 0, area.width() - 40 ),
-                                      std::max( 0, area.height() - 80 ) ) );
+        for( QLayout* layout : pageWindow->GetHandle()->findChildren<QLayout*>() )
+            layout->activate();
+
+        // The sizes cached by the layouts up to the dialog are the ones without the page
+        for( QWidget* widget = pageWindow->GetHandle(); widget; widget = widget->parentWidget() )
+        {
+            if( QLayout* layout = widget->layout() )
+                layout->invalidate();
+
+            if( widget == this )
+                break;
+        }
     }
 
-    setMinimumSize( hint );
-
-    if( width() < hint.width() || height() < hint.height() )
-        resize( size().expandedTo( hint ) );
+    // The dialog fits the page now; it grows again when the layouts take the sizes of the
+    // content (FIT_FILTER)
+    fitPagedDialog( this );
 }
 
 

@@ -45,6 +45,7 @@
 #include <QMessageBox>
 #include <QScreen>
 #include <QScrollBar>
+#include <QStyle>
 #include <QSignalBlocker>
 #include <QTextBlock>
 #include <QVariant>
@@ -3026,10 +3027,93 @@ wxScrolledWindow::wxScrolledWindow( wxWidgetArgCompat aParent, int aId, const wx
 
 void wxScrolledWindow::SetScrollRate( int aX, int aY )
 {
-    m_rateX = std::max( aX, 1 );
-    m_rateY = std::max( aY, 1 );
-    horizontalScrollBar()->setSingleStep( m_rateX );
-    verticalScrollBar()->setSingleStep( m_rateY );
+    m_rateX = std::max( aX, 0 );
+    m_rateY = std::max( aY, 0 );
+    horizontalScrollBar()->setSingleStep( std::max( m_rateX, 1 ) );
+    verticalScrollBar()->setSingleStep( std::max( m_rateY, 1 ) );
+
+    // No scrolling in a direction without a rate
+    if( m_rateX == 0 )
+        setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+
+    if( m_rateY == 0 )
+        setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+
+    updateGeometry();
+}
+
+
+bool wxScrolledWindow::scrollsX() const
+{
+    return m_rateX > 0 && horizontalScrollBarPolicy() != Qt::ScrollBarAlwaysOff;
+}
+
+
+bool wxScrolledWindow::scrollsY() const
+{
+    return m_rateY > 0 && verticalScrollBarPolicy() != Qt::ScrollBarAlwaysOff;
+}
+
+
+QSize wxScrolledWindow::contentSizeHint() const
+{
+    QSize size;
+
+    if( QWidget* content = widget() )
+        size = content->sizeHint().expandedTo( content->minimumSizeHint() );
+
+    const int frame = 2 * frameWidth();
+    return QSize( std::max( size.width(), 0 ) + frame, std::max( size.height(), 0 ) + frame );
+}
+
+
+QSize wxScrolledWindow::sizeHint() const
+{
+    QSize      best = contentSizeHint();
+    const int  bar = style()->pixelMetric( QStyle::PM_ScrollBarExtent, nullptr, this );
+    const bool scrollX = scrollsX();
+    const bool scrollY = scrollsY();
+
+    // As wxScrolled: the minimum size (explicit) and a scroll bar where the window scrolls
+    if( scrollX )
+        best.setWidth( minimumWidth() + bar );
+    else if( scrollY )
+        best.rwidth() += bar;    // the vertical scroll bar takes room from the content
+
+    if( scrollY )
+        best.setHeight( minimumHeight() + bar );
+    else if( scrollX )
+        best.rheight() += bar;
+
+    return best;
+}
+
+
+bool wxScrolledWindow::eventFilter( QObject* aObject, QEvent* aEvent )
+{
+    if( aObject == widget() && aEvent->type() == QEvent::LayoutRequest )
+        updateGeometry();
+
+    return QScrollArea::eventFilter( aObject, aEvent );
+}
+
+
+QSize wxScrolledWindow::minimumSizeHint() const
+{
+    QSize      size = QScrollArea::minimumSizeHint();
+    QSize      content = contentSizeHint();
+    const int  bar = style()->pixelMetric( QStyle::PM_ScrollBarExtent, nullptr, this );
+    const bool scrollX = scrollsX();
+    const bool scrollY = scrollsY();
+
+    // The content is not cut in the directions without scrolling
+    if( !scrollX )
+        size.setWidth( std::max( size.width(), content.width() + ( scrollY ? bar : 0 ) ) );
+
+    if( !scrollY )
+        size.setHeight( std::max( size.height(), content.height() + ( scrollX ? bar : 0 ) ) );
+
+    return size;
 }
 
 
@@ -3046,10 +3130,10 @@ void wxScrolledWindow::GetScrollPixelsPerUnit( int* aX, int* aY ) const
 void wxScrolledWindow::Scroll( int aX, int aY )
 {
     if( aX >= 0 )
-        horizontalScrollBar()->setValue( aX * m_rateX );
+        horizontalScrollBar()->setValue( aX * std::max( m_rateX, 1 ) );
 
     if( aY >= 0 )
-        verticalScrollBar()->setValue( aY * m_rateY );
+        verticalScrollBar()->setValue( aY * std::max( m_rateY, 1 ) );
 }
 
 
@@ -3067,8 +3151,8 @@ void wxScrolledWindow::GetViewStart( int* aX, int* aY ) const
 
 wxPoint wxScrolledWindow::GetViewStart() const
 {
-    return wxPoint( horizontalScrollBar()->value() / m_rateX,
-                    verticalScrollBar()->value() / m_rateY );
+    return wxPoint( horizontalScrollBar()->value() / std::max( m_rateX, 1 ),
+                    verticalScrollBar()->value() / std::max( m_rateY, 1 ) );
 }
 
 
