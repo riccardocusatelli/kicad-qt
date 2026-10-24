@@ -139,6 +139,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     pcb_origin_transforms.cpp
     pcb_screen.cpp
     pcbnew_config.cpp
+    pcbnew_printout.cpp
     pcbnew_settings.cpp
     python/scripting/pcb_scripting_tool.cpp
     python/scripting/pcbnew_action_plugins.cpp
@@ -389,6 +390,7 @@ set( KIQT_PCBNEW_COMPAT_DIALOGS
     dialogs/dialog_pns_diff_pair_dimensions.cpp
     dialogs/dialog_pns_settings.cpp
     dialogs/dialog_position_relative.cpp
+    dialogs/dialog_print_pcbnew.cpp
     dialogs/dialog_push_pad_properties.cpp
     dialogs/dialog_reference_image_properties.cpp
     dialogs/dialog_render_job.cpp
@@ -485,6 +487,7 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties.cpp
+    ${CMAKE_SOURCE_DIR}/common/board_printout.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_assign_netclass.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_choose_project.cpp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_multi_unit_entry.cpp
@@ -501,6 +504,7 @@ add_library( pcbnew_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/import_gfx/graphics_import_mgr.cpp
     ${CMAKE_SOURCE_DIR}/common/libraries/lib_table_grid_data_model.cpp
     ${CMAKE_SOURCE_DIR}/common/pin_numbers.cpp
+    ${CMAKE_SOURCE_DIR}/common/printout.cpp
     ${CMAKE_SOURCE_DIR}/common/status_popup.cpp
     ${CMAKE_SOURCE_DIR}/common/tool/design_block_control.cpp
     ${CMAKE_SOURCE_DIR}/common/tool/embed_tool.cpp

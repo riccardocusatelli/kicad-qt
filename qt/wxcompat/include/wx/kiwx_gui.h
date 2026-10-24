@@ -573,6 +573,8 @@ public:
     explicit wxChoice( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                        const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
                        const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
+    wxChoice( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+              int aCount, const wxString aChoices[], long aStyle = 0 );
 
     unsigned int GetCount() const override { return count(); }
     wxString GetString( unsigned int aIndex ) const override;
@@ -1492,6 +1494,10 @@ public:
     bool SetItemSpan( wxWidgetArgCompat aWindow, const wxGBSpan& aSpan );
 
     bool CheckForIntersection( const wxGBPosition& aPos, const wxGBSpan& aSpan );
+
+    /// The rows and the columns that the items use.
+    int GetEffectiveRowsCount() const;
+    int GetEffectiveColsCount() const;
 
     void SetEmptyCellSize( const wxSize& ) {}
     wxSize GetEmptyCellSize() const { return wxSize( 10, 20 ); }

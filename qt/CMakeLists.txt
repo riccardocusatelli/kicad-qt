@@ -25,7 +25,7 @@
 #   eeschema/ _eeschema_qt.kiface: the headless eeschema KIFACE with the schematic documents
 #   kicad/    kicad-qt: the main window, which loads the two KIFACEs
 
-find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets Network )
+find_package( Qt6 6.2 REQUIRED COMPONENTS Widgets Network PrintSupport )
 
 # The Qt base classes of the dialogs and panels, generated from their wxFormBuilder files
 # (qt/tools/fbp2qt.py) in this directory, with the directories of the sources: the derived

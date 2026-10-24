@@ -1372,6 +1372,14 @@ wxChoice::wxChoice( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, con
 }
 
 
+wxChoice::wxChoice( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+                    int aCount, const wxString aChoices[], long aStyle ) :
+        wxChoice( aParent, aId, aPos, aSize,
+                  aChoices ? wxArrayString( size_t( aCount ), aChoices ) : wxArrayString(), aStyle )
+{
+}
+
+
 wxString wxChoice::GetString( unsigned int aIndex ) const
 {
     return ToWxString( itemText( int( aIndex ) ) );
@@ -2771,6 +2779,36 @@ bool wxGridBagSizer::SetItemSpan( wxWidgetArgCompat aWindow, const wxGBSpan& aSp
     removeWidget( aWindow );
     addWidget( aWindow, row, col, aSpan.GetRowspan(), aSpan.GetColspan(), alignment );
     return true;
+}
+
+
+int wxGridBagSizer::GetEffectiveRowsCount() const
+{
+    int rows = 0;
+
+    for( int i = 0; i < count(); ++i )
+    {
+        int row = 0, col = 0, rowSpan = 1, colSpan = 1;
+        getItemPosition( i, &row, &col, &rowSpan, &colSpan );
+        rows = std::max( rows, row + rowSpan );
+    }
+
+    return rows;
+}
+
+
+int wxGridBagSizer::GetEffectiveColsCount() const
+{
+    int cols = 0;
+
+    for( int i = 0; i < count(); ++i )
+    {
+        int row = 0, col = 0, rowSpan = 1, colSpan = 1;
+        getItemPosition( i, &row, &col, &rowSpan, &colSpan );
+        cols = std::max( cols, col + colSpan );
+    }
+
+    return cols;
 }
 
 

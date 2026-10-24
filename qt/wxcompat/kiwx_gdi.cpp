@@ -1323,6 +1323,17 @@ bool wxDC::Blit( wxCoord aXDest, wxCoord aYDest, wxCoord aWidth, wxCoord aHeight
 }
 
 
+wxSize wxDC::GetPPI() const
+{
+    QPaintDevice* device = m_painter ? m_painter->device() : nullptr;
+
+    if( !device )
+        return wxSize( 96, 96 );
+
+    return wxSize( device->logicalDpiX(), device->logicalDpiY() );
+}
+
+
 wxSize wxDC::GetSize() const
 {
     QRect window = m_painter->window();

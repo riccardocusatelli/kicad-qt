@@ -962,6 +962,9 @@ public:
 
     wxSize GetSize() const;
 
+    /// The resolution of the device, in dots per inch.
+    wxSize GetPPI() const;
+
     /// Sizes in the logical pixels of Qt: already independent of the DPI.
     int FromDIP( int aValue ) const { return aValue; }
     wxSize FromDIP( const wxSize& aSize ) const { return aSize; }
@@ -994,7 +997,12 @@ protected:
     void SetPainterCompat( QPainter* aPainter );
 };
 
-using wxGCDC = wxDC;
+/// A DC drawing with a graphic context (wxGCDC): the DCs of the layer all draw with a QPainter.
+class KIQT_API wxGCDC : public wxDC
+{
+public:
+    using wxDC::wxDC;
+};
 
 class wxWindow;
 

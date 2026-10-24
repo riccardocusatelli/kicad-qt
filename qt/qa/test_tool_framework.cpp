@@ -47,13 +47,17 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QPrinter>
 #include <QPushButton>
 #include <QTableView>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QWheelEvent>
 #include <QWindow>
 
+#include <wx/dcmemory.h>
 #include <wx/init.h>
+#include <wx/print.h>
 
 #include <kiqt_app.h>
 
@@ -63,6 +67,8 @@
 #include <dialogs/dialog_design_block_properties.h>
 #include <dialogs/dialog_unit_entry.h>
 #include <eda_draw_frame.h>
+#include <gal/gal_display_options.h>
+#include <gal/gal_print.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <gal/opengl/opengl_gal.h>
 #include <kiface_base.h>
@@ -520,6 +526,126 @@ void onNextPopup( std::function<void( QWidget* )> aFunction, bool aDialog = fals
 } // namespace
 
 
+namespace
+{
+
+/// A printout of two pages: the Cairo GAL of the printouts and the DC of the page draw on them.
+class TEST_PRINTOUT : public wxPrintout
+{
+public:
+    TEST_PRINTOUT() : wxPrintout( wxS( "Test" ) ) {}
+
+    bool HasPage( int aPage ) override { return aPage >= 1 && aPage <= 2; }
+
+    void GetPageInfo( int* aMinPage, int* aMaxPage, int* aSelFrom, int* aSelTo ) override
+    {
+        *aMinPage = *aSelFrom = 1;
+        *aMaxPage = *aSelTo = 2;
+    }
+
+    bool OnPrintPage( int aPage ) override
+    {
+        m_pages++;
+        m_pageSize = GetLogicalPageRect().GetSize();
+
+        {
+            std::unique_ptr<KIGFX::GAL_PRINT> galPrint =
+                    KIGFX::GAL_PRINT::Create( m_options, GetDC() );
+            KIGFX::GAL* gal = galPrint->GetGAL();
+
+            galPrint->SetSheetSize( VECTOR2D( 8.27, 11.69 ) );
+            gal->SetClearColor( KIGFX::COLOR4D( 0.8, 0.9, 1.0, 1.0 ) );
+
+            KIGFX::GAL_DRAWING_CONTEXT ctx( gal );
+            gal->ClearScreen();
+            gal->SetIsFill( true );
+            gal->SetIsStroke( false );
+            gal->SetFillColor( KIGFX::COLOR4D( 1.0, 0.0, 0.0, 1.0 ) );
+            gal->DrawRectangle( VECTOR2D( -1e6, -1e6 ), VECTOR2D( 1e6, 1e6 ) );
+        }
+
+        // The DC of the page draws over the drawing of the GAL
+        wxDC* dc = GetDC();
+        dc->SetPen( wxPen( wxColour( 0, 0, 0 ), 4 ) );
+        dc->DrawLine( 0, 0, m_pageSize.x, m_pageSize.y );
+        return true;
+    }
+
+    int    m_pages = 0;
+    wxSize m_pageSize;
+
+private:
+    KIGFX::GAL_DISPLAY_OPTIONS m_options;
+};
+
+
+/// The DC of the compatibility layer (its coordinates) and the printing of a printout.
+void testPrinting()
+{
+    std::printf( "Drawing on a wxDC and printing (wxPrintout, GAL_PRINT)\n" );
+
+    {
+        // The logical coordinates: the y axis up from the bottom of the bitmap
+        wxBitmap bitmap( 100, 100 );
+        bitmap.fill( Qt::white );
+
+        {
+            wxMemoryDC dc( bitmap );
+            dc.SetDeviceOrigin( 0, 100 );
+            dc.SetAxisOrientation( true, true );
+            check( dc.DeviceToLogicalY( 80 ) == 20 && dc.LogicalToDeviceY( 20 ) == 80,
+                   "the logical coordinates of a DC with the y axis up" );
+
+            dc.SetPen( wxPen( wxColour( 255, 0, 0 ), 1, wxPENSTYLE_TRANSPARENT ) );
+            dc.SetBrush( wxBrush( wxColour( 255, 0, 0 ) ) );
+            dc.DrawRectangle( 10, 10, 20, 20 );
+
+            // A pie of a quarter of a circle, counterclockwise from the right
+            dc.SetBrush( wxBrush( wxColour( 0, 0, 255 ) ) );
+            dc.SetDeviceOrigin( 0, 0 );
+            dc.SetAxisOrientation( true, false );
+            dc.DrawArc( 90, 50, 50, 10, 50, 50 );
+        }
+
+        QImage image = bitmap.toImage();
+        check( QColor( image.pixel( 20, 80 ) ) == QColor( 255, 0, 0 ),
+               "a rectangle at its logical position" );
+        check( QColor( image.pixel( 20, 20 ) ) == QColor( 255, 255, 255 ),
+               "nothing at the mirrored position" );
+        check( QColor( image.pixel( 70, 30 ) ) == QColor( 0, 0, 255 ),
+               "an arc goes counterclockwise (its pie)" );
+        check( QColor( image.pixel( 70, 70 ) ) == QColor( 255, 255, 255 ),
+               "nothing on the other side of the arc" );
+    }
+
+    QTemporaryDir dir;
+    QString       pdfFile = dir.filePath( QStringLiteral( "test.pdf" ) );
+
+    QPrinter printer( QPrinter::HighResolution );
+    printer.setOutputFormat( QPrinter::PdfFormat );
+    printer.setOutputFileName( pdfFile );
+
+    wxPrintData printData;
+    printData.SetPaperId( wxPAPER_A4 );
+    printData.SetOrientation( wxPORTRAIT );
+    printData.ApplyCompat( printer );
+    printer.setOutputFileName( pdfFile );
+
+    TEST_PRINTOUT printout;
+    bool          printed = wxPrinter::PrintPagesCompat( printer, &printout, false );
+
+    check( printed && printout.m_pages == 2, "the printout prints its pages" );
+    check( printout.m_pageSize.x > 0 && printout.m_pageSize.x < printout.m_pageSize.y,
+           "a page of A4, in portrait" );
+
+    QFile pdf( pdfFile );
+    bool  isPdf = pdf.open( QIODevice::ReadOnly ) && pdf.read( 4 ) == "%PDF";
+    check( isPdf && pdf.size() > 10000, "the PDF file has the pages (with their images)" );
+}
+
+} // namespace
+
+
 int main( int argc, char** argv )
 {
     // --opengl: the canvas draws with the OpenGL GAL (it needs a display with OpenGL)
@@ -931,6 +1057,8 @@ int main( int argc, char** argv )
         frame.Close( true );
         settle();
     }
+
+    testPrinting();
 
     board.reset();
 

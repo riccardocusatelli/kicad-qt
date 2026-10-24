@@ -50,6 +50,7 @@ add_library( kiqt SHARED
     widgets/wx_infobar.cpp
     widgets/wx_panel.cpp
     widgets/wx_progress_reporters.cpp
+    ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/printing.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gdi.cpp
@@ -70,6 +71,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_statusbar.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_display.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_clipboard.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_print.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
     # OpenGL canvas of Qt
@@ -78,6 +80,11 @@ add_library( kiqt SHARED
     gal/hidpi_gl_3D_canvas_qt.cpp
     ${CMAKE_SOURCE_DIR}/common/gal/hidpi_gl_3D_canvas.cpp
     gal/opengl_gal_qt.cpp
+
+    # Cairo GAL of the printouts
+    ${CMAKE_SOURCE_DIR}/common/gal/cairo/cairo_print.cpp
+    gal/cairo_print_ctx_qt.cpp
+
     kicad_gl/gl_context_mgr.cpp
     kicad_gl/gl_utils.cpp
     )
@@ -96,11 +103,13 @@ set_target_properties( kiqt PROPERTIES
     OUTPUT_NAME kiqt
     )
 
-# The OpenGL GAL is part of the GAL library (GAL_API)
+# The OpenGL GAL and the Cairo GAL of the printouts are part of the GAL library (GAL_API)
 set_source_files_properties( ${KIQT_OPENGL_GAL_SRCS}
                              gal/hidpi_gl_canvas.cpp gal/opengl_gal_qt.cpp
                              gal/hidpi_gl_3D_canvas_qt.cpp
                              ${CMAKE_SOURCE_DIR}/common/gal/hidpi_gl_3D_canvas.cpp
+                             ${CMAKE_SOURCE_DIR}/common/gal/cairo/cairo_print.cpp
+                             gal/cairo_print_ctx_qt.cpp
     PROPERTIES COMPILE_DEFINITIONS GAL_DLL=1 )
 
 # The shaders of the OpenGL GAL (as in common/gal/CMakeLists.txt, in the Qt directories)
@@ -136,6 +145,7 @@ target_include_directories( kiqt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
 
 target_link_libraries( kiqt
     PUBLIC
+        Qt6::PrintSupport
         Qt6::Widgets
         gal_model
         glad
@@ -213,6 +223,8 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_page_settings_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_print_generic_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_printer_list_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_plugin_options_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
@@ -230,6 +242,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/dialog_edit_library_tables.cpp
     dialogs/dialog_hotkey_list.cpp
     dialogs/dialog_page_settings.cpp
+    dialogs/dialog_print_generic.cpp
     dialogs/dialog_plugin_options.cpp
     dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
@@ -237,6 +250,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/html_message_box.cpp
     dialogs/panel_embedded_files.cpp
     dialogs/panel_hotkeys_editor.cpp
+    dialogs/panel_printer_list.cpp
     dialogs/panel_setup_severities.cpp
     dialogs/panel_text_variables.cpp
     grid_tricks.cpp

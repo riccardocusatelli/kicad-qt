@@ -65,6 +65,7 @@ set( GAL_SRCS
     # Cairo GAL in a wxWidgets window, printing
     cairo/cairo_gal.cpp
     cairo/cairo_print.cpp
+    cairo/cairo_print_ctx_wx.cpp
     )
 
 add_library( gal_model SHARED ${GAL_MODEL_SRCS} )
