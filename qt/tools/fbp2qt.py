@@ -2100,10 +2100,12 @@ class FormClass:
             raise FbpError( 'form %s not supported' % self.kind )
 
         # The contents
+        topLayout = None
+
         for child in self.form.findall( 'object' ):
             if child.get( 'class' ) in SIZERS:
-                layout = self.sizer( child, 'this', aTop = True )
-                self.code.append( '    setLayout( %s );' % layout )
+                topLayout = self.sizer( child, 'this', aTop = True )
+                self.code.append( '    setLayout( %s );' % topLayout )
             else:
                 raise FbpError( '%s in the form' % child.get( 'class' ) )
 
@@ -2114,6 +2116,15 @@ class FormClass:
 
         # The size
         w, h = parse_size( p.get( 'size' ) )
+
+        if self.gen.compat and topLayout:
+            # As wxFormBuilder: laid out, and fitted to the contents without a size of the form
+            # (the code of the derived class measures its windows)
+            self.code.append( '    Layout();' )
+
+            if w <= 0 or h <= 0:
+                self.code.append( '    if( wxSizer* sizer = GetSizer() )' )
+                self.code.append( '        sizer->Fit( this );' )
 
         if w > 0 and h > 0:
             self.code.append( '    resize( %d, %d );' % ( w, h ) )

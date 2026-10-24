@@ -61,6 +61,16 @@ public:
 };
 
 
+/// A wxAny holding a wxDataViewIconText converts to a wxVariant (the variant of the text and
+/// its icon, as IMPLEMENT_VARIANT_OBJECT of wxWidgets): wxVariant( wxDataViewIconText( ... ) ).
+wxVariantData* iconTextVariantData( const wxAny& aAny )
+{
+    return new ICON_TEXT_VARIANT_DATA( aAny.As<wxDataViewIconText>() );
+}
+
+_REGISTER_WXANY_CONVERSION( wxDataViewIconText, wxDataViewIconText, iconTextVariantData )
+
+
 /// The text of a value (the text of an icon and text).
 wxString variantText( const wxVariant& aValue )
 {

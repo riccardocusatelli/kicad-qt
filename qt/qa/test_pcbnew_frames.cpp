@@ -47,6 +47,8 @@
 #include <board.h>
 #include <class_draw_panel_gal.h>
 #include <footprint.h>
+#include <pad.h>
+#include <pcb_track.h>
 #include <footprint_edit_frame.h>
 #include <frame_type.h>
 #include <kiface_base.h>
@@ -386,15 +388,57 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
         // (quasi-modal), DRC (not modal)
         testDialog( toolMgr, PCB_ACTIONS::boardSetup, "board setup", aScreenshot, "Cancel" );
 
+        // The properties of an item: selected, then its dialog
+        auto testProperties =
+                [&]( BOARD_ITEM* aItem, const char* aName )
+                {
+                    if( !aItem )
+                        return;
+
+                    toolMgr->RunAction( ACTIONS::selectionClear );
+                    selTool->AddItemToSel( aItem );
+                    settle( 50 );
+                    testDialog( toolMgr, PCB_ACTIONS::properties, aName, aScreenshot, "Cancel" );
+                    toolMgr->RunAction( ACTIONS::selectionClear );
+                };
+
+        auto firstTrack =
+                [&]( KICAD_T aType ) -> BOARD_ITEM*
+                {
+                    for( PCB_TRACK* track : board->Tracks() )
+                    {
+                        if( track->Type() == aType )
+                            return track;
+                    }
+
+                    return nullptr;
+                };
+
         if( !board->Footprints().empty() )
         {
-            toolMgr->RunAction( ACTIONS::selectionClear );
-            selTool->AddItemToSel( board->Footprints().front() );
-            settle( 50 );
-            testDialog( toolMgr, PCB_ACTIONS::properties, "footprint properties", aScreenshot,
-                        "Cancel" );
-            toolMgr->RunAction( ACTIONS::selectionClear );
+            FOOTPRINT* footprint = board->Footprints().front();
+            testProperties( footprint, "footprint properties" );
+
+            if( !footprint->Pads().empty() )
+                testProperties( footprint->Pads().front(), "pad properties" );
         }
+
+        testProperties( firstTrack( PCB_TRACE_T ), "track properties" );
+        testProperties( firstTrack( PCB_VIA_T ), "via properties" );
+
+        if( !board->Zones().empty() )
+            testProperties( board->Zones().front(), "zone properties" );
+
+        for( BOARD_ITEM* item : board->Drawings() )
+        {
+            if( item->Type() == PCB_TEXT_T )
+            {
+                testProperties( item, "text properties" );
+                break;
+            }
+        }
+
+        testDialog( toolMgr, ACTIONS::plot, "plot", aScreenshot, "Close" );
 
         // DRC: run, then closed
         bool drcRun = false;

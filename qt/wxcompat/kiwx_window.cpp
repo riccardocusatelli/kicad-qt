@@ -30,6 +30,7 @@
 #include <QBoxLayout>
 #include <QCloseEvent>
 #include <QFontMetrics>
+#include <QGroupBox>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QVariant>
@@ -236,6 +237,14 @@ bool isVertical( QBoxLayout* aBox )
 }
 
 
+/// The widget of which a layout is the layout (the box of a wxStaticBoxSizer), or nullptr.
+QWidget* layoutOwner( QLayout* aLayout )
+{
+    QGroupBox* owner = aLayout ? qobject_cast<QGroupBox*>( aLayout->parentWidget() ) : nullptr;
+    return owner && owner->layout() == aLayout ? owner : nullptr;
+}
+
+
 void showLayout( QLayout* aLayout, bool aShow )
 {
     for( int i = 0; i < aLayout->count(); ++i )
@@ -310,6 +319,16 @@ void wxSizer::Insert( size_t aIndex, wxSizer* aSizer, int aProportion, int aFlag
 
     if( !layout || !aSizer || !aSizer->GetLayoutCompat() )
         return;
+
+    // The sizer of a box: the box is the item (the sizer is its layout)
+    if( QWidget* owner = layoutOwner( aSizer->GetLayoutCompat() ) )
+    {
+        if( owner != layout->parentWidget() )
+        {
+            Insert( aIndex, owner, aProportion, aFlag, aBorder, aUserData );
+            return;
+        }
+    }
 
     if( QBoxLayout* box = boxLayout( this ) )
     {
@@ -569,6 +588,32 @@ wxSize wxSizer::Fit( wxWidgetArgCompat aWindow )
         return wxSize();
 
     aWindow->adjustSize();
+
+    // The windows inside have their place now, as in wxWidgets: their resize events (which Qt
+    // sends once the window is shown), each one after its parent, place the windows of the
+    // layouts and of the notebooks
+    auto place =
+            []( QWidget* aWidget )
+            {
+                if( QLayout* layout = aWidget->layout() )
+                    layout->activate();
+
+                if( aWidget->testAttribute( Qt::WA_PendingResizeEvent ) )
+                {
+                    QResizeEvent event( aWidget->size(), QSize() );
+                    QCoreApplication::sendEvent( aWidget, &event );
+                    aWidget->setAttribute( Qt::WA_PendingResizeEvent, false );
+                }
+            };
+
+    place( aWindow );
+
+    for( QWidget* child : aWindow->findChildren<QWidget*>() )
+    {
+        if( !child->isWindow() )
+            place( child );
+    }
+
     return wxSize( aWindow->width(), aWindow->height() );
 }
 
@@ -632,6 +677,13 @@ bool wxSizer::Show( wxSizer* aSizer, bool aShow, bool aRecursive )
 {
     if( !aSizer || !aSizer->GetLayoutCompat() )
         return false;
+
+    // The sizer of a box: the box too, as wxWidgets
+    if( QWidget* owner = layoutOwner( aSizer->GetLayoutCompat() ) )
+    {
+        if( !GetLayoutCompat() || owner != GetLayoutCompat()->parentWidget() )
+            owner->setVisible( aShow );
+    }
 
     showLayout( aSizer->GetLayoutCompat(), aShow );
     return true;

@@ -1027,6 +1027,11 @@ public:
     /// The images of the tabs, as bundles (in place of an image list).
     void SetImages( const std::vector<wxBitmapBundle>& aImages ) { m_imagesCompat = aImages; }
 
+protected:
+    /// The pages have their place also while the notebook is not shown, as in wxWidgets (the
+    /// code measures them; QTabWidget places them once shown).
+    void resizeEvent( QResizeEvent* aEvent ) override;
+
 private:
     std::shared_ptr<wxImageList> m_imageListCompat;
     std::vector<wxBitmapBundle>  m_imagesCompat;

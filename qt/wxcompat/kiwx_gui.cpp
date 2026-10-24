@@ -46,7 +46,9 @@
 #include <QMessageBox>
 #include <QScreen>
 #include <QScrollBar>
+#include <QStackedWidget>
 #include <QStyle>
+#include <QStyleOption>
 #include <QSignalBlocker>
 #include <QTextBlock>
 #include <QVariant>
@@ -2389,6 +2391,23 @@ wxNotebook::wxNotebook( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
         wxWindowCompat<QTabWidget>( aParent )
 {
     SetId( aId );
+}
+
+
+void wxNotebook::resizeEvent( QResizeEvent* aEvent )
+{
+    wxWindowCompat<QTabWidget>::resizeEvent( aEvent );
+
+    if( isVisible() )
+        return;
+
+    if( QStackedWidget* stack = findChild<QStackedWidget*>( QString(), Qt::FindDirectChildrenOnly ) )
+    {
+        QStyleOptionTabWidgetFrame option;
+        initStyleOption( &option );
+        stack->setGeometry( style()->subElementRect( QStyle::SE_TabWidgetTabContents, &option,
+                                                     this ) );
+    }
 }
 
 

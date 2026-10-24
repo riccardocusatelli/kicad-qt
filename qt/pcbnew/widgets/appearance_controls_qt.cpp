@@ -376,9 +376,7 @@ APPEARANCE_CONTROLS::APPEARANCE_CONTROLS( PCB_BASE_FRAME* aParent, QWidget* aFoc
 
 APPEARANCE_CONTROLS::~APPEARANCE_CONTROLS()
 {
-    if( m_board )
-        m_board->RemoveListener( this );
-
+    // As the wxWidgets version: not removed from the board, which the frame may have deleted
     delete m_layerContextMenu;
 }
 
@@ -675,16 +673,11 @@ void APPEARANCE_CONTROLS::OnBoardChanged()
 
     UpdateDisplayOptions();
 
-    if( m_board != m_frame->GetBoard() )
-    {
-        if( m_board )
-            m_board->RemoveListener( this );
+    // As the wxWidgets version: the previous board is deleted already (a new board is loaded)
+    m_board = m_frame->GetBoard();
 
-        m_board = m_frame->GetBoard();
-
-        if( m_board )
-            m_board->AddListener( this );
-    }
+    if( m_board )
+        m_board->AddListener( this );
 
     setUpdatesEnabled( true );
 }
