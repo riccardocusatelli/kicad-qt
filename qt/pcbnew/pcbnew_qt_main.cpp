@@ -46,6 +46,7 @@
 #include <qt_strings.h>
 #include <settings/kicad_settings.h>
 #include <settings/settings_manager.h>
+#include <startwizard/startwizard.h>
 #include <thread_pool.h>
 
 
@@ -159,6 +160,12 @@ int main( int argc, char** argv )
     }
 
     s_kiway.SetTop( frame );
+    kiqtApp.SetTopWindow( frame );      // as single_top: the application has a face
+
+    // The settings of a new configuration (the library tables...), then the libraries
+    STARTWIZARD startWizard;
+    startWizard.CheckAndRun( frame );
+
     s_program.GetLibraryManager().LoadGlobalTables();
 
     frame->show();

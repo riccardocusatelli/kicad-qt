@@ -298,6 +298,7 @@ public:
     void SetSizeHints( wxWidgetArgCompat aWindow );
 
     wxSize GetMinSize() const;
+    wxSize CalcMin() const { return GetMinSize(); }
 
     /// The size of the area of the layout.
     wxSize GetSize() const;
@@ -362,6 +363,19 @@ class KIQT_API wxWindow;
 
 /// The base of the windows of wxWidgets (wxWindowBase): the window.
 using wxWindowBase = wxWindow;
+
+
+/**
+ * The member m_containingSizer of the windows (wxWindowBase): the code of the panels fits them
+ * with it while they are made (m_containingSizer->Fit( this )), before they are in a sizer: it
+ * fits the window to its own sizer.
+ */
+struct KIQT_API wxContainingSizerCompat
+{
+    wxContainingSizerCompat* operator->() { return this; }
+
+    wxSize Fit( wxWindow* aWindow );
+};
 
 
 class KIQT_API wxWindow : public wxEvtHandler
@@ -670,6 +684,9 @@ protected:
 
     /// The parent of the window when it was made (as the member of wxWindow).
     wxWindow* m_parent = nullptr;
+
+    /// The sizer which holds the window (see wxContainingSizerCompat).
+    wxContainingSizerCompat m_containingSizer;
 
 private:
     void*                         m_clientData = nullptr;

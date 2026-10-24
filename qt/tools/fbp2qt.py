@@ -1006,7 +1006,11 @@ class FormClass:
             self.code.append( '    %s->setText( %s );' % ( var, tr( p.get( 'label', '' ) ) ) )
 
             if parse_int( p.get( 'wrap' ), -1 ) > 0:
-                self.code.append( '    %s->setWordWrap( true );' % var )
+                if self.gen.compat:
+                    # The line breaks of wxWidgets, at the width of the wrap
+                    self.code.append( '    %s->Wrap( %d );' % ( var, parse_int( p.get( 'wrap' ), -1 ) ) )
+                else:
+                    self.code.append( '    %s->setWordWrap( true );' % var )
 
             if 'wxALIGN_RIGHT' in style:
                 self.code.append( '    %s->setAlignment( Qt::AlignRight | Qt::AlignVCenter );' % var )

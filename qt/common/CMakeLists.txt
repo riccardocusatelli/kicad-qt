@@ -72,6 +72,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_display.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_clipboard.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_print.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_wizard.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
     # OpenGL canvas of Qt
@@ -233,6 +234,9 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_embedded_files_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_grid_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_startwizard_libraries_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_startwizard_privacy_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_startwizard_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_text_variables_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_toolbar_customization_base.fbp
     )
@@ -264,6 +268,10 @@ set( KIQT_COMMON_COMPAT_SRCS
     lib_table_grid_tricks.cpp
     lib_table_notebook_panel.cpp
     scintilla_tricks.cpp
+    startwizard/startwizard.cpp
+    startwizard/startwizard_provider_libraries.cpp
+    startwizard/startwizard_provider_privacy.cpp
+    startwizard/startwizard_provider_settings.cpp
     ui_events.cpp
     validators.cpp
     widgets/button_row_panel.cpp
