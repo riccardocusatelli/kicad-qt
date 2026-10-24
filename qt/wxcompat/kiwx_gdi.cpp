@@ -1072,8 +1072,12 @@ void wxDC::DrawBitmap( const wxBitmap& aBitmap, int aX, int aY, bool aUseMask )
 
 void wxDC::Clear()
 {
-    if( m_background.IsOk() )
+    // A transparent background leaves what is under the window (the background of its parent)
+    if( m_background.IsOk() && !m_background.IsTransparent()
+            && m_background.GetColour().Alpha() != 0 )
+    {
         m_painter->fillRect( m_painter->window(), QColor( m_background.GetColour() ) );
+    }
 }
 
 

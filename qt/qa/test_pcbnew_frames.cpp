@@ -148,6 +148,54 @@ bool pressButton( QWidget* aDialog, const QString& aLabel )
 }
 
 
+/**
+ * A dialog of the editor, opened by an action: shown, with the size of its content (its pages
+ * are not squeezed), then closed with one of its buttons.
+ */
+void testDialog( TOOL_MANAGER* aToolMgr, const TOOL_ACTION& aAction, const char* aName,
+                 const QString& aScreenshot, const QString& aCloseButton,
+                 std::function<void( QDialog* )> aWork = nullptr )
+{
+    bool shown = false;
+    bool fits = false;
+    bool closed = false;
+
+    onNextDialog( [&]( QDialog* aDialog )
+                  {
+                      shown = true;
+                      settle( 200 );
+
+                      // What the test does in the dialog
+                      if( aWork )
+                          aWork( aDialog );
+
+                      // The dialog has the size of its content
+                      QSize content = aDialog->minimumSizeHint();
+                      fits = aDialog->width() >= content.width()
+                             && aDialog->height() >= content.height();
+
+                      if( !aScreenshot.isEmpty() )
+                      {
+                          QString path = aScreenshot;
+                          QString suffix = QString::fromUtf8( aName ).replace( ' ', '-' );
+                          path.replace( QStringLiteral( ".png" ),
+                                        QStringLiteral( "-%1.png" ).arg( suffix ) );
+                          aDialog->grab().save( path );
+                      }
+
+                      closed = pressButton( aDialog, aCloseButton );
+                  } );
+
+    aToolMgr->RunAction( aAction );
+    settle( 300 );
+
+    std::string name( aName );
+    check( shown, ( "the " + name + " dialog is shown" ).c_str() );
+    check( fits, ( "the " + name + " dialog fits its content" ).c_str() );
+    check( closed, ( "the " + name + " dialog is closed" ).c_str() );
+}
+
+
 /// A frame of the KIFACE.
 template <typename FRAME>
 FRAME* createFrame( KIWAY& aKiway, FRAME_T aFrameType )
@@ -259,37 +307,35 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
 
         check( filled, "fill the zones" );
 
-        // The board setup dialog (quasi-modal): shown, then cancelled
-        bool shown = false;
-        bool fits = false;
-        bool cancelled = false;
+        // The dialogs of the editor: board setup (quasi-modal), the properties of a footprint
+        // (quasi-modal), DRC (not modal)
+        testDialog( toolMgr, PCB_ACTIONS::boardSetup, "board setup", aScreenshot, "Cancel" );
 
-        onNextDialog( [&]( QDialog* aDialog )
-                      {
-                          shown = true;
-                          settle( 200 );
+        if( !board->Footprints().empty() )
+        {
+            toolMgr->RunAction( ACTIONS::selectionClear );
+            selTool->AddItemToSel( board->Footprints().front() );
+            settle( 50 );
+            testDialog( toolMgr, PCB_ACTIONS::properties, "footprint properties", aScreenshot,
+                        "Cancel" );
+            toolMgr->RunAction( ACTIONS::selectionClear );
+        }
 
-                          // The page is not squeezed: the dialog has the size of its content
-                          QSize content = aDialog->minimumSizeHint();
-                          fits = aDialog->width() >= content.width()
-                                 && aDialog->height() >= content.height();
+        // DRC: run, then closed
+        bool drcRun = false;
 
-                          if( !aScreenshot.isEmpty() )
-                          {
-                              QString path = aScreenshot;
-                              path.replace( QStringLiteral( ".png" ),
-                                            QStringLiteral( "-board-setup.png" ) );
-                              aDialog->grab().save( path );
-                          }
+        testDialog( toolMgr, PCB_ACTIONS::runDRC, "DRC", aScreenshot, "Close",
+                    [&]( QDialog* aDialog )
+                    {
+                        drcRun = pressButton( aDialog, QStringLiteral( "Run DRC" ) );
 
-                          cancelled = pressButton( aDialog, QStringLiteral( "Cancel" ) );
-                      } );
+                        // The DRC runs in the dialog (its progress reporter), then shows the
+                        // violations
+                        settle( 1500 );
+                    } );
 
-        toolMgr->RunAction( PCB_ACTIONS::boardSetup );
-        settle( 100 );
-        check( shown, "the board setup dialog is shown" );
-        check( fits, "the board setup dialog fits its page" );
-        check( cancelled, "the board setup dialog is cancelled" );
+        check( drcRun, "run DRC" );
+        check( !board->Markers().empty(), "the DRC finds the violations of the board" );
     }
 
     if( !aScreenshot.isEmpty() )
