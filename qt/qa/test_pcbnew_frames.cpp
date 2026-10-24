@@ -1,0 +1,253 @@
+/*
+ * This program source code file is part of KiCad, a free EDA CAD application.
+ *
+ * Copyright The KiCad Developers, see AUTHORS.txt for contributors.
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
+ * @file test_pcbnew_frames.cpp
+ * The test of the frames of pcbnew on Qt: the KIFACE with the GUI (pcbnew/pcbnew.cpp and
+ * pcbnew_gui_qt) makes the original frames (the PCB editor, the footprint editor, the footprint
+ * viewer), which open a board and run their tools.
+ */
+
+#include <kicad_gl/kiglad.h> // Must be included first (OpenGL GAL)
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <kiqt.h>     // Qt, without its METHOD macro
+#include <QApplication>
+#include <QElapsedTimer>
+#include <QFile>
+#include <QFileInfo>
+#include <QTemporaryDir>
+#include <wx/init.h>
+
+#include <kiqt_app.h>
+
+#include <api/api_server.h>
+#include <board.h>
+#include <class_draw_panel_gal.h>
+#include <footprint.h>
+#include <footprint_edit_frame.h>
+#include <frame_type.h>
+#include <kiface_base.h>
+#include <kiway.h>
+#include <pcb_edit_frame.h>
+#include <pgm_gui.h>
+#include <settings/settings_manager.h>
+#include <tool/actions.h>
+#include <tool/tool_manager.h>
+
+
+namespace
+{
+
+int s_failures = 0;
+
+
+void check( bool aOk, const char* aWhat )
+{
+    std::printf( "  %s  %s\n", aOk ? "ok  " : "FAIL", aWhat );
+
+    if( !aOk )
+        s_failures++;
+}
+
+
+/// The program of the frames: a program with a GUI (PgmGui()).
+class PGM_QT_TEST : public PGM_GUI
+{
+public:
+    ~PGM_QT_TEST() override { Destroy(); }
+
+    void MacOpenFile( const wxString& aFileName ) override {}
+
+    /// The server of the IPC API, as the one of single_top (the frames register their handlers)
+    void StartApiServer()
+    {
+#ifdef KICAD_IPC_API
+        m_api_server = std::make_unique<KICAD_API_SERVER>();
+#endif
+    }
+};
+
+
+/// Let the event loop run (the events posted by the frames, their timers).
+void settle( int aMilliseconds = 50 )
+{
+    QElapsedTimer timer;
+    timer.start();
+
+    while( timer.elapsed() < aMilliseconds )
+        QCoreApplication::processEvents( QEventLoop::AllEvents, 10 );
+}
+
+
+/// A frame of the KIFACE.
+template <typename FRAME>
+FRAME* createFrame( KIWAY& aKiway, FRAME_T aFrameType )
+{
+    QWidget* window = Kiface().CreateKiWindow( nullptr, aFrameType, &aKiway, KFCTL_STANDALONE );
+    FRAME*   frame = dynamic_cast<FRAME*>( window );
+
+    if( !frame )
+        delete window;
+
+    return frame;
+}
+
+
+void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aScreenshot )
+{
+    std::printf( "PCB_EDIT_FRAME\n" );
+
+    PCB_EDIT_FRAME* frame = createFrame<PCB_EDIT_FRAME>( aKiway, FRAME_PCB_EDITOR );
+    check( frame != nullptr, "the KIFACE makes the PCB editor" );
+
+    if( !frame )
+        return;
+
+    frame->show();
+    settle( 300 );
+    check( frame->isVisible(), "the PCB editor is shown" );
+    check( frame->GetCanvas() != nullptr, "the PCB editor has a canvas" );
+    check( frame->GetToolManager() != nullptr, "the PCB editor has its tools" );
+
+    check( frame->OpenProjectFiles( { aBoardFile } ), "the PCB editor opens the board" );
+    settle( 300 );
+
+    BOARD* board = frame->GetBoard();
+    check( board && !board->Footprints().empty(), "the board has its footprints" );
+    check( board && !board->Tracks().empty(), "the board has its tracks" );
+
+    if( TOOL_MANAGER* toolMgr = frame->GetToolManager() )
+    {
+        toolMgr->RunAction( ACTIONS::zoomFitScreen );
+        settle( 100 );
+        toolMgr->RunAction( ACTIONS::zoomInCenter );
+        settle( 100 );
+        check( true, "the zoom actions run" );
+
+        // The canvas draws the board (with the GAL of the settings: the OpenGL one draws in
+        // its own window, which is not in the grab of the frame)
+        QImage image;
+        bool   varied = false;
+
+        for( int attempt = 0; attempt < 20 && !varied; ++attempt )
+        {
+            frame->GetCanvas()->ForceRefresh();
+            settle( 100 );
+
+            if( !frame->GetCanvas()->GetScreenshot( image ) || image.width() < 100 )
+                continue;
+
+            for( int y = 0; y < image.height() && !varied; y += 7 )
+            {
+                for( int x = 0; x < image.width() && !varied; x += 7 )
+                    varied = image.pixel( x, y ) != image.pixel( 0, 0 );
+            }
+        }
+
+        check( varied, "the canvas draws the board" );
+
+        if( !aScreenshot.isEmpty() )
+        {
+            QString path = aScreenshot;
+            path.replace( QStringLiteral( ".png" ), QStringLiteral( "-canvas.png" ) );
+            check( image.save( path ), "screenshot of the canvas" );
+        }
+    }
+
+    if( !aScreenshot.isEmpty() )
+        check( frame->grab().save( aScreenshot ), "screenshot of the PCB editor" );
+
+    frame->Close( true );
+    settle( 100 );
+}
+
+
+void testFootprintEditor( KIWAY& aKiway )
+{
+    std::printf( "FOOTPRINT_EDIT_FRAME\n" );
+
+    FOOTPRINT_EDIT_FRAME* frame = createFrame<FOOTPRINT_EDIT_FRAME>( aKiway,
+                                                                     FRAME_FOOTPRINT_EDITOR );
+    check( frame != nullptr, "the KIFACE makes the footprint editor" );
+
+    if( !frame )
+        return;
+
+    frame->show();
+    settle( 300 );
+    check( frame->isVisible(), "the footprint editor is shown" );
+    check( frame->GetBoard() != nullptr, "the footprint editor has its board" );
+
+    frame->Close( true );
+    settle( 100 );
+}
+
+} // namespace
+
+
+int main( int argc, char** argv )
+{
+    if( argc < 2 )
+    {
+        std::fprintf( stderr, "usage: %s <board.kicad_pcb> [screenshot.png]\n", argv[0] );
+        return 2;
+    }
+
+    // The results show up even if the test crashes
+    std::setvbuf( stdout, nullptr, _IOLBF, 0 );
+
+    // The application object of a program with a user interface (Pgm().IsGUI())
+    KIQT_APP      kiqtApp;
+    wxInitializer wxBase( argc, argv );
+
+    // The GUI of the program (PGM_GUI::InitPgm configures it)
+    QApplication app( argc, argv );
+
+    PGM_QT_TEST program;
+    SetPgm( &program );
+
+    if( !program.InitPgm( true, true ) )
+    {
+        std::fprintf( stderr, "cannot initialise the program\n" );
+        return 2;
+    }
+
+    program.StartApiServer();
+
+    KIWAY kiway( KFCTL_STANDALONE );
+    program.GetSettingsManager().SetKiway( &kiway );
+    Kiface().OnKifaceStart( &program, KFCTL_STANDALONE, &kiway );
+
+    // The board is opened from a copy (the editor writes the project file next to it)
+    QTemporaryDir dir;
+    QString       copy = dir.filePath( QFileInfo( QString::fromUtf8( argv[1] ) ).fileName() );
+    check( QFile::copy( QString::fromUtf8( argv[1] ), copy ), "copy the board" );
+
+    testPcbEditor( kiway, wxString::FromUTF8( copy.toUtf8().constData() ),
+                   argc > 2 ? QString::fromUtf8( argv[2] ) : QString() );
+    testFootprintEditor( kiway );
+
+    Kiface().OnKifaceEnd();
+    program.Destroy();
+
+    std::printf( "%s\n", s_failures ? "FAILED" : "PASSED" );
+    return s_failures ? 1 : 0;
+}

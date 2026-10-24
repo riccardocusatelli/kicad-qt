@@ -40,3 +40,18 @@ target_include_directories( qa_qt_3d_viewer_objects BEFORE PRIVATE
     ${CMAKE_SOURCE_DIR}/qt/3d-viewer
     ${KIQT_FBP_DIR}/3d-viewer
     )
+
+# The test of the frames of pcbnew on Qt: the KIFACE with the GUI makes the original frames
+# (the PCB editor, the footprint editor), which open a board.
+add_headless_executable( qa_qt_pcbnew_frames
+    KIFACE  pcbnew_qtgui_kiface
+    SOURCES test_pcbnew_frames.cpp
+    )
+
+set_target_properties( qa_qt_pcbnew_frames_objects PROPERTIES AUTOMOC OFF )
+target_sources( qa_qt_pcbnew_frames PRIVATE $<TARGET_OBJECTS:pcbnew_gui_qt> )
+add_dependencies( qa_qt_pcbnew_frames pcbnew_gui_qt )
+
+if( UNIX AND NOT APPLE )
+    target_link_libraries( qa_qt_pcbnew_frames PRIVATE ${SPNAV_LIBRARIES} )
+endif()

@@ -54,9 +54,12 @@
 #include <eda_search_data.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <gui_reporters.h>
+#include <id.h>
 #include <kiface_base.h>
 #include <kiplatform/ui.h>
 #include <widgets/filedlg_hook_new_library.h>
+#include <wx/checkbox.h>
+#include <wx/choice.h>
 #include <wx/dirdlg.h>
 #include <wx/filedlg.h>
 #include <kiway.h>
@@ -87,6 +90,7 @@
 #include <core/ki_assert.h>
 
 #include <qt_strings.h>
+#include <ui_hooks.h>
 
 #define FR_HISTORY_LIST_CNT     10   ///< Maximum size of the find/replace history stacks.
 
@@ -119,6 +123,10 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameT
     m_undoRedoCountMax    = DEFAULT_MAX_UNDO_ITEMS;
 
     m_canvasType          = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    m_gridSelectBox       = nullptr;
+    m_zoomSelectBox       = nullptr;
+    m_zoomCustomEntry     = wxNOT_FOUND;
+    m_overrideLocksCb     = nullptr;
     m_canvas              = nullptr;
     m_toolDispatcher      = nullptr;
     m_messagePanel        = nullptr;
@@ -472,28 +480,293 @@ void EDA_DRAW_FRAME::EraseMsgBox()
 }
 
 
+void EDA_DRAW_FRAME::configureToolbars()
+{
+    EDA_BASE_FRAME::configureToolbars();
+
+    // Grid selection
+    auto gridSelectorFactory =
+            [this]( ACTION_TOOLBAR* aToolbar )
+            {
+                if( !m_gridSelectBox )
+                {
+                    m_gridSelectBox = new wxChoice( aToolbar, ID_ON_GRID_SELECT );
+
+                    QObject::connect( m_gridSelectBox, &QComboBox::activated, m_gridSelectBox,
+                                      [this]( int )
+                                      {
+                                          OnSelectGrid();
+                                      } );
+
+                    // The selection follows the grid of the frame
+                    KIQT::RegisterUpdateUI( m_gridSelectBox,
+                                            [this]()
+                                            {
+                                                SyncGridSelectBox();
+                                            } );
+                }
+
+                UpdateGridSelectBox();
+
+                aToolbar->Add( m_gridSelectBox );
+            };
+
+    RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::gridSelect, gridSelectorFactory );
+
+    // Zoom selection
+    auto zoomSelectorFactory =
+            [this]( ACTION_TOOLBAR* aToolbar )
+            {
+                if( !m_zoomSelectBox )
+                {
+                    m_zoomSelectBox = new wxChoice( aToolbar, ID_ON_ZOOM_SELECT );
+
+                    QObject::connect( m_zoomSelectBox, &QComboBox::activated, m_zoomSelectBox,
+                                      [this]( int )
+                                      {
+                                          OnSelectZoom();
+                                      } );
+
+                    // The selection follows the zoom of the canvas
+                    KIQT::RegisterUpdateUI( m_zoomSelectBox,
+                                            [this]()
+                                            {
+                                                SyncZoomSelectBox();
+                                            } );
+                }
+
+                UpdateZoomSelectBox();
+                aToolbar->Add( m_zoomSelectBox );
+            };
+
+    RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::zoomSelect, zoomSelectorFactory );
+
+    auto overrideLocksFactory =
+            [this]( ACTION_TOOLBAR* aToolbar )
+            {
+                if( !m_overrideLocksCb )
+                {
+                    m_overrideLocksCb = new wxCheckBox( aToolbar, ID_ON_OVERRIDE_LOCKS,
+                                                        _( "Override locks" ) );
+
+                    // Clicking the checkbox takes focus off the canvas, so return it
+                    QObject::connect( m_overrideLocksCb, &QCheckBox::clicked, m_overrideLocksCb,
+                                      [this]( bool )
+                                      {
+                                          if( m_canvas )
+                                              m_canvas->SetFocus();
+                                      } );
+                }
+
+                aToolbar->Add( m_overrideLocksCb );
+            };
+
+    RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::overrideLocks,
+                                         overrideLocksFactory );
+}
+
+
+void EDA_DRAW_FRAME::ClearToolbarControl( int aId )
+{
+    // The controls are deleted with their tool bar
+    switch( aId )
+    {
+    case ID_ON_GRID_SELECT:    m_gridSelectBox = nullptr;   break;
+    case ID_ON_ZOOM_SELECT:    m_zoomSelectBox = nullptr;   break;
+    case ID_ON_OVERRIDE_LOCKS: m_overrideLocksCb = nullptr; break;
+    }
+}
+
+
 void EDA_DRAW_FRAME::UpdateGridSelectBox()
 {
     UpdateStatusBar();
     DisplayUnitsMsg();
     DisplayGridMsg();
+
+    if( m_gridSelectBox == nullptr )
+        return;
+
+    // Update grid values with the current units setting.
+    m_gridSelectBox->Clear();
+    wxArrayString gridsList;
+
+    KI_CHECK( config(), /* void */ );
+
+    GRID_MENU::BuildChoiceList( &gridsList, GetWindowSettings( config() ), this );
+
+    for( const wxString& grid : gridsList )
+        m_gridSelectBox->Append( grid );
+
+    m_gridSelectBox->Append( wxT( "---" ) );
+    m_gridSelectBox->Append( _( "Edit Grids..." ) );
+
+    m_gridSelectBox->SetSelection( GetWindowSettings( config() )->grid.last_size_idx );
 }
 
 
 void EDA_DRAW_FRAME::SyncGridSelectBox()
 {
     DisplayGridMsg();
+
+    // No need to update the grid select box if it doesn't exist or the grid setting change
+    // was made using the select box.
+    if( m_gridSelectBox == nullptr || !config() )
+        return;
+
+    int idx = GetWindowSettings( config() )->grid.last_size_idx;
+    idx = std::clamp( idx, 0, (int) m_gridSelectBox->GetCount() - 1 );
+
+    if( idx != m_gridSelectBox->GetSelection() )
+        m_gridSelectBox->SetSelection( idx );
+}
+
+
+void EDA_DRAW_FRAME::OnSelectGrid()
+{
+    KI_CHECK_RET( m_gridSelectBox, wxS( "m_gridSelectBox uninitialized" ) );
+
+    int idx = m_gridSelectBox->GetCurrentSelection();
+
+    if( idx == int( m_gridSelectBox->GetCount() ) - 2 )
+    {
+        // The separator: re-check the current grid
+        SyncGridSelectBox();
+    }
+    else if( idx == int( m_gridSelectBox->GetCount() ) - 1 )
+    {
+        // The Grid Settings... entry: re-check the current grid, then open the settings once
+        // the popup of the box is closed
+        SyncGridSelectBox();
+
+        QMetaObject::invokeMethod( this,
+                                   [this]()
+                                   {
+                                       m_toolManager->RunAction( ACTIONS::gridProperties );
+                                   },
+                                   Qt::QueuedConnection );
+    }
+    else
+    {
+        m_toolManager->RunAction( ACTIONS::gridPreset, idx );
+    }
+
+    UpdateStatusBar();
+    m_canvas->Refresh();
+
+    // Clicking on the box removes the focus from the canvas
+    m_canvas->SetFocus();
 }
 
 
 void EDA_DRAW_FRAME::UpdateZoomSelectBox()
 {
     UpdateStatusBar();
+
+    if( m_zoomSelectBox == nullptr || !m_canvas )
+        return;
+
+    double zoom = m_canvas->GetGAL()->GetZoomFactor();
+
+    m_zoomSelectBox->Clear();
+    m_zoomSelectBox->Append( _( "Zoom Auto" ) );
+    m_zoomSelectBox->SetSelection( 0 );
+    m_zoomCustomEntry = wxNOT_FOUND;
+
+    KI_CHECK( config(), /* void */ );
+
+    for( unsigned ii = 0;  ii < GetWindowSettings( config() )->zoom_factors.size();  ++ii )
+    {
+        double current = GetWindowSettings( config() )->zoom_factors[ii];
+
+        m_zoomSelectBox->Append( wxString::Format( _( "Zoom %.2f" ), current ) );
+
+        if( zoom == current )
+            m_zoomSelectBox->SetSelection( (int) ii + 1 );
+    }
+}
+
+
+void EDA_DRAW_FRAME::SyncZoomSelectBox()
+{
+    if( m_zoomSelectBox == nullptr || !m_canvas || !m_canvas->GetGAL() || !config() )
+        return;
+
+    double zoom = m_canvas->GetGAL()->GetZoomFactor();
+
+    const std::vector<double>& zoomList = GetWindowSettings( config() )->zoom_factors;
+    int                        preset = wxNOT_FOUND;
+
+    for( size_t jj = 0; jj < zoomList.size(); ++jj )
+    {
+        if( zoomList[jj] == zoom )
+        {
+            preset = (int) jj + 1; // index 0 is Zoom Auto
+            break;
+        }
+    }
+
+    if( preset != wxNOT_FOUND )
+    {
+        // Zoom is on a preset, so drop the custom entry and select the preset.
+        if( m_zoomCustomEntry != wxNOT_FOUND )
+        {
+            m_zoomSelectBox->Delete( m_zoomCustomEntry );
+            m_zoomCustomEntry = wxNOT_FOUND;
+        }
+
+        if( m_zoomSelectBox->GetSelection() != preset )
+            m_zoomSelectBox->SetSelection( preset );
+    }
+    else
+    {
+        // Off-preset zoom, show the exact value in its own entry just below Zoom Auto.
+        wxString text = wxString::Format( _( "Zoom %.2f" ), zoom );
+
+        if( m_zoomCustomEntry == wxNOT_FOUND )
+            m_zoomCustomEntry = m_zoomSelectBox->Insert( text, 1 );
+        else if( m_zoomSelectBox->GetString( m_zoomCustomEntry ) != text )
+            m_zoomSelectBox->SetString( m_zoomCustomEntry, text );
+
+        if( m_zoomSelectBox->GetSelection() != m_zoomCustomEntry )
+            m_zoomSelectBox->SetSelection( m_zoomCustomEntry );
+    }
+}
+
+
+void EDA_DRAW_FRAME::OnSelectZoom()
+{
+    KI_CHECK_RET( m_zoomSelectBox, wxS( "m_zoomSelectBox uninitialized" ) );
+
+    int id = m_zoomSelectBox->GetCurrentSelection();
+
+    if( id < 0 || id >= (int) m_zoomSelectBox->GetCount() )
+        return;
+
+    // Picking the custom entry means keep the current zoom, so nothing to do.
+    if( id == m_zoomCustomEntry )
+        return;
+
+    // The custom entry pushes the presets down by one, so shift back to the real preset id.
+    int preset = id;
+
+    if( m_zoomCustomEntry != wxNOT_FOUND && id > m_zoomCustomEntry )
+        preset = id - 1;
+
+    m_toolManager->RunAction( ACTIONS::zoomPreset, preset );
+    UpdateStatusBar();
+    m_canvas->Refresh();
+
+    // Clicking on the box removes the focus from the canvas
+    m_canvas->SetFocus();
 }
 
 
 bool EDA_DRAW_FRAME::GetOverrideLocks() const
 {
+    if( m_overrideLocksCb )
+        return m_overrideLocksCb->GetValue();
+
     return false;
 }
 

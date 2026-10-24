@@ -90,6 +90,10 @@ static PyObject* module_legacy_init( PyModuleDef* def )
 
 bool SCRIPTING_TOOL::Init()
 {
+    // Without the Python interpreter (a program which does not start it), no scripting
+    if( !Py_IsInitialized() )
+        return true;
+
     PyLOCK    lock;
     std::string pymodule( "_pcbnew" );
 
@@ -146,6 +150,10 @@ void SCRIPTING_TOOL::ReloadPlugins()
     // Remove all action plugins so that we don't keep references to old versions
     ACTION_PLUGINS::UnloadAll();
 
+    // Without the Python interpreter, no Python plugins
+    if( !Py_IsInitialized() )
+        return;
+
     try
     {
         PyLOCK lock;
@@ -164,8 +172,12 @@ int SCRIPTING_TOOL::reloadPlugins( const TOOL_EVENT& aEvent )
 
     try
     {
-        PyLOCK lock;
-        callLoadPlugins();
+        // Without the Python interpreter, no Python plugins
+        if( Py_IsInitialized() )
+        {
+            PyLOCK lock;
+            callLoadPlugins();
+        }
     }
     catch( ... )
     {

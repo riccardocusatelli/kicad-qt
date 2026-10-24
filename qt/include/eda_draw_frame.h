@@ -45,6 +45,8 @@
 #include <lib_id.h>
 
 class QLabel;
+class wxCheckBox;
+class wxChoice;
 class HOTKEY_CYCLE_POPUP;
 struct PLUGIN_ACTION;
 class wxFileName;
@@ -299,6 +301,14 @@ public:
     void UpdateZoomSelectBox();
 
     /**
+     * Select the current zoom in the zoom selection box of the tool bar (an entry of its own
+     * when the zoom is not one of the presets).
+     */
+    void SyncZoomSelectBox();
+
+    void ClearToolbarControl( int aId ) override;
+
+    /**
      * Return a human readable value which can be displayed as zoom level indicator in dialogs.
      */
     const wxString GetZoomLevelIndicator() const;
@@ -533,6 +543,16 @@ public:
 protected:
     virtual std::unique_ptr<MSG_PANEL_CONTEXT> createMsgPanelContext();
 
+    /// The controls of the tool bars of the drawing frames: the grid and zoom selection boxes,
+    /// the override locks check box.
+    void configureToolbars() override;
+
+    /// The user chose an entry of the grid selection box.
+    void OnSelectGrid();
+
+    /// The user chose an entry of the zoom selection box.
+    void OnSelectZoom();
+
     virtual void SetScreen( BASE_SCREEN* aScreen )  { m_currentScreen = aScreen; }
 
     void unitsChangeRefresh() override;
@@ -621,6 +641,11 @@ protected:
 
     /// The current canvas type.
     EDA_DRAW_PANEL_GAL::GAL_TYPE    m_canvasType;
+
+    wxChoice*            m_gridSelectBox;
+    wxChoice*            m_zoomSelectBox;
+    int                  m_zoomCustomEntry; // index of the non-preset zoom entry, or wxNOT_FOUND
+    wxCheckBox*          m_overrideLocksCb;
 
 private:
     BASE_SCREEN*                m_currentScreen;      ///< current used SCREEN
