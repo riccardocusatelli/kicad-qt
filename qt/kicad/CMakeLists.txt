@@ -1,6 +1,7 @@
 # kicad-qt: the Qt shell (project, documents in tabs), with the Qt KIFACEs
 
 add_executable( kicad-qt
+    home_widgets.cpp
     kicad_qt.cpp
     main_window.cpp
     )

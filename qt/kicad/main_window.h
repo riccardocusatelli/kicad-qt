@@ -30,8 +30,10 @@ class QFileSystemModel;
 class QLabel;
 class QListWidget;
 class QMenu;
-class QStackedWidget;
+class QDockWidget;
 class QTabWidget;
+class LAUNCHER_PANEL;
+class RECENT_PROJECTS_PANEL;
 class QToolBar;
 class QTreeView;
 class QT_DOCUMENT;
@@ -85,13 +87,21 @@ private:
     void addRecentFile( const QString& aFileName );
     void updateRecentFiles();
 
+    /// Show the tab bar only when there are documents besides the launcher.
+    void updateTabBar();
+
+    /// The file with the name of the project and this suffix, or empty without project.
+    QString siblingFile( const QString& aSuffix ) const;
+
     QT_DOCUMENT* currentDocument() const;
 
     KIWAY_BASE&        m_kiway;
 
-    QStackedWidget*    m_center;      ///< The welcome page, or the documents
-    QTabWidget*        m_tabs;
-    QListWidget*       m_welcomeRecent;
+    QTabWidget*        m_tabs;        ///< The launcher of the editors, then the documents
+    LAUNCHER_PANEL*    m_launcher;
+    RECENT_PROJECTS_PANEL* m_recentProjects;
+    QDockWidget*       m_recentDock;  ///< Left column while no project is open
+    QDockWidget*       m_projectDock; ///< Left column with the files of the open project
     QTreeView*         m_projectTree;
     QFileSystemModel*  m_projectModel;
     QMenu*             m_recentMenu;

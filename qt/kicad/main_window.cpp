@@ -27,14 +27,13 @@
 #include <QFileSystemModel>
 #include <QHeaderView>
 #include <QLabel>
-#include <QListWidget>
+#include <QTabBar>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPalette>
 #include <QPushButton>
 #include <QSettings>
 #include <QStyle>
-#include <QStackedWidget>
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QToolBar>
@@ -48,6 +47,8 @@
 #include <kiway_base.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
+
+#include "home_widgets.h"
 
 #include <gal_canvas.h>
 #include <qt_document.h>
@@ -129,61 +130,34 @@ MAIN_WINDOW::MAIN_WINDOW( KIWAY_BASE& aKiway ) :
     m_tabs = new QTabWidget;
     m_tabs->setDocumentMode( true );
     m_tabs->setTabsClosable( true );
-    m_tabs->setMovable( true );
+    m_tabs->setMovable( false );
 
     connect( m_tabs, &QTabWidget::tabCloseRequested, this, &MAIN_WINDOW::closeTab );
     connect( m_tabs, &QTabWidget::currentChanged, this, &MAIN_WINDOW::onCurrentTabChanged );
 
-    // Welcome page: open a project or a file, or a recent one
-    auto* welcome = new QWidget;
-    auto* welcomeLayout = new QVBoxLayout( welcome );
-    welcomeLayout->setContentsMargins( 48, 48, 48, 48 );
-    welcomeLayout->setSpacing( 12 );
+    // Home: the launcher of the editors is the first tab, as in the project manager of KiCad
+    m_launcher = new LAUNCHER_PANEL;
 
-    auto* title = new QLabel( tr( "KiCad" ) );
-    QFont titleFont = title->font();
-    titleFont.setPointSizeF( titleFont.pointSizeF() * 2.2 );
-    titleFont.setWeight( QFont::DemiBold );
-    title->setFont( titleFont );
+    // The actions that currentChanged() updates do not exist yet
+    {
+        const QSignalBlocker blocker( m_tabs );
+        m_tabs->addTab( m_launcher, tr( "Editors" ) );
+    }
 
-    auto* subtitle = new QLabel( tr( "Open a project, a board or a schematic." ) );
-    subtitle->setForegroundRole( QPalette::PlaceholderText );
+    m_tabs->tabBar()->setTabButton( 0, QTabBar::RightSide, nullptr );
+    m_tabs->tabBar()->setTabButton( 0, QTabBar::LeftSide, nullptr );
+    setCentralWidget( m_tabs );
 
-    auto* openProjectButton = new QPushButton( tr( "Open Project..." ) );
-    auto* openFileButton = new QPushButton( tr( "Open File..." ) );
-    connect( openProjectButton, &QPushButton::clicked, this, &MAIN_WINDOW::openProjectDialog );
-    connect( openFileButton, &QPushButton::clicked, this, &MAIN_WINDOW::openFileDialog );
-
-    auto* buttons = new QHBoxLayout;
-    buttons->addWidget( openProjectButton );
-    buttons->addWidget( openFileButton );
-    buttons->addStretch();
-
-    auto* recentTitle = new QLabel( tr( "Recent Files" ) );
-    QFont recentFont = recentTitle->font();
-    recentFont.setWeight( QFont::DemiBold );
-    recentTitle->setFont( recentFont );
-
-    m_welcomeRecent = new QListWidget;
-    m_welcomeRecent->setMaximumWidth( 720 );
-    connect( m_welcomeRecent, &QListWidget::itemActivated, this,
-             [this]( QListWidgetItem* aItem )
+    connect( m_launcher, &LAUNCHER_PANEL::schematicRequested, this,
+             [this]()
              {
-                 OpenPath( aItem->data( Qt::UserRole ).toString() );
+                 openDocument( siblingFile( QStringLiteral( "kicad_sch" ) ) );
              } );
-
-    welcomeLayout->addWidget( title );
-    welcomeLayout->addWidget( subtitle );
-    welcomeLayout->addSpacing( 12 );
-    welcomeLayout->addLayout( buttons );
-    welcomeLayout->addSpacing( 24 );
-    welcomeLayout->addWidget( recentTitle );
-    welcomeLayout->addWidget( m_welcomeRecent, 1 );
-
-    m_center = new QStackedWidget;
-    m_center->addWidget( welcome );
-    m_center->addWidget( m_tabs );
-    setCentralWidget( m_center );
+    connect( m_launcher, &LAUNCHER_PANEL::boardRequested, this,
+             [this]()
+             {
+                 openDocument( siblingFile( QStringLiteral( "kicad_pcb" ) ) );
+             } );
 
     // Files of the project
     m_projectModel = new QFileSystemModel( this );
@@ -201,13 +175,28 @@ MAIN_WINDOW::MAIN_WINDOW( KIWAY_BASE& aKiway ) :
 
     connect( m_projectTree, &QTreeView::activated, this, &MAIN_WINDOW::onProjectFileActivated );
 
-    auto* projectDock = new QDockWidget( tr( "Project" ), this );
-    projectDock->setObjectName( QStringLiteral( "project" ) );
-    projectDock->setWidget( m_projectTree );
-    projectDock->setFeatures( QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable );
-    addDockWidget( Qt::LeftDockWidgetArea, projectDock );
-    resizeDocks( { projectDock }, { 260 }, Qt::Horizontal );
-    projectDock->hide();
+    m_projectDock = new QDockWidget( tr( "Project Files" ), this );
+    m_projectDock->setObjectName( QStringLiteral( "project" ) );
+    m_projectDock->setWidget( m_projectTree );
+    m_projectDock->setFeatures( QDockWidget::NoDockWidgetFeatures );
+    addDockWidget( Qt::LeftDockWidgetArea, m_projectDock );
+    m_projectDock->hide();
+
+    // The recent projects take the place of the files while no project is open
+    m_recentProjects = new RECENT_PROJECTS_PANEL;
+
+    connect( m_recentProjects, &RECENT_PROJECTS_PANEL::openRequested, this,
+             &MAIN_WINDOW::openProjectDialog );
+    connect( m_recentProjects, &RECENT_PROJECTS_PANEL::projectActivated, this,
+             &MAIN_WINDOW::openProject );
+
+    m_recentDock = new QDockWidget( tr( "Recent Projects" ), this );
+    m_recentDock->setObjectName( QStringLiteral( "recent" ) );
+    m_recentDock->setWidget( m_recentProjects );
+    m_recentDock->setFeatures( QDockWidget::NoDockWidgetFeatures );
+    m_recentDock->setTitleBarWidget( new QWidget );
+    addDockWidget( Qt::LeftDockWidgetArea, m_recentDock );
+    resizeDocks( { m_recentDock, m_projectDock }, { 460, 300 }, Qt::Horizontal );
 
     // Status bar
     m_cursorLabel = new QLabel;
@@ -216,6 +205,7 @@ MAIN_WINDOW::MAIN_WINDOW( KIWAY_BASE& aKiway ) :
 
     createActions();
     updateRecentFiles();
+    updateTabBar();
 }
 
 
@@ -355,6 +345,7 @@ void MAIN_WINDOW::createActions()
     zoomFit->setShortcut( QKeySequence( Qt::CTRL | Qt::Key_0 ) );
 
     viewMenu->addSeparator();
+    viewMenu->addAction( m_recentDock->toggleViewAction() );
 
     QAction* darkTheme = viewMenu->addAction( tr( "&Dark Theme" ) );
     darkTheme->setCheckable( true );
@@ -461,8 +452,12 @@ void MAIN_WINDOW::openProject( const QString& aProjectFile )
     m_projectModel->setRootPath( dir );
     m_projectTree->setRootIndex( m_projectModel->index( dir ) );
 
-    if( auto* dock = findChild<QDockWidget*>( QStringLiteral( "project" ) ) )
-        dock->show();
+    m_recentDock->hide();
+    m_projectDock->show();
+
+    const QFileInfo schematic( siblingFile( QStringLiteral( "kicad_sch" ) ) );
+    const QFileInfo board( siblingFile( QStringLiteral( "kicad_pcb" ) ) );
+    m_launcher->SetDocuments( schematic.exists(), board.exists() );
 
     setWindowTitle( tr( "%1 — KiCad" ).arg( info.completeBaseName() ) );
     addRecentFile( m_projectFile );
@@ -482,7 +477,6 @@ void MAIN_WINDOW::openDocument( const QString& aFileName )
         if( doc && doc->FileName() == fileName )
         {
             m_tabs->setCurrentIndex( i );
-            m_center->setCurrentWidget( m_tabs );
             return;
         }
     }
@@ -552,7 +546,7 @@ void MAIN_WINDOW::openDocument( const QString& aFileName )
     int index = m_tabs->addTab( doc, QFileInfo( fileName ).fileName() );
     m_tabs->setTabToolTip( index, fileName );
     m_tabs->setCurrentIndex( index );
-    m_center->setCurrentWidget( m_tabs );
+    updateTabBar();
     doc->Canvas()->setFocus();
 
     addRecentFile( fileName );
@@ -570,11 +564,13 @@ void MAIN_WINDOW::closeTab( int aIndex )
     m_tabs->removeTab( m_tabs->indexOf( doc ) );
     delete doc;
 
-    if( m_tabs->count() == 0 )
+    if( m_tabs->count() == 1 )
     {
-        m_center->setCurrentIndex( 0 );
+        m_tabs->setCurrentIndex( 0 );
         m_cursorLabel->clear();
     }
+
+    updateTabBar();
 
     updateActions();
 }
@@ -732,7 +728,6 @@ void MAIN_WINDOW::addRecentFile( const QString& aFileName )
 void MAIN_WINDOW::updateRecentFiles()
 {
     m_recentMenu->clear();
-    m_welcomeRecent->clear();
 
     for( const QString& path : QSettings().value( RECENT_FILES_KEY ).toStringList() )
     {
@@ -740,11 +735,35 @@ void MAIN_WINDOW::updateRecentFiles()
 
         QAction* action = m_recentMenu->addAction( name, this, [this, path]() { OpenPath( path ); } );
         action->setToolTip( path );
-
-        auto* item = new QListWidgetItem( QStringLiteral( "%1\n%2" ).arg( name, path ),
-                                          m_welcomeRecent );
-        item->setData( Qt::UserRole, path );
     }
 
+    // Only the projects in the cards
+    QStringList projects;
+
+    for( const QString& path : QSettings().value( RECENT_FILES_KEY ).toStringList() )
+    {
+        if( QFileInfo( path ).suffix().toLower() == QLatin1String( "kicad_pro" ) )
+            projects << path;
+    }
+
+    m_recentProjects->SetProjects( projects );
+
     m_recentMenu->setEnabled( !m_recentMenu->isEmpty() );
+}
+
+
+void MAIN_WINDOW::updateTabBar()
+{
+    m_tabs->tabBar()->setVisible( m_tabs->count() > 1 );
+}
+
+
+QString MAIN_WINDOW::siblingFile( const QString& aSuffix ) const
+{
+    if( m_projectFile.isEmpty() )
+        return QString();
+
+    const QFileInfo info( m_projectFile );
+
+    return info.absolutePath() + QLatin1Char( '/' ) + info.completeBaseName() + QLatin1Char( '.' ) + aSuffix;
 }
