@@ -374,6 +374,12 @@ public:
 
     void SetLabel( const wxString& aLabel ) { setText( ToQString( aLabel ) ); }
     wxString GetLabel() const { return ToWxString( text() ); }
+
+    /// The label as it is (its '&' are not mnemonics).
+    void SetLabelText( const wxString& aLabel )
+    {
+        setText( ToQString( aLabel ).replace( QLatin1Char( '&' ), QStringLiteral( "&&" ) ) );
+    }
 };
 
 
@@ -1360,6 +1366,13 @@ public:
     explicit wxBoxSizer( int aOrient );
 
     int GetOrientation() const;
+
+    /**
+     * As the box sizers of wxWidgets: without an item with a proportion (a stretch), the items
+     * have their best size along the sizer and the free space stays at its end (Qt gives it to
+     * the items).
+     */
+    void setGeometry( const QRect& aRect ) override;
 };
 
 

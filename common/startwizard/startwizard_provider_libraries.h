@@ -70,7 +70,7 @@ public:
      * @param aStockPathValid is true if aStockPath resolves to a valid table on disk
      * @return true if the table was modified and should be saved
      */
-    static KICOMMON_API bool MigrateBuiltInLibraries( LIBRARY_TABLE& aTable, LIBRARY_TABLE_TYPE aType,
+    static KIQT_COMMON_API bool MigrateBuiltInLibraries( LIBRARY_TABLE& aTable, LIBRARY_TABLE_TYPE aType,
                                                       const wxString& aStockPath, bool aStockPathValid );
 
 private:

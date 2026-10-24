@@ -1462,6 +1462,18 @@ void wxWindow::PostSizeEvent()
 }
 
 
+wxSize wxContainingSizerCompat::Fit( wxWindow* aWindow )
+{
+    if( !aWindow )
+        return wxDefaultSize;
+
+    if( wxSizer* sizer = aWindow->GetSizer() )
+        return sizer->Fit( aWindow );
+
+    return aWindow->GetSize();
+}
+
+
 wxSizer* wxWindow::GetSizer()
 {
     QWidget* client = GetClientWidgetCompat();

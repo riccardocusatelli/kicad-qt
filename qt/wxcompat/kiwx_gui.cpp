@@ -41,6 +41,7 @@
 #include <QWheelEvent>
 #include <QApplication>
 #include <QCursor>
+#include <QFontMetrics>
 #include <QGuiApplication>
 #include <QMessageBox>
 #include <QScreen>
@@ -1091,10 +1092,39 @@ wxString wxStaticText::GetLabel() const
 
 void wxStaticText::Wrap( int aWidth )
 {
-    setWordWrap( aWidth > 0 );
+    // As wxWidgets: line breaks in the label, its lines are not wider than aWidth (and the
+    // size of the label is the one of its lines)
+    setWordWrap( false );
 
-    if( aWidth > 0 )
-        setMaximumWidth( std::max( aWidth, minimumWidth() ) );
+    if( aWidth <= 0 )
+        return;
+
+    QFontMetrics metrics( font() );
+    QStringList  lines;
+
+    for( const QString& paragraph : text().split( QLatin1Char( '\n' ) ) )
+    {
+        QString line;
+
+        for( const QString& word : paragraph.split( QLatin1Char( ' ' ) ) )
+        {
+            QString candidate = line.isEmpty() ? word : line + QLatin1Char( ' ' ) + word;
+
+            if( !line.isEmpty() && metrics.horizontalAdvance( candidate ) > aWidth )
+            {
+                lines.append( line );
+                line = word;
+            }
+            else
+            {
+                line = candidate;
+            }
+        }
+
+        lines.append( line );
+    }
+
+    setText( lines.join( QLatin1Char( '\n' ) ) );
 }
 
 
@@ -2635,6 +2665,28 @@ wxBoxSizer::wxBoxSizer( int aOrient ) :
         wxSizerCompat<QBoxLayout>( aOrient == wxHORIZONTAL ? QBoxLayout::LeftToRight
                                                             : QBoxLayout::TopToBottom )
 {
+}
+
+
+void wxBoxSizer::setGeometry( const QRect& aRect )
+{
+    bool  stretch = false;
+    QRect rect = aRect;
+
+    for( int i = 0; i < count() && !stretch; ++i )
+        stretch = this->stretch( i ) > 0;
+
+    if( !stretch )
+    {
+        QSize hint = sizeHint();
+
+        if( GetOrientation() == wxHORIZONTAL )
+            rect.setWidth( std::min( rect.width(), hint.width() ) );
+        else
+            rect.setHeight( std::min( rect.height(), hint.height() ) );
+    }
+
+    QBoxLayout::setGeometry( rect );
 }
 
 

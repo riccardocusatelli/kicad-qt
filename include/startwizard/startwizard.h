@@ -27,7 +27,7 @@ class wxWizard;
 class wxWindow;
 
 
-class KICOMMON_API STARTWIZARD
+class KIQT_COMMON_API STARTWIZARD
 {
 public:
     STARTWIZARD();

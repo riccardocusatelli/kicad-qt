@@ -21,6 +21,7 @@
 #ifndef STARTWIZARD_PROVIDER_H
 #define STARTWIZARD_PROVIDER_H
 
+#include <kicommon.h>
 #include <wx/string.h>
 
 class wxWizardPageSimple;
@@ -28,7 +29,7 @@ class wxPanel;
 class wxWindow;
 class STARTWIZARD;
 
-class KICOMMON_API STARTWIZARD_PROVIDER
+class KIQT_COMMON_API STARTWIZARD_PROVIDER
 {
 public:
     STARTWIZARD_PROVIDER( const wxString& aPageName ) :

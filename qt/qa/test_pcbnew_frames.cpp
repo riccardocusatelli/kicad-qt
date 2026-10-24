@@ -53,7 +53,12 @@
 #include <kiway.h>
 #include <pcb_edit_frame.h>
 #include <pgm_gui.h>
+#include <settings/kicad_settings.h>
 #include <settings/settings_manager.h>
+#include <startwizard/startwizard.h>
+#include <libraries/library_manager.h>
+#include <wx/filename.h>
+#include <wx/wizard.h>
 #include <tool/actions.h>
 #include <tools/pcb_actions.h>
 #include <tools/pcb_selection_tool.h>
@@ -193,6 +198,76 @@ void testDialog( TOOL_MANAGER* aToolMgr, const TOOL_ACTION& aAction, const char*
     check( shown, ( "the " + name + " dialog is shown" ).c_str() );
     check( fits, ( "the " + name + " dialog fits its content" ).c_str() );
     check( closed, ( "the " + name + " dialog is closed" ).c_str() );
+}
+
+
+/**
+ * The start wizard of a new configuration (the settings of the test are new): its pages are
+ * shown, the wizard is finished, and it makes the global library tables.
+ */
+void testStartWizard( const QString& aScreenshot )
+{
+    std::printf( "STARTWIZARD\n" );
+
+    int  pages = 0;
+    bool finished = false;
+
+    // The pages, one after the other: Next, then Finish on the last one
+    QTimer* poll = new QTimer();
+
+    QObject::connect( poll, &QTimer::timeout, poll,
+                      [&, poll]()
+                      {
+                          QDialog* wizard = nullptr;
+
+                          for( QWidget* widget : QApplication::topLevelWidgets() )
+                          {
+                              if( QDialog* dialog = qobject_cast<QDialog*>( widget ) )
+                              {
+                                  if( dialog->isVisible() && dialog->inherits( "QDialog" )
+                                          && dynamic_cast<wxWizard*>( dialog ) )
+                                  {
+                                      wizard = dialog;
+                                  }
+                              }
+                          }
+
+                          if( !wizard )
+                              return;
+
+                          pages++;
+
+                          if( !aScreenshot.isEmpty() )
+                          {
+                              QString path = aScreenshot;
+                              path.replace( QStringLiteral( ".png" ),
+                                            QStringLiteral( "-start-wizard-%1.png" ).arg( pages ) );
+                              wizard->grab().save( path );
+                          }
+
+                          if( pressButton( wizard, QStringLiteral( "Finish" ) ) )
+                          {
+                              finished = true;
+                              poll->stop();
+                              poll->deleteLater();
+                          }
+                          else if( !pressButton( wizard, QStringLiteral( "Next >" ) ) || pages > 10 )
+                          {
+                              poll->stop();
+                              poll->deleteLater();
+                          }
+                      } );
+
+    poll->start( 200 );
+
+    STARTWIZARD startWizard;
+    startWizard.CheckAndRun( nullptr );
+
+    check( pages > 1, "the start wizard shows its pages" );
+    check( finished, "the start wizard is finished" );
+
+    wxFileName table( SETTINGS_MANAGER::GetUserSettingsPath(), wxS( "fp-lib-table" ) );
+    check( table.FileExists(), "the start wizard makes the footprint library table" );
 }
 
 
@@ -416,12 +491,18 @@ int main( int argc, char** argv )
 
     KIWAY kiway( KFCTL_STANDALONE );
     program.GetSettingsManager().SetKiway( &kiway );
+
+    // The settings of the project manager, as single_top (the start wizard uses them)
+    program.GetSettingsManager().RegisterSettings( new KICAD_SETTINGS );
     Kiface().OnKifaceStart( &program, KFCTL_STANDALONE, &kiway );
 
     // The board is opened from a copy (the editor writes the project file next to it)
     QTemporaryDir dir;
     QString       copy = dir.filePath( QFileInfo( QString::fromUtf8( argv[1] ) ).fileName() );
     check( QFile::copy( QString::fromUtf8( argv[1] ), copy ), "copy the board" );
+
+    testStartWizard( argc > 2 ? QString::fromUtf8( argv[2] ) : QString() );
+    program.GetLibraryManager().LoadGlobalTables();
 
     testPcbEditor( kiway, wxString::FromUTF8( copy.toUtf8().constData() ),
                    argc > 2 ? QString::fromUtf8( argv[2] ) : QString() );
