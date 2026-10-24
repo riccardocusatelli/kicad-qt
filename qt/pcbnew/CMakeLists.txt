@@ -623,3 +623,27 @@ endif()
 set_target_properties( pcbnew_qtgui_kiface PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/pcbnew
     )
+
+# pcbnew-qt: the pcbnew program of the Qt build (as the one of single_top), with the KIFACE of
+# pcbnew with the GUI linked in it.
+add_headless_executable( pcbnew-qt
+    KIFACE  pcbnew_qtgui_kiface
+    SOURCES pcbnew_qt_main.cpp
+    )
+
+set_target_properties( pcbnew-qt_objects PROPERTIES AUTOMOC OFF )
+target_sources( pcbnew-qt PRIVATE $<TARGET_OBJECTS:pcbnew_gui_qt> )
+add_dependencies( pcbnew-qt pcbnew_gui_qt )
+
+if( UNIX AND NOT APPLE )
+    target_link_libraries( pcbnew-qt PRIVATE ${SPNAV_LIBRARIES} )
+endif()
+
+set_target_properties( pcbnew-qt PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/pcbnew
+    )
+
+install( TARGETS pcbnew-qt
+    RUNTIME DESTINATION ${KICAD_BIN}
+    COMPONENT binary
+    )

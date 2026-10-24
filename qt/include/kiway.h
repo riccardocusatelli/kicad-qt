@@ -162,6 +162,8 @@ public:
     void SetBlockingDialog( wxWindow* aWin );
 
 private:
+    friend struct PGM_SINGLE_TOP;        // can use set_kiface()
+
     /// Get the frame of a player, or nullptr if it doesn't exist (anymore).
     KIWAY_PLAYER* GetPlayerFrame( FRAME_T aFrameType );
 
