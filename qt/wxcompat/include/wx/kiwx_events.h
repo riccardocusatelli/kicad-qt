@@ -69,6 +69,8 @@ enum wxEventTypeCompat
     wxEVT_TOGGLEBUTTON,
     wxEVT_TEXT,
     wxEVT_TEXT_ENTER,
+    wxEVT_SEARCHCTRL_SEARCH_BTN,     // (the search fields of Qt have no search button)
+    wxEVT_SEARCHCTRL_CANCEL_BTN,     // (the clear button of Qt sends wxEVT_TEXT)
     wxEVT_SLIDER,
     wxEVT_SPINCTRL,
     wxEVT_SPINCTRLDOUBLE,

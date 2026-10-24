@@ -197,6 +197,15 @@ TOOLKIT_WINDOW* GetTopLevelParent( TOOLKIT_WINDOW* aWindow )
 }
 
 
+TOOLKIT_WINDOW* GetActiveTopWindow()
+{
+    if( QWidget* focus = QApplication::focusWidget() )
+        return focus->window();
+
+    return QApplication::activeWindow();
+}
+
+
 bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow )
 {
     return aWindow && aWindow->isVisible();

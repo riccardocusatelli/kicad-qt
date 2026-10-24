@@ -76,6 +76,9 @@ APIVISIBLE TOOLKIT_WINDOW* GetParent( const TOOLKIT_WINDOW* aWindow );
 /// The top level window (frame, dialog) of @a aWindow, or nullptr.
 APIVISIBLE TOOLKIT_WINDOW* GetTopLevelParent( TOOLKIT_WINDOW* aWindow );
 
+/// The top level window of the focus, or else the main window of the application (or nullptr).
+APIVISIBLE TOOLKIT_WINDOW* GetActiveTopWindow();
+
 /// @a aWindow and its parents are shown.
 APIVISIBLE bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow );
 

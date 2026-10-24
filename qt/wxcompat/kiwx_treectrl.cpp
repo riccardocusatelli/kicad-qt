@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cstdint>
 
+#include <QSignalBlocker>
 #include <QTreeWidgetItemIterator>
 
 #include <qt_strings.h>
@@ -102,8 +103,8 @@ QTreeWidgetItem* wxTreeCtrl::newItem( const wxString& aText, int aImage, wxTreeI
 {
     QTreeWidgetItem* item = new QTreeWidgetItem( QStringList( ToQString( aText ) ) );
 
-    if( aImage >= 0 && m_imageList && aImage < m_imageList->GetImageCount() )
-        item->setIcon( 0, QIcon( m_imageList->GetBitmap( aImage ) ) );
+    if( aImage >= 0 )
+        item->setIcon( 0, imageCompat( aImage ) );
 
     if( aData )
     {
@@ -307,10 +308,82 @@ void wxTreeCtrl::SetItemImage( const wxTreeItemId& aItem, int aImage, int aWhich
     if( !item )
         return;
 
-    if( aImage >= 0 && m_imageList && aImage < m_imageList->GetImageCount() )
-        item->setIcon( 0, QIcon( m_imageList->GetBitmap( aImage ) ) );
-    else
-        item->setIcon( 0, QIcon() );
+    item->setIcon( 0, imageCompat( aImage ) );
+}
+
+
+QIcon wxTreeCtrl::imageCompat( int aImage ) const
+{
+    if( aImage < 0 )
+        return QIcon();
+
+    if( !m_images.empty() )
+        return aImage < int( m_images.size() ) ? QIcon( m_images[aImage] ) : QIcon();
+
+    if( m_imageList && aImage < m_imageList->GetImageCount() )
+        return QIcon( m_imageList->GetBitmap( aImage ) );
+
+    return QIcon();
+}
+
+
+int wxTreeCtrl::OnCompareItems( const wxTreeItemId& aItem1, const wxTreeItemId& aItem2 )
+{
+    return GetItemText( aItem1 ).Cmp( GetItemText( aItem2 ) );
+}
+
+
+void wxTreeCtrl::SortChildren( const wxTreeItemId& aItem )
+{
+    QTreeWidgetItem* parent = ToQtCompat( aItem );
+
+    if( !parent )
+        return;
+
+    // The children, with their states (taking them out of the tree loses them)
+    struct CHILD
+    {
+        QTreeWidgetItem* item;
+        bool             expanded;
+        bool             selected;
+    };
+
+    std::vector<CHILD> children;
+
+    for( int i = 0; i < parent->childCount(); ++i )
+    {
+        QTreeWidgetItem* child = parent->child( i );
+        children.push_back( { child, child->isExpanded(), child->isSelected() } );
+    }
+
+    std::stable_sort( children.begin(), children.end(),
+                      [this]( const CHILD& aA, const CHILD& aB )
+                      {
+                          return OnCompareItems( ToItemCompat( aA.item ),
+                                                 ToItemCompat( aB.item ) ) < 0;
+                      } );
+
+    QSignalBlocker blocker( this );
+    parent->takeChildren();
+
+    for( const CHILD& child : children )
+        parent->addChild( child.item );
+
+    for( const CHILD& child : children )
+    {
+        child.item->setExpanded( child.expanded );
+        child.item->setSelected( child.selected );
+    }
+}
+
+
+void wxTreeCtrl::EditLabel( const wxTreeItemId& aItem )
+{
+    if( QTreeWidgetItem* item = ToQtCompat( aItem ) )
+    {
+        item->setFlags( item->flags() | Qt::ItemIsEditable );
+        editItem( item, 0 );
+    }
 }
 
 

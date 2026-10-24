@@ -86,6 +86,16 @@ TOOLKIT_WINDOW* GetTopLevelParent( TOOLKIT_WINDOW* aWindow )
 }
 
 
+TOOLKIT_WINDOW* GetActiveTopWindow()
+{
+    if( !wxTheApp )
+        return nullptr;
+
+    wxWindow* focus = wxWindow::FindFocus();
+    return focus ? wxGetTopLevelParent( focus ) : wxTheApp->GetTopWindow();
+}
+
+
 bool IsShownOnScreen( const TOOLKIT_WINDOW* aWindow )
 {
     return aWindow && aWindow->IsShownOnScreen();

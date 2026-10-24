@@ -221,6 +221,7 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_grid_settings.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_page_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_print_generic_base.fbp
@@ -230,8 +231,10 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_embedded_files_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_grid_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_text_variables_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_toolbar_customization_base.fbp
     )
 
 set( KIQT_COMMON_COMPAT_SRCS
@@ -240,6 +243,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/dialog_autosave_recovery.cpp
     dialogs/dialog_configure_paths.cpp
     dialogs/dialog_edit_library_tables.cpp
+    dialogs/dialog_grid_settings.cpp
     dialogs/dialog_hotkey_list.cpp
     dialogs/dialog_page_settings.cpp
     dialogs/dialog_print_generic.cpp
@@ -249,10 +253,12 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/eda_list_dialog.cpp
     dialogs/html_message_box.cpp
     dialogs/panel_embedded_files.cpp
+    dialogs/panel_grid_settings.cpp
     dialogs/panel_hotkeys_editor.cpp
     dialogs/panel_printer_list.cpp
     dialogs/panel_setup_severities.cpp
     dialogs/panel_text_variables.cpp
+    dialogs/panel_toolbar_customization.cpp
     grid_tricks.cpp
     kidialog.cpp
     lib_table_grid_tricks.cpp
@@ -273,6 +279,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/indicator_icon.cpp
     widgets/number_badge.cpp
     widgets/split_button.cpp
+    widgets/up_down_tree.cpp
     widgets/widget_hotkey_list.cpp
     widgets/wx_dataviewctrl.cpp
     widgets/wx_grid.cpp
@@ -303,6 +310,7 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/hotkey_store.cpp
     ${CMAKE_SOURCE_DIR}/common/hotkeys_basic.cpp
     ${CMAKE_SOURCE_DIR}/common/io/csv.cpp
+    ${CMAKE_SOURCE_DIR}/common/kiface_gui.cpp
     ${CMAKE_SOURCE_DIR}/common/kiway_holder.cpp
     ${CMAKE_SOURCE_DIR}/common/launch_ext.cpp
     ${CMAKE_SOURCE_DIR}/common/origin_viewitem.cpp

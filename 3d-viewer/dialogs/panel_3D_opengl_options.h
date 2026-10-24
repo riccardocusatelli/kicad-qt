@@ -25,7 +25,7 @@
 #ifndef PANEL_3D_OPENGL_OPTIONS_H
 #define PANEL_3D_OPENGL_OPTIONS_H
 
-#include "panel_3D_opengl_options_base.h"
+#include <dialogs/panel_3D_opengl_options_base.h>
 #include <3d_viewer/eda_3d_viewer_frame.h>
 
 class PANEL_3D_OPENGL_OPTIONS : public PANEL_3D_OPENGL_OPTIONS_BASE

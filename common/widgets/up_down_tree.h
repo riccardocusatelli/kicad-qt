@@ -28,7 +28,7 @@
 #include <wx/treectrl.h>
 
 
-class KICOMMON_API UP_DOWN_TREE : public wxTreeCtrl
+class KIQT_COMMON_API UP_DOWN_TREE : public wxTreeCtrl
 {
 public:
     UP_DOWN_TREE( wxWindow *parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition,

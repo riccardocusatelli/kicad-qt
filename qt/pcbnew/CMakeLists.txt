@@ -139,6 +139,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     pcb_origin_transforms.cpp
     pcb_screen.cpp
     pcbnew_config.cpp
+    pcbnew_jobs_handler_gui.cpp
     pcbnew_printout.cpp
     pcbnew_settings.cpp
     python/scripting/pcb_scripting_tool.cpp
@@ -532,6 +533,7 @@ add_library( pcbnew_gui_qt STATIC
     footprint_viewer_frame_qt.cpp
     footprint_wizard_frame_qt.cpp
     pcb_edit_frame_qt.cpp
+    pcbnew_swig_qt.cpp
     pcb_layer_box_selector_qt.cpp
     widgets/appearance_controls_qt.cpp
     widgets/panel_selection_filter.cpp
@@ -585,4 +587,39 @@ target_link_libraries( pcbnew_gui_qt
         tinyspline_lib
         nlohmann_json
         Boost::headers
+    )
+
+
+# _pcbnew_qtgui.kiface: the KIFACE of pcbnew with its GUI on Qt, as _pcbnew.kiface of the wxWidgets
+# build: the IFACE of pcbnew.cpp (its frames, panels and dialogs) and all the objects of
+# pcbnew_gui_qt, with the archives of the headless KIFACE.
+add_headless_kiface( pcbnew_qtgui_kiface
+    OUTPUT_NAME pcbnew_qtgui
+    LIKE        pcbnew_cli_kiface
+    SOURCES     ${CMAKE_SOURCE_DIR}/pcbnew/pcbnew.cpp
+                ${KIQT_KIFACE_SOURCES}
+    USAGE       kiqt_common
+    ARCHIVES    3d-viewer_qt kiqt_common
+    LIBRARIES   kiqt_common kiqt Qt6::Widgets dxflib_qcad markdown_lib nanosvg tinyspline_lib
+    )
+
+# pcbnew.cpp is compiled as the GUI of pcbnew (its Qt headers first)
+target_compile_definitions( pcbnew_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS )
+target_include_directories( pcbnew_qtgui_kiface_iface BEFORE PRIVATE
+    $<TARGET_PROPERTY:pcbnew_gui_qt,INCLUDE_DIRECTORIES>
+    )
+target_compile_definitions( pcbnew_qtgui_kiface_iface PRIVATE
+    $<TARGET_PROPERTY:pcbnew_gui_qt,COMPILE_DEFINITIONS>
+    )
+
+# All the objects of the GUI: the tools and the actions register themselves when they are built
+target_sources( pcbnew_qtgui_kiface PRIVATE $<TARGET_OBJECTS:pcbnew_gui_qt> )
+add_dependencies( pcbnew_qtgui_kiface pcbnew_gui_qt )
+
+if( UNIX AND NOT APPLE )
+    target_link_libraries( pcbnew_qtgui_kiface PRIVATE ${SPNAV_LIBRARIES} )
+endif()
+
+set_target_properties( pcbnew_qtgui_kiface PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/pcbnew
     )

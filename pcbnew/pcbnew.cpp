@@ -34,8 +34,9 @@
 #include <kiway_holder.h>
 #include <eda_dde.h>
 #include <macros.h>
-#include <wx/snglinst.h>
 #include <gestfich.h>
+#include <toolkit/gui_services.h>
+#include <toolkit/toolkit_window_arg.h>
 #include <paths.h>
 #include <pcbnew_settings.h>
 #include <footprint.h>
@@ -140,16 +141,10 @@ static wxString filterFootprints( const wxString& aFilterJson )
 
         PROJECT* project = nullptr;
 
-        if( wxTheApp )
+        if( TOOLKIT_WINDOW* top = TOOLKIT::GetActiveTopWindow() )
         {
-            wxWindow* focus = wxWindow::FindFocus();
-            wxWindow* top = focus ? wxGetTopLevelParent( focus ) : wxTheApp->GetTopWindow();
-
-            if( top )
-            {
-                if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
-                    project = &holder->Prj();
-            }
+            if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
+                project = &holder->Prj();
         }
 
         if( !project )
@@ -248,8 +243,12 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
     void OnKifaceEnd() override;
 
-    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway, int aCtlBits = 0 ) override
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParentWindow, int aClassId, KIWAY* aKiway,
+                                    int aCtlBits = 0 ) override
     {
+        // The parent of the frames and of the dialogs and panels of the toolkit
+        TOOLKIT_WINDOW_ARG aParent = aParentWindow;
+
         switch( aClassId )
         {
         case FRAME_PCB_EDITOR:
@@ -522,16 +521,10 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
             // without directly linking to pcbnew or pcbcommon, going through PROJECT::FootprintLibAdapter
             PROJECT* project = nullptr;
 
-            if( wxTheApp )
+            if( TOOLKIT_WINDOW* top = TOOLKIT::GetActiveTopWindow() )
             {
-                wxWindow* focus = wxWindow::FindFocus();
-                wxWindow* top = focus ? wxGetTopLevelParent( focus ) : wxTheApp->GetTopWindow();
-
-                if( top )
-                {
-                    if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
-                        project = &holder->Prj();
-                }
+                if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
+                    project = &holder->Prj();
             }
 
             if( !project )
@@ -774,7 +767,7 @@ int IFACE::HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgre
 
 bool IFACE::HandleJobConfig( JOB* aJob, TOOLKIT_WINDOW* aParent )
 {
-    return m_jobHandler->HandleJobConfig( aJob, aParent );
+    return m_jobHandler->HandleJobConfig( aJob, TOOLKIT_WINDOW_ARG( aParent ) );
 }
 
 

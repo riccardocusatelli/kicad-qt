@@ -248,6 +248,18 @@ public:
     void AssignImageList( wxImageList* aImageList );
     wxImageList* GetImageList() const { return m_imageList; }
 
+    /// The images of the items, as bundles (in place of an image list).
+    void SetImages( const std::vector<wxBitmapBundle>& aImages ) { m_images = aImages; }
+
+    /// Sort the children of an item with OnCompareItems().
+    void SortChildren( const wxTreeItemId& aItem );
+
+    /// The order of two items of SortChildren(): their texts by default.
+    virtual int OnCompareItems( const wxTreeItemId& aItem1, const wxTreeItemId& aItem2 );
+
+    /// Edit the text of an item in the tree.
+    void EditLabel( const wxTreeItemId& aItem );
+
     void SetIndent( unsigned int aIndent ) { setIndentation( int( aIndent ) ); }
     unsigned int GetIndent() const { return unsigned( indentation() ); }
 
@@ -257,6 +269,9 @@ public:
 
 private:
     QTreeWidgetItem* newItem( const wxString& aText, int aImage, wxTreeItemData* aData );
+
+    /// The icon of an image of the image list or of the bundles.
+    QIcon imageCompat( int aImage ) const;
 
     /// The item is deleted: forget the data of the item and of its children.
     void forgetData( QTreeWidgetItem* aItem );
@@ -268,6 +283,7 @@ private:
     QTreeWidgetItem*                                                   m_root;
     std::unordered_map<QTreeWidgetItem*, std::unique_ptr<wxTreeItemData>> m_data;
     wxImageList*                                                       m_imageList = nullptr;
+    std::vector<wxBitmapBundle>                                        m_images;
     std::unique_ptr<wxImageList>                                       m_ownedImageList;
 };
 

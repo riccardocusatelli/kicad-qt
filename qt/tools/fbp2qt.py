@@ -226,6 +226,7 @@ COMPAT_CLASSES = {
     'wxFilePickerCtrl': 'wxFilePickerCtrl',
     'wxDirPickerCtrl': 'wxDirPickerCtrl',
     'wxListCtrl': 'wxListCtrl',
+    'wxTreeCtrl': 'wxTreeCtrl',
     'wxDataViewCtrl': 'wxDataViewCtrl',
     'wxDataViewListCtrl': 'wxDataViewListCtrl',
     'wxDataViewTreeCtrl': 'wxDataViewTreeCtrl',
@@ -291,6 +292,20 @@ COMPAT_EVENTS = {
     'OnListItemRightClick': ( 'wxListEvent', 'wxEVT_LIST_ITEM_RIGHT_CLICK', 'bind' ),
     'OnListItemChecked':    ( 'wxListEvent', 'wxEVT_LIST_ITEM_CHECKED', 'bind' ),
     'OnListItemUnchecked':  ( 'wxListEvent', 'wxEVT_LIST_ITEM_UNCHECKED', 'bind' ),
+    'OnTreeSelChanged':     ( 'wxTreeEvent', 'wxEVT_TREE_SEL_CHANGED', 'bind' ),
+    'OnTreeSelChanging':    ( 'wxTreeEvent', 'wxEVT_TREE_SEL_CHANGING', 'bind' ),
+    'OnTreeItemActivated':  ( 'wxTreeEvent', 'wxEVT_TREE_ITEM_ACTIVATED', 'bind' ),
+    'OnTreeItemRightClick':( 'wxTreeEvent', 'wxEVT_TREE_ITEM_RIGHT_CLICK', 'bind' ),
+    'OnTreeItemMenu':       ( 'wxTreeEvent', 'wxEVT_TREE_ITEM_MENU', 'bind' ),
+    'OnTreeItemExpanded':   ( 'wxTreeEvent', 'wxEVT_TREE_ITEM_EXPANDED', 'bind' ),
+    'OnTreeItemExpanding':( 'wxTreeEvent', 'wxEVT_TREE_ITEM_EXPANDING', 'bind' ),
+    'OnTreeItemCollapsed':( 'wxTreeEvent', 'wxEVT_TREE_ITEM_COLLAPSED', 'bind' ),
+    'OnTreeItemCollapsing':( 'wxTreeEvent', 'wxEVT_TREE_ITEM_COLLAPSING', 'bind' ),
+    'OnTreeBeginDrag':      ( 'wxTreeEvent', 'wxEVT_TREE_BEGIN_DRAG', 'bind' ),
+    'OnTreeEndDrag':        ( 'wxTreeEvent', 'wxEVT_TREE_END_DRAG', 'bind' ),
+    'OnTreeBeginLabelEdit':( 'wxTreeEvent', 'wxEVT_TREE_BEGIN_LABEL_EDIT', 'bind' ),
+    'OnTreeEndLabelEdit':   ( 'wxTreeEvent', 'wxEVT_TREE_END_LABEL_EDIT', 'bind' ),
+    'OnTreeKeyDown':        ( 'wxTreeEvent', 'wxEVT_TREE_KEY_DOWN', 'bind' ),
     'OnListColClick':       ( 'wxListEvent', 'wxEVT_LIST_COL_CLICK', 'bind' ),
     'OnListColRightClick':  ( 'wxListEvent', 'wxEVT_LIST_COL_RIGHT_CLICK', 'bind' ),
     'OnListKeyDown':        ( 'wxListEvent', 'wxEVT_LIST_KEY_DOWN', 'bind' ),
@@ -978,7 +993,7 @@ class FormClass:
 
                 # The arguments of the constructors of wxWidgets, for the controls made with them
                 if cls not in ( 'wxHyperlinkCtrl', 'wxFilePickerCtrl', 'wxDirPickerCtrl', 'wxListCtrl',
-                                'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl',
+                                'wxTreeCtrl', 'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl',
                                 'wxGrid', 'wxGenericDirCtrl' ):
                     args = aParent
             else:
@@ -1215,6 +1230,13 @@ class FormClass:
             self.include( '<wx/kiwx_listctrl.h>' )
             var, t = make( qt, '%s, wxID_ANY, wxDefaultPosition, wxDefaultSize, %s'
                                % ( aParent, p.get( 'style' ) or 'wxLC_REPORT' ) )
+
+        elif cls == 'wxTreeCtrl' and self.gen.compat:
+            # The tree of the compatibility layer (its items are added by the code of the dialog)
+            qt = 'QTreeWidget'
+            self.include( '<wx/treectrl.h>' )
+            var, t = make( qt, '%s, wxID_ANY, wxDefaultPosition, wxDefaultSize, %s'
+                               % ( aParent, p.get( 'style' ) or 'wxTR_DEFAULT_STYLE' ) )
 
         elif cls in ( 'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl' ) and self.gen.compat:
             # The data view of the compatibility layer (its model is given by the code of the dialog)
