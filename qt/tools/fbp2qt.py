@@ -1707,6 +1707,12 @@ class FormClass:
                 return self.wrap_widget( box )
             elif cls in ( 'wxFlexGridSizer', 'wxGridSizer' ):
                 var = self.var( aObj, 'wxFlexGridSizer', 'new wxFlexGridSizer( %d )' % parse_int( p.get( 'cols' ), 0 ) )
+
+                # The cells of a grid sizer share the space, as the ones of a flexible grid
+                # whose cells all grow
+                if cls == 'wxGridSizer' or p.get( 'non_flexible_grow_mode' ) == 'wxFLEX_GROWMODE_ALL':
+                    self.code.append( '    %s->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_ALL );' % var )
+
                 self.grid_items( aObj, var, aParent )
             else:
                 var = self.var( aObj, 'wxGridBagSizer', 'new wxGridBagSizer()' )

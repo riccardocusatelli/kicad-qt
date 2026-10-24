@@ -93,6 +93,11 @@ protected:
     {
         Resolve();
         wxPanel::showEvent( aEvent );
+
+        // The book shows its page with Show() in wxWidgets: the panels which do their work there
+        // (the colour settings make their swatches)
+        if( m_contents )
+            m_contents->Show( true );
     }
 
 private:

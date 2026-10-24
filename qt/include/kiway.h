@@ -140,6 +140,12 @@ public:
     void CommonSettingsChanged( int aFlags = 0 ) override;
 
     /**
+     * Clear the file history on each open frame.  Preference records are handled by
+     * SETTINGS_MANAGER (as not all frames might be open).
+     */
+    void ClearFileHistory();
+
+    /**
      * Calls ProjectChanged() on all KIWAY_PLAYERs.
      *
      * Used after changing the project to ensure all players are updated correctly.

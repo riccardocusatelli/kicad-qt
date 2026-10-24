@@ -317,6 +317,22 @@ void KIWAY::CommonSettingsChanged( int aFlags )
 }
 
 
+void KIWAY::ClearFileHistory()
+{
+    if( m_ctl & KFCTL_CPP_PROJECT_SUITE )
+    {
+        if( EDA_BASE_FRAME* top = dynamic_cast<EDA_BASE_FRAME*>( m_top.data() ) )
+            top->ClearFileHistory();
+    }
+
+    for( unsigned i=0;  i < KIWAY_PLAYER_COUNT;  ++i )
+    {
+        if( KIWAY_PLAYER* frame = GetPlayerFrame( ( FRAME_T )i ) )
+            frame->ClearFileHistory();
+    }
+}
+
+
 void KIWAY::ProjectChanged()
 {
     if( PgmOrNull() && Pgm().m_Quitting )

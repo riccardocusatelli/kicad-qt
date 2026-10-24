@@ -37,6 +37,7 @@
 #include <QScreen>
 #include <QTimer>
 #include <QDialog>
+#include <QPointer>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <wx/init.h>
@@ -55,6 +56,9 @@
 #include <kiway.h>
 #include <pcb_edit_frame.h>
 #include <pgm_gui.h>
+#include <widgets/paged_dialog.h>
+#include <widgets/wx_treebook.h>
+#include <settings/common_settings.h>
 #include <settings/kicad_settings.h>
 #include <settings/settings_manager.h>
 #include <startwizard/startwizard.h>
@@ -66,6 +70,17 @@
 #include <tools/pcb_selection_tool.h>
 #include <zone.h>
 #include <tool/tool_manager.h>
+
+
+/// The KIFACE linked in the test is the one of pcbnew in its KIWAY, as in the program of
+/// single_top (the friend of KIWAY which registers it).
+struct PGM_SINGLE_TOP
+{
+    static void RegisterKiface( KIWAY& aKiway )
+    {
+        aKiway.set_kiface( KIWAY::KifaceType( FRAME_PCB_EDITOR ), &Kiface() );
+    }
+};
 
 
 namespace
@@ -113,8 +128,9 @@ void settle( int aMilliseconds = 50 )
 
 
 /// Run a function on the next dialog that opens (modal, or quasi-modal: a dialog with its own
-/// event loop, which is not a modal widget).
-void onNextDialog( std::function<void( QDialog* )> aFunction )
+/// event loop, which is not a modal widget).  @return the poll of the dialogs (deleted once the
+/// dialog is found).
+QTimer* onNextDialog( std::function<void( QDialog* )> aFunction )
 {
     QTimer* poll = new QTimer();
 
@@ -136,6 +152,7 @@ void onNextDialog( std::function<void( QDialog* )> aFunction )
                       } );
 
     poll->start( 20 );
+    return poll;
 }
 
 
@@ -167,7 +184,7 @@ void testDialog( TOOL_MANAGER* aToolMgr, const TOOL_ACTION& aAction, const char*
     bool fits = false;
     bool closed = false;
 
-    onNextDialog( [&]( QDialog* aDialog )
+    QTimer* poll = onNextDialog( [&]( QDialog* aDialog )
                   {
                       shown = true;
                       settle( 200 );
@@ -191,10 +208,20 @@ void testDialog( TOOL_MANAGER* aToolMgr, const TOOL_ACTION& aAction, const char*
                       }
 
                       closed = pressButton( aDialog, aCloseButton );
+
+                      // Not closed: rejected, the test goes on
+                      if( !closed )
+                          aDialog->reject();
                   } );
+
+    QPointer<QTimer> pollPtr( poll );
 
     aToolMgr->RunAction( aAction );
     settle( 300 );
+
+    // No dialog: the poll does not wait for the next one
+    if( pollPtr && !shown )
+        delete pollPtr.data();
 
     std::string name( aName );
     check( shown, ( "the " + name + " dialog is shown" ).c_str() );
@@ -440,6 +467,76 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
 
         testDialog( toolMgr, ACTIONS::plot, "plot", aScreenshot, "Close" );
 
+        // The other dialogs of the menus: preferences, libraries, edits, fabrication outputs
+        // Preferences: every page is shown (the pages of the KIFACEs are made when shown)
+        int prefPages = 0;
+
+        testDialog( toolMgr, ACTIONS::openPreferences, "preferences", aScreenshot, "Cancel",
+                    [&]( QDialog* aDialog )
+                    {
+                        PAGED_DIALOG* dialog = dynamic_cast<PAGED_DIALOG*>( aDialog );
+
+                        if( !dialog )
+                            return;
+
+                        WX_TREEBOOK* book = dialog->GetTreebook();
+
+                        for( size_t i = 0; i < book->GetPageCount(); ++i )
+                        {
+                            book->SetSelection( i );
+                            settle( 30 );
+
+                            if( book->GetCurrentPage() )
+                                prefPages++;
+
+                            if( !aScreenshot.isEmpty() )
+                            {
+                                QString path = aScreenshot;
+                                path.replace( QStringLiteral( ".png" ),
+                                              QStringLiteral( "-preferences-%1.png" ).arg( i ) );
+                                aDialog->grab().save( path );
+                            }
+                        }
+
+                        book->SetSelection( 0 );
+                        settle( 30 );
+                    } );
+
+        check( prefPages >= 25, "the preferences show their pages" );
+        testDialog( toolMgr, ACTIONS::configurePaths, "paths", aScreenshot, "Cancel" );
+        testDialog( toolMgr, ACTIONS::showFootprintLibTable, "footprint libraries", aScreenshot,
+                    "Cancel" );
+        testDialog( toolMgr, PCB_ACTIONS::editTracksAndVias, "edit tracks and vias", aScreenshot,
+                    "Close" );
+        testDialog( toolMgr, PCB_ACTIONS::editTextAndGraphics, "edit text and graphics",
+                    aScreenshot, "Close" );
+        testDialog( toolMgr, PCB_ACTIONS::globalDeletions, "global deletions", aScreenshot,
+                    "Cancel" );
+        testDialog( toolMgr, PCB_ACTIONS::cleanupTracksAndVias, "cleanup tracks and vias",
+                    aScreenshot, "Cancel" );
+        testDialog( toolMgr, PCB_ACTIONS::boardStatistics, "board statistics", aScreenshot,
+                    "Close" );
+        testDialog( toolMgr, PCB_ACTIONS::generateDrillFiles, "drill files", aScreenshot,
+                    "Close" );
+        testDialog( toolMgr, PCB_ACTIONS::generatePosFile, "position files", aScreenshot,
+                    "Close" );
+        // IPC-2581: the board is exported (next to the board, by default)
+        wxFileName ipcFile( board->GetFileName() );
+        ipcFile.SetExt( wxS( "xml" ) );
+
+        testDialog( toolMgr, PCB_ACTIONS::generateIPC2581File, "IPC-2581", aScreenshot, "Close",
+                    [&]( QDialog* aDialog )
+                    {
+                        pressButton( aDialog, QStringLiteral( "Export" ) );
+                        settle( 1000 );
+                    } );
+
+        check( ipcFile.FileExists(), "the IPC-2581 file is exported" );
+
+        // STEP: without the warning about the scaled models of the board, shown before
+        Pgm().GetCommonSettings()->m_DoNotShowAgain.scaled_3d_models_warning = true;
+        testDialog( toolMgr, PCB_ACTIONS::exportSTEP, "STEP export", aScreenshot, "Close" );
+
         // DRC: run, then closed
         bool drcRun = false;
 
@@ -539,6 +636,7 @@ int main( int argc, char** argv )
     // The settings of the project manager, as single_top (the start wizard uses them)
     program.GetSettingsManager().RegisterSettings( new KICAD_SETTINGS );
     Kiface().OnKifaceStart( &program, KFCTL_STANDALONE, &kiway );
+    PGM_SINGLE_TOP::RegisterKiface( kiway );
 
     // The board is opened from a copy (the editor writes the project file next to it)
     QTemporaryDir dir;

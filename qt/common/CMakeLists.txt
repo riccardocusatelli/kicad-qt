@@ -223,6 +223,8 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_grid_settings.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_git_repository_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_repositories_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_page_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_print_generic_base.fbp
@@ -231,8 +233,14 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_design_block_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_text_entry_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_common_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_embedded_files_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_grid_settings_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_maintenance_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_mouse_settings_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_packages_and_updates_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_plugin_settings_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_spacemouse_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_startwizard_libraries_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_startwizard_privacy_base.fbp
@@ -255,10 +263,18 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
     dialogs/eda_list_dialog.cpp
+    dialogs/git/dialog_git_repository.cpp
+    dialogs/git/panel_git_repos.cpp
     dialogs/html_message_box.cpp
+    dialogs/panel_common_settings.cpp
     dialogs/panel_embedded_files.cpp
     dialogs/panel_grid_settings.cpp
     dialogs/panel_hotkeys_editor.cpp
+    dialogs/panel_maintenance.cpp
+    dialogs/panel_mouse_settings.cpp
+    dialogs/panel_packages_and_updates.cpp
+    dialogs/panel_plugin_settings.cpp
+    dialogs/panel_spacemouse.cpp
     dialogs/panel_printer_list.cpp
     dialogs/panel_setup_severities.cpp
     dialogs/panel_text_variables.cpp
@@ -292,6 +308,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/wx_dataviewctrl.cpp
     widgets/wx_grid.cpp
     widgets/wx_listbox.cpp
+    widgets/zoom_correction_ctrl.cpp
     )
 
 list( TRANSFORM KIQT_COMMON_COMPAT_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/ )

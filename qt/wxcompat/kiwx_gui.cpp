@@ -2731,6 +2731,34 @@ wxStaticBoxSizer::wxStaticBoxSizer( int aOrient, wxWidgetArgCompat aParent, cons
 }
 
 
+void wxFlexGridSizer::setGeometry( const QRect& aRect )
+{
+    QRect rect = aRect;
+
+    if( m_growMode != wxFLEX_GROWMODE_ALL )
+    {
+        bool growableRow = false;
+        bool growableCol = false;
+
+        for( int i = 0; i < rowCount() && !growableRow; ++i )
+            growableRow = rowStretch( i ) > 0;
+
+        for( int i = 0; i < columnCount() && !growableCol; ++i )
+            growableCol = columnStretch( i ) > 0;
+
+        QSize hint = sizeHint();
+
+        if( !growableRow )
+            rect.setHeight( std::min( rect.height(), hint.height() ) );
+
+        if( !growableCol )
+            rect.setWidth( std::min( rect.width(), hint.width() ) );
+    }
+
+    QGridLayout::setGeometry( rect );
+}
+
+
 wxGridBagSizer::wxGridBagSizer( int aVGap, int aHGap ) :
         wxFlexGridSizer( 0, 0, aVGap, aHGap )
 {

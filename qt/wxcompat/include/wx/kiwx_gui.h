@@ -1419,7 +1419,8 @@ public:
     bool IsRowGrowable( size_t aRow ) const { return rowStretch( int( aRow ) ) > 0; }
     void RemoveGrowableRow( size_t aRow ) { setRowStretch( int( aRow ), 0 ); }
     void SetFlexibleDirection( int ) {}
-    void SetNonFlexibleGrowMode( int ) {}
+    void SetNonFlexibleGrowMode( int aMode ) { m_growMode = aMode; }
+    int GetNonFlexibleGrowMode() const { return m_growMode; }
 
     int GetVGap() const { return verticalSpacing(); }
     int GetHGap() const { return horizontalSpacing(); }
@@ -1452,18 +1453,34 @@ public:
 
     int GetCols() const { return m_cols; }
 
+    /// As wxWidgets: without a growable row (or column), the rows (or columns) keep their size
+    /// and the free space stays at the end (Qt gives it to all of them), unless all of them grow
+    /// (wxFLEX_GROWMODE_ALL).
+    void setGeometry( const QRect& aRect ) override;
+
 private:
     void nextCell( int& aRow, int& aCol );
 
     int m_cols;
     int m_next;
+    int m_growMode = wxFLEX_GROWMODE_SPECIFIED;
 };
 
-/// A grid of cells of the same size (wxGridSizer): a flexible grid without growable cells.
+/// A grid of cells of the same size (wxGridSizer): a flexible grid whose cells share the space.
 class KIQT_API wxGridSizer : public wxFlexGridSizer
 {
 public:
-    using wxFlexGridSizer::wxFlexGridSizer;
+    explicit wxGridSizer( int aCols = 0, int aVGap = 0, int aHGap = 0 ) :
+            wxFlexGridSizer( aCols, aVGap, aHGap )
+    {
+        SetNonFlexibleGrowMode( wxFLEX_GROWMODE_ALL );
+    }
+
+    wxGridSizer( int aRows, int aCols, int aVGap, int aHGap ) :
+            wxFlexGridSizer( aRows, aCols, aVGap, aHGap )
+    {
+        SetNonFlexibleGrowMode( wxFLEX_GROWMODE_ALL );
+    }
 };
 
 
