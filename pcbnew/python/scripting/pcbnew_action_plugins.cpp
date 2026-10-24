@@ -47,6 +47,13 @@
 #include <core/ki_assert.h>
 #include <settings/common_settings.h>
 
+#ifdef GetClassName
+#undef GetClassName
+#endif
+#ifdef GetObject
+#undef GetObject
+#endif
+
 PYTHON_ACTION_PLUGIN::PYTHON_ACTION_PLUGIN( PyObject* aAction )
 {
     PyLOCK lock;

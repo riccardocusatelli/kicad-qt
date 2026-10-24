@@ -654,7 +654,7 @@ private:
                     if( aRow < 0 )
                         return;
 
-                    const wxString val = aSelect ? wxT( "1" ) : wxEmptyString;
+                    const wxString val = aSelect ? wxString( wxT( "1" ) ) : wxString();
                     aGrid.SetCellValue( aRow, (int) CU_LAYER_COLNUMS::SELECT, val );
                     aGrid.SetGridCursor( aRow, (int) CU_LAYER_COLNUMS::COLOR );
                 };

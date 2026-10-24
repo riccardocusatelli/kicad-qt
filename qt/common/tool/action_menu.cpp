@@ -89,8 +89,14 @@ ACTION_MENU_ITEM::operator wxMenuItem*() const
     if( !m_action )
         return nullptr;
 
-    MENU_ITEM_HOLDER* holder = m_action->findChild<MENU_ITEM_HOLDER*>( QString(),
-                                                                       Qt::FindDirectChildrenOnly );
+    // No Q_OBJECT in the holder: findChild<>() cannot be used
+    MENU_ITEM_HOLDER* holder = nullptr;
+
+    for( QObject* child : m_action->children() )
+    {
+        if( ( holder = dynamic_cast<MENU_ITEM_HOLDER*>( child ) ) )
+            break;
+    }
 
     if( !holder )
         holder = new MENU_ITEM_HOLDER( m_action );

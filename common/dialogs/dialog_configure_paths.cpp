@@ -222,7 +222,7 @@ void DIALOG_CONFIGURE_PATHS::AppendEnvVar( const wxString& aName, const wxString
     pathCellAttr->SetBackgroundColour( wxSystemSettings::GetColour( c ) );
     pathCellAttr->DecRef();
 
-    m_EnvVars->SetCellValue( i, TV_FLAG_COL, isExternal ? wxT( "external" ) : wxEmptyString );
+    m_EnvVars->SetCellValue( i, TV_FLAG_COL, isExternal ? wxString( wxT( "external" ) ) : wxString() );
 }
 
 

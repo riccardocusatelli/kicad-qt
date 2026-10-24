@@ -49,6 +49,10 @@
 #include <algorithm>
 #include <core/ki_assert.h>
 
+#ifdef GetClassName
+#undef GetClassName
+#endif
+
 
 #define GRID_CELL_MARGIN 4
 
@@ -321,7 +325,7 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
             bool show = PCB_EDIT_FRAME::GetActionPluginButtonVisible( ap->GetPluginPath(),
                                                                       ap->GetShowToolbarButton() );
 
-            m_grid->SetCellValue( row, COLUMN_VISIBLE, show ? wxT( "1" ) : wxEmptyString );
+            m_grid->SetCellValue( row, COLUMN_VISIBLE, show ? wxString( wxT( "1" ) ) : wxString() );
 
             m_grid->SetCellValue( row, COLUMN_PLUGIN_NAME, ap->GetClassName() );
             m_grid->SetCellValue( row, COLUMN_DESCRIPTION, ap->GetDescription() );
@@ -346,7 +350,7 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
 
             bool show = PCB_EDIT_FRAME::GetActionPluginButtonVisible( action->identifier, action->show_button );
 
-            m_grid->SetCellValue( row, COLUMN_VISIBLE, show ? wxT( "1" ) : wxEmptyString );
+            m_grid->SetCellValue( row, COLUMN_VISIBLE, show ? wxString( wxT( "1" ) ) : wxString() );
 
             m_grid->SetCellValue( row, COLUMN_PLUGIN_NAME, action->plugin.Name() );
             m_grid->SetCellValue( row, COLUMN_DESCRIPTION, action->description );

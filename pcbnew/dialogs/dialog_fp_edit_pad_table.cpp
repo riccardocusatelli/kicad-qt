@@ -38,6 +38,10 @@
 #include <pin_numbers.h>
 #include <board_commit.h>
 
+#ifdef GetCharWidth
+#undef GetCharWidth
+#endif
+
 
 // Helper to map shape string to PAD_SHAPE
 static PAD_SHAPE ShapeFromString( const wxString& shape )
