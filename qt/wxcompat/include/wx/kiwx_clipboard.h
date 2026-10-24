@@ -212,6 +212,12 @@ private:
 class KIQT_API wxDataObjectComposite : public wxDataObject
 {
 public:
+    wxDataObjectComposite() = default;
+
+    // Owns its objects through unique_ptr; MSVC emits the copy of a dllexport class eagerly.
+    wxDataObjectComposite( const wxDataObjectComposite& ) = delete;
+    wxDataObjectComposite& operator=( const wxDataObjectComposite& ) = delete;
+
     /// Add a data object (the composite takes it).
     void Add( wxDataObject* aData, bool aPreferred = false );
 

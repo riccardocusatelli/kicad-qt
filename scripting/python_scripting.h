@@ -84,16 +84,16 @@ private:
  * @param aVar is the variable to set
  * @param aValue is the value to give it
  */
-KICOMMON_API void UpdatePythonEnvVar( const wxString& aVar, const wxString& aValue );
+KIQT_COMMON_API void UpdatePythonEnvVar( const wxString& aVar, const wxString& aValue );
 
-KICOMMON_API void RedirectStdio();
-KICOMMON_API TOOLKIT_WINDOW* CreatePythonShellWindow( TOOLKIT_WINDOW* parent,
+KIQT_COMMON_API void RedirectStdio();
+KIQT_COMMON_API TOOLKIT_WINDOW* CreatePythonShellWindow( TOOLKIT_WINDOW* parent,
                                                      const wxString& aFramenameId );
-KICOMMON_API bool       InitPythonScripting( const char* aStockScriptingPath,
+KIQT_COMMON_API bool       InitPythonScripting( const char* aStockScriptingPath,
                                             const char* aUserScriptingPath );
-KICOMMON_API bool       IsWxPythonLoaded();
+KIQT_COMMON_API bool       IsWxPythonLoaded();
 
-class KICOMMON_API PyLOCK
+class KIQT_COMMON_API PyLOCK
 {
     PyGILState_STATE gil_state;
 public:
@@ -101,8 +101,8 @@ public:
     ~PyLOCK()     { PyGILState_Release( gil_state ); }
 };
 
-KICOMMON_API wxString PyStringToWx( PyObject* str );
-KICOMMON_API wxArrayString PyArrayStringToWx( PyObject* arr );
-KICOMMON_API wxString       PyErrStringWithTraceback();
+KIQT_COMMON_API wxString PyStringToWx( PyObject* str );
+KIQT_COMMON_API wxArrayString PyArrayStringToWx( PyObject* arr );
+KIQT_COMMON_API wxString       PyErrStringWithTraceback();
 
 #endif    // __PYTHON_SCRIPTING_H

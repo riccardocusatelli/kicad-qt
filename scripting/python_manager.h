@@ -30,7 +30,7 @@
 #include <kicommon.h>
 
 
-class KICOMMON_API PYTHON_MANAGER
+class KIQT_COMMON_API PYTHON_MANAGER
 {
 public:
     PYTHON_MANAGER( const wxString& aInterpreterPath );
