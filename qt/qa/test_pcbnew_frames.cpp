@@ -33,6 +33,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QScreen>
 #include <QTemporaryDir>
 #include <wx/init.h>
 
@@ -173,7 +174,15 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
     }
 
     if( !aScreenshot.isEmpty() )
-        check( frame->grab().save( aScreenshot ), "screenshot of the PCB editor" );
+    {
+        // From the display: the grab of the widgets has no OpenGL window (a native window)
+        QPixmap shot = frame->screen()->grabWindow( frame->winId() );
+        check( shot.save( aScreenshot ), "screenshot of the PCB editor" );
+
+        QString path = aScreenshot;
+        path.replace( QStringLiteral( ".png" ), QStringLiteral( "-grab.png" ) );
+        frame->grab().save( path );
+    }
 
     frame->Close( true );
     settle( 100 );
