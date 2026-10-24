@@ -258,6 +258,10 @@ public:
     wxGridTableBase();
     virtual ~wxGridTableBase();
 
+    // Owns objects through unique_ptr; MSVC emits the copy of a dllexport class eagerly.
+    wxGridTableBase( const wxGridTableBase& ) = delete;
+    wxGridTableBase& operator=( const wxGridTableBase& ) = delete;
+
     virtual int GetNumberRows() = 0;
     virtual int GetNumberCols() = 0;
     virtual bool IsEmptyCell( int aRow, int aCol ) { return GetValue( aRow, aCol ).IsEmpty(); }

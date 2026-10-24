@@ -217,6 +217,10 @@ public:
 
     virtual ~INFOBAR_REPORTER() {};
 
+    // Owns objects through unique_ptr; MSVC emits the copy of a dllexport class eagerly.
+    INFOBAR_REPORTER( const INFOBAR_REPORTER& ) = delete;
+    INFOBAR_REPORTER& operator=( const INFOBAR_REPORTER& ) = delete;
+
     REPORTER& Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override;
 
     bool HasMessage() const override;

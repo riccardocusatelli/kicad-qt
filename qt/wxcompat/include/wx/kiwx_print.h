@@ -328,6 +328,10 @@ public:
                     wxPrintData* aData = nullptr );
     ~wxPrintPreview();
 
+    // Owns objects through unique_ptr; MSVC emits the copy of a dllexport class eagerly.
+    wxPrintPreview( const wxPrintPreview& ) = delete;
+    wxPrintPreview& operator=( const wxPrintPreview& ) = delete;
+
     bool IsOk() const { return m_printout != nullptr; }
 
     void SetZoom( int aPercent ) { m_zoom = aPercent; }

@@ -1018,6 +1018,10 @@ public:
     explicit wxPaintDC( const wxWindow* aWindow );
     ~wxPaintDC() override;
 
+    // Owns objects through unique_ptr; MSVC emits the copy of a dllexport class eagerly.
+    wxPaintDC( const wxPaintDC& ) = delete;
+    wxPaintDC& operator=( const wxPaintDC& ) = delete;
+
 private:
     void init( QWidget* aWindow );
 
@@ -1042,6 +1046,10 @@ public:
     wxMemoryDC();
     explicit wxMemoryDC( wxBitmap& aBitmap );
     ~wxMemoryDC() override;
+
+    // Owns objects through unique_ptr; MSVC emits the copy of a dllexport class eagerly.
+    wxMemoryDC( const wxMemoryDC& ) = delete;
+    wxMemoryDC& operator=( const wxMemoryDC& ) = delete;
 
     /// Draw on @a aBitmap: the drawing is in the bitmap when another one is selected (or
     /// wxNullBitmap), or when the DC is deleted.
