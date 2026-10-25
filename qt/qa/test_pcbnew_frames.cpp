@@ -54,6 +54,7 @@
 #include <frame_type.h>
 #include <kiface_base.h>
 #include <kiway.h>
+#include <kiway_player.h>
 #include <pcb_edit_frame.h>
 #include <pgm_gui.h>
 #include <widgets/paged_dialog.h>
@@ -300,17 +301,100 @@ void testStartWizard( const QString& aScreenshot )
 }
 
 
-/// A frame of the KIFACE.
+/// A frame of the KIFACE, made by the KIWAY (its player: the frames find each other).
 template <typename FRAME>
 FRAME* createFrame( KIWAY& aKiway, FRAME_T aFrameType )
 {
-    QWidget* window = Kiface().CreateKiWindow( nullptr, aFrameType, &aKiway, KFCTL_STANDALONE );
-    FRAME*   frame = dynamic_cast<FRAME*>( window );
+    return dynamic_cast<FRAME*>( aKiway.Player( aFrameType, true ) );
+}
+
+
+/// Close a frame, then delete it (its deferred delete: the event loop of the program would).
+void closeFrame( EDA_BASE_FRAME* aFrame, const char* aName )
+{
+    QPointer<QWidget> alive( aFrame );
+
+    aFrame->Close( true );
+    settle( 100 );
+    QCoreApplication::sendPostedEvents( nullptr, QEvent::DeferredDelete );
+
+    check( alive.isNull(), ( std::string( aName ) + " is closed and deleted" ).c_str() );
+}
+
+
+/**
+ * The footprint editor: a footprint of the board is edited, with the dialogs of the editor (the
+ * properties of the footprint and of a pad, the default pad, the checker, the cleanup of the
+ * graphics, the enumeration of the pads).
+ */
+void testFootprintEditor( KIWAY& aKiway, FOOTPRINT* aFootprint, const QString& aScreenshot )
+{
+    std::printf( "FOOTPRINT_EDIT_FRAME\n" );
+
+    FOOTPRINT_EDIT_FRAME* frame = createFrame<FOOTPRINT_EDIT_FRAME>( aKiway,
+                                                                     FRAME_FOOTPRINT_EDITOR );
+    check( frame != nullptr, "the KIFACE makes the footprint editor" );
 
     if( !frame )
-        delete window;
+        return;
 
-    return frame;
+    frame->show();
+    settle( 300 );
+    check( frame->isVisible(), "the footprint editor is shown" );
+    check( frame->GetBoard() != nullptr, "the footprint editor has its board" );
+
+    if( aFootprint && frame->LoadFootprintFromBoard( aFootprint ) )
+    {
+        settle( 300 );
+
+        BOARD*        board = frame->GetBoard();
+        TOOL_MANAGER* toolMgr = frame->GetToolManager();
+        FOOTPRINT*    footprint = board->GetFirstFootprint();
+
+        check( footprint && footprint->GetFPID() == aFootprint->GetFPID(),
+               "the footprint editor edits the footprint of the board" );
+
+        if( footprint )
+        {
+            PCB_SELECTION_TOOL* selTool = toolMgr->GetTool<PCB_SELECTION_TOOL>();
+
+            testDialog( toolMgr, PCB_ACTIONS::footprintProperties, "footprint editor properties",
+                        aScreenshot, "Cancel" );
+
+            if( selTool && !footprint->Pads().empty() )
+            {
+                toolMgr->RunAction( ACTIONS::selectionClear );
+                selTool->AddItemToSel( footprint->Pads().front() );
+                settle( 50 );
+                testDialog( toolMgr, PCB_ACTIONS::properties, "footprint editor pad properties",
+                            aScreenshot, "Cancel" );
+                toolMgr->RunAction( ACTIONS::selectionClear );
+            }
+
+            testDialog( toolMgr, PCB_ACTIONS::defaultPadProperties, "default pad properties",
+                        aScreenshot, "Cancel" );
+            testDialog( toolMgr, PCB_ACTIONS::checkFootprint, "footprint checker", aScreenshot,
+                        "Close" );
+            testDialog( toolMgr, PCB_ACTIONS::cleanupGraphics, "cleanup graphics", aScreenshot,
+                        "Cancel" );
+            testDialog( toolMgr, PCB_ACTIONS::enumeratePads, "enumerate pads", aScreenshot,
+                        "Cancel" );
+        }
+
+        if( !aScreenshot.isEmpty() )
+        {
+            QString path = aScreenshot;
+            path.replace( QStringLiteral( ".png" ), QStringLiteral( "-footprint-editor.png" ) );
+            frame->screen()->grabWindow( frame->winId() ).save( path );
+        }
+    }
+    else
+    {
+        check( false, "the footprint editor loads the footprint of the board" );
+    }
+
+    frame->GetScreen()->SetContentModified( false );
+    closeFrame( frame, "the footprint editor" );
 }
 
 
@@ -565,32 +649,15 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
         frame->grab().save( path );
     }
 
+    // The footprint editor, with a footprint of the board
+    testFootprintEditor( aKiway, board->Footprints().empty() ? nullptr : board->Footprints().front(),
+                         aScreenshot );
+
     // The changes of the test are not saved (the editor would ask)
     frame->GetScreen()->SetContentModified( false );
-    frame->Close( true );
-    settle( 100 );
+    closeFrame( frame, "the PCB editor" );
 }
 
-
-void testFootprintEditor( KIWAY& aKiway )
-{
-    std::printf( "FOOTPRINT_EDIT_FRAME\n" );
-
-    FOOTPRINT_EDIT_FRAME* frame = createFrame<FOOTPRINT_EDIT_FRAME>( aKiway,
-                                                                     FRAME_FOOTPRINT_EDITOR );
-    check( frame != nullptr, "the KIFACE makes the footprint editor" );
-
-    if( !frame )
-        return;
-
-    frame->show();
-    settle( 300 );
-    check( frame->isVisible(), "the footprint editor is shown" );
-    check( frame->GetBoard() != nullptr, "the footprint editor has its board" );
-
-    frame->Close( true );
-    settle( 100 );
-}
 
 } // namespace
 
@@ -648,7 +715,6 @@ int main( int argc, char** argv )
 
     testPcbEditor( kiway, wxString::FromUTF8( copy.toUtf8().constData() ),
                    argc > 2 ? QString::fromUtf8( argv[2] ) : QString() );
-    testFootprintEditor( kiway );
 
     Kiface().OnKifaceEnd();
     program.Destroy();

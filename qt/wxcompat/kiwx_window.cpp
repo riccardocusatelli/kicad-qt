@@ -35,6 +35,8 @@
 #include <QScreen>
 #include <QVariant>
 
+#include <ui_hooks.h>
+
 #include <qt_strings.h>
 #include <wx/kiwx_gui.h>
 #include <wx/kiwx_menu.h>
@@ -110,7 +112,12 @@ void wxWindow::unregisterWindowCompat()
     QVariant window = widget->property( WINDOW_PROPERTY );
 
     if( window.isValid() && window.value<void*>() == static_cast<void*>( this ) )
+    {
         widget->setProperty( WINDOW_PROPERTY, QVariant() );
+
+        // The hooks of the window (its event handlers) end with it
+        KIQT::RemoveEventHooks( widget );
+    }
 }
 
 

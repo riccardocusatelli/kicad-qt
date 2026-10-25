@@ -178,6 +178,25 @@ void KIQT::OnEvent( QWidget* aWidget, QEvent::Type aType,
 }
 
 
+void KIQT::RemoveEventHooks( QWidget* aWidget )
+{
+    if( !aWidget )
+        return;
+
+    // A copy: the hooks are deleted from the children
+    const QObjectList children = aWidget->children();
+
+    for( QObject* child : children )
+    {
+        if( dynamic_cast<EVENT_HOOK*>( child ) || dynamic_cast<EVENT_FILTER*>( child ) )
+        {
+            aWidget->removeEventFilter( child );
+            delete child;
+        }
+    }
+}
+
+
 void KIQT::FilterEvents( QWidget* aWidget, std::function<bool( QEvent* aEvent )> aFilter )
 {
     new EVENT_FILTER( aWidget, std::move( aFilter ) );
@@ -196,14 +215,19 @@ void KIQT::UpdateUINow()
 }
 
 
+// The id of a window is the one of the compatibility layer (wxWindow::GetId()): the controls of
+// the toolbars are made with it
+static const char* WINDOW_ID_PROPERTY = "kiwxWindowId";
+
+
 void KIQT::SetWindowId( QWidget* aWidget, int aId )
 {
-    aWidget->setProperty( "kicadWindowId", aId );
+    aWidget->setProperty( WINDOW_ID_PROPERTY, aId );
 }
 
 
 int KIQT::GetWindowId( const QWidget* aWidget )
 {
-    QVariant id = aWidget->property( "kicadWindowId" );
+    QVariant id = aWidget->property( WINDOW_ID_PROPERTY );
     return id.isValid() ? id.toInt() : -1;
 }

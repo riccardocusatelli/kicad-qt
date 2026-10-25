@@ -47,6 +47,12 @@ KIQT_API void OnEvent( QWidget* aWidget, QEvent::Type aType,
                        std::function<void( QEvent* aEvent )> aHandler );
 
 /**
+ * Remove the hooks of @a aWidget (OnEvent(), FilterEvents()): its window is being destroyed, the
+ * functions of the hooks use it (the events of ~QWidget(), as the hide of a dialog, come after).
+ */
+KIQT_API void RemoveEventHooks( QWidget* aWidget );
+
+/**
  * Give the events of @a aWidget to @a aFilter before the widget: the events for which it
  * returns true are not processed by the widget.  The filter lives as long as the widget.
  */
