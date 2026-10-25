@@ -55,3 +55,37 @@ add_dependencies( qa_qt_pcbnew_frames pcbnew_gui_qt )
 if( UNIX AND NOT APPLE )
     target_link_libraries( qa_qt_pcbnew_frames PRIVATE ${SPNAV_LIBRARIES} )
 endif()
+
+# The test of kicad-qt: the program itself (its main() renamed), driven from its event loop: a
+# board opens in the PCB editor of KiCad (_pcbnew_qtgui.kiface), the launcher opens the footprint
+# editor, the shell closes them.
+add_executable( qa_qt_kicad_shell
+    test_kicad_shell.cpp
+    ${CMAKE_SOURCE_DIR}/qt/kicad/home_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/qt/kicad/main_window.cpp
+    )
+
+set_target_properties( qa_qt_kicad_shell PROPERTIES AUTOMOC ON )
+
+target_include_directories( qa_qt_kicad_shell PRIVATE
+    ${CMAKE_SOURCE_DIR}/qt/kicad
+    $<TARGET_PROPERTY:common,INTERFACE_INCLUDE_DIRECTORIES>
+    )
+
+target_link_libraries( qa_qt_kicad_shell
+    kiqt_common
+    kiqt
+    "$<TARGET_FILE:common>"
+    kicommon_model
+    core
+    Qt6::Widgets
+    ${wxWidgets_BASE_LIBRARIES}
+    )
+
+add_dependencies( qa_qt_kicad_shell common pcbnew_qtgui_kiface eeschema_qt_kiface )
+
+# In the kicad directory of the build tree, as kicad-qt (KICAD_RUN_FROM_BUILD_DIR finds the
+# KIFACEs from there)
+set_target_properties( qa_qt_kicad_shell PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/kicad
+    )

@@ -830,6 +830,14 @@ protected:
     /// The frame is asked to close (by the user or by Close()).
     void closeEvent( QCloseEvent* aEvent ) override;
 
+    /**
+     * The panes (the dock widgets) are deleted when the frame is about to be deleted, while it
+     * is whole: their windows use the frame, its board, its listeners when they are deleted,
+     * and ~QWidget() would delete them after the members of the frame (wxWidgets keeps the
+     * event bindings in wxEvtHandler, its deepest base).
+     */
+    bool event( QEvent* aEvent ) override;
+
     /// The theme of the system or the state of the window (iconized) changed.
     void changeEvent( QEvent* aEvent ) override;
 

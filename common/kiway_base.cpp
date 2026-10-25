@@ -104,11 +104,14 @@ const wxString KIWAY_BASE::dso_search_path( FACE_T aFaceId )
     fn.AppendDir( wxT( "PlugIns" ) );
 #endif
 
-    // kicad-cli loads the KIFACEs built without GUI, kicad-qt the ones of the Qt shell
+    // kicad-cli loads the KIFACEs built without GUI, kicad-qt the ones of the Qt shell (with
+    // their GUI, the editors of KiCad, where they are built)
     wxString dsoName = name;
 
     if( ( m_ctl & KFCTL_CLI ) && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB ) )
         dsoName += wxT( "_cli" );
+    else if( ( m_ctl & KFCTL_QT_GUI ) && aFaceId == FACE_PCB )
+        dsoName += wxT( "_qtgui" );
     else if( ( m_ctl & KFCTL_QT ) && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB ) )
         dsoName += wxT( "_qt" );
 

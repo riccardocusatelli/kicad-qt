@@ -711,8 +711,9 @@ LAUNCHER_PANEL::LAUNCHER_PANEL( QWidget* aParent ) :
     addSection( tr( "Libraries" ) );
     addRow( QStringLiteral( "SY" ), tr( "Symbol Editor" ),
             tr( "Edit global and/or project schematic symbol libraries" ), false );
-    addRow( QStringLiteral( "FP" ), tr( "Footprint Editor" ),
-            tr( "Edit global and/or project PCB footprint libraries" ), false );
+    LAUNCHER_CARD* footprints = addRow( QStringLiteral( "FP" ), tr( "Footprint Editor" ),
+                                        tr( "Edit global and/or project PCB footprint libraries" ),
+                                        true );
     addRow( QStringLiteral( "DS" ), tr( "Drawing Sheet Editor" ),
             tr( "Edit drawing sheet borders and title blocks" ), false );
 
@@ -750,6 +751,7 @@ LAUNCHER_PANEL::LAUNCHER_PANEL( QWidget* aParent ) :
 
     connect( m_schematic, &LAUNCHER_CARD::clicked, this, &LAUNCHER_PANEL::schematicRequested );
     connect( m_board, &LAUNCHER_CARD::clicked, this, &LAUNCHER_PANEL::boardRequested );
+    connect( footprints, &LAUNCHER_CARD::clicked, this, &LAUNCHER_PANEL::footprintEditorRequested );
 
     SetDocuments( false, false );
 }

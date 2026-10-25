@@ -119,6 +119,8 @@ struct KIFACE
 #define KFCTL_CPP_PROJECT_SUITE ( 1 << 1 ) ///< Running under C++ project mgr, possibly with others.
 #define KFCTL_CLI ( 1 << 2 )               ///< Running as CLI app
 #define KFCTL_QT ( 1 << 3 )                ///< Running under the Qt shell (kicad-qt)
+#define KFCTL_QT_GUI ( 1 << 4 )            ///< The Qt shell with the editors of the Qt KIFACEs
+                                           ///< built with their GUI (_pcbnew_qtgui)
 
 
     /**

@@ -218,6 +218,7 @@ public:
 signals:
     void schematicRequested();
     void boardRequested();
+    void footprintEditorRequested();
 
 private:
     LAUNCHER_CARD* m_schematic;

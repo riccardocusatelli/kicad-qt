@@ -299,6 +299,13 @@ EDA_BASE_FRAME::~EDA_BASE_FRAME()
     ClearUndoRedoList();
 
     KIPLATFORM::UI::RemoveShutdownBlockReason( this );
+
+    // The listeners of the language are the windows of the frame, deleted after its members (by
+    // ~QWidget()): their destruction does not touch the list of the listeners any more
+    for( const auto& [owner, listener] : m_languageChangedListeners )
+        QObject::disconnect( owner, &QObject::destroyed, this, nullptr );
+
+    m_languageChangedListeners.clear();
 }
 
 
@@ -581,6 +588,15 @@ bool EDA_BASE_FRAME::Close( bool aForce )
     }
 
     return close();
+}
+
+
+bool EDA_BASE_FRAME::event( QEvent* aEvent )
+{
+    if( aEvent->type() == QEvent::DeferredDelete )
+        qDeleteAll( findChildren<QDockWidget*>( QString(), Qt::FindDirectChildrenOnly ) );
+
+    return wxWindowCompat<QMainWindow>::event( aEvent );
 }
 
 

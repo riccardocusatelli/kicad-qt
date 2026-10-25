@@ -1,4 +1,5 @@
-# kicad-qt: the Qt shell (project, documents in tabs), with the Qt KIFACEs
+# kicad-qt: the Qt shell (project, documents in tabs), with the Qt KIFACEs: the PCB editor of
+# KiCad (_pcbnew_qtgui.kiface) runs in it, as in the project manager of KiCad
 
 add_executable( kicad-qt
     home_widgets.cpp
@@ -13,7 +14,10 @@ target_include_directories( kicad-qt PRIVATE
     $<TARGET_PROPERTY:common,INTERFACE_INCLUDE_DIRECTORIES>
     )
 
+# The program with the user interface of KiCad (PGM_GUI, KIWAY, the start wizard): kiqt_common,
+# as in each KIFACE
 target_link_libraries( kicad-qt
+    kiqt_common
     kiqt
     "$<TARGET_FILE:common>"
     kicommon_model
@@ -22,7 +26,7 @@ target_link_libraries( kicad-qt
     ${wxWidgets_BASE_LIBRARIES}
     )
 
-add_dependencies( kicad-qt common pcbnew_qt_kiface eeschema_qt_kiface )
+add_dependencies( kicad-qt common pcbnew_qtgui_kiface eeschema_qt_kiface )
 
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     target_link_options( kicad-qt PRIVATE "LINKER:--no-undefined" )

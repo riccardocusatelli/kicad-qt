@@ -24,7 +24,7 @@
 #include <QMainWindow>
 #include <QStringList>
 
-class KIWAY_BASE;
+class KIWAY;
 class QAction;
 class QFileSystemModel;
 class QLabel;
@@ -40,15 +40,17 @@ class QT_DOCUMENT;
 
 
 /**
- * The main window of kicad-qt: the files of the project, the open documents (boards and
- * schematics, made by the Qt KIFACEs) in tabs with their editing commands, the recent files.
+ * The main window of kicad-qt: the files of the project, the open documents (the schematics,
+ * made by the Qt KIFACE) in tabs with their editing commands, the recent files.  The boards and
+ * the footprints are edited by the editors of KiCad (the frames of the KIFACE of pcbnew), as in
+ * the project manager of KiCad.
  */
 class MAIN_WINDOW : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit MAIN_WINDOW( KIWAY_BASE& aKiway );
+    explicit MAIN_WINDOW( KIWAY& aKiway );
 
     /// Open a project (.kicad_pro) or a document (.kicad_pcb, .kicad_sch).
     void OpenPath( const QString& aPath );
@@ -64,6 +66,12 @@ private:
     void openFileDialog();
     void openProject( const QString& aProjectFile );
     void openDocument( const QString& aFileName );
+
+    /// Open a board in the PCB editor of KiCad (a frame of the KIFACE of pcbnew).
+    void openBoardEditor( const QString& aFileName );
+
+    /// Show the footprint editor of KiCad.
+    void openFootprintEditor();
     void closeTab( int aIndex );
 
     /// Save a document; on failure, say why.  @return true if saved.
@@ -95,7 +103,7 @@ private:
 
     QT_DOCUMENT* currentDocument() const;
 
-    KIWAY_BASE&        m_kiway;
+    KIWAY&             m_kiway;
 
     QTabWidget*        m_tabs;        ///< The launcher of the editors, then the documents
     LAUNCHER_PANEL*    m_launcher;
