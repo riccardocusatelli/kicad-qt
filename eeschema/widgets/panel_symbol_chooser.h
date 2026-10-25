@@ -29,6 +29,7 @@
 #include <symbol_tree_model_adapter.h>
 #include <footprint_info.h>
 #include <widgets/html_window.h>
+#include <wx/timer.h>
 
 class wxPanel;
 class wxTimer;

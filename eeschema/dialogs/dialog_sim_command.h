@@ -27,7 +27,7 @@
 #ifndef DIALOG_SIM_COMMAND_H
 #define DIALOG_SIM_COMMAND_H
 
-#include "dialog_sim_command_base.h"
+#include <dialog_sim_command_base.h>
 #include <netlist_exporter_spice.h>
 #include <sim/spice_value.h>
 #include <sim/spice_validator.h>

@@ -25,7 +25,7 @@
 #ifndef DIALOG_SYNC_SHEET_PINS_H
 #define DIALOG_SYNC_SHEET_PINS_H
 
-#include "dialog_sync_sheet_pins_base.h"
+#include <sync_sheet_pin/dialog_sync_sheet_pins_base.h>
 
 #include <sch_sheet_path.h>
 #include <list>

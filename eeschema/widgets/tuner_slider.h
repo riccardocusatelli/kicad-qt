@@ -27,7 +27,7 @@
 #ifndef TUNER_SLIDER_H
 #define TUNER_SLIDER_H
 
-#include "tuner_slider_base.h"
+#include <tuner_slider_base.h>
 
 #include <sim/spice_value.h>
 #include <sim/spice_generator.h>

@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "panel_eeschema_display_options_base.h"
+#include <panel_eeschema_display_options_base.h>
 
 class APP_SETTINGS_BASE;
 class PANEL_GAL_OPTIONS;

@@ -34,6 +34,7 @@
 #include <QAbstractButton>
 #include <QAbstractScrollArea>
 #include <QAction>
+#include <QContextMenuEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QResizeEvent>
@@ -962,6 +963,18 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
                             wxShowEvent event( id, qtType == QEvent::Show );
                             event.SetEventObject( w );
                             aSink->Process( event );
+                        }
+
+                        return false;
+
+                    case wxEVT_CONTEXT_MENU:
+                        if( qtType == QEvent::ContextMenu )
+                        {
+                            QPoint pos = static_cast<QContextMenuEvent*>( aQtEvent )->globalPos();
+                            wxContextMenuEvent event( aType, id, wxPoint( pos.x(), pos.y() ) );
+                            event.SetEventObject( w );
+                            aSink->Process( event );
+                            return true;
                         }
 
                         return false;

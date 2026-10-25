@@ -33,6 +33,7 @@
 #include <sch_collectors.h>
 #include <sch_symbol.h>
 #include <gal/cursors.h>
+#include <wx/event.h>
 
 class SCH_BASE_FRAME;
 class SCH_GROUP;

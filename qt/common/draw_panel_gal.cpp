@@ -235,6 +235,13 @@ void EDA_DRAW_PANEL_GAL::PostRefreshMouse( int aModifiers )
 
 void EDA_DRAW_PANEL_GAL::paintEvent( QPaintEvent* aEvent )
 {
+    wxPaintEvent event;
+    onPaint( event );
+}
+
+
+void EDA_DRAW_PANEL_GAL::onPaint( wxPaintEvent& aEvent )
+{
     DoRePaint( false );
 
     // The OpenGL GAL draws in its own window, over the panel

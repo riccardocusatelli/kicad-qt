@@ -21,7 +21,7 @@
 #ifndef KICAD_DIALOG_DATABASE_LIB_SETTINGS_H
 #define KICAD_DIALOG_DATABASE_LIB_SETTINGS_H
 
-#include "dialog_database_lib_settings_base.h"
+#include <dialog_database_lib_settings_base.h>
 
 class SCH_IO_DATABASE;
 

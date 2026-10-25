@@ -24,7 +24,7 @@
 #ifndef PANEL_SYM_COLOR_SETTINGS_H
 #define PANEL_SYM_COLOR_SETTINGS_H
 
-#include "panel_sym_color_settings_base.h"
+#include <panel_sym_color_settings_base.h>
 
 
 class PANEL_SYM_COLOR_SETTINGS : public PANEL_SYM_COLOR_SETTINGS_BASE

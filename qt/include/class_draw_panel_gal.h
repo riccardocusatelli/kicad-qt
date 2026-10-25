@@ -42,6 +42,7 @@
 #include <QWidget>
 
 #include <wx/kiwx_window.h>
+#include <wx/kiwx_events.h>
 
 #include <gal/gal_backend.h>
 #include <math/box2.h>
@@ -346,6 +347,10 @@ public:
 protected:
     bool event( QEvent* aEvent ) override;
     void paintEvent( QPaintEvent* aEvent ) override;
+
+    /// The painting of the panel (as the handler of wxEVT_PAINT of the wxWidgets build): the panels
+    /// of the editors override it, and call it.
+    virtual void onPaint( wxPaintEvent& aEvent );
     void resizeEvent( QResizeEvent* aEvent ) override;
     void showEvent( QShowEvent* aEvent ) override;
     void focusOutEvent( QFocusEvent* aEvent ) override;

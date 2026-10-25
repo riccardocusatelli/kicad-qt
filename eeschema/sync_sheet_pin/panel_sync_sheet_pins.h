@@ -25,7 +25,7 @@
 #ifndef PANEL_SYNC_SHEET_PINS_H
 #define PANEL_SYNC_SHEET_PINS_H
 
-#include "panel_sync_sheet_pins_base.h"
+#include <sync_sheet_pin/panel_sync_sheet_pins_base.h>
 #include "sch_sheet_path.h"
 
 #include <map>

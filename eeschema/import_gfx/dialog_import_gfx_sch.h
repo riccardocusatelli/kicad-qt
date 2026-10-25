@@ -25,7 +25,7 @@
 #ifndef __DIALOG_IMPORT_GFX_SCH_H__
 #define __DIALOG_IMPORT_GFX_SCH_H__
 
-#include "dialog_import_gfx_sch_base.h"
+#include <import_gfx/dialog_import_gfx_sch_base.h>
 
 #include <import_gfx/graphics_importer.h>
 #include <widgets/unit_binder.h>

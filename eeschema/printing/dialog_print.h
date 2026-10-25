@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "dialog_print_base.h"
+#include <printing/dialog_print_base.h>
 
 
 class SCH_EDIT_FRAME;

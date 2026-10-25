@@ -21,7 +21,7 @@
 #define KICAD_PANEL_SETUP_FORMATTING_H
 
 #include <widgets/unit_binder.h>
-#include "panel_setup_formatting_base.h"
+#include <panel_setup_formatting_base.h>
 
 class SCH_EDIT_FRAME;
 class SCHEMATIC_SETTINGS;

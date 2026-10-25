@@ -27,7 +27,7 @@
 
 #include <sch_pin.h>        // For PINTYPE_COUNT definition
 #include <erc/erc_settings.h>
-#include "panel_setup_pinmap_base.h"
+#include <panel_setup_pinmap_base.h>
 
 
 class SCH_EDIT_FRAME;

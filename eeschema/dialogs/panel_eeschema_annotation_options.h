@@ -22,7 +22,7 @@
 #define PANEL_EESCHEMA_ANNOTATION_OPTIONS_H
 
 #include <widgets/unit_binder.h>
-#include "panel_eeschema_annotation_options_base.h"
+#include <panel_eeschema_annotation_options_base.h>
 
 class EDA_BASE_FRAME;
 class SCHEMATIC_SETTINGS;

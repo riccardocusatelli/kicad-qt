@@ -21,7 +21,7 @@
 #define PANEL_SYM_EDITING_OPTIONS_H
 
 #include <widgets/unit_binder.h>
-#include "panel_sym_editing_options_base.h"
+#include <panel_sym_editing_options_base.h>
 
 class EDA_DRAW_FRAME;
 

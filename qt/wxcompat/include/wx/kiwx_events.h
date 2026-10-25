@@ -138,6 +138,7 @@ enum wxEventTypeCompat
     wxEVT_NOTEBOOK_PAGE_CHANGING,
     wxEVT_ACTIVATE,
     wxEVT_IDLE,
+    wxEVT_CONTEXT_MENU,
     wxEVT_HTML_LINK_CLICKED,
     wxEVT_HELP,
     wxEVT_TREEBOOK_PAGE_CHANGED,
@@ -313,6 +314,9 @@ public:
     }
 
     virtual ~wxEvent() = default;
+
+    /// A copy of the event (as wxWidgets, the events posted to the queue are copies).
+    virtual wxEvent* Clone() const { return new wxEvent( *this ); }
 
     wxEventType GetEventType() const { return m_type; }
     void SetEventType( wxEventType aType ) { m_type = aType; }
@@ -820,6 +824,29 @@ public:
 private:
     bool m_active;
 };
+
+
+/// The context menu of a window was asked for (wxContextMenuEvent): the position is on the screen.
+class wxContextMenuEvent : public wxCommandEvent
+{
+public:
+    explicit wxContextMenuEvent( wxEventType aType = wxEVT_CONTEXT_MENU, int aId = 0,
+                                 const wxPoint& aPosition = wxDefaultPosition ) :
+            wxCommandEvent( aType, aId ),
+            m_position( aPosition )
+    {
+    }
+
+    const wxPoint& GetPosition() const { return m_position; }
+    void SetPosition( const wxPoint& aPosition ) { m_position = aPosition; }
+
+    wxEvent* Clone() const override { return new wxContextMenuEvent( *this ); }
+
+private:
+    wxPoint m_position;
+};
+
+#define wxContextMenuEventHandler( func ) ( &func )
 
 
 class wxIdleEvent : public wxEvent

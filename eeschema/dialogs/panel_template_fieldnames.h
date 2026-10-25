@@ -21,7 +21,7 @@
 #define PANEL_EESCHEMA_DEFUALT_FIELDS_H
 
 #include <template_fieldnames.h>
-#include "panel_template_fieldnames_base.h"
+#include <panel_template_fieldnames_base.h>
 
 class SCH_EDIT_FRAME;
 

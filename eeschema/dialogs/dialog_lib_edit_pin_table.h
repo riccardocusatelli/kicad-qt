@@ -21,7 +21,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include "dialog_lib_edit_pin_table_base.h"
+#include <dialog_lib_edit_pin_table_base.h>
 
 #include <sch_pin.h>
 

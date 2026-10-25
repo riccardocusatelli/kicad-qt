@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "dialog_sch_import_settings_base.h"
+#include <dialog_sch_import_settings_base.h>
 
 class SCH_EDIT_FRAME;
 

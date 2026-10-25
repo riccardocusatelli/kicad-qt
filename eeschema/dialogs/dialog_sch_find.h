@@ -25,7 +25,7 @@
 #ifndef DIALOG_SCH_FIND_H
 #define DIALOG_SCH_FIND_H
 
-#include "dialog_sch_find_base.h"
+#include <dialog_sch_find_base.h>
 
 #include <wx/fdrepdlg.h>          // Use the wxFindReplaceDialog events, data, and enums.
 

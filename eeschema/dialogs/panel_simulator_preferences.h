@@ -20,7 +20,7 @@
 #ifndef KICAD_PANEL_SIMULATOR_PREFERENCES_H
 #define KICAD_PANEL_SIMULATOR_PREFERENCES_H
 
-#include "panel_simulator_preferences_base.h"
+#include <panel_simulator_preferences_base.h>
 #include <sim/sim_preferences.h>
 
 

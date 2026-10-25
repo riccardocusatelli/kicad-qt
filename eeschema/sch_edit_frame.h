@@ -877,7 +877,7 @@ public:
      */
     static const wxString SearchPaneName() { return wxT( "Search" ); }
 
-    bool IsSearchPaneShown() { return m_auimgr.GetPane( SearchPaneName() ).IsShown(); }
+    bool IsSearchPaneShown() { return IsPaneShown( SearchPaneName() ); }
 
     void FocusSearch();
 
