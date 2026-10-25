@@ -1004,6 +1004,10 @@ public:
 
     QSize sizeHint() const override;
 
+    /// As wxWidgets, the grid does not shrink below its best size in a sizer (its minimum size is
+    /// its best size, unless set).
+    QSize minimumSizeHint() const override { return sizeHint(); }
+
 protected:
     /**
      * Send a grid event about the current cell.

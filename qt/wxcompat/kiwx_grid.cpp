@@ -1628,6 +1628,16 @@ wxGrid::wxGrid( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const w
     setModel( m_model );
     setItemDelegate( m_delegate );
 
+    // The best size of a grid is the size of its cells (DoGetBestSize()): the layouts know when
+    // it changes, as the sizers of wxWidgets (AutoSize(), SetColSize()...)
+    for( QHeaderView* header : { horizontalHeader(), verticalHeader() } )
+    {
+        QObject::connect( header, &QHeaderView::sectionResized, this,
+                          [this]() { updateGeometry(); } );
+        QObject::connect( header, &QHeaderView::sectionCountChanged, this,
+                          [this]() { updateGeometry(); } );
+    }
+
     m_gridWin = wxWindowFromQt( viewport() );
     m_colLabelWin = wxWindowFromQt( horizontalHeader() );
     m_rowLabelWin = wxWindowFromQt( verticalHeader() );
