@@ -374,6 +374,7 @@ void EDA_BASE_FRAME::UpdatePanes()
 namespace
 {
 const char* FLOATING_SIZE = "kicadFloatingSize";
+const char* FLOATING_POSITION = "kicadFloatingPosition";
 
 
 Qt::DockWidgetArea toDockArea( PANE_DOCK aDock )
@@ -526,6 +527,48 @@ void EDA_BASE_FRAME::SetPaneFloatingSize( const wxString& aName, const wxSize& a
 
     if( dock->isFloating() && aSize.x > 0 && aSize.y > 0 )
         dock->resize( aSize.x, aSize.y );
+}
+
+
+wxPoint EDA_BASE_FRAME::GetPaneFloatingPosition( const wxString& aName ) const
+{
+    QDockWidget* dock = findPane( aName );
+
+    if( !dock )
+        return wxDefaultPosition;
+
+    if( dock->isFloating() )
+        return wxPoint( dock->x(), dock->y() );
+
+    QVariant position = dock->property( FLOATING_POSITION );
+    return position.isValid() ? wxPoint( position.toPoint().x(), position.toPoint().y() )
+                              : wxDefaultPosition;
+}
+
+
+void EDA_BASE_FRAME::SetPaneFloatingPosition( const wxString& aName, const wxPoint& aPosition )
+{
+    QDockWidget* dock = findPane( aName );
+
+    if( !dock )
+        return;
+
+    dock->setProperty( FLOATING_POSITION, QPoint( aPosition.x, aPosition.y ) );
+
+    if( dock->isFloating() && aPosition != wxDefaultPosition )
+        dock->move( aPosition.x, aPosition.y );
+}
+
+
+int EDA_BASE_FRAME::KeepPaneDockedWidth( const wxString& aName )
+{
+    QDockWidget* dock = findPane( aName );
+
+    // Qt keeps the docked size of a pane when it floats: only its width is needed
+    if( !dock || dock->isFloating() || dock->isHidden() || dock->width() <= 50 )
+        return 0;
+
+    return dock->width();
 }
 
 

@@ -124,6 +124,12 @@ protected:
 
     void setupUIConditions() override;
 
+    /**
+     * Dock the panels of the libraries and of the symbols and the canvas (the toolkit part of
+     * the frame: symbol_viewer_frame_wx.cpp, or the one of Qt).
+     */
+    void setupLayout( wxPanel* libPanel, wxPanel* symbolPanel );
+
     void doReCreateMenuBar() override;
 
 private:

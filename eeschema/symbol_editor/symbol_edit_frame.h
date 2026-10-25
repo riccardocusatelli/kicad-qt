@@ -421,6 +421,12 @@ protected:
     void configureToolbars() override;
     void setupUIConditions() override;
 
+    /**
+     * Dock the panes of the frame around the canvas (the toolkit part of the frame:
+     * symbol_edit_frame_wx.cpp, or the one of Qt).
+     */
+    void setupLayout();
+
     void doReCreateMenuBar() override;
 
     void updateSelectionFilterVisbility() override;

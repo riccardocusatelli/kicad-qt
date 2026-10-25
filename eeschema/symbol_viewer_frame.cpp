@@ -39,7 +39,6 @@
 #include <symbol_viewer_frame.h>
 #include <widgets/msgpanel.h>
 #include <widgets/wx_listbox.h>
-#include <widgets/wx_aui_utils.h>
 #include <widgets/wx_progress_reporters.h>
 #include <sch_view.h>
 #include <sch_painter.h>
@@ -200,29 +199,13 @@ SYMBOL_VIEWER_FRAME::SYMBOL_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     DisplayLibInfos();
 
-    m_auimgr.SetManagedWindow( this );
-
-    CreateInfoBar();
-
-    // Manage main toolbar
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" ).Top().Layer(6) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ) .Bottom().Layer(6) );
-
-    m_auimgr.AddPane( libPanel, EDA_PANE().Palette().Name( "Libraries" ).Left().Layer(2)
-                      .CaptionVisible( false ).MinSize( 100, -1 ).BestSize( 200, -1 ) );
-    m_auimgr.AddPane( symbolPanel, EDA_PANE().Palette().Name( "Symbols" ).Left().Layer(1)
-                      .CaptionVisible( false ).MinSize( 100, -1 ).BestSize( 300, -1 ) );
-
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" ).Center() );
-
-    RestoreAuiLayout();
-    m_auimgr.Update();
+    setupLayout( libPanel, symbolPanel );
 
     if( m_libListWidth > 0 )
-        SetAuiPaneSize( m_auimgr, m_auimgr.GetPane( "Libraries" ), m_libListWidth, -1 );
+        SetPaneSize( wxS( "Libraries" ), m_libListWidth, -1 );
 
     if( m_symbolListWidth > 0 )
-        SetAuiPaneSize( m_auimgr, m_auimgr.GetPane( "Symbols" ), m_symbolListWidth, -1 );
+        SetPaneSize( wxS( "Symbols" ), m_symbolListWidth, -1 );
 
     FinishAUIInitialization();
 
@@ -407,15 +390,6 @@ void SYMBOL_VIEWER_FRAME::doCloseWindow()
     m_toolManager = nullptr;
 
     Destroy();
-}
-
-
-void SYMBOL_VIEWER_FRAME::OnSize( wxSizeEvent& SizeEv )
-{
-    if( m_auimgr.GetManagedWindow() )
-        m_auimgr.Update();
-
-    SizeEv.Skip();
 }
 
 

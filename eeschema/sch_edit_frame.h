@@ -922,7 +922,6 @@ public:
 
     void ClearToolbarControl( int aId ) override;
 
-    DECLARE_EVENT_TABLE()
 
 protected:
     /// Items also get the current sheet (SCH_SHEET_CONTEXT).
@@ -1031,6 +1030,18 @@ private:
      * @param aMap is a map to fill
      */
     void mapExistingAnnotation( std::map<wxString, wxString>& aMap );
+
+    /**
+     * Dock the panes of the frame around the canvas, with the sizes and the visibility of the
+     * settings (the toolkit part of the frame: sch_edit_frame_wx.cpp, or the one of Qt).
+     */
+    void setupLayout();
+
+    /**
+     * Bind the events of the frame: the commands of its menus, the socket of the remote
+     * commands, the dropped files (the toolkit part of the frame).
+     */
+    void setupToolkitEvents();
 
     wxWindow* createHighlightedNetNavigator();
 

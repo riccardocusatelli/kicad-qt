@@ -2265,6 +2265,34 @@ void EDA_BASE_FRAME::SetPaneFloatingSize( const wxString& aName, const wxSize& a
 }
 
 
+wxPoint EDA_BASE_FRAME::GetPaneFloatingPosition( const wxString& aName ) const
+{
+    const wxAuiPaneInfo& pane = const_cast<wxAuiManager&>( m_auimgr ).GetPane( aName );
+    return pane.IsOk() ? pane.floating_pos : wxDefaultPosition;
+}
+
+
+void EDA_BASE_FRAME::SetPaneFloatingPosition( const wxString& aName, const wxPoint& aPosition )
+{
+    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( aName ); pane.IsOk() )
+        pane.FloatingPosition( aPosition );
+}
+
+
+int EDA_BASE_FRAME::KeepPaneDockedWidth( const wxString& aName )
+{
+    wxAuiPaneInfo& pane = m_auimgr.GetPane( aName );
+
+    // The width of the pane is meaningful only if it is already set (a floating pane has only
+    // its floating size).  Its best size is the width it gets when it is docked again.
+    if( !pane.IsOk() || pane.rect.width <= 50 )    // 50 is a good margin
+        return 0;
+
+    pane.best_size.x = pane.rect.width;
+    return pane.rect.width;
+}
+
+
 void EDA_BASE_FRAME::SetPaneSize( const wxString& aName, int aWidth, int aHeight )
 {
     if( wxAuiPaneInfo& pane = m_auimgr.GetPane( aName ); pane.IsOk() )

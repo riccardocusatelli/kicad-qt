@@ -2439,8 +2439,23 @@ wxAuiNotebook::wxAuiNotebook( wxWidgetArgCompat aParent, int aId, const wxPoint&
                           event.SetEventObject( this );
                           ProcessEvent( event );
 
-                          if( event.IsAllowed() )
-                              DeletePage( size_t( aIndex ) );
+                          if( !event.IsAllowed() )
+                              return;
+
+                          DeletePage( size_t( aIndex ) );
+
+                          wxBookCtrlEvent closed( wxEVT_AUINOTEBOOK_PAGE_CLOSED, GetId(), aIndex );
+                          closed.SetEventObject( this );
+                          ProcessEvent( closed );
+                      } );
+
+    // A tab dragged to another place
+    QObject::connect( tabBar(), &QTabBar::tabMoved, this,
+                      [this]( int aFrom, int aTo )
+                      {
+                          wxBookCtrlEvent event( wxEVT_AUINOTEBOOK_END_DRAG, GetId(), aTo, aFrom );
+                          event.SetEventObject( this );
+                          ProcessEvent( event );
                       } );
 }
 

@@ -679,42 +679,41 @@ void SCH_EDIT_FRAME::ToggleNetNavigator()
 
     KI_CHECK( cfg, /* void */ );
 
-    wxAuiPaneInfo& netNavigatorPane = m_auimgr.GetPane( NetNavigatorPaneName() );
+    const wxString name = NetNavigatorPaneName();
 
-    netNavigatorPane.Show( !netNavigatorPane.IsShown() );
+    ShowPane( name, !IsPaneShown( name ) );
     updateSelectionFilterVisbility();
 
-    cfg->m_AuiPanels.show_net_nav_panel = netNavigatorPane.IsShown();
+    cfg->m_AuiPanels.show_net_nav_panel = IsPaneShown( name );
 
-    if( netNavigatorPane.IsShown() )
+    if( IsPaneShown( name ) )
     {
-        if( netNavigatorPane.IsFloating() )
+        if( IsPaneFloating( name ) )
         {
-            netNavigatorPane.FloatingSize( cfg->m_AuiPanels.net_nav_panel_float_size );
-            m_auimgr.Update();
+            SetPaneFloatingSize( name, cfg->m_AuiPanels.net_nav_panel_float_size );
+            UpdatePanes();
         }
         else if( cfg->m_AuiPanels.net_nav_panel_docked_size.GetWidth() > 0 )
         {
-            // SetAuiPaneSize also updates m_auimgr
-            SetAuiPaneSize( m_auimgr, netNavigatorPane,
-                            cfg->m_AuiPanels.net_nav_panel_docked_size.GetWidth(), -1 );
+            // SetPaneSize also updates the panes
+            SetPaneSize( name, cfg->m_AuiPanels.net_nav_panel_docked_size.GetWidth(), -1 );
         }
     }
     else
     {
-        if( netNavigatorPane.IsFloating() )
+        if( IsPaneFloating( name ) )
         {
-            cfg->m_AuiPanels.net_nav_panel_float_size  = netNavigatorPane.floating_size;
+            cfg->m_AuiPanels.net_nav_panel_float_size  = GetPaneFloatingSize( name );
         }
         else
         {
             cfg->m_AuiPanels.net_nav_panel_docked_size = m_netNavigator->GetSize();
         }
 
-        m_auimgr.Update();
+        UpdatePanes();
     }
 
-    if( netNavigatorPane.IsShown() )
+    if( IsPaneShown( name ) )
     {
         NET_NAVIGATOR_ITEM_DATA* itemData = nullptr;
 
@@ -734,9 +733,7 @@ void SCH_EDIT_FRAME::FindNetInInspector( const wxString& aNetName )
         return;
 
     // Ensure the net navigator is shown
-    wxAuiPaneInfo& netNavigatorPane = m_auimgr.GetPane( NetNavigatorPaneName() );
-
-    if( !netNavigatorPane.IsShown() )
+    if( !IsPaneShown( NetNavigatorPaneName() ) )
         ToggleNetNavigator();
 
     // Clear any net highlights
@@ -762,7 +759,7 @@ void SCH_EDIT_FRAME::onResizeNetNavigator( wxSizeEvent& aEvent )
     // Store the current pane size
     // It allows to retrieve the last defined pane size when switching between
     // docked and floating pane state
-    // Note: *DO NOT* call m_auimgr.Update() here: it crashes KiCad at least on Windows
+    // Note: *DO NOT* call UpdatePanes() here: it crashes KiCad at least on Windows
 
     EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() );
 
@@ -770,21 +767,16 @@ void SCH_EDIT_FRAME::onResizeNetNavigator( wxSizeEvent& aEvent )
     if( !cfg )
         return;
 
-    wxAuiPaneInfo& netNavigatorPane = m_auimgr.GetPane( NetNavigatorPaneName() );
-
     if( m_netNavigator->IsShownOnScreen() )
     {
-        cfg->m_AuiPanels.net_nav_panel_float_size  = netNavigatorPane.floating_size;
+        cfg->m_AuiPanels.net_nav_panel_float_size  = GetPaneFloatingSize( NetNavigatorPaneName() );
 
         // initialize net_nav_panel_docked_width and best size only if the netNavigatorPane
         // width is > 0 (i.e. if its size is already set and has meaning)
         // if it is floating, its size is not initialized (only floating_size is initialized)
-        // initializing netNavigatorPane.best_size is useful when switching to float pane and
-        // after switching to the docked pane, to retrieve the last docked pane width
-        if( netNavigatorPane.rect.width > 50 )    // 50 is a good margin
-        {
-            cfg->m_AuiPanels.net_nav_panel_docked_size.SetWidth( netNavigatorPane.rect.width );
-            netNavigatorPane.best_size.x = netNavigatorPane.rect.width;
-        }
+        // keeping the docked width is useful when switching to float pane and after switching
+        // to the docked pane, to retrieve the last docked pane width
+        if( int width = KeepPaneDockedWidth( NetNavigatorPaneName() ); width > 0 )
+            cfg->m_AuiPanels.net_nav_panel_docked_size.SetWidth( width );
     }
 }

@@ -321,6 +321,7 @@ set ( EESCHEMA_LIBEDIT_SRCS
     symbol_editor/lib_symbol_library_manager.cpp
     symbol_editor/menubar_symbol_editor.cpp
     symbol_editor/symbol_edit_frame.cpp
+    symbol_editor/symbol_edit_frame_wx.cpp
     symbol_editor/symbol_editor.cpp
     symbol_editor/symbol_editor_import_export.cpp
     symbol_editor/symbol_editor_plotter.cpp
@@ -413,6 +414,7 @@ set( EESCHEMA_SRCS
     sch_connection.cpp
     sch_draw_panel.cpp
     sch_edit_frame.cpp
+    sch_edit_frame_wx.cpp
     sch_field.cpp
     sch_footprint_field_reconciler.cpp
     sch_group.cpp
@@ -455,6 +457,7 @@ set( EESCHEMA_SRCS
     symbol_tree_model_adapter.cpp
     symbol_tree_synchronizing_adapter.cpp
     symbol_viewer_frame.cpp
+    symbol_viewer_frame_wx.cpp
     symb_transforms_utils.cpp
     toolbars_sch_editor.cpp
     toolbars_symbol_viewer.cpp

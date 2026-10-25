@@ -303,13 +303,12 @@ void SCH_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 {
     EESCHEMA_SETTINGS* cfg = eeconfig();
     SCH_BASE_FRAME::SaveSettings( cfg );
-    wxAuiPaneInfo& hierarchy_pane = m_auimgr.GetPane( SchematicHierarchyPaneName() );
 
     if( cfg )
     {
         cfg->m_System.units = static_cast<int>( GetUserUnits() );
-        cfg->m_AuiPanels.show_schematic_hierarchy = hierarchy_pane.IsShown();
-        cfg->m_AuiPanels.schematic_hierarchy_float = hierarchy_pane.IsFloating();
+        cfg->m_AuiPanels.show_schematic_hierarchy = IsPaneShown( SchematicHierarchyPaneName() );
+        cfg->m_AuiPanels.schematic_hierarchy_float = IsPaneFloating( SchematicHierarchyPaneName() );
 
         // Other parameters (hierarchy_panel_float_width, hierarchy_panel_float_height,
         // and hierarchy_panel_docked_width should have been updated when resizing the
@@ -327,58 +326,57 @@ void SCH_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
             cfg->m_FindReplaceExtra.search_selected_only = searchData->searchSelectedOnly;
         }
 
-        wxAuiPaneInfo& searchPaneInfo = m_auimgr.GetPane( SearchPaneName() );
-        m_show_search = searchPaneInfo.IsShown();
+        m_show_search = IsPaneShown( SearchPaneName() );
         cfg->m_AuiPanels.show_search = m_show_search;
         cfg->m_AuiPanels.search_panel_height = m_searchPane->GetSize().y;
         cfg->m_AuiPanels.search_panel_width = m_searchPane->GetSize().x;
-        cfg->m_AuiPanels.search_panel_dock_direction = searchPaneInfo.dock_direction;
+        cfg->m_AuiPanels.search_panel_dock_direction = GetPaneDockDirection( SearchPaneName() );
 
-        wxAuiPaneInfo& propertiesPane = m_auimgr.GetPane( PropertiesPaneName() );
-        cfg->m_AuiPanels.show_properties = propertiesPane.IsShown();
+        cfg->m_AuiPanels.show_properties = IsPaneShown( PropertiesPaneName() );
         cfg->m_AuiPanels.properties_splitter = m_propertiesPanel->SplitterProportion();
         cfg->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
 
-        wxAuiPaneInfo& netNavigatorPane = m_auimgr.GetPane( NetNavigatorPaneName() );
-        cfg->m_AuiPanels.show_net_nav_panel = netNavigatorPane.IsShown();
-        cfg->m_AuiPanels.float_net_nav_panel = netNavigatorPane.IsFloating();
+        cfg->m_AuiPanels.show_net_nav_panel = IsPaneShown( NetNavigatorPaneName() );
+        cfg->m_AuiPanels.float_net_nav_panel = IsPaneFloating( NetNavigatorPaneName() );
 
-        if( netNavigatorPane.IsDocked() )
+        if( !IsPaneFloating( NetNavigatorPaneName() ) )
         {
             cfg->m_AuiPanels.net_nav_panel_docked_size = m_netNavigator->GetSize();
         }
         else
         {
-            cfg->m_AuiPanels.net_nav_panel_float_pos = netNavigatorPane.floating_pos;
-            cfg->m_AuiPanels.net_nav_panel_float_size = netNavigatorPane.floating_size;
+            cfg->m_AuiPanels.net_nav_panel_float_pos = GetPaneFloatingPosition( NetNavigatorPaneName() );
+            cfg->m_AuiPanels.net_nav_panel_float_size = GetPaneFloatingSize( NetNavigatorPaneName() );
         }
 
-        wxAuiPaneInfo& designBlocksPane = m_auimgr.GetPane( DesignBlocksPaneName() );
-        cfg->m_AuiPanels.design_blocks_show = designBlocksPane.IsShown();
+        cfg->m_AuiPanels.design_blocks_show = IsPaneShown( DesignBlocksPaneName() );
 
-        if( designBlocksPane.IsDocked() )
+        if( !IsPaneFloating( DesignBlocksPaneName() ) )
         {
             cfg->m_AuiPanels.design_blocks_panel_docked_width = m_designBlocksPane->GetSize().x;
         }
         else
         {
-            cfg->m_AuiPanels.design_blocks_panel_float_height = designBlocksPane.floating_size.y;
-            cfg->m_AuiPanels.design_blocks_panel_float_width = designBlocksPane.floating_size.x;
+            wxSize floatingSize = GetPaneFloatingSize( DesignBlocksPaneName() );
+
+            cfg->m_AuiPanels.design_blocks_panel_float_height = floatingSize.y;
+            cfg->m_AuiPanels.design_blocks_panel_float_width = floatingSize.x;
         }
 
         m_designBlocksPane->SaveSettings();
 
-        wxAuiPaneInfo& remoteSymbolPane = m_auimgr.GetPane( RemoteSymbolPaneName() );
-        cfg->m_AuiPanels.remote_symbol_show = remoteSymbolPane.IsShown();
+        cfg->m_AuiPanels.remote_symbol_show = IsPaneShown( RemoteSymbolPaneName() );
 
-        if( remoteSymbolPane.IsDocked() )
+        if( !IsPaneFloating( RemoteSymbolPaneName() ) )
         {
             cfg->m_AuiPanels.remote_symbol_panel_docked_width = m_remoteSymbolPane->GetSize().x;
         }
         else
         {
-            cfg->m_AuiPanels.remote_symbol_panel_float_height = remoteSymbolPane.floating_size.y;
-            cfg->m_AuiPanels.remote_symbol_panel_float_width = remoteSymbolPane.floating_size.x;
+            wxSize floatingSize = GetPaneFloatingSize( RemoteSymbolPaneName() );
+
+            cfg->m_AuiPanels.remote_symbol_panel_float_height = floatingSize.y;
+            cfg->m_AuiPanels.remote_symbol_panel_float_width = floatingSize.x;
         }
     }
 }

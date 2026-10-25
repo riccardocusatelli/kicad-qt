@@ -83,7 +83,6 @@
 #include <widgets/sch_properties_panel.h>
 #include <widgets/lib_tree.h>
 #include <widgets/symbol_tree_pane.h>
-#include <widgets/wx_aui_utils.h>
 #include <widgets/filedlg_hook_new_library.h>
 #include <wildcards_and_files_ext.h>
 #include <panel_sym_lib_table.h>
@@ -200,60 +199,7 @@ SYMBOL_EDIT_FRAME::SYMBOL_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     m_selectionFilterPanel = new PANEL_SCH_SELECTION_FILTER( this );
 
-    m_auimgr.SetManagedWindow( this );
-
-    CreateInfoBar();
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-                      .Top().Layer( 6 ) );
-
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" )
-                      .Bottom().Layer( 6 ) );
-
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" )
-                      .Left().Layer( 2 ) );
-
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
-                      .Right().Layer( 2 ) );
-
-    // Center
-    m_auimgr.AddPane( GetCanvas(), wxAuiPaneInfo().Name( "DrawFrame" )
-                      .CentrePane() );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_treePane, EDA_PANE().Palette().Name( "LibraryTree" )
-                      .Left().Layer( 3 )
-                      .TopDockable( false ).BottomDockable( false )
-                      .Caption( _( "Libraries" ) )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( FromDIP( 250 ), FromDIP( 80 ) )
-                      .BestSize( FromDIP( 250 ), -1 ) );
-
-    m_auimgr.AddPane( m_propertiesPanel, defaultPropertiesPaneInfo( this ) );
-    m_auimgr.AddPane( m_selectionFilterPanel, defaultSchSelectionFilterPaneInfo( this ) );
-
-    // Can be called only when all panes are created, because (at least on Windows) when items
-    // managed by m_auimgr are not the same as those existing when saved by Perspective()
-    // in config, broken settings can happen.
-    RestoreAuiLayout();
-
-    // Protect against broken saved Perspective() due to bugs in previous version
-    // This is currently a workaround.
-    m_auimgr.GetPane( "TopMainToolbar" ).Top().Layer( 6 ).Position(0).Show( true );
-    m_auimgr.GetPane( "LeftToolbar" ).Position(0).Show( true );
-    m_auimgr.GetPane( "RightToolbar" ).Show( true );
-
-    // Show or hide m_propertiesPanel depending on current settings:
-    wxAuiPaneInfo& propertiesPaneInfo = m_auimgr.GetPane( PropertiesPaneName() );
-    wxAuiPaneInfo& selectionFilterPane = m_auimgr.GetPane( wxS( "SelectionFilter" ) );
-    // The selection filter doesn't need to grow in the vertical direction when docked
-    selectionFilterPane.dock_proportion = 0;
-
-    propertiesPaneInfo.Show( m_settings->m_AuiPanels.show_properties );
-    updateSelectionFilterVisbility();
-
-    FinishAUIInitialization();
+    setupLayout();
 
     // Can't put this in LoadSettings, because it has to be called before setupTools :/
     SCH_SELECTION_TOOL* selTool = GetToolManager()->GetTool<SCH_SELECTION_TOOL>();
@@ -261,7 +207,7 @@ SYMBOL_EDIT_FRAME::SYMBOL_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_selectionFilterPanel->SetCheckboxesFromFilter( selTool->GetFilter() );
 
     if( m_settings->m_LibWidth > 0 )
-        SetAuiPaneSize( m_auimgr, m_auimgr.GetPane( "LibraryTree" ), m_settings->m_LibWidth, -1 );
+        SetPaneSize( wxS( "LibraryTree" ), m_settings->m_LibWidth, -1 );
 
     Raise();
     Show( true );
@@ -354,11 +300,8 @@ void SYMBOL_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
     // serialized AUI layout so the user's preference survives a restart, but only touch the pane
     // metadata (not ToggleLibraryTree) to avoid a mid-session repaint/flicker and a spurious tree
     // width capture below.
-    wxAuiPaneInfo& treePane = m_auimgr.GetPane( m_treePane );
-    wxAuiPaneInfo& filterPane = m_auimgr.GetPane( wxS( "SelectionFilter" ) );
-
-    const bool treeShown = treePane.IsShown();
-    const bool filterShown = filterPane.IsShown();
+    const bool treeShown = IsPaneShown( wxS( "LibraryTree" ) );
+    const bool filterShown = IsPaneShown( wxS( "SelectionFilter" ) );
 
     // Gate on the pending-restore flag alone, not the active-tab schematic state, which is cleared
     // when a schematic tab closes while the tree stays auto-hidden.
@@ -366,7 +309,7 @@ void SYMBOL_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
     if( forceTreeShown )
     {
-        treePane.Show( true );
+        ShowPane( wxS( "LibraryTree" ), true );
         updateSelectionFilterVisbility();
     }
 
@@ -374,8 +317,8 @@ void SYMBOL_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
     if( forceTreeShown )
     {
-        treePane.Show( treeShown );
-        filterPane.Show( filterShown );
+        ShowPane( wxS( "LibraryTree" ), treeShown );
+        ShowPane( wxS( "SelectionFilter" ), filterShown );
     }
 
     m_settings->m_ShowPinElectricalType  = GetRenderSettings()->m_ShowPinsElectricalType;
@@ -388,7 +331,7 @@ void SYMBOL_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
     m_settings->m_LibrarySortMode = GetLibTree()->GetSortMode();
 
     m_settings->m_AuiPanels.properties_splitter = m_propertiesPanel->SplitterProportion();
-    bool prop_shown = m_auimgr.GetPane( PropertiesPaneName() ).IsShown();
+    bool prop_shown = IsPaneShown( PropertiesPaneName() );
     m_settings->m_AuiPanels.show_properties = prop_shown;
 
     if( TOOL_MANAGER* toolMgr = GetToolManager() )
@@ -601,7 +544,7 @@ void SYMBOL_EDIT_FRAME::setupUIConditions()
     auto propertiesCond =
             [this] ( const SELECTION& )
             {
-                return m_auimgr.GetPane( PropertiesPaneName() ).IsShown();
+                return IsPaneShown( PropertiesPaneName() );
             };
 
     mgr->SetConditions( SCH_ACTIONS::showElectricalTypes, CHECK( pinTypeCond ) );
@@ -800,21 +743,19 @@ void SYMBOL_EDIT_FRAME::ToggleProperties()
 
     bool show = !m_propertiesPanel->IsShownOnScreen();
 
-    wxAuiPaneInfo& propertiesPaneInfo = m_auimgr.GetPane( PropertiesPaneName() );
-    propertiesPaneInfo.Show( show );
+    ShowPane( PropertiesPaneName(), show );
     updateSelectionFilterVisbility();
 
     if( show )
     {
-        SetAuiPaneSize( m_auimgr, propertiesPaneInfo,
-                        m_settings->m_AuiPanels.properties_panel_width, -1 );
+        SetPaneSize( PropertiesPaneName(), m_settings->m_AuiPanels.properties_panel_width, -1 );
     }
     else
     {
         m_settings->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
     }
 
-    m_auimgr.Update();
+    UpdatePanes();
     Refresh();
 }
 
@@ -825,17 +766,16 @@ void SYMBOL_EDIT_FRAME::ToggleLibraryTree()
     // LoadSymbolFromSchematic's auto-hide left behind.
     m_libTreeAutoHiddenForSchematicEdit = false;
 
-    wxAuiPaneInfo& treePane = m_auimgr.GetPane( m_treePane );
-    treePane.Show( !IsLibraryTreeShown() );
+    ShowPane( wxS( "LibraryTree" ), !IsLibraryTreeShown() );
     updateSelectionFilterVisbility();
-    m_auimgr.Update();
+    UpdatePanes();
     Refresh();
 }
 
 
 bool SYMBOL_EDIT_FRAME::IsLibraryTreeShown() const
 {
-    return const_cast<wxAuiManager&>( m_auimgr ).GetPane( m_treePane ).IsShown();
+    return IsPaneShown( wxS( "LibraryTree" ) );
 }
 
 
@@ -1603,11 +1543,10 @@ void SYMBOL_EDIT_FRAME::ShowChangedLanguage()
 
     // For some obscure reason, the AUI manager hides the first modified pane.
     // So force show panes
-    wxAuiPaneInfo& tree_pane_info = m_auimgr.GetPane( m_treePane );
-    bool tree_shown = tree_pane_info.IsShown();
-    tree_pane_info.Caption( _( "Libraries" ) );
-    tree_pane_info.Show( tree_shown );
-    m_auimgr.Update();
+    bool tree_shown = IsPaneShown( wxS( "LibraryTree" ) );
+    SetPaneCaption( wxS( "LibraryTree" ), _( "Libraries" ) );
+    ShowPane( wxS( "LibraryTree" ), tree_shown );
+    UpdatePanes();
 
     GetLibTree()->ShowChangedLanguage();
 
@@ -2079,9 +2018,9 @@ void SYMBOL_EDIT_FRAME::LoadSymbolFromSchematic( SCH_SYMBOL* aSymbol )
 
     if( IsLibraryTreeShown() )
     {
-        m_auimgr.GetPane( m_treePane ).Show( false );
+        ShowPane( wxS( "LibraryTree" ), false );
         updateSelectionFilterVisbility();
-        m_auimgr.Update();
+        UpdatePanes();
         Refresh();
     }
 
@@ -2254,16 +2193,17 @@ void SYMBOL_EDIT_FRAME::UpdateItem( EDA_ITEM* aItem, bool isAddOrDelete, bool aU
 
 void SYMBOL_EDIT_FRAME::updateSelectionFilterVisbility()
 {
-    wxAuiPaneInfo& treePane = m_auimgr.GetPane( m_treePane );
-    wxAuiPaneInfo& propertiesPane = m_auimgr.GetPane( PropertiesPaneName() );
-    wxAuiPaneInfo& selectionFilterPane = m_auimgr.GetPane( wxS( "SelectionFilter" ) );
+    auto isDocked =
+            [this]( const wxString& aName )
+            {
+                return IsPaneShown( aName ) && !IsPaneFloating( aName );
+            };
 
     // Don't give the selection filter its own visibility controls; instead show it if
     // anything else is visible
-    bool showFilter = ( treePane.IsShown() && treePane.IsDocked() )
-                      || ( propertiesPane.IsShown() && propertiesPane.IsDocked() );
+    bool showFilter = isDocked( wxS( "LibraryTree" ) ) || isDocked( PropertiesPaneName() );
 
-    selectionFilterPane.Show( showFilter );
+    ShowPane( wxS( "SelectionFilter" ), showFilter );
 }
 
 

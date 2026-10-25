@@ -571,6 +571,18 @@ public:
     wxSize GetPaneFloatingSize( const wxString& aName ) const;
     void   SetPaneFloatingSize( const wxString& aName, const wxSize& aSize );
 
+    wxPoint GetPaneFloatingPosition( const wxString& aName ) const;
+    void    SetPaneFloatingPosition( const wxString& aName, const wxPoint& aPosition );
+
+    /**
+     * The width of a docked pane, kept as the width it gets when it is docked again (after it
+     * was floating).
+     *
+     * @return the width, or 0 if the pane has no meaningful docked width (not laid out yet, or
+     *         floating).
+     */
+    int KeepPaneDockedWidth( const wxString& aName );
+
     /**
      * Give a docked pane a size (-1 keeps the size in that direction), and lay out the panes.
      */

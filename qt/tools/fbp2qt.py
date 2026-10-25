@@ -120,6 +120,13 @@ def parse_float( aText, aDefault = 0.0 ):
         return aDefault
 
 
+# The classes of wxWidgets used as subclasses without their header (wxFormBuilder includes the
+# header of the base class)
+WX_SUBCLASS_HEADERS = {
+    'wxListView': 'wx/listctrl.h',
+}
+
+
 def subclass( aProps ):
     """(class, header, forward declared) of the subclass property, or (None, None, False)."""
     parts = [ p.strip() for p in aProps.get( 'subclass', '' ).split( ';' ) ]
@@ -128,6 +135,9 @@ def subclass( aProps ):
         return None, None, False
 
     header = parts[1] if len( parts ) > 1 and parts[1] and parts[1] != 'forward_declare' else None
+
+    if not header:
+        header = WX_SUBCLASS_HEADERS.get( parts[0] )
     return parts[0], header, 'forward_declare' in parts[1:]
 
 
@@ -267,6 +277,15 @@ COMPAT_EVENTS = {
     'OnScroll':             ( 'wxScrollEvent', 'wxEVT_SCROLL_CHANGED', 'slider' ),
     'OnCommandScrollChanged': ( 'wxScrollEvent', 'wxEVT_SCROLL_CHANGED', 'slider' ),
     'OnCommandScrollThumbTrack': ( 'wxScrollEvent', 'wxEVT_SCROLL_THUMBTRACK', 'sliderthumb' ),
+    'OnScrollTop':          ( 'wxScrollEvent', 'wxEVT_SCROLL_TOP', 'slideraction:SliderToMinimum' ),
+    'OnScrollBottom':       ( 'wxScrollEvent', 'wxEVT_SCROLL_BOTTOM', 'slideraction:SliderToMaximum' ),
+    'OnScrollLineUp':       ( 'wxScrollEvent', 'wxEVT_SCROLL_LINEUP', 'slideraction:SliderSingleStepSub' ),
+    'OnScrollLineDown':     ( 'wxScrollEvent', 'wxEVT_SCROLL_LINEDOWN', 'slideraction:SliderSingleStepAdd' ),
+    'OnScrollPageUp':       ( 'wxScrollEvent', 'wxEVT_SCROLL_PAGEUP', 'slideraction:SliderPageStepSub' ),
+    'OnScrollPageDown':     ( 'wxScrollEvent', 'wxEVT_SCROLL_PAGEDOWN', 'slideraction:SliderPageStepAdd' ),
+    'OnScrollThumbTrack':   ( 'wxScrollEvent', 'wxEVT_SCROLL_THUMBTRACK', 'sliderthumb' ),
+    'OnScrollThumbRelease': ( 'wxScrollEvent', 'wxEVT_SCROLL_THUMBRELEASE', 'sliderrelease' ),
+    'OnScrollChanged':      ( 'wxScrollEvent', 'wxEVT_SCROLL_CHANGED', 'slider' ),
     'OnListBox':            ( 'wxCommandEvent', 'wxEVT_LISTBOX', 'listbox' ),
     'OnListBoxDClick':      ( 'wxCommandEvent', 'wxEVT_LISTBOX_DCLICK', 'listdclick' ),
     'OnCheckListBoxToggled': ( 'wxCommandEvent', 'wxEVT_CHECKLISTBOX', 'checklist' ),
@@ -370,6 +389,11 @@ COMPAT_EVENTS = {
     'OnDirChanged':         ( 'wxFileDirPickerEvent', 'wxEVT_DIRPICKER_CHANGED', 'bind' ),
     'OnNotebookPageChanged': ( 'wxNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
     'OnAuiNotebookPageChanged': ( 'wxAuiNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGED', 'page' ),
+    'OnCollapsiblePaneChanged': ( 'wxCollapsiblePaneEvent', 'wxEVT_COLLAPSIBLEPANE_CHANGED', 'bind' ),
+    'OnAuiNotebookPageChanging': ( 'wxAuiNotebookEvent', 'wxEVT_NOTEBOOK_PAGE_CHANGING', 'page' ),
+    'OnAuiNotebookPageClose':  ( 'wxAuiNotebookEvent', 'wxEVT_AUINOTEBOOK_PAGE_CLOSE', 'bind' ),
+    'OnAuiNotebookPageClosed': ( 'wxAuiNotebookEvent', 'wxEVT_AUINOTEBOOK_PAGE_CLOSED', 'bind' ),
+    'OnAuiNotebookEndDrag':    ( 'wxAuiNotebookEvent', 'wxEVT_AUINOTEBOOK_END_DRAG', 'bind' ),
     'OnGridCellLeftClick':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_CLICK', 'bind' ),
     'OnGridCellLeftDClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_DCLICK', 'bind' ),
     'OnGridCellRightClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_RIGHT_CLICK', 'bind' ),
@@ -388,6 +412,16 @@ COMPAT_EVENTS = {
     'OnGridRangeSelect':    ( 'wxGridRangeSelectEvent', 'wxEVT_GRID_RANGE_SELECTED', 'bind' ),
     'OnGridCmdCellChange':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGED', 'bind' ),
     'OnGridCmdSelectCell':  ( 'wxGridEvent', 'wxEVT_GRID_SELECT_CELL', 'bind' ),
+    'OnGridCmdCellLeftClick':  ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_CLICK', 'bind' ),
+    'OnGridCmdCellLeftDClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_LEFT_DCLICK', 'bind' ),
+    'OnGridCmdCellRightClick': ( 'wxGridEvent', 'wxEVT_GRID_CELL_RIGHT_CLICK', 'bind' ),
+    'OnGridCmdCellChanging':   ( 'wxGridEvent', 'wxEVT_GRID_CELL_CHANGING', 'bind' ),
+    'OnGridCmdEditorShown':    ( 'wxGridEvent', 'wxEVT_GRID_EDITOR_SHOWN', 'bind' ),
+    'OnGridCmdEditorHidden':   ( 'wxGridEvent', 'wxEVT_GRID_EDITOR_HIDDEN', 'bind' ),
+    'OnGridCmdLabelLeftClick': ( 'wxGridEvent', 'wxEVT_GRID_LABEL_LEFT_CLICK', 'bind' ),
+    'OnGridCmdLabelRightClick': ( 'wxGridEvent', 'wxEVT_GRID_LABEL_RIGHT_CLICK', 'bind' ),
+    'OnGridCmdColSize':        ( 'wxGridSizeEvent', 'wxEVT_GRID_COL_SIZE', 'bind' ),
+    'OnGridCmdRowSize':        ( 'wxGridSizeEvent', 'wxEVT_GRID_ROW_SIZE', 'bind' ),
     'OnRadioBox':           ( 'wxCommandEvent', 'wxEVT_RADIOBOX', 'radiobox' ),
     'OnClose':              ( 'wxCloseEvent', 'wxEVT_CLOSE_WINDOW', 'close' ),
     'OnInitDialog':         ( 'wxInitDialogEvent', 'wxEVT_INIT_DIALOG', 'initdialog' ),
@@ -761,6 +795,10 @@ class FormClass:
                     target = aVar
                 elif aQtClass in ( 'QComboBox', 'wxComboBox' ):
                     target = '%s->lineEdit()' % aVar
+                elif aQtClass in ( 'QSpinBox', 'QDoubleSpinBox', 'wxSpinCtrl', 'wxSpinCtrlDouble' ):
+                    # The line edit of a spin box (QAbstractSpinBox::lineEdit() is protected)
+                    self.qt( 'QLineEdit' )
+                    target = '%s->findChild<QLineEdit*>()' % aVar
                 else:
                     raise FbpError( 'OnTextEnter of %s' % aQtClass )
 
@@ -782,6 +820,17 @@ class FormClass:
             elif way == 'spintext':
                 self.code.append( '    QObject::connect( %s, &QAbstractSpinBox::editingFinished, this, %s );'
                                   % ( aVar, call() ) )
+
+            elif way.startswith( 'slideraction:' ):
+                # After the slider has its new value (as wxWidgets): queued
+                self.code.append( '    QObject::connect( %s, &QAbstractSlider::actionTriggered, this, [this, w = %s]( int aAction ) { '
+                                  'if( aAction == QAbstractSlider::%s ) QMetaObject::invokeMethod( this, %s, Qt::QueuedConnection ); } );'
+                                  % ( aVar, aVar, way[len( 'slideraction:' ):],
+                                      self.compat_call( evClass, evType, aVar, handler, 'evt.SetInt( w->value() ); ' ) ) )
+
+            elif way == 'sliderrelease':
+                self.code.append( '    QObject::connect( %s, &QAbstractSlider::sliderReleased, this, %s );'
+                                  % ( aVar, call( 'evt.SetInt( w->value() ); ' ) ) )
 
             elif way in ( 'slider', 'sliderthumb' ):
                 signal = 'QAbstractSlider::valueChanged' if way == 'slider' else 'QAbstractSlider::sliderMoved'
@@ -1451,7 +1500,7 @@ class FormClass:
                 qt = klass
 
         elif cls in ( 'wxPanel', 'wxScrolledWindow', 'wxNotebook', 'wxAuiNotebook', 'wxSimplebook',
-                      'wxSplitterWindow' ):
+                      'wxSplitterWindow' ) or ( cls == 'wxCollapsiblePane' and self.gen.compat ):
             return self.container( aObj, aParent )
 
         else:
@@ -1531,6 +1580,30 @@ class FormClass:
             self.common( aObj, var )
             self.window_id( aObj, var )
             self.children_layout( aObj, var )
+            self.connect_events( aObj, var, 'QWidget' )
+            return var
+
+        if cls == 'wxCollapsiblePane':
+            # The children are in the pane of the window (their parent with wxWidgets), collapsed
+            # at first
+            self.include( '<wx/collpane.h>' )
+            t = sub if sub else 'wxCollapsiblePane'
+
+            if sub:
+                klass( 'QWidget' )
+
+            var = self.var( aObj, t, 'new %s( %s, %s, %s, wxDefaultPosition, wxDefaultSize, %s )'
+                            % ( t, aParent, self.wx_id( p ), tr( p.get( 'label', '' ) ),
+                                self.wx_style( p ) ) )
+
+            if p.get( 'collapsed', '1' ) == '0':
+                self.code.append( '    %s->Expand();' % var )
+
+            pane = self.tmp( 'pane' )
+            self.code.append( '    wxPanel* %s = static_cast<wxPanel*>( %s->GetPane() );' % ( pane, var ) )
+            self.common( aObj, var )
+            self.window_id( aObj, var )
+            self.children_layout( aObj, pane )
             self.connect_events( aObj, var, 'QWidget' )
             return var
 
