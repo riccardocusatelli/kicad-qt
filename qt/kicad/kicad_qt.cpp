@@ -89,7 +89,7 @@ public:
         PGM_BASE::BuildArgvUtf8();
         wxAppConsole::GetInstance()->SetAppDisplayName( wxT( "kicad-qt" ) );
 
-        if( !InitPgm( true, true ) )
+        if( !InitPgm( false, true ) )
             return false;
 
         m_bm.InitSettings( new KICAD_SETTINGS );

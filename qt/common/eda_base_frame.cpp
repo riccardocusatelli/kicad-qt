@@ -402,6 +402,11 @@ PANE_DOCK fromDockArea( Qt::DockWidgetArea aArea )
 }
 
 
+// The properties of the panes (their dock widgets): a size given while hidden, shown once
+static const char* PANE_SIZE_PROPERTY = "kiqtPaneSize";
+static const char* PANE_SHOWN_PROPERTY = "kiqtPaneShown";
+
+
 QDockWidget* EDA_BASE_FRAME::addPane( QWidget* aPanel, const wxString& aName,
                                       const wxString& aCaption, PANE_DOCK aDock, bool aShow )
 {
@@ -411,6 +416,27 @@ QDockWidget* EDA_BASE_FRAME::addPane( QWidget* aPanel, const wxString& aName,
     dock->setWidget( aPanel );
     addDockWidget( toDockArea( aDock ), dock );
     dock->setVisible( aShow );
+
+    // The size given to the pane while it was hidden (SetPaneSize()) is its size once shown, as
+    // with wxAUI; the pane has a size of its own once it was shown (GetPaneSize())
+    KIQT::OnEvent( dock, QEvent::Show,
+                   [this, dock]( QEvent* )
+                   {
+                       dock->setProperty( PANE_SHOWN_PROPERTY, true );
+                       QVariant pending = dock->property( PANE_SIZE_PROPERTY );
+
+                       if( !pending.isValid() )
+                           return;
+
+                       dock->setProperty( PANE_SIZE_PROPERTY, QVariant() );
+                       QSize size = pending.toSize();
+
+                       if( size.width() > 0 )
+                           resizeDocks( { dock }, { size.width() }, Qt::Horizontal );
+
+                       if( size.height() > 0 )
+                           resizeDocks( { dock }, { size.height() }, Qt::Vertical );
+                   } );
 
     return dock;
 }
@@ -510,6 +536,14 @@ void EDA_BASE_FRAME::SetPaneSize( const wxString& aName, int aWidth, int aHeight
     if( !dock )
         return;
 
+    // A hidden pane gets its size when it is shown (resizing it would resize the panes of its
+    // side of the frame)
+    if( dock->isHidden() )
+    {
+        dock->setProperty( PANE_SIZE_PROPERTY, QSize( aWidth, aHeight ) );
+        return;
+    }
+
     if( aWidth > 0 )
         resizeDocks( { dock }, { aWidth }, Qt::Horizontal );
 
@@ -526,6 +560,17 @@ wxSize EDA_BASE_FRAME::GetPaneSize( const wxString& aName ) const
 
     if( !dock || !dock->widget() )
         return wxDefaultSize;
+
+    // A pane not shown yet: the size it will have, or none (its widget has not been laid out)
+    if( !dock->property( PANE_SHOWN_PROPERTY ).toBool() )
+    {
+        QVariant pending = dock->property( PANE_SIZE_PROPERTY );
+
+        if( !pending.isValid() )
+            return wxDefaultSize;
+
+        return wxSize( pending.toSize().width(), pending.toSize().height() );
+    }
 
     return wxSize( dock->widget()->width(), dock->widget()->height() );
 }
