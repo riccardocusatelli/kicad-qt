@@ -61,6 +61,12 @@ public:
     ~KIWAY_PLAYER() throw();
 
     /**
+     * The deferred delete of the frame, as wxWidgets: the KIWAY forgets the frame now, so that
+     * the frame being deleted gets no more calls of the KIWAY (its project change, its mail).
+     */
+    bool Destroy() override;
+
+    /**
      * Open a project or set of files given by @a aFileList.
      *
      * This is generalized in the direction of worst case.  In a typical single document

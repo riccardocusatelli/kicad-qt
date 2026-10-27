@@ -55,6 +55,8 @@
 #include <string_utils.h>
 #include <trace_helpers.h>
 #include <thread_pool.h>
+#include <toolkit/gui_services.h>
+#include <toolkit/toolkit_window_arg.h>
 #include <kiface_ids.h>
 #include <widgets/kistatusbar.h>
 #include <kiface_netlist.h>
@@ -105,8 +107,12 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
     void OnKifaceEnd() override;
 
-    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway, int aCtlBits = 0 ) override
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParentWindow, int aClassId, KIWAY* aKiway,
+                                    int aCtlBits = 0 ) override
     {
+        // The parent of the frames and of the dialogs and panels of the toolkit
+        TOOLKIT_WINDOW_ARG aParent = aParentWindow;
+
         switch( aClassId )
         {
         case FRAME_SCH:
@@ -415,7 +421,7 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKi
             []( const wxString& aMissingLibs, const wxString& aError )
             {
                 // parent of this dialog cannot be NULL since that breaks the Kiway() chain.
-                wxWindow* parent = PgmGui().App().GetTopWindow();
+                TOOLKIT_WINDOW_ARG parent = TOOLKIT::GetActiveTopWindow();
 
                 if( !aMissingLibs.IsEmpty() )
                 {
@@ -743,5 +749,5 @@ int IFACE::HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgre
 
 bool IFACE::HandleJobConfig( JOB* aJob, TOOLKIT_WINDOW* aParent )
 {
-    return m_jobHandler->HandleJobConfig( aJob, aParent );
+    return m_jobHandler->HandleJobConfig( aJob, TOOLKIT_WINDOW_ARG( aParent ) );
 }

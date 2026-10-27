@@ -24,11 +24,13 @@
 #include <wx/kiwx_msgdlg.h>
 
 #include <QAbstractButton>
+#include <QApplication>
 #include <QCheckBox>
 #include <QMessageBox>
 #include <QPushButton>
 
 #include <wx/intl.h>
+#include <wx/log.h>
 #include <qt_strings.h>
 
 
@@ -174,3 +176,29 @@ int wxMessageDialog::ShowModal()
     // Closed by the window: Cancel if there is one, else No or OK
     return ( m_style & wxCANCEL ) ? wxID_CANCEL : ( m_style & wxYES_NO ) ? wxID_NO : wxID_OK;
 }
+
+
+/// The messages of wxLogGui::Flush() in a message box, as wxWidgets.
+static void showLogMessagesCompat( const wxArrayString& aMessages, wxLogLevel aLevel )
+{
+    QStringList lines;
+
+    for( const wxString& message : aMessages )
+        lines.append( ToQString( message ) );
+
+    QMessageBox box( aLevel == wxLOG_Error   ? QMessageBox::Critical
+                     : aLevel == wxLOG_Warning ? QMessageBox::Warning
+                                               : QMessageBox::Information,
+                     aLevel == wxLOG_Error   ? ToQString( _( "Error" ) )
+                     : aLevel == wxLOG_Warning ? ToQString( _( "Warning" ) )
+                                               : ToQString( _( "Information" ) ),
+                     lines.join( QLatin1Char( '\n' ) ), QMessageBox::Ok, QApplication::activeWindow() );
+    box.exec();
+}
+
+
+static const bool s_logGuiCompat = []()
+{
+    wxLogGui::SetShowFunction( &showLogMessagesCompat );
+    return true;
+}();

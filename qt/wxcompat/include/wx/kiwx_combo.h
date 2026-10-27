@@ -151,6 +151,9 @@ protected:
     wxComboPopup* m_popup;
 
 private:
+    /// The window of the popup, with the popup created in it (once).
+    void createPopupCompat();
+
     wxTextCtrl*  m_text;
     QToolButton* m_button;
     QFrame*      m_popupWindow;

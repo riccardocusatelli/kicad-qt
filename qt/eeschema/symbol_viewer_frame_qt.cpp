@@ -23,7 +23,7 @@
 
 /**
  * @file symbol_viewer_frame_qt.cpp
- * The parts of SYMBOL_VIEWER_FRAME with Qt: the layout of its panes (see
+ * The parts of SYMBOL_VIEWER_FRAME with Qt: the layout of its panes and its events (see
  * eeschema/symbol_viewer_frame_wx.cpp).
  */
 
@@ -61,4 +61,10 @@ void SYMBOL_VIEWER_FRAME::OnSize( wxSizeEvent& SizeEv )
 {
     // The dock widgets of Qt follow the size of the frame
     SizeEv.Skip();
+}
+
+
+void SYMBOL_VIEWER_FRAME::setupToolkitEvents()
+{
+    BindMenuCommand( wxID_CLOSE, [this]() { Close(); } );
 }

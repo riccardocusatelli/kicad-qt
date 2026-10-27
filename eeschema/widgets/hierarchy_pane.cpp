@@ -68,6 +68,14 @@ int HIERARCHY_TREE::OnCompareItems( const wxTreeItemId& item1, const wxTreeItemI
 }
 
 
+HIERARCHY_TREE::HIERARCHY_TREE( HIERARCHY_PANE* parent ) :
+        wxTreeCtrl( (wxWindow*) parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                    wxTR_HAS_BUTTONS | wxTR_EDIT_LABELS | wxTR_HIDE_ROOT, wxDefaultValidator,
+                    wxT( "HierachyTreeCtrl" ) )
+{
+}
+
+
 HIERARCHY_PANE::HIERARCHY_PANE( SCH_EDIT_FRAME* aParent ) :
         WX_PANEL( aParent )
 {

@@ -28,6 +28,7 @@
 #include <eeschema_settings.h>
 #include <widgets/panel_symbol_chooser.h>
 #include <symbol_chooser_frame.h>
+#include <widgets/msgpanel.h>
 #include <algorithm>
 #include <core/ki_assert.h>
 
@@ -69,7 +70,7 @@ END_EVENT_TABLE()
 #define MODAL_STYLE ( wxRESIZE_BORDER | wxSYSTEM_MENU | wxCAPTION | wxCLOSE_BOX | wxCLIP_CHILDREN \
                       | wxWANTS_CHARS | wxFRAME_NO_TASKBAR )
 
-SYMBOL_CHOOSER_FRAME::SYMBOL_CHOOSER_FRAME( KIWAY* aKiway, wxWindow* aParent, bool& aCancelled ) :
+SYMBOL_CHOOSER_FRAME::SYMBOL_CHOOSER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent, bool& aCancelled ) :
         SCH_BASE_FRAME( aKiway, aParent, FRAME_SYMBOL_CHOOSER, _( "Symbol Chooser" ),
                         wxDefaultPosition, wxDefaultSize, aParent ? PARENT_STYLE : MODAL_STYLE,
                         SYMBOL_CHOOSER_FRAME_NAME )

@@ -111,7 +111,6 @@
 #include <widgets/sch_properties_panel.h>
 #include <widgets/sch_search_pane.h>
 #include <wildcards_and_files_ext.h>
-#include <wx/cmdline.h>
 #include <wx/app.h>
 #include <wx/filedlg.h>
 #include <wx/debug.h>
@@ -142,7 +141,7 @@ wxDEFINE_EVENT( EDA_EVT_SCHEMATIC_CHANGING, wxCommandEvent );
 wxDEFINE_EVENT( EDA_EVT_SCHEMATIC_CHANGED, wxCommandEvent );
 
 
-SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         SCH_BASE_FRAME( aKiway, aParent, FRAME_SCH, wxT( "Eeschema" ), wxDefaultPosition,
                         wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, SCH_EDIT_FRAME_NAME ),
         m_ercDialog( nullptr ),
@@ -2652,8 +2651,8 @@ void SCH_EDIT_FRAME::ToggleSearch()
     }
     else
     {
-        cfg->m_AuiPanels.search_panel_height = m_searchPane->GetSize().y;
-        cfg->m_AuiPanels.search_panel_width = m_searchPane->GetSize().x;
+        cfg->m_AuiPanels.search_panel_height = GetPaneSize( SearchPaneName() ).y;
+        cfg->m_AuiPanels.search_panel_width = GetPaneSize( SearchPaneName() ).x;
         cfg->m_AuiPanels.search_panel_dock_direction = GetPaneDockDirection( SearchPaneName() );
         UpdatePanes();
     }
@@ -2665,7 +2664,7 @@ void SCH_EDIT_FRAME::ToggleProperties()
     if( !m_propertiesPanel )
         return;
 
-    bool show = !m_propertiesPanel->IsShownOnScreen();
+    bool show = !IsPaneShown( PropertiesPaneName() );
 
     ShowPane( PropertiesPaneName(), show );
 
@@ -2679,7 +2678,7 @@ void SCH_EDIT_FRAME::ToggleProperties()
     }
     else
     {
-        settings->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
+        settings->m_AuiPanels.properties_panel_width = GetPaneSize( PropertiesPaneName() ).x;
         UpdatePanes();
     }
 }

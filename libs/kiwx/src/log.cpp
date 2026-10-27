@@ -38,7 +38,6 @@ struct LOG_STATE
 {
     std::recursive_mutex mutex;
     wxLog*               active = nullptr;
-    bool                 activeCreated = false;   ///< the default target, created on demand
     bool                 enabled = true;
     bool                 verbose = false;
     wxLogLevel           level = wxLOG_Max;
@@ -95,15 +94,9 @@ wxLog* wxLog::SetActiveTarget( wxLog* aTarget )
     LOG_STATE&                            s = state();
     std::lock_guard<std::recursive_mutex> lock( s.mutex );
 
+    // As wxWidgets, the previous target (the one created on demand too) goes to the caller,
+    // which deletes it or restores it later
     wxLog* old = s.active;
-
-    if( s.activeCreated )
-    {
-        // The target created on demand belongs to the library.
-        delete old;
-        old = nullptr;
-        s.activeCreated = false;
-    }
 
     s.active = aTarget;
     return old;
@@ -116,10 +109,7 @@ wxLog* wxLog::GetActiveTarget()
     std::lock_guard<std::recursive_mutex> lock( s.mutex );
 
     if( !s.active )
-    {
         s.active = new wxLogStderr();
-        s.activeCreated = true;
-    }
 
     return s.active;
 }
@@ -308,6 +298,71 @@ void wxLogBuffer::Flush()
     {
         std::fputs( m_str.utf8_string().c_str(), stderr );
         m_str.clear();
+    }
+}
+
+
+static wxLogGui::SHOW_FUNCTION& logGuiShowFunction()
+{
+    static wxLogGui::SHOW_FUNCTION function = nullptr;
+    return function;
+}
+
+
+void wxLogGui::SetShowFunction( SHOW_FUNCTION aFunction )
+{
+    logGuiShowFunction() = aFunction;
+}
+
+
+void wxLogGui::DoLogRecord( wxLogLevel aLevel, const wxString& aMsg, const wxLogRecordInfo& aInfo )
+{
+    switch( aLevel )
+    {
+    case wxLOG_FatalError:
+    case wxLOG_Error:
+        m_bErrors = true;
+        m_bHasMessages = true;
+        m_aMessages.Add( aMsg );
+        break;
+
+    case wxLOG_Warning:
+        m_bWarnings = true;
+        m_bHasMessages = true;
+        m_aMessages.Add( aMsg );
+        break;
+
+    case wxLOG_Message:
+        m_bHasMessages = true;
+        m_aMessages.Add( aMsg );
+        break;
+
+    default:
+        wxLog::DoLogRecord( aLevel, aMsg, aInfo );
+        break;
+    }
+}
+
+
+void wxLogGui::Flush()
+{
+    if( !m_bHasMessages )
+        return;
+
+    wxLogLevel level = m_bErrors ? wxLOG_Error : m_bWarnings ? wxLOG_Warning : wxLOG_Message;
+    wxArrayString messages;
+    messages.swap( m_aMessages );
+
+    m_bErrors = m_bWarnings = m_bHasMessages = false;
+
+    if( SHOW_FUNCTION show = logGuiShowFunction() )
+    {
+        show( messages, level );
+    }
+    else
+    {
+        for( const wxString& message : messages )
+            std::fputs( ( message.utf8_string() + "\n" ).c_str(), stderr );
     }
 }
 

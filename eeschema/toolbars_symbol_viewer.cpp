@@ -90,6 +90,7 @@ void SYMBOL_VIEWER_FRAME::configureToolbars()
                 {
                     m_unitChoice = new wxChoice( m_tbTopMain, ID_LIBVIEW_SELECT_UNIT_NUMBER,
                                                  wxDefaultPosition, wxSize( 150, -1 ) );
+                    m_unitChoice->Bind( wxEVT_CHOICE, &SYMBOL_VIEWER_FRAME::onSelectSymbolUnit, this );
                 }
 
                 aToolbar->Add( m_unitChoice );
@@ -102,6 +103,7 @@ void SYMBOL_VIEWER_FRAME::configureToolbars()
                 {
                     m_bodyStyleChoice = new wxChoice( m_tbTopMain, ID_LIBVIEW_SELECT_BODY_STYLE,
                                                       wxDefaultPosition, wxSize( 150, -1 ) );
+                    m_bodyStyleChoice->Bind( wxEVT_CHOICE, &SYMBOL_VIEWER_FRAME::onSelectSymbolBodyStyle, this );
                 }
 
                 aToolbar->Add( m_bodyStyleChoice );

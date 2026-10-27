@@ -80,31 +80,7 @@ int SYMBOL_VIEWER_FRAME::m_unit = 1;
 int SYMBOL_VIEWER_FRAME::m_bodyStyle = 1;
 
 
-BEGIN_EVENT_TABLE( SYMBOL_VIEWER_FRAME, SCH_BASE_FRAME )
-    // Window events
-    EVT_SIZE( SYMBOL_VIEWER_FRAME::OnSize )
-    EVT_ACTIVATE( SYMBOL_VIEWER_FRAME::OnActivate )
-
-    // Toolbar events
-    EVT_CHOICE( ID_LIBVIEW_SELECT_UNIT_NUMBER, SYMBOL_VIEWER_FRAME::onSelectSymbolUnit )
-    EVT_CHOICE( ID_LIBVIEW_SELECT_BODY_STYLE, SYMBOL_VIEWER_FRAME::onSelectSymbolBodyStyle )
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, SYMBOL_VIEWER_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, SYMBOL_VIEWER_FRAME::OnSelectGrid )
-
-    // listbox events
-    EVT_TEXT( ID_LIBVIEW_LIB_FILTER, SYMBOL_VIEWER_FRAME::OnLibFilter )
-    EVT_LISTBOX( ID_LIBVIEW_LIB_LIST, SYMBOL_VIEWER_FRAME::ClickOnLibList )
-    EVT_TEXT( ID_LIBVIEW_SYM_FILTER, SYMBOL_VIEWER_FRAME::OnSymFilter )
-    EVT_LISTBOX( ID_LIBVIEW_SYM_LIST, SYMBOL_VIEWER_FRAME::ClickOnSymbolList )
-    EVT_LISTBOX_DCLICK( ID_LIBVIEW_SYM_LIST, SYMBOL_VIEWER_FRAME::DClickOnSymbolList )
-
-    // Menu (and/or hotkey) events
-    EVT_MENU( wxID_CLOSE, SYMBOL_VIEWER_FRAME::CloseLibraryViewer )
-
-END_EVENT_TABLE()
-
-
-SYMBOL_VIEWER_FRAME::SYMBOL_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+SYMBOL_VIEWER_FRAME::SYMBOL_VIEWER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         SCH_BASE_FRAME( aKiway, aParent, FRAME_SCH_VIEWER, _( "Symbol Library Browser" ), wxDefaultPosition,
                         wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, LIB_VIEW_FRAME_NAME ),
         m_unitChoice( nullptr ),
@@ -162,6 +138,8 @@ SYMBOL_VIEWER_FRAME::SYMBOL_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     m_libList = new WX_LISTBOX( libPanel, ID_LIBVIEW_LIB_LIST, wxDefaultPosition, wxDefaultSize, 0, nullptr,
                                 wxLB_HSCROLL | wxNO_BORDER );
+    m_libFilter->Bind( wxEVT_TEXT, &SYMBOL_VIEWER_FRAME::OnLibFilter, this );
+    m_libList->Bind( wxEVT_LISTBOX, &SYMBOL_VIEWER_FRAME::ClickOnLibList, this );
     libSizer->Add( m_libList, 1, wxEXPAND, 5 );
 
     libPanel->SetSizer( libSizer );
@@ -187,6 +165,9 @@ SYMBOL_VIEWER_FRAME::SYMBOL_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     m_symbolList = new WX_LISTBOX( symbolPanel, ID_LIBVIEW_SYM_LIST, wxDefaultPosition, wxDefaultSize, 0, nullptr,
                                    wxLB_HSCROLL | wxNO_BORDER );
+    m_symbolFilter->Bind( wxEVT_TEXT, &SYMBOL_VIEWER_FRAME::OnSymFilter, this );
+    m_symbolList->Bind( wxEVT_LISTBOX, &SYMBOL_VIEWER_FRAME::ClickOnSymbolList, this );
+    m_symbolList->Bind( wxEVT_LISTBOX_DCLICK, &SYMBOL_VIEWER_FRAME::DClickOnSymbolList, this );
     symbolSizer->Add( m_symbolList, 1, wxEXPAND, 5 );
 
     symbolPanel->SetSizer( symbolSizer );
@@ -840,9 +821,9 @@ void SYMBOL_VIEWER_FRAME::CommonSettingsChanged( int aFlags )
 }
 
 
-void SYMBOL_VIEWER_FRAME::OnActivate( wxActivateEvent& event )
+void SYMBOL_VIEWER_FRAME::handleActivateEvent( bool aActive )
 {
-    if( event.GetActive() )
+    if( aActive )
     {
         bool changed = m_libList ? ReCreateLibList() : false;
 
@@ -854,7 +835,7 @@ void SYMBOL_VIEWER_FRAME::OnActivate( wxActivateEvent& event )
         DisplayLibInfos();
     }
 
-    event.Skip();    // required under wxMAC
+    SCH_BASE_FRAME::handleActivateEvent( aActive );
 }
 
 
@@ -972,7 +953,7 @@ void SYMBOL_VIEWER_FRAME::SelectNextSymbol()
         ii += 1;
 
     m_symbolList->SetSelection( ii );
-    ProcessEvent( evt );
+    ClickOnSymbolList( evt );
 }
 
 
@@ -986,7 +967,7 @@ void SYMBOL_VIEWER_FRAME::SelectPreviousSymbol()
         ii -= 1;
 
     m_symbolList->SetSelection( ii );
-    ProcessEvent( evt );
+    ClickOnSymbolList( evt );
 }
 
 

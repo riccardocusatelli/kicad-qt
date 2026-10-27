@@ -313,6 +313,9 @@ public:
     /// @return true if the frame is minimized.
     bool IsIconized() const { return isMinimized(); }
 
+    /// @return true if the frame is shown (wxWindow::IsVisible()).
+    bool IsVisible() const { return isVisible(); }
+
     /// Minimize the frame (or restore it, with @a aIconize false).
     void Iconize( bool aIconize = true );
 
@@ -367,6 +370,10 @@ public:
 
     /// The size of the panel of a pane.
     wxSize GetPaneSize( const wxString& aName ) const;
+
+    /// The panes are laid out (wxWidgets: the end of the setup of the AUI manager): the dock
+    /// widgets of Qt are laid out when they are added.
+    void FinishAUIInitialization() {}
 
     /**
      * Give the frame its icons (in the sizes the system needs).

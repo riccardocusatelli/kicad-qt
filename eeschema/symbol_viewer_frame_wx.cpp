@@ -26,6 +26,7 @@
  * The parts of SYMBOL_VIEWER_FRAME with wxWidgets: the layout of its panes.
  */
 
+#include <id.h>
 #include <symbol_viewer_frame.h>
 #include <tool/action_toolbar.h>
 #include <widgets/wx_infobar.h>
@@ -59,4 +60,18 @@ void SYMBOL_VIEWER_FRAME::OnSize( wxSizeEvent& SizeEv )
         m_auimgr.Update();
 
     SizeEv.Skip();
+}
+
+
+void SYMBOL_VIEWER_FRAME::setupToolkitEvents()
+{
+    // Window events
+    Bind( wxEVT_SIZE, &SYMBOL_VIEWER_FRAME::OnSize, this );
+
+    // Toolbar events
+    Bind( wxEVT_CHOICE, &SYMBOL_VIEWER_FRAME::OnSelectZoom, this, ID_ON_ZOOM_SELECT );
+    Bind( wxEVT_CHOICE, &SYMBOL_VIEWER_FRAME::OnSelectGrid, this, ID_ON_GRID_SELECT );
+
+    // Menu (and/or hotkey) events
+    Bind( wxEVT_MENU, &SYMBOL_VIEWER_FRAME::CloseLibraryViewer, this, wxID_CLOSE );
 }

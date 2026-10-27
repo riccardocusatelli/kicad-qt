@@ -44,6 +44,7 @@
 #include <wx/timer.h>
 
 #include <template_fieldnames.h>
+#include <toolkit/toolkit_types.h>
 
 
 class SCH_SELECTION_TOOL;
@@ -116,7 +117,7 @@ LIB_SYMBOL* SchGetLibSymbol( const LIB_ID& aLibId, SYMBOL_LIBRARY_ADAPTER* aLibM
 class SCH_BASE_FRAME : public EDA_DRAW_FRAME, public SCHEMATIC_HOLDER, public SCH_VIEW_HOST
 {
 public:
-    SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aWindowType, const wxString& aTitle,
+    SCH_BASE_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent, FRAME_T aWindowType, const wxString& aTitle,
                     const wxPoint& aPosition, const wxSize& aSize, long aStyle,
                     const wxString & aFrameName );
 

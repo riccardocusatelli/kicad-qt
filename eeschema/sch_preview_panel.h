@@ -26,6 +26,7 @@
 #define SCH_PREVIEW_PANEL_H
 
 #include <class_draw_panel_gal.h>
+#include <toolkit/toolkit_window_arg.h>
 
 
 class SCH_RENDER_SETTINGS;
@@ -41,7 +42,7 @@ namespace KIGFX {
 class SCH_PREVIEW_PANEL : public EDA_DRAW_PANEL_GAL
 {
 public:
-    SCH_PREVIEW_PANEL( wxWindow* aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
+    SCH_PREVIEW_PANEL( TOOLKIT_WINDOW_ARG aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
                        const wxSize& aSize, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
                        GAL_TYPE aGalType = GAL_TYPE_OPENGL );
 

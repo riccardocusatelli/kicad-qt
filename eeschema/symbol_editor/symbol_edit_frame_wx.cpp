@@ -26,10 +26,12 @@
  * The parts of SYMBOL_EDIT_FRAME with wxWidgets: the layout of its panes.
  */
 
+#include <id.h>
 #include <sch_pane_info.h>
 #include <symbol_edit_frame.h>
 #include <symbol_editor/symbol_editor_settings.h>
 #include <tool/action_toolbar.h>
+#include <tool/tool_dispatcher.h>
 #include <tools/sch_selection_tool.h>
 #include <widgets/panel_sch_selection_filter.h>
 #include <widgets/sch_properties_panel.h>
@@ -93,4 +95,23 @@ void SYMBOL_EDIT_FRAME::setupLayout()
     updateSelectionFilterVisbility();
 
     FinishAUIInitialization();
+}
+
+
+void SYMBOL_EDIT_FRAME::setupToolkitEvents()
+{
+    // menubar commands
+    Bind( wxEVT_MENU, &SYMBOL_EDIT_FRAME::OnExitKiCad, this, wxID_EXIT );
+    Bind( wxEVT_MENU, &SYMBOL_EDIT_FRAME::CloseWindow, this, wxID_CLOSE );
+
+    Bind( wxEVT_CHOICE, &SYMBOL_EDIT_FRAME::OnSelectZoom, this, ID_ON_ZOOM_SELECT );
+    Bind( wxEVT_CHOICE, &SYMBOL_EDIT_FRAME::OnSelectGrid, this, ID_ON_GRID_SELECT );
+
+    // Drop files event
+    Bind( wxEVT_DROP_FILES, &SYMBOL_EDIT_FRAME::OnDropFiles, this );
+
+    // Catch unhandled accelerator command characters that were no handled by the library tree
+    // panel.
+    Bind( wxEVT_CHAR, &TOOL_DISPATCHER::DispatchWxEvent, m_toolDispatcher );
+    Bind( wxEVT_CHAR_HOOK, &TOOL_DISPATCHER::DispatchWxEvent, m_toolDispatcher );
 }

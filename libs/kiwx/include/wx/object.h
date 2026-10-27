@@ -157,6 +157,15 @@ protected:
 #define wxIMPLEMENT_ABSTRACT_CLASS( name, base )
 #define wxIMPLEMENT_DYNAMIC_CLASS( name, base )
 
+// The macros of the old API of wxWidgets
+#define DECLARE_CLASS( name )
+#define DECLARE_ABSTRACT_CLASS( name )
+#define DECLARE_DYNAMIC_CLASS( name )
+#define DECLARE_DYNAMIC_CLASS_NO_COPY( name )
+#define IMPLEMENT_CLASS( name, base )
+#define IMPLEMENT_ABSTRACT_CLASS( name, base )
+#define IMPLEMENT_DYNAMIC_CLASS( name, base )
+
 /**
  * A smart pointer to a reference counted object (a wxRefCounter, or any class with IncRef() and
  * DecRef()).  As in wxWidgets, the pointer given to the constructor or to reset() is adopted

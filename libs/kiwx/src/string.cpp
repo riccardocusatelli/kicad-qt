@@ -1023,6 +1023,12 @@ wxString operator+( const wxString& aLeft, wxUniCharRef aRight )
 }
 
 
+wxString operator+( wxUniCharRef aLeft, const wxString& aRight )
+{
+    return wxString( aLeft ) + aRight;
+}
+
+
 wxString operator+( const wxString& aLeft, const wxCStrData& aRight )
 {
     return aLeft + wxString( aRight );

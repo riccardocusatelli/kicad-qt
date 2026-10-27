@@ -68,6 +68,11 @@ protected:
 
     void fitOnDrawArea();    // set the view scale to fit the item on screen and center
 
+    // The widgets of the GUI toolkit (sch_design_block_preview_widget_wx.cpp)
+
+    /// Show the canvas in place of the status.
+    void showCanvas();
+
     GAL_DISPLAY_OPTIONS_IMPL   m_galDisplayOptions;
     EDA_DRAW_PANEL_GAL*        m_preview;
 

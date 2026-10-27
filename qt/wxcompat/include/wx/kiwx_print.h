@@ -82,6 +82,27 @@ enum wxPreviewFrameModalityKind
 
 
 /// The settings of a print: the printer, the paper, the orientation, the copies...
+/// The paper sources of the printers (wxPrintBin, in the order of wxWidgets).
+enum wxPrintBin
+{
+    wxPRINTBIN_DEFAULT,
+    wxPRINTBIN_ONLYONE,
+    wxPRINTBIN_LOWER,
+    wxPRINTBIN_MIDDLE,
+    wxPRINTBIN_MANUAL,
+    wxPRINTBIN_ENVELOPE,
+    wxPRINTBIN_ENVMANUAL,
+    wxPRINTBIN_AUTO,
+    wxPRINTBIN_TRACTOR,
+    wxPRINTBIN_SMALLFMT,
+    wxPRINTBIN_LARGEFMT,
+    wxPRINTBIN_LARGECAPACITY,
+    wxPRINTBIN_CASSETTE,
+    wxPRINTBIN_FORMSOURCE,
+    wxPRINTBIN_USER
+};
+
+
 class KIQT_API wxPrintData
 {
 public:
@@ -111,6 +132,10 @@ public:
     void SetDuplex( wxDuplexMode aDuplex ) { m_duplex = aDuplex; }
     wxDuplexMode GetDuplex() const { return m_duplex; }
 
+    /// The paper source (kept: the printers of Qt choose their own source).
+    void SetBin( wxPrintBin aBin ) { m_bin = aBin; }
+    wxPrintBin GetBin() const { return m_bin; }
+
     /// The printer (empty: the default printer).
     void SetPrinterName( const wxString& aName ) { m_printerName = aName; }
     const wxString& GetPrinterName() const { return m_printerName; }
@@ -136,6 +161,7 @@ private:
     int                m_copies = 1;
     bool               m_collate = false;
     wxDuplexMode       m_duplex = wxDUPLEX_SIMPLEX;
+    wxPrintBin         m_bin = wxPRINTBIN_DEFAULT;
     wxString           m_printerName;
     wxString           m_filename;
     wxPrintMode        m_printMode = wxPRINT_MODE_PRINTER;
@@ -189,6 +215,12 @@ public:
     wxPrintData& GetPrintData() { return m_printData; }
     const wxPrintData& GetPrintData() const { return m_printData; }
     void SetPrintData( const wxPrintData& aPrintData ) { m_printData = aPrintData; }
+
+    wxPageSetupDialogData& operator=( const wxPrintData& aPrintData )
+    {
+        m_printData = aPrintData;
+        return *this;
+    }
 
     /// A paper of a size in millimeters (not a standard paper).
     void SetPaperSize( const wxSize& aSizeMM )

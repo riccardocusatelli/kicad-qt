@@ -1236,6 +1236,14 @@ public:
 
     void rowsInserted( int aPos, int aCount )
     {
+        // Not more rows than the table (rows added to it before a sync of the model are
+        // already counted)
+        if( wxGridTableBase* table = m_grid->GetTable() )
+            aCount = std::min( aCount, table->GetNumberRows() - m_rows );
+
+        if( aCount <= 0 )
+            return;
+
         aPos = std::clamp( aPos, 0, m_rows );
         beginInsertRows( QModelIndex(), aPos, aPos + aCount - 1 );
         m_rows += aCount;
@@ -1256,6 +1264,12 @@ public:
 
     void colsInserted( int aPos, int aCount )
     {
+        if( wxGridTableBase* table = m_grid->GetTable() )
+            aCount = std::min( aCount, table->GetNumberCols() - m_cols );
+
+        if( aCount <= 0 )
+            return;
+
         aPos = std::clamp( aPos, 0, m_cols );
         beginInsertColumns( QModelIndex(), aPos, aPos + aCount - 1 );
         m_cols += aCount;

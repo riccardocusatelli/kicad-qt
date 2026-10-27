@@ -48,6 +48,7 @@
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 #include <lib_symbol.h>
+#include <dialog_shim.h>
 #include <sch_edit_frame.h>
 
 

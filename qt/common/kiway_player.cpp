@@ -58,6 +58,14 @@ KIWAY_PLAYER::~KIWAY_PLAYER() throw()
 }
 
 
+bool KIWAY_PLAYER::Destroy()
+{
+    Kiway().PlayerDidClose( GetFrameType() );
+
+    return EDA_BASE_FRAME::Destroy();
+}
+
+
 void KIWAY_PLAYER::CreateServer( int service, bool local )
 {
     // The server is a child of the frame: it is deleted (and stops listening) with the frame

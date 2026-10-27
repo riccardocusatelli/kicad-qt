@@ -670,7 +670,7 @@ bool EDA_BASE_FRAME::Close( bool aForce )
         hide();
 
         if( !IsModal() )
-            deleteLater();
+            Destroy();
 
         return true;
     }
@@ -738,7 +738,7 @@ void EDA_BASE_FRAME::closeEvent( QCloseEvent* aEvent )
         // Delete (safe delete frame) this frame only in non modal mode.
         // In modal mode, the caller will delete it.
         if( !IsModal() )
-            deleteLater();
+            Destroy();
     }
     else
     {

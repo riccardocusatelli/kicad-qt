@@ -606,6 +606,10 @@ public:
     bool ends_with( const wxString& aSuffix ) const { return EndsWith( aSuffix ); }
     bool starts_with( wxUniChar aCh ) const { return !empty() && front() == aCh; }
     bool ends_with( wxUniChar aCh ) const { return !empty() && back() == aCh; }
+    bool starts_with( char aCh ) const { return starts_with( wxUniChar( aCh ) ); }
+    bool ends_with( char aCh ) const { return ends_with( wxUniChar( aCh ) ); }
+    bool starts_with( wchar_t aCh ) const { return starts_with( wxUniChar( aCh ) ); }
+    bool ends_with( wchar_t aCh ) const { return ends_with( wxUniChar( aCh ) ); }
     bool Contains( const wxString& aStr ) const { return m_impl.find( aStr.m_impl ) != std::wstring::npos; }
 
     // Searching
@@ -775,6 +779,7 @@ wxString operator+( char aLeft, const wxString& aRight );
 wxString operator+( const wxString& aLeft, wchar_t aRight );
 wxString operator+( wchar_t aLeft, const wxString& aRight );
 wxString operator+( const wxString& aLeft, wxUniCharRef aRight );
+wxString operator+( wxUniCharRef aLeft, const wxString& aRight );
 wxString operator+( const wxString& aLeft, const wxCStrData& aRight );
 wxString operator+( const wxCStrData& aLeft, const wxString& aRight );
 

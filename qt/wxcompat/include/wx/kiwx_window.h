@@ -41,6 +41,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <QFontMetrics>
 #include <QLayout>
 #include <QWidget>
 
@@ -326,6 +327,20 @@ public:
 
     bool IsShown( wxWidgetArgCompat aWindow ) const;
 
+    /// True if one of the items is shown.
+    bool AreAnyItemsShown() const
+    {
+        wxSizer* self = const_cast<wxSizer*>( this );
+
+        for( size_t i = 0; i < GetItemCount(); ++i )
+        {
+            if( wxSizerItem* item = self->GetItem( i ); item && item->IsShown() )
+                return true;
+        }
+
+        return false;
+    }
+
 protected:
     /// The item of a widget or of a layout (kept by the sizer, for the code holding it).
     wxSizerItem* itemCompat( QWidget* aWindow, QLayout* aLayout );
@@ -378,6 +393,13 @@ struct KIQT_API wxContainingSizerCompat
 };
 
 
+/// How the size events are sent (wxWindow::SendSizeEvent()).
+enum
+{
+    wxSEND_EVENT_POST = 1
+};
+
+
 class KIQT_API wxWindow : public wxEvtHandler
 {
 public:
@@ -395,8 +417,8 @@ public:
 
     int GetId() const;
     void SetId( int aId );
-    wxString GetName() const;
-    void SetName( const wxString& aName );
+    virtual wxString GetName() const;
+    virtual void SetName( const wxString& aName );
     virtual wxString GetLabel() const;
     virtual void SetLabel( const wxString& aLabel );
 
@@ -413,6 +435,11 @@ public:
     bool IsShownOnScreen() const;
 
     virtual void SetFocus();
+    void SetFocusFromKbd() { SetFocus(); }
+
+    /// A text shortened to a width (wxControl::Ellipsize()).
+    static wxString Ellipsize( const wxString& aText, const wxDC& aDC, int aMode, int aMaxWidth,
+                               int aFlags = 0 );
     bool HasFocus() const;
 
     /// Move the focus to the next (or previous) window of the keyboard navigation.
@@ -434,6 +461,17 @@ public:
     void SetOwnFont( const wxFont& aFont ) { SetFont( aFont ); }
     void SetOwnForegroundColour( const wxColour& aColour ) { SetForegroundColour( aColour ); }
     void SetOwnBackgroundColour( const wxColour& aColour ) { SetBackgroundColour( aColour ); }
+
+    /// The cursor over the window (the default one for a null cursor).
+    virtual bool SetCursor( const wxCursor& aCursor )
+    {
+        if( aCursor.IsOk() )
+            GetHandle()->setCursor( aCursor );
+        else
+            GetHandle()->unsetCursor();
+
+        return true;
+    }
 
     void SetToolTip( const wxString& aTip );
     void UnsetToolTip() { SetToolTip( wxEmptyString ); }
@@ -518,6 +556,10 @@ public:
     void GetClientSize( int* aWidth, int* aHeight ) const;
     wxRect GetClientRect() const;
     wxSize GetBestSize() const;
+
+    /// The best size of the window, for the classes that change it (the layouts of Qt use the
+    /// size hints of the widgets: GetBestSize() doesn't call it).
+    virtual wxSize DoGetBestSize() const { return GetBestSize(); }
     wxSize GetVirtualSize() const { return GetClientSize(); }
     wxPoint GetPosition() const;
     void GetPosition( int* aX, int* aY ) const;
@@ -585,6 +627,9 @@ public:
 
     /// The layout of the window, as a sizer (nullptr if it has none).
     wxSizer* GetSizer();
+
+    /// The sizer which holds the window (nullptr if none).
+    wxSizer* GetContainingSizer() const;
     void SetSizer( wxSizer* aSizer, bool aDeleteOld = true );
     void SetSizerAndFit( wxSizer* aSizer, bool aDeleteOld = true );
 
@@ -820,6 +865,57 @@ KIQT_API wxWindow* wxGetTopLevelParent( wxWidgetArgCompat aWindow );
 
 /// Center a window on its parent, or on the screen.
 KIQT_API void wxCentreWindow( wxWidgetArgCompat aWindow, int aDirection );
+
+/// Where a text too long is shortened (wxEllipsizeMode).
+enum wxEllipsizeMode
+{
+    wxELLIPSIZE_NONE,
+    wxELLIPSIZE_START,
+    wxELLIPSIZE_MIDDLE,
+    wxELLIPSIZE_END
+};
+
+enum wxEllipsizeFlags
+{
+    wxELLIPSIZE_FLAGS_NONE = 0,
+    wxELLIPSIZE_FLAGS_PROCESS_MNEMONICS = 1,
+    wxELLIPSIZE_FLAGS_EXPAND_TABS = 2,
+    wxELLIPSIZE_FLAGS_DEFAULT = wxELLIPSIZE_FLAGS_PROCESS_MNEMONICS | wxELLIPSIZE_FLAGS_EXPAND_TABS
+};
+
+/// The style of a static text shortening its text (the labels of Qt don't: the flags are kept).
+#define wxST_ELLIPSIZE_START 0x0004
+#define wxST_ELLIPSIZE_MIDDLE 0x0008
+#define wxST_ELLIPSIZE_END 0x0010
+
+/// A text shortened to a width with an ellipsis, with the font of a device context
+/// (wxControl::Ellipsize()).
+inline wxString wxEllipsizeCompat( const wxString& aText, const wxDC& aDC,
+                                   wxEllipsizeMode aMode, int aMaxWidth, int aFlags = 0 )
+{
+    Qt::TextElideMode mode = Qt::ElideNone;
+
+    switch( aMode )
+    {
+    case wxELLIPSIZE_START:  mode = Qt::ElideLeft;   break;
+    case wxELLIPSIZE_MIDDLE: mode = Qt::ElideMiddle; break;
+    case wxELLIPSIZE_END:    mode = Qt::ElideRight;  break;
+    default:                 return aText;
+    }
+
+    QFontMetrics metrics( aDC.GetFont() );
+    return wxString( metrics.elidedText( QString::fromStdWString( aText.ToStdWstring() ), mode,
+                                         aMaxWidth ).toStdWString() );
+}
+
+
+inline wxString wxWindow::Ellipsize( const wxString& aText, const wxDC& aDC, int aMode,
+                                     int aMaxWidth, int aFlags )
+{
+    return wxEllipsizeCompat( aText, aDC, static_cast<wxEllipsizeMode>( aMode ), aMaxWidth,
+                              aFlags );
+}
+
 
 /// A control (wxControl): the controls of the layer are windows.
 using wxControl = wxWindow;

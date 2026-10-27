@@ -35,6 +35,7 @@
 #include <sim/sim_preferences.h>
 
 #include <wx/event.h>
+#include <wx/timer.h>
 
 class SCH_EDIT_FRAME;
 class SCH_SYMBOL;

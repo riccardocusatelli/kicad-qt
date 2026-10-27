@@ -51,7 +51,7 @@
 #include <core/ki_assert.h>
 
 
-SCH_DRAW_PANEL::SCH_DRAW_PANEL( wxWindow* aParentWindow, wxWindowID aWindowId,
+SCH_DRAW_PANEL::SCH_DRAW_PANEL( TOOLKIT_WINDOW_ARG aParentWindow, wxWindowID aWindowId,
                                 const wxPoint& aPosition, const wxSize& aSize,
                                 KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType )
         : EDA_DRAW_PANEL_GAL( aParentWindow, aWindowId, aPosition, aSize, aOptions, aGalType )

@@ -43,11 +43,11 @@
 #include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
 #include <widgets/hierarchy_pane.h>
-#include <widgets/wx_aui_utils.h>
 #include <widgets/sch_design_block_pane.h>
 #include <widgets/sch_properties_panel.h>
 #include <widgets/sch_search_pane.h>
 #include <toolbars_sch_editor.h>
+#include <dialog_shim.h>
 #include <wx/choice.h>
 #include <wx/stattext.h>
 #include <core/ki_assert.h>

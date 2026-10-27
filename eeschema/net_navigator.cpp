@@ -36,7 +36,6 @@
 #include <string_utils.h>
 #include <trace_helpers.h>
 #include <connection_graph.h>
-#include <widgets/wx_aui_utils.h>
 #include <tools/sch_actions.h>
 #include <mail_type.h>
 #include <wx/filename.h>

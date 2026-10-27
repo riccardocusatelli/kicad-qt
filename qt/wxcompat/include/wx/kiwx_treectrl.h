@@ -88,6 +88,8 @@ public:
 
     bool operator==( const wxTreeItemId& aOther ) const { return m_id == aOther.m_id; }
     bool operator!=( const wxTreeItemId& aOther ) const { return m_id != aOther.m_id; }
+    bool operator==( const void* aId ) const { return m_id == aId; }
+    bool operator!=( const void* aId ) const { return m_id != aId; }
 
 private:
     void* m_id = nullptr;
@@ -186,6 +188,7 @@ public:
 
     wxTreeItemId GetRootItem() const;
     size_t GetCount() const;
+    bool IsEmpty() const { return !GetRootItem().IsOk(); }
 
     wxString GetItemText( const wxTreeItemId& aItem ) const;
     void SetItemText( const wxTreeItemId& aItem, const wxString& aText );
@@ -198,6 +201,7 @@ public:
     void SetItemTextColour( const wxTreeItemId& aItem, const wxColour& aColour );
     void SetItemBackgroundColour( const wxTreeItemId& aItem, const wxColour& aColour );
     void SetItemFont( const wxTreeItemId& aItem, const wxFont& aFont );
+    wxFont GetItemFont( const wxTreeItemId& aItem ) const;
     void SetItemHasChildren( const wxTreeItemId& aItem, bool aHasChildren = true );
 
     // The navigation
@@ -218,6 +222,9 @@ public:
     wxTreeItemId GetSelection() const;
     size_t GetSelections( std::vector<wxTreeItemId>& aSelections ) const;
     wxTreeItemId GetFocusedItem() const { return GetSelection(); }
+
+    /// The current item, without changing the selection.
+    void SetFocusedItem( const wxTreeItemId& aItem );
     void SelectItem( const wxTreeItemId& aItem, bool aSelect = true );
     void Unselect();
     void UnselectAll();
@@ -259,6 +266,12 @@ public:
 
     /// Edit the text of an item in the tree.
     void EditLabel( const wxTreeItemId& aItem );
+
+    /// The editor of the text of an item while it is edited (else nullptr).
+    QWidget* GetEditControl() const;
+
+    /// End the edition of the text of an item (and keep the text unless @a aDiscard).
+    void EndEditLabel( const wxTreeItemId& aItem, bool aDiscard = false );
 
     void SetIndent( unsigned int aIndent ) { setIndentation( int( aIndent ) ); }
     unsigned int GetIndent() const { return unsigned( indentation() ); }

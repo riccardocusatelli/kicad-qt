@@ -77,6 +77,12 @@ class wxProcess
 {
 public:
     explicit wxProcess( int aFlags = 0 ) : m_redirect( aFlags & 1 ) {}
+
+    /// A process notifying an event handler (without event loop: no notification).
+    template <typename HANDLER>
+    wxProcess( HANDLER* aParent, int aId = -1 ) : m_redirect( false )
+    {
+    }
     virtual ~wxProcess() = default;
 
     virtual void OnTerminate( int, int ) {}
@@ -84,6 +90,7 @@ public:
     void Redirect() { m_redirect = true; }
     bool IsRedirected() const { return m_redirect; }
     void Detach() {}
+    bool Activate() const { return true; }
 
     long GetPid() const { return m_pid; }
     void SetPid( long aPid ) { m_pid = aPid; }

@@ -30,6 +30,10 @@
 // As wxWidgets, through a helper: the argument is macro expanded before L is prepended.
 #define wxT( x ) wxCONCAT_HELPER( L, x )
 #define wxS( x ) wxCONCAT_HELPER( L, x )
+
+/// A string of ASCII characters (wxASCII_STR()).
+#define wxASCII_STR( s ) wxString( s )
+
 #ifdef _T
 #undef _T
 #endif

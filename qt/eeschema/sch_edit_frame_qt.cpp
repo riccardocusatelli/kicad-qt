@@ -58,9 +58,9 @@ void SCH_EDIT_FRAME::setupLayout()
 
     // The panels docked on the left side, one above the other: the net navigator, the
     // hierarchy, the properties and the selection filter
-    QDockWidget* netNavigator = addPane( createHighlightedNetNavigator(), NetNavigatorPaneName(),
-                                         _( "Net Navigator" ), PANE_DOCK::LEFT,
-                                         aui_cfg.show_net_nav_panel );
+    QDockWidget* netNavigator = addPane( createHighlightedNetNavigator()->GetHandle(),
+                                         NetNavigatorPaneName(), _( "Net Navigator" ),
+                                         PANE_DOCK::LEFT, aui_cfg.show_net_nav_panel );
     QDockWidget* hierarchy = addPane( m_hierarchy, SchematicHierarchyPaneName(),
                                       _( "Schematic Hierarchy" ), PANE_DOCK::LEFT,
                                       aui_cfg.show_schematic_hierarchy );

@@ -21,20 +21,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+/**
+ * @file sch_design_block_pane.cpp
+ * What SCH_DESIGN_BLOCK_PANE does without the GUI toolkit, and the options of the placement in
+ * the file dialog importing a sheet.  The widgets of the pane are in sch_design_block_pane_wx.cpp
+ * (and in qt/eeschema/widgets/sch_design_block_pane_qt.cpp).
+ */
+
 #include <design_block.h>
 #include <widgets/sch_design_block_pane.h>
-#include <widgets/sch_design_block_preview_widget.h>
+#include <widgets/design_block_preview_widget.h>
 #include <widgets/panel_design_block_chooser.h>
-#include <kiface_base.h>
-#include <sch_edit_frame.h>
-#include <core/kicad_algo.h>
-#include <template_fieldnames.h>
-#include <wx/button.h>
-#include <wx/checkbox.h>
-#include <wx/sizer.h>
-#include <sch_actions.h>
-#include <tool/tool_manager.h>
-#include <tools/sch_design_block_control.h>
+#include <eeschema_settings.h>
 #include <core/ki_assert.h>
 
 
@@ -43,116 +41,6 @@
 #define PLACE_AS_SHEET     _( "Place as sheet" )
 #define PLACE_AS_GROUP     _( "Place as group" )
 #define KEEP_ANNOTATIONS   _( "Keep annotations" )
-
-SCH_DESIGN_BLOCK_PANE::SCH_DESIGN_BLOCK_PANE( SCH_EDIT_FRAME* aParent, const LIB_ID* aPreselect,
-                                              std::vector<LIB_ID>& aHistoryList ) :
-        DESIGN_BLOCK_PANE( aParent, aPreselect, aHistoryList )
-{
-    wxBoxSizer* sizer = new wxBoxSizer( wxVERTICAL );
-
-    m_chooserPanel = new PANEL_DESIGN_BLOCK_CHOOSER( aParent, this, aHistoryList,
-                                                     [aParent]()
-                                                     {
-                                                         aParent->GetToolManager()->RunAction(
-                                                                 SCH_ACTIONS::placeDesignBlock );
-                                                     },
-                                                        aParent->GetToolManager()->GetTool<SCH_DESIGN_BLOCK_CONTROL>()
-                                                     );
-    // Use the same draw engine type as the one used in parent frame m_frame
-    EDA_DRAW_PANEL_GAL::GAL_TYPE canvasType = m_frame->GetCanvas()->GetBackend();
-    m_chooserPanel->SetPreviewWidget(
-            new SCH_DESIGN_BLOCK_PREVIEW_WIDGET( m_chooserPanel->GetDetailsPanel(), canvasType, true ) );
-    sizer->Add( m_chooserPanel, 1, wxEXPAND, 5 );
-
-    if( aPreselect && aPreselect->IsValid() )
-        m_chooserPanel->SetPreselect( *aPreselect );
-
-    SetName( wxT( "Design Blocks" ) );
-
-    wxBoxSizer* cbSizer = new wxBoxSizer( wxVERTICAL );
-
-    m_repeatedPlacement = new wxCheckBox( this, wxID_ANY, REPEATED_PLACEMENT );
-    m_placeAsGroup = new wxCheckBox( this, wxID_ANY, PLACE_AS_GROUP );
-    m_placeAsSheet = new wxCheckBox( this, wxID_ANY, PLACE_AS_SHEET );
-    m_keepAnnotations = new wxCheckBox( this, wxID_ANY, KEEP_ANNOTATIONS );
-    setLabelsAndTooltips();
-    UpdateCheckboxes();
-
-    // Set all checkbox handlers to the same function
-    m_repeatedPlacement->Bind( wxEVT_CHECKBOX, &SCH_DESIGN_BLOCK_PANE::OnCheckBox, this );
-    m_placeAsGroup->Bind( wxEVT_CHECKBOX, &SCH_DESIGN_BLOCK_PANE::OnCheckBox, this );
-    m_placeAsSheet->Bind( wxEVT_CHECKBOX, &SCH_DESIGN_BLOCK_PANE::OnCheckBox, this );
-    m_keepAnnotations->Bind( wxEVT_CHECKBOX, &SCH_DESIGN_BLOCK_PANE::OnCheckBox, this );
-
-    cbSizer->Add( m_repeatedPlacement, 0, wxTOP | wxLEFT, 2 );
-    cbSizer->Add( m_placeAsGroup, 0, wxTOP | wxLEFT, 2 );
-    cbSizer->Add( m_placeAsSheet, 0, wxTOP | wxLEFT, 2 );
-    cbSizer->Add( m_keepAnnotations, 0, wxTOP | wxLEFT | wxBOTTOM, 2 );
-
-    sizer->Add( cbSizer, 0, wxEXPAND, 5 );
-    SetSizer( sizer );
-
-    m_chooserPanel->FinishSetup();
-    Layout();
-
-    Bind( wxEVT_CHAR_HOOK, &PANEL_DESIGN_BLOCK_CHOOSER::OnChar, m_chooserPanel );
-}
-
-
-void SCH_DESIGN_BLOCK_PANE::setLabelsAndTooltips()
-{
-    if( m_repeatedPlacement )
-    {
-        m_repeatedPlacement->SetLabel( REPEATED_PLACEMENT );
-        m_repeatedPlacement->SetToolTip( _( "Place copies of the design block on subsequent "
-                                            "clicks." ) );
-    }
-
-    if( m_placeAsGroup )
-    {
-        m_placeAsGroup->SetLabel( PLACE_AS_GROUP );
-        m_placeAsGroup->SetToolTip( _( "Place the design block as a group." ) );
-    }
-
-    if( m_placeAsSheet )
-    {
-        m_placeAsSheet->SetLabel( PLACE_AS_SHEET );
-        m_placeAsSheet->SetToolTip( _( "Place the design block as a new sheet." ) );
-    }
-
-    if( m_keepAnnotations )
-    {
-        m_keepAnnotations->SetLabel( KEEP_ANNOTATIONS );
-        m_keepAnnotations->SetToolTip( _( "Preserve reference designators in the source "
-                                          "schematic. Otherwise, clear then reannotate according "
-                                          "to settings." ) );
-    }
-}
-
-
-void SCH_DESIGN_BLOCK_PANE::OnCheckBox( wxCommandEvent& aEvent )
-{
-    if( EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() ) )
-    {
-        cfg->m_DesignBlockChooserPanel.repeated_placement = m_repeatedPlacement->GetValue();
-        cfg->m_DesignBlockChooserPanel.place_as_group = m_placeAsGroup->GetValue();
-        cfg->m_DesignBlockChooserPanel.place_as_sheet = m_placeAsSheet->GetValue();
-        cfg->m_DesignBlockChooserPanel.keep_annotations = m_keepAnnotations->GetValue();
-    }
-}
-
-
-void SCH_DESIGN_BLOCK_PANE::UpdateCheckboxes()
-{
-    if( EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() ) )
-    {
-        m_repeatedPlacement->SetValue( cfg->m_DesignBlockChooserPanel.repeated_placement );
-        m_placeAsGroup->SetValue( cfg->m_DesignBlockChooserPanel.place_as_group );
-        m_placeAsSheet->SetValue( cfg->m_DesignBlockChooserPanel.place_as_sheet );
-        m_keepAnnotations->SetValue( cfg->m_DesignBlockChooserPanel.keep_annotations );
-    }
-}
-
 
 void SCH_DESIGN_BLOCK_PANE::ProjectChanged()
 {

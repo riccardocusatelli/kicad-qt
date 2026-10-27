@@ -305,7 +305,9 @@ set( EESCHEMA_WIDGETS
     widgets/pintype_combobox.cpp
     widgets/symbol_diff_widget.cpp
     widgets/sch_design_block_pane.cpp
+    widgets/sch_design_block_pane_wx.cpp
     widgets/sch_design_block_preview_widget.cpp
+    widgets/sch_design_block_preview_widget_wx.cpp
     widgets/sch_properties_panel.cpp
     widgets/sch_properties_panel_wx.cpp
     widgets/sch_search_pane.cpp

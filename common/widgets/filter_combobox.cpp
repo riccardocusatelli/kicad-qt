@@ -457,7 +457,7 @@ void FILTER_COMBOPOPUP::doSetFocus( wxWindow* aWindow )
 }
 
 
-FILTER_COMBOBOX::FILTER_COMBOBOX( wxWindow *parent, wxWindowID id, const wxPoint &pos,
+FILTER_COMBOBOX::FILTER_COMBOBOX( TOOLKIT_WINDOW_ARG parent, wxWindowID id, const wxPoint &pos,
                                   const wxSize &size, long style ) :
         wxComboCtrl( parent, id, wxEmptyString, pos, size, style|wxTE_PROCESS_ENTER ),
         m_filterPopup( nullptr )
@@ -475,7 +475,7 @@ FILTER_COMBOBOX::FILTER_COMBOBOX( wxWindow *parent, wxWindowID id, const wxPoint
 }
 
 
-FILTER_COMBOBOX::FILTER_COMBOBOX( wxWindow* parent, wxWindowID id, const wxString& value,
+FILTER_COMBOBOX::FILTER_COMBOBOX( TOOLKIT_WINDOW_ARG parent, wxWindowID id, const wxString& value,
                                   const wxPoint& pos, const wxSize& size,
                                   int count, wxString strings[], long style ) :
         FILTER_COMBOBOX( parent, id, pos, size, style )

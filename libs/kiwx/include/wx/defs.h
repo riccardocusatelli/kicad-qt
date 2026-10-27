@@ -123,6 +123,7 @@
 #define wxEXPLICIT explicit
 #define wxDEPRECATED( x ) [[deprecated]] x
 #define wxDEPRECATED_MSG( msg ) [[deprecated( msg )]]
+#define __WXFUNCTION__ __func__
 #define wxCONCAT_HELPER( text, line ) text##line
 #define wxCONCAT( text, line ) wxCONCAT_HELPER( text, line )
 #define wxSTRINGIZE_HELPER( x ) #x
@@ -131,6 +132,10 @@
 #define wxDECLARE_NO_COPY_CLASS( classname )                                                   \
     classname( const classname& ) = delete;                                                    \
     classname& operator=( const classname& ) = delete
+
+#define DECLARE_NO_COPY_CLASS( classname )                                                     \
+private:                                                                                       \
+    wxDECLARE_NO_COPY_CLASS( classname );
 
 #define wxDECLARE_NO_ASSIGN_CLASS( classname ) classname& operator=( const classname& ) = delete
 

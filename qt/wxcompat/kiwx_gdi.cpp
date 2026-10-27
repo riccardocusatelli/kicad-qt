@@ -29,6 +29,7 @@
 #include <wx/kiwx_gdi.h>
 
 #include <cmath>
+#include <cstdlib>
 #include <map>
 #include <set>
 
@@ -311,6 +312,24 @@ void wxImage::InitAlpha()
 {
     if( !hasAlphaChannel() )
         *this = wxImage( convertToFormat( QImage::Format_ARGB32 ) );
+}
+
+
+void wxImage::SetAlpha( unsigned char* aAlpha, bool aStaticData )
+{
+    InitAlpha();
+
+    if( !aAlpha )
+        return;
+
+    for( int y = 0; y < height(); ++y )
+    {
+        for( int x = 0; x < width(); ++x )
+            SetAlpha( x, y, aAlpha[y * width() + x] );
+    }
+
+    if( !aStaticData )
+        free( aAlpha );
 }
 
 
@@ -1081,6 +1100,32 @@ void wxDC::Clear()
 }
 
 
+wxCoord wxDC::GetCharHeight() const
+{
+    return QFontMetrics( m_font ).height();
+}
+
+
+wxCoord wxDC::GetCharWidth() const
+{
+    return QFontMetrics( m_font ).averageCharWidth();
+}
+
+
+bool wxDC::GetPartialTextExtents( const wxString& aText, wxArrayInt& aWidths ) const
+{
+    QFontMetrics metrics( m_font );
+    QString      text = ToQString( aText );
+
+    aWidths.clear();
+
+    for( qsizetype i = 1; i <= text.size(); ++i )
+        aWidths.push_back( metrics.horizontalAdvance( text.left( i ) ) );
+
+    return true;
+}
+
+
 void wxDC::GetTextExtent( const wxString& aText, int* aWidth, int* aHeight ) const
 {
     wxSize size = GetTextExtent( aText );
@@ -1555,6 +1600,16 @@ void wxMemoryDC::release()
         *m_bitmap = wxBitmap( QPixmap::fromImage( m_image ) );
 
     m_bitmap = nullptr;
+}
+
+
+wxBitmap& wxMemoryDC::GetSelectedBitmap()
+{
+    if( m_bitmap )
+        return *m_bitmap;
+
+    m_sourceCompat = wxBitmap( QPixmap::fromImage( m_image ) );
+    return m_sourceCompat;
 }
 
 

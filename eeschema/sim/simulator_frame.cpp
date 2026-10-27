@@ -119,13 +119,7 @@ private:
 };
 
 
-BEGIN_EVENT_TABLE( SIMULATOR_FRAME, KIWAY_PLAYER )
-    EVT_MENU( wxID_EXIT, SIMULATOR_FRAME::onExit )
-    EVT_MENU( wxID_CLOSE, SIMULATOR_FRAME::onExit )
-END_EVENT_TABLE()
-
-
-SIMULATOR_FRAME::SIMULATOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+SIMULATOR_FRAME::SIMULATOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         KIWAY_PLAYER( aKiway, aParent, FRAME_SIMULATOR, _( "Simulator" ), wxDefaultPosition,
                       wxDefaultSize, wxDEFAULT_FRAME_STYLE, wxT( "simulator" ), unityScale ),
         m_schematicFrame( nullptr ),
@@ -193,6 +187,7 @@ SIMULATOR_FRAME::SIMULATOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     Bind( wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler( SIMULATOR_FRAME::onExit ), this, wxID_EXIT );
 
+    Bind( wxEVT_MENU, &SIMULATOR_FRAME::onExit, this, wxID_CLOSE );
     Bind( EVT_SIM_UPDATE, &SIMULATOR_FRAME::onUpdateSim, this );
     Bind( EVT_SIM_STARTED, &SIMULATOR_FRAME::onSimStarted, this );
     Bind( EVT_SIM_FINISHED, &SIMULATOR_FRAME::onSimFinished, this );

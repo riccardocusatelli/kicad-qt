@@ -179,6 +179,9 @@ public:
      */
     void OptOut( wxWidgetArgCompat aWindow );
 
+    /// The undo of a control is the one of the widget of Qt (wxWidgets: the undo of the dialog).
+    void ExcludeFromControlUndoRedo( wxWidgetArgCompat aWindow ) {}
+
     /**
      * Register a UNIT_BINDER so that it can handle units in control state save/restore.
      */

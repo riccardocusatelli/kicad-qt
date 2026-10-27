@@ -37,6 +37,7 @@
 #include <memory>
 #include <vector>
 
+#include <QHeaderView>
 #include <QPointer>
 #include <QTableView>
 
@@ -845,6 +846,22 @@ public:
     void SetColFormatCustom( int aCol, const wxString& aTypeName ) {}
     void SetColAttr( int aCol, wxGridCellAttr* aAttr );
     void SetRowAttr( int aRow, wxGridCellAttr* aAttr );
+
+    // The order of the columns moved by the user (the visual indexes of the header)
+
+    int GetColPos( int aCol ) const { return horizontalHeader()->visualIndex( aCol ); }
+    int GetColAt( int aPos ) const { return horizontalHeader()->logicalIndex( aPos ); }
+
+    void SetColPos( int aCol, int aPos )
+    {
+        horizontalHeader()->moveSection( horizontalHeader()->visualIndex( aCol ), aPos );
+    }
+
+    void ResetColPos()
+    {
+        for( int col = 0; col < horizontalHeader()->count(); ++col )
+            SetColPos( col, col );
+    }
     void SetAttr( int aRow, int aCol, wxGridCellAttr* aAttr );
 
     /// The attributes of a cell, merged with the default ones (with a reference for the caller).

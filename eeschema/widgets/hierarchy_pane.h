@@ -52,12 +52,9 @@ class HIERARCHY_PANE;
 class HIERARCHY_TREE : public wxTreeCtrl
 {
 public:
-    HIERARCHY_TREE( HIERARCHY_PANE* parent ) :
-            wxTreeCtrl( (wxWindow*) parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                        wxTR_HAS_BUTTONS | wxTR_EDIT_LABELS | wxTR_HIDE_ROOT, wxDefaultValidator,
-                        wxT( "HierachyTreeCtrl" ) )
-    {
-    }
+    // Defined with HIERARCHY_PANE complete: the cast of the parent is a conversion, not a
+    // reinterpretation of the pointer
+    HIERARCHY_TREE( HIERARCHY_PANE* parent );
 
     int OnCompareItems( const wxTreeItemId& item1, const wxTreeItemId& item2 ) override;
 

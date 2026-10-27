@@ -52,6 +52,7 @@
 #include <QDoubleSpinBox>
 #include <QFrame>
 #include <QGridLayout>
+#include <QGuiApplication>
 #include <QGroupBox>
 #include <QIcon>
 #include <QLabel>
@@ -333,6 +334,14 @@ class KIQT_API wxBitmapButton : public wxButton
 public:
     explicit wxBitmapButton( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                              const QIcon& aBitmap = QIcon() );
+
+    wxBitmapButton( wxWidgetArgCompat aParent, int aId, const QIcon& aBitmap, const wxPoint& aPos,
+                    const wxSize& aSize = wxDefaultSize, long aStyle = 0 ) :
+            wxBitmapButton( aParent, aId, aBitmap )
+    {
+        if( aSize != wxDefaultSize )
+            SetSize( aSize );
+    }
 };
 
 
@@ -478,6 +487,14 @@ public:
         Append( aItems );
     }
 
+    void Set( unsigned int aCount, const wxString* aItems )
+    {
+        Clear();
+
+        for( unsigned int i = 0; i < aCount; ++i )
+            this->Append( aItems[i] );
+    }
+
     wxArrayString GetStrings() const
     {
         wxArrayString strings;
@@ -581,6 +598,16 @@ public:
                        const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
     wxChoice( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
               int aCount, const wxString aChoices[], long aStyle = 0 );
+    wxChoice( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+              const wxArrayString& aChoices, long aStyle, const wxValidator& aValidator,
+              const wxString& aName = wxEmptyString ) :
+            wxChoice( aParent, aId, aPos, aSize, aChoices, aStyle )
+    {
+        SetValidator( aValidator );
+
+        if( !aName.IsEmpty() )
+            SetName( aName );
+    }
 
     unsigned int GetCount() const override { return count(); }
     wxString GetString( unsigned int aIndex ) const override;
@@ -611,6 +638,13 @@ public:
                          const wxPoint& aPos = wxDefaultPosition,
                          const wxSize& aSize = wxDefaultSize,
                          const wxArrayString& aChoices = wxArrayString(), long aStyle = 0 );
+    wxComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue, const wxPoint& aPos,
+                const wxSize& aSize, int aCount, const wxString aChoices[], long aStyle = 0 ) :
+            wxComboBox( aParent, aId, aValue, aPos, aSize,
+                        aChoices ? wxArrayString( aChoices, aChoices + aCount ) : wxArrayString(),
+                        aStyle )
+    {
+    }
 
     /// The text of an editable combo box (or of its selected item).
     wxString GetValue() const override { return ToWxString( currentText() ); }
@@ -646,6 +680,10 @@ protected:
     QLineEdit* lineEditCompat() const override { return lineEdit(); }
 };
 
+#define wxBitmapComboBoxNameStr "bitmapComboBox"
+#define wxComboBoxNameStr "comboBox"
+#define wxChoiceNameStr "choice"
+
 /// A combo box with images (wxBitmapComboBox).
 class KIQT_API wxBitmapComboBox : public wxComboBox
 {
@@ -658,6 +696,16 @@ public:
     wxBitmapComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue,
                       const wxPoint& aPos, const wxSize& aSize, int aCount,
                       const wxString aChoices[], long aStyle = 0 );
+
+    wxBitmapComboBox( wxWidgetArgCompat aParent, int aId, const wxString& aValue,
+                      const wxPoint& aPos, const wxSize& aSize, int aCount,
+                      const wxString aChoices[], long aStyle, const wxValidator& aValidator,
+                      const wxString& aName = wxBitmapComboBoxNameStr ) :
+            wxBitmapComboBox( aParent, aId, aValue, aPos, aSize, aCount, aChoices, aStyle )
+    {
+        SetValidator( aValidator );
+        SetName( aName );
+    }
 
     using wxComboBox::Append;
     int Append( const wxString& aItem, const wxBitmapBundle& aBitmap );
@@ -1340,6 +1388,7 @@ public:
     /// The wxButton of a standard button.
     wxButton* StandardButtonCompat( QDialogButtonBox::StandardButton aButton ) const;
 
+    wxSize GetSize() const { return wxSize( width(), height() ); }
     void Layout() {}
     void Realize() {}
     void SetSizeHints( wxWidgetArgCompat ) {}
@@ -1604,6 +1653,21 @@ public:
     static void SetAutoPop( long aMilliseconds ) {}
     static void SetReshow( long aMilliseconds ) {}
 };
+
+
+/// True if a key of the keyboard is down: only the modifiers are known (wxGetKeyState()).
+inline bool wxGetKeyState( wxKeyCode aKey )
+{
+    Qt::KeyboardModifiers modifiers = QGuiApplication::queryKeyboardModifiers();
+
+    switch( aKey )
+    {
+    case WXK_SHIFT:   return modifiers & Qt::ShiftModifier;
+    case WXK_ALT:     return modifiers & Qt::AltModifier;
+    case WXK_CONTROL: return modifiers & Qt::ControlModifier;
+    default:          return false;
+    }
+}
 
 
 /// The busy cursor of the application (the calls nest).

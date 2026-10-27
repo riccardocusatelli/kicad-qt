@@ -133,7 +133,7 @@ private:
 class SCH_EDIT_FRAME : public SCH_BASE_FRAME
 {
 public:
-    SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    SCH_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
     ~SCH_EDIT_FRAME() override;
 
     SCH_SCREEN* GetScreen() const override;

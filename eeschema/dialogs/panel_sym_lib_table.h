@@ -55,7 +55,8 @@ private:
      */
     bool verifyTables();
 
-    void browseLibrariesHandler( wxCommandEvent& event ) override;
+    // Bound by the panel itself (the button of the base is a SPLIT_BUTTON without event)
+    void browseLibrariesHandler( wxCommandEvent& event );
     void appendRowHandler( wxCommandEvent& event ) override;
     void deleteRowHandler( wxCommandEvent& event ) override;
     void moveUpHandler( wxCommandEvent& event ) override;

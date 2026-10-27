@@ -23,12 +23,16 @@
 
 /**
  * @file symbol_edit_frame_qt.cpp
- * The parts of SYMBOL_EDIT_FRAME with Qt: the layout of its panes (see
+ * The parts of SYMBOL_EDIT_FRAME with Qt: the layout of its panes and its events (see
  * eeschema/symbol_editor/symbol_edit_frame_wx.cpp).
+ *
+ * The dropped files are received by EDA_BASE_FRAME::dropEvent() and the choices of the zoom and
+ * of the grid by EDA_DRAW_FRAME: the frame has no events of its own for them.
  */
 
 #include <QDockWidget>
 
+#include <kiway.h>
 #include <symbol_edit_frame.h>
 #include <symbol_editor/symbol_editor_settings.h>
 #include <tools/sch_selection_tool.h>
@@ -72,4 +76,11 @@ void SYMBOL_EDIT_FRAME::setupLayout()
     // The selection filter doesn't need to grow in the vertical direction when docked
     resizeDocks( { selectionFilter }, { m_selectionFilterPanel->sizeHint().height() },
                  Qt::Vertical );
+}
+
+
+void SYMBOL_EDIT_FRAME::setupToolkitEvents()
+{
+    BindMenuCommand( wxID_EXIT, [this]() { Kiway().OnKiCadExit(); } );
+    BindMenuCommand( wxID_CLOSE, [this]() { Close( false ); } );
 }

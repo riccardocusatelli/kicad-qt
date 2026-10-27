@@ -225,14 +225,6 @@ kiqt_generate_fbp( KIQT_PCBNEW_GUI_FBP_SRCS
 
 # The dialogs of pcbnew built unchanged on the wxWidgets compatibility layer (qt/wxcompat)
 kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_assign_netclass_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_HTML_reporter_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_choose_project_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_color_settings_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_image_editor_base.fbp
-    ${CMAKE_SOURCE_DIR}/common/widgets/wx_html_report_panel_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_stackup_manager/dialog_dielectric_list_manager_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_stackup_manager/panel_board_finish_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/board_stackup_manager/panel_board_stackup_base.fbp
@@ -486,31 +478,7 @@ add_library( pcbnew_gui_qt STATIC
     ${KIQT_PCBNEW_COMPAT_DIALOGS}
     ${KIQT_PCBNEW_GUI_SRCS}
     ${KIQT_PCBNEW_GUI_FBP_SRCS}
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties.cpp
     ${CMAKE_SOURCE_DIR}/common/board_printout.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_assign_netclass.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_choose_project.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_multi_unit_entry.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_paste_special.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_color_settings.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_image_editor.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
-    ${CMAKE_SOURCE_DIR}/common/dialogs/rule_editor_dialog_base.cpp
-    ${CMAKE_SOURCE_DIR}/common/drawing_sheet/ds_data_model_io.cpp
-    ${CMAKE_SOURCE_DIR}/common/drawing_sheet/ds_proxy_undo_item.cpp
-    ${CMAKE_SOURCE_DIR}/common/import_gfx/dxf_import_plugin.cpp
-    ${CMAKE_SOURCE_DIR}/common/import_gfx/graphics_import_mgr.cpp
-    ${CMAKE_SOURCE_DIR}/common/libraries/lib_table_grid_data_model.cpp
-    ${CMAKE_SOURCE_DIR}/common/pin_numbers.cpp
-    ${CMAKE_SOURCE_DIR}/common/printout.cpp
-    ${CMAKE_SOURCE_DIR}/common/status_popup.cpp
-    ${CMAKE_SOURCE_DIR}/common/tool/design_block_control.cpp
-    ${CMAKE_SOURCE_DIR}/common/tool/embed_tool.cpp
-    ${CMAKE_SOURCE_DIR}/common/tool/group_tool.cpp
-    ${CMAKE_SOURCE_DIR}/common/tool/properties_tool.cpp
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/coupled_microstrip.cpp
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/coupled_stripline.cpp
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/microstrip.cpp
@@ -518,13 +486,8 @@ add_library( pcbnew_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/transline_calculations/transline_calculation_base.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/area_selector.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/footprint_diff_widget.cpp
-    ${CMAKE_SOURCE_DIR}/common/widgets/footprint_preview_widget.cpp
-    ${CMAKE_SOURCE_DIR}/common/widgets/margin_offset_binder.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/netclass_selector.cpp
     ${CMAKE_SOURCE_DIR}/common/widgets/net_selector.cpp
-    ${CMAKE_SOURCE_DIR}/common/widgets/rc_tree_model.cpp
-    ${CMAKE_SOURCE_DIR}/common/widgets/widget_save_restore.cpp
-    ${CMAKE_SOURCE_DIR}/common/widgets/wx_html_report_panel.cpp
     dialogs/dialog_export_step_process_qt.cpp
     dialogs/dialog_move_exact.cpp
     pcb_base_edit_frame_qt.cpp
@@ -543,15 +506,6 @@ add_library( pcbnew_gui_qt STATIC
     widgets/pcb_properties_panel_qt.cpp
     widgets/vertex_editor_pane.cpp
     )
-
-# The 3D mice through libspnav (Linux), as in kicommon and common
-if( UNIX AND NOT APPLE )
-    target_sources( pcbnew_gui_qt PRIVATE
-        ${CMAKE_SOURCE_DIR}/common/spacenav/libspnav_driver.cpp
-        ${CMAKE_SOURCE_DIR}/common/spacenav/spnav_2d_plugin.cpp
-        )
-    target_link_libraries( pcbnew_gui_qt PRIVATE ${SPNAV_LIBRARIES} )
-endif()
 
 set_target_properties( pcbnew_gui_qt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 

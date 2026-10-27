@@ -51,6 +51,7 @@
 
 #include <wx/clipbrd.h>
 #include <wx/msgdlg.h>
+#include <wx/tokenzr.h>
 #include <core/ki_assert.h>
 
 

@@ -127,6 +127,12 @@ WX_SUBCLASS_HEADERS = {
 }
 
 
+# The subclasses of KiCad that are controls of the compatibility layer, not derived from the Qt class
+# of their wx class (FILTER_COMBOBOX is a wxComboCtrl): made with the arguments of wxFormBuilder,
+# their events connected with Bind()
+WX_COMPAT_SUBCLASSES = { 'FILTER_COMBOBOX' }
+
+
 def subclass( aProps ):
     """(class, header, forward declared) of the subclass property, or (None, None, False)."""
     parts = [ p.strip() for p in aProps.get( 'subclass', '' ).split( ';' ) ]
@@ -513,6 +519,8 @@ class Generator:
         self.forms = [ o for o in project.findall( 'object' ) ]
 
         self.ids = []               # the ids of the windows (ID_...), in their order
+        # The ids are an enum of each class instead of macros (as wxFormBuilder with use_enum)
+        self.use_enum = ( self.project.get( 'cpp_use_enum' ) or self.project.get( 'use_enum' ) ) == '1'
         self.includes = set()       # headers of the .h
         self.cpp_includes = set()   # headers of the .cpp
         self.forward = set()        # forward declared classes
@@ -541,12 +549,12 @@ class Generator:
         # The ids of the windows, as wxFormBuilder defines them
         first = parse_int( self.project.get( 'first_id' ), 1000 )
 
-        for n, wid in enumerate( dict.fromkeys( self.ids ) ):
+        for n, wid in enumerate( dict.fromkeys( [] if self.use_enum else self.ids ) ):
             h.append( '#ifndef %s' % wid )
             h.append( '#define %s %d' % ( wid, first + n ) )
             h.append( '#endif' )
 
-        if self.ids:
+        if self.ids and not self.use_enum:
             h.append( '' )
 
         for fwd in sorted( self.forward ):
@@ -582,6 +590,7 @@ class FormClass:
         self.kind = aForm.get( 'class' )
         self.name = self.p['name']
         self.members = []           # (permission, type, name)
+        self.ids = []               # the ids of the windows of the class, in their order
         self.handlers = {}          # name -> parameters
         self.stdHandlers = set()    # the handlers of standard buttons (OK, Cancel...)
         self.code = []              # lines of the constructor
@@ -767,6 +776,10 @@ class FormClass:
             evClass, evType, way = COMPAT_EVENTS[event]
             self.handler( handler, '%s& event' % evClass )
             call = lambda fill = '', args = '': self.compat_call( evClass, evType, aVar, handler, fill, args )
+
+            # A control of the layer (WX_COMPAT_SUBCLASSES) sends its events as wxWidgets
+            if aQtClass == 'wxWindow' and way not in ( 'bind', 'updateui' ):
+                way = 'bind'
 
             if way == 'bind':
                 self.code.append( '    %s->Bind( %s, [this]( %s& aEvent ) { %s( aEvent ); } );'
@@ -1135,6 +1148,11 @@ class FormClass:
 
             if p.get( 'value', '0' ) == '1':
                 self.code.append( '    %s->setChecked( true );' % var )
+
+        elif cls in ( 'wxChoice', 'wxComboBox', 'wxBitmapComboBox' ) and sub in WX_COMPAT_SUBCLASSES \
+                and self.gen.compat:
+            qt = 'QWidget'
+            var, t = make( qt )
 
         elif cls in ( 'wxChoice', 'wxComboBox', 'wxBitmapComboBox' ):
             qt = 'QComboBox'
@@ -1508,7 +1526,11 @@ class FormClass:
 
         self.common( aObj, var )
         self.window_id( aObj, var )
-        self.connect_events( aObj, var, qt if not sub else self.base_qt( cls, style ) )
+        if sub in WX_COMPAT_SUBCLASSES and self.gen.compat:
+            self.connect_events( aObj, var, 'wxWindow' )
+        else:
+            self.connect_events( aObj, var, qt if not sub else self.base_qt( cls, style ) )
+
         return var
 
     def wx_id( self, aProps ):
@@ -1517,6 +1539,7 @@ class FormClass:
 
         if wid not in STANDARD_IDS:
             self.gen.ids.append( wid )
+            self.ids.append( wid )
 
         return wid
 
@@ -1536,6 +1559,7 @@ class FormClass:
         if wid and wid != 'wxID_ANY':
             if wid not in STANDARD_IDS:
                 self.gen.ids.append( wid )
+                self.ids.append( wid )
 
             self.code.append( '    wxSetWindowIdCompat( %s, %s );' % ( aVar, wid ) )
 
@@ -1593,7 +1617,7 @@ class FormClass:
                 klass( 'QWidget' )
 
             var = self.var( aObj, t, 'new %s( %s, %s, %s, wxDefaultPosition, wxDefaultSize, %s )'
-                            % ( t, aParent, self.wx_id( p ), tr( p.get( 'label', '' ) ),
+                            % ( t, aParent, self.wx_id( p ), '_( %s )' % cstr( p.get( 'label', '' ) ),
                                 self.wx_style( p ) ) )
 
             if p.get( 'collapsed', '1' ) == '0':
@@ -2227,6 +2251,17 @@ class FormClass:
                 continue
 
             decl.append( '%s:' % perm )
+
+            if perm == 'protected' and self.gen.use_enum and self.ids:
+                first = parse_int( self.gen.project.get( 'first_id' ), 1000 )
+                decl.append( '    enum' )
+                decl.append( '    {' )
+
+                for n, wid in enumerate( dict.fromkeys( self.ids ) ):
+                    decl.append( '        %s = %d,' % ( wid, first + n ) )
+
+                decl.append( '    };' )
+                decl.append( '' )
 
             for _, t, n in members:
                 if t is None:

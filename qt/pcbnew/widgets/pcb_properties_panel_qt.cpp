@@ -60,8 +60,8 @@ public:
         else
             editor->SetSelectedNetcode( static_cast<int>( aProperty->GetValue().GetLong() ) );
 
-        editor->OnFilteredItemSelected(
-                [editor, aGrid, aProperty]()
+        editor->Bind( FILTERED_ITEM_SELECTED,
+                [editor, aGrid, aProperty]( wxCommandEvent& )
                 {
                     // a net not yet in the choices of the property (a new net)
                     wxString netname = editor->GetSelectedNetname();

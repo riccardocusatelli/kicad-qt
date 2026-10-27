@@ -1533,6 +1533,37 @@ wxSize wxContainingSizerCompat::Fit( wxWindow* aWindow )
 }
 
 
+/// The sizer of @a aLayout or of its sub-layouts which holds @a aWidget.
+static wxSizer* findContainingSizerCompat( QLayout* aLayout, QWidget* aWidget )
+{
+    if( !aLayout )
+        return nullptr;
+
+    if( aLayout->indexOf( aWidget ) >= 0 )
+        return dynamic_cast<wxSizer*>( aLayout );
+
+    for( int i = 0; i < aLayout->count(); ++i )
+    {
+        if( QLayout* child = aLayout->itemAt( i )->layout() )
+        {
+            if( wxSizer* sizer = findContainingSizerCompat( child, aWidget ) )
+                return sizer;
+        }
+    }
+
+    return nullptr;
+}
+
+
+wxSizer* wxWindow::GetContainingSizer() const
+{
+    QWidget* widget = GetHandle();
+    QWidget* parent = widget ? widget->parentWidget() : nullptr;
+
+    return parent ? findContainingSizerCompat( parent->layout(), widget ) : nullptr;
+}
+
+
 wxSizer* wxWindow::GetSizer()
 {
     QWidget* client = GetClientWidgetCompat();

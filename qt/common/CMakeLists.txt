@@ -247,6 +247,16 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_startwizard_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_text_variables_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_toolbar_customization_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/eda_reorderable_list_dialog_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_design_block_lib_table_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_assign_netclass_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_HTML_reporter_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_choose_project_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_rc_job_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_color_settings_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_image_editor_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/widgets/wx_html_report_panel_base.fbp
     )
 
 set( KIQT_COMMON_COMPAT_SRCS
@@ -291,6 +301,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     ui_events.cpp
     validators.cpp
     widgets/button_row_panel.cpp
+    widgets/filter_combobox.cpp
     widgets/font_choice.cpp
     widgets/grid_bitmap_toggle.cpp
     widgets/grid_button.cpp
@@ -309,6 +320,42 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/wx_grid.cpp
     widgets/wx_listbox.cpp
     widgets/zoom_correction_ctrl.cpp
+    ptree.cpp
+    widgets/app_progress_dialog.cpp
+    widgets/footprint_preview_widget.cpp
+    widgets/footprint_select_widget.cpp
+    widgets/listbox_tricks.cpp
+    widgets/wx_bitmap_combobox.cpp
+    dialogs/eda_reorderable_list_dialog.cpp
+    dialogs/panel_design_block_lib_table.cpp
+    dialogs/dialog_book_reporter.cpp
+    dialogs/dialog_group_properties.cpp
+    printout.cpp
+    dialogs/dialog_assign_netclass.cpp
+    dialogs/dialog_import_choose_project.cpp
+    dialogs/dialog_multi_unit_entry.cpp
+    dialogs/dialog_paste_special.cpp
+    dialogs/dialog_rc_job.cpp
+    dialogs/panel_color_settings.cpp
+    dialogs/panel_gal_options.cpp
+    dialogs/panel_image_editor.cpp
+    dialogs/panel_setup_netclasses.cpp
+    dialogs/rule_editor_dialog_base.cpp
+    drawing_sheet/ds_data_model_io.cpp
+    drawing_sheet/ds_proxy_undo_item.cpp
+    import_gfx/dxf_import_plugin.cpp
+    import_gfx/graphics_import_mgr.cpp
+    libraries/lib_table_grid_data_model.cpp
+    pin_numbers.cpp
+    status_popup.cpp
+    tool/design_block_control.cpp
+    tool/embed_tool.cpp
+    tool/group_tool.cpp
+    tool/properties_tool.cpp
+    widgets/margin_offset_binder.cpp
+    widgets/rc_tree_model.cpp
+    widgets/widget_save_restore.cpp
+    widgets/wx_html_report_panel.cpp
     )
 
 list( TRANSFORM KIQT_COMMON_COMPAT_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/ )
@@ -407,7 +454,6 @@ add_library( kiqt_common STATIC
     tool/tool_dispatcher.cpp
     view/qt_view_controls.cpp
     widgets/color_swatch.cpp
-    widgets/filter_combobox.cpp
     widgets/kistatusbar.cpp
     widgets/layer_box_selector.cpp
     widgets/layer_presentation_qt.cpp
@@ -420,7 +466,31 @@ add_library( kiqt_common STATIC
     widgets/wx_busy_indicator.cpp
     )
 
+# The 3D mice through libspnav (Linux), as in kicommon and common
+if( UNIX AND NOT APPLE )
+    target_sources( kiqt_common PRIVATE
+        ${CMAKE_SOURCE_DIR}/common/spacenav/libspnav_driver.cpp
+        ${CMAKE_SOURCE_DIR}/common/spacenav/spnav_2d_plugin.cpp
+        )
+    target_link_libraries( kiqt_common PUBLIC ${SPNAV_LIBRARIES} )
+endif()
+
 set_target_properties( kiqt_common PROPERTIES POSITION_INDEPENDENT_CODE ON )
+
+# The panels of the board settings, the printout and the DXF import shared with eeschema (in common
+# in the wxWidgets build) include headers of pcbnew
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_image_editor.cpp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_setup_netclasses.cpp
+    ${CMAKE_SOURCE_DIR}/common/printout.cpp
+    ${CMAKE_SOURCE_DIR}/common/import_gfx/dxf_import_plugin.cpp
+    PROPERTIES INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/pcbnew
+    )
+
+# The import of the DXF files (the graphics import of pcbnew and eeschema)
+target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/dxflib_qcad )
+target_link_libraries( kiqt_common PRIVATE dxflib_qcad tinyspline_lib )
+
 
 
 # The code of KiCad includes Python.h, whose structures have members named as the keywords of Qt
@@ -446,6 +516,9 @@ target_sources( kiqt_common PRIVATE
     )
 
 target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/scripting )
+
+# The dialogs of common include their headers by name (as in pcbnew and eeschema)
+target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/common/dialogs )
 
 # The actions of the project manager (as in common)
 target_sources( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/common/tool/common_control.cpp )

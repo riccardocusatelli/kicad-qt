@@ -114,6 +114,10 @@ public:
     bool WasCancelled() const { return wasCanceled(); }
     bool WasSkipped() const { return false; }
 
+    /// The layout is the one of the Qt dialog: no sizer.
+    void Layout() {}
+    wxSizer* GetSizer() const { return nullptr; }
+
 private:
     int m_style;
 };

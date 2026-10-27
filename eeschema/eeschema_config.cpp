@@ -328,13 +328,13 @@ void SCH_EDIT_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
         m_show_search = IsPaneShown( SearchPaneName() );
         cfg->m_AuiPanels.show_search = m_show_search;
-        cfg->m_AuiPanels.search_panel_height = m_searchPane->GetSize().y;
-        cfg->m_AuiPanels.search_panel_width = m_searchPane->GetSize().x;
+        cfg->m_AuiPanels.search_panel_height = GetPaneSize( SearchPaneName() ).y;
+        cfg->m_AuiPanels.search_panel_width = GetPaneSize( SearchPaneName() ).x;
         cfg->m_AuiPanels.search_panel_dock_direction = GetPaneDockDirection( SearchPaneName() );
 
         cfg->m_AuiPanels.show_properties = IsPaneShown( PropertiesPaneName() );
         cfg->m_AuiPanels.properties_splitter = m_propertiesPanel->SplitterProportion();
-        cfg->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
+        cfg->m_AuiPanels.properties_panel_width = GetPaneSize( PropertiesPaneName() ).x;
 
         cfg->m_AuiPanels.show_net_nav_panel = IsPaneShown( NetNavigatorPaneName() );
         cfg->m_AuiPanels.float_net_nav_panel = IsPaneFloating( NetNavigatorPaneName() );

@@ -134,6 +134,7 @@ set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_KEPT_TARGETS
     dxflib_qcad markdown_lib tinyspline_lib     # the graphics import, the help of the rules
     pcbnew_qt_kiface pcbnew_qt_kiface_iface
     eeschema_qt_kiface eeschema_qt_kiface_iface
+    eeschema_gui_qt eeschema_qtgui_kiface eeschema_qtgui_kiface_iface
     kicad-qt
     qa_qt_tool_framework qa_qt_tool_framework_objects
     qa_qt_3d_viewer qa_qt_3d_viewer_objects

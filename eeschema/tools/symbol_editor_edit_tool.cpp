@@ -322,41 +322,39 @@ wxImage renderSymbolToImageWithAlpha( SYMBOL_EDIT_FRAME* aFrame, LIB_SYMBOL* aSy
     wxImage result( bitmapWidth, bitmapHeight );
     result.InitAlpha();
 
-    unsigned char* rgbWhite = imageOnWhite.GetData();
-    unsigned char* rgbBlack = imageOnBlack.GetData();
-    unsigned char* rgbResult = result.GetData();
-    unsigned char* alphaResult = result.GetAlpha();
-
-    int pixelCount = bitmapWidth * bitmapHeight;
-
-    for( int i = 0; i < pixelCount; ++i )
+    // The pixels are read and written one by one: the images of the Qt build have no buffer of
+    // RGB components
+    for( int y = 0; y < bitmapHeight; ++y )
     {
-        int idx = i * 3;
-
-        int rW = rgbWhite[idx], gW = rgbWhite[idx + 1], bW = rgbWhite[idx + 2];
-        int rB = rgbBlack[idx], gB = rgbBlack[idx + 1], bB = rgbBlack[idx + 2];
-
-        // Alpha computation: α = 1 - (white - black) / 255
-        int diffR = rW - rB;
-        int diffG = gW - gB;
-        int diffB = bW - bB;
-        int avgDiff = ( diffR + diffG + diffB ) / 3;
-
-        int alpha = 255 - avgDiff;
-        alpha = std::max( 0, std::min( 255, alpha ) );
-        alphaResult[i] = static_cast<unsigned char>( alpha );
-
-        if( alpha > 0 )
+        for( int x = 0; x < bitmapWidth; ++x )
         {
-            rgbResult[idx] = static_cast<unsigned char>( std::min( 255, rB * 255 / alpha ) );
-            rgbResult[idx + 1] = static_cast<unsigned char>( std::min( 255, gB * 255 / alpha ) );
-            rgbResult[idx + 2] = static_cast<unsigned char>( std::min( 255, bB * 255 / alpha ) );
-        }
-        else
-        {
-            rgbResult[idx] = 0;
-            rgbResult[idx + 1] = 0;
-            rgbResult[idx + 2] = 0;
+            int rW = imageOnWhite.GetRed( x, y );
+            int gW = imageOnWhite.GetGreen( x, y );
+            int bW = imageOnWhite.GetBlue( x, y );
+            int rB = imageOnBlack.GetRed( x, y );
+            int gB = imageOnBlack.GetGreen( x, y );
+            int bB = imageOnBlack.GetBlue( x, y );
+
+            // Alpha computation: α = 1 - (white - black) / 255
+            int diffR = rW - rB;
+            int diffG = gW - gB;
+            int diffB = bW - bB;
+            int avgDiff = ( diffR + diffG + diffB ) / 3;
+
+            int alpha = 255 - avgDiff;
+            alpha = std::max( 0, std::min( 255, alpha ) );
+            result.SetAlpha( x, y, static_cast<unsigned char>( alpha ) );
+
+            if( alpha > 0 )
+            {
+                result.SetRGB( x, y, static_cast<unsigned char>( std::min( 255, rB * 255 / alpha ) ),
+                               static_cast<unsigned char>( std::min( 255, gB * 255 / alpha ) ),
+                               static_cast<unsigned char>( std::min( 255, bB * 255 / alpha ) ) );
+            }
+            else
+            {
+                result.SetRGB( x, y, 0, 0, 0 );
+            }
         }
     }
 

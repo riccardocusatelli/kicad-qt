@@ -25,6 +25,7 @@
 #define __SCH_DRAW_PANEL_H
 
 #include <class_draw_panel_gal.h>
+#include <toolkit/toolkit_window_arg.h>
 #include <sch_view.h>
 
 
@@ -35,7 +36,7 @@ class SCH_SCREEN;
 class SCH_DRAW_PANEL : public EDA_DRAW_PANEL_GAL
 {
 public:
-    SCH_DRAW_PANEL( wxWindow* aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
+    SCH_DRAW_PANEL( TOOLKIT_WINDOW_ARG aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
                     const wxSize& aSize, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
                     GAL_TYPE aGalType = GAL_TYPE_OPENGL );
 

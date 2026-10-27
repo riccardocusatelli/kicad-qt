@@ -56,6 +56,21 @@ if( UNIX AND NOT APPLE )
     target_link_libraries( qa_qt_pcbnew_frames PRIVATE ${SPNAV_LIBRARIES} )
 endif()
 
+# The test of the frames of eeschema on Qt: the KIFACE with the GUI makes the original frames
+# (the schematic editor, the symbol editor, the symbol viewer), which open a schematic.
+add_headless_executable( qa_qt_eeschema_frames
+    KIFACE  eeschema_qtgui_kiface
+    SOURCES test_eeschema_frames.cpp
+    )
+
+set_target_properties( qa_qt_eeschema_frames_objects PROPERTIES AUTOMOC OFF )
+target_sources( qa_qt_eeschema_frames PRIVATE $<TARGET_OBJECTS:eeschema_gui_qt> )
+add_dependencies( qa_qt_eeschema_frames eeschema_gui_qt )
+
+if( UNIX AND NOT APPLE )
+    target_link_libraries( qa_qt_eeschema_frames PRIVATE ${SPNAV_LIBRARIES} )
+endif()
+
 # The test of kicad-qt: the program itself (its main() renamed), driven from its event loop: a
 # board opens in the PCB editor of KiCad (_pcbnew_qtgui.kiface), the launcher opens the footprint
 # editor, the shell closes them.

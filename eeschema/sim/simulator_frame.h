@@ -33,6 +33,7 @@
 #include <sim/sim_types.h>
 
 #include <kiway_player.h>
+#include <toolkit/toolkit_types.h>
 #include <dialogs/dialog_sim_command.h>
 
 #include <wx/event.h>
@@ -84,7 +85,7 @@ public:
 class SIMULATOR_FRAME : public KIWAY_PLAYER
 {
 public:
-    SIMULATOR_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    SIMULATOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
     ~SIMULATOR_FRAME();
 
     /**
@@ -196,7 +197,7 @@ public:
     wxString TakeSimReportMessages();
 
     // Simulator doesn't host a canvas
-    wxWindow* GetToolCanvas() const override { return nullptr; }
+    TOOLKIT_WINDOW* GetToolCanvas() const override { return nullptr; }
 
     /**
      * Set the main window title bar text.
@@ -204,8 +205,6 @@ public:
     void UpdateTitle();
 
     void OnModify() override;
-
-    DECLARE_EVENT_TABLE()
 
 private:
     void setupTools();

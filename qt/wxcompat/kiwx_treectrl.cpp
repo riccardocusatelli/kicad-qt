@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cstdint>
 
+#include <QApplication>
 #include <QSignalBlocker>
 #include <QTreeWidgetItemIterator>
 
@@ -384,6 +385,48 @@ void wxTreeCtrl::EditLabel( const wxTreeItemId& aItem )
         item->setFlags( item->flags() | Qt::ItemIsEditable );
         editItem( item, 0 );
     }
+}
+
+
+QWidget* wxTreeCtrl::GetEditControl() const
+{
+    if( state() != QAbstractItemView::EditingState )
+        return nullptr;
+
+    // The editor of the current item has the focus while it is open
+    QWidget* focus = QApplication::focusWidget();
+
+    return focus && isAncestorOf( focus ) ? focus : nullptr;
+}
+
+
+void wxTreeCtrl::EndEditLabel( const wxTreeItemId& aItem, bool aDiscard )
+{
+    QWidget* editor = GetEditControl();
+
+    if( !editor )
+        return;
+
+    if( !aDiscard )
+        commitData( editor );
+
+    closeEditor( editor, QAbstractItemDelegate::NoHint );
+}
+
+
+void wxTreeCtrl::SetFocusedItem( const wxTreeItemId& aItem )
+{
+    if( QTreeWidgetItem* item = ToQtCompat( aItem ) )
+        setCurrentItem( item, 0, QItemSelectionModel::NoUpdate );
+}
+
+
+wxFont wxTreeCtrl::GetItemFont( const wxTreeItemId& aItem ) const
+{
+    if( QTreeWidgetItem* item = ToQtCompat( aItem ) )
+        return wxFont( item->font( 0 ) );
+
+    return wxFont( font() );
 }
 
 

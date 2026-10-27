@@ -322,6 +322,11 @@ public:
     void SetWrapMode( int aMode );
 
     void SetScrollWidth( int aWidth ) {}
+
+    /// The extra spaces above and below the lines (the lines of Qt have their own spacing).
+    void SetExtraAscent( int aExtra ) {}
+    void SetExtraDescent( int aExtra ) {}
+    int TextHeight( int aLine ) const { return fontMetrics().lineSpacing(); }
     void SetScrollWidthTracking( bool aTracking ) {}
     void SetUseHorizontalScrollBar( bool aShow );
     void SetUseVerticalScrollBar( bool aShow );

@@ -94,7 +94,7 @@
 #include <kiplatform/io.h>
 
 #include "widgets/filedlg_hook_save_project.h"
-#include "widgets/panel_remote_symbol.h"
+#include <widgets/panel_remote_symbol.h>
 #include "save_project_utils.h"
 #include <core/ki_log.h>
 #include <core/ki_assert.h>

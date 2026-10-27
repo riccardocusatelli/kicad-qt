@@ -169,6 +169,14 @@ public:
      */
     ACTION_MENU_ITEM Add( ACTION_MENU* aMenu );
 
+    /// Add a submenu with a label (wxMenu::AppendSubMenu()); the menu takes its ownership.
+    ACTION_MENU_ITEM AppendSubMenu( ACTION_MENU* aMenu, const wxString& aLabel,
+                                    const wxString& aHelp = wxEmptyString )
+    {
+        aMenu->SetTitle( aLabel );
+        return Add( aMenu );
+    }
+
     /// Add a separator.
     void AppendSeparator();
 

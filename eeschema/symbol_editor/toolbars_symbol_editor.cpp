@@ -38,7 +38,6 @@
 #include <tools/sch_selection_tool.h>
 #include <widgets/sch_properties_panel.h>
 #include <widgets/sch_properties_panel.h>
-#include <widgets/wx_aui_utils.h>
 #include <wx/combobox.h>
 
 #ifdef __UNIX__
@@ -175,6 +174,9 @@ void SYMBOL_EDIT_FRAME::configureToolbars()
                                                       wxEmptyString, wxDefaultPosition,
                                                       wxSize( LISTBOX_WIDTH, -1 ), 0,
                                                       nullptr, wxCB_READONLY );
+
+                    m_unitSelectBox->Bind( wxEVT_COMBOBOX, &SYMBOL_EDIT_FRAME::OnSelectUnit, this );
+                    m_unitSelectBox->Bind( wxEVT_UPDATE_UI, &SYMBOL_EDIT_FRAME::OnUpdateUnitNumber, this );
                 }
 
                 aToolbar->Add( m_unitSelectBox );
@@ -189,6 +191,9 @@ void SYMBOL_EDIT_FRAME::configureToolbars()
                                                            wxEmptyString, wxDefaultPosition,
                                                            wxSize( LISTBOX_WIDTH, -1 ), 0,
                                                            nullptr, wxCB_READONLY );
+
+                    m_bodyStyleSelectBox->Bind( wxEVT_COMBOBOX, &SYMBOL_EDIT_FRAME::OnSelectBodyStyle, this );
+                    m_bodyStyleSelectBox->Bind( wxEVT_UPDATE_UI, &SYMBOL_EDIT_FRAME::OnUpdateBodyStyle, this );
                 }
 
                 aToolbar->Add( m_bodyStyleSelectBox );

@@ -162,6 +162,31 @@ private:
 };
 
 
+/**
+ * Collects the errors, the warnings and the messages; Flush() shows them together (with the
+ * function given to SetShowFunction() by the GUI toolkit, else on stderr).
+ */
+class wxLogGui : public wxLog
+{
+public:
+    /// Show the messages; @a aLevel is the most severe of them.
+    using SHOW_FUNCTION = void ( * )( const wxArrayString& aMessages, wxLogLevel aLevel );
+
+    static void SetShowFunction( SHOW_FUNCTION aFunction );
+
+    void Flush() override;
+
+protected:
+    void DoLogRecord( wxLogLevel aLevel, const wxString& aMsg,
+                      const wxLogRecordInfo& aInfo ) override;
+
+    bool          m_bErrors = false;
+    bool          m_bWarnings = false;
+    bool          m_bHasMessages = false;
+    wxArrayString m_aMessages;
+};
+
+
 /// Disables logging while it exists.
 class wxLogNull
 {

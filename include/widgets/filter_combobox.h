@@ -27,6 +27,8 @@
 #include <memory>
 #include <optional>
 
+#include <toolkit/toolkit_window_arg.h>
+
 #include <wx/panel.h>
 #include <wx/combo.h>
 #include <wx/listbox.h>
@@ -128,11 +130,11 @@ class FILTER_COMBOBOX : public wxComboCtrl
 {
 public:
     // C'tor matching wxFormBuilder's Custom Control
-    FILTER_COMBOBOX( wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
+    FILTER_COMBOBOX( TOOLKIT_WINDOW_ARG parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
                      const wxSize& size = wxDefaultSize, long style = 0 );
 
     // C'tor matching wxFormBuilder's ComboxBox.
-    FILTER_COMBOBOX( wxWindow* parent, wxWindowID id, const wxString& value,
+    FILTER_COMBOBOX( TOOLKIT_WINDOW_ARG parent, wxWindowID id, const wxString& value,
                      const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize,
                      int count = 0, wxString strings[] = nullptr, long style = 0 );
 

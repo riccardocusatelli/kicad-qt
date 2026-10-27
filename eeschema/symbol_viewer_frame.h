@@ -50,7 +50,7 @@ public:
      * @param aFrameType must be either #FRAME_SCH_LIB_VIEWER or #FRAME_SCH_LIB_VIEWER_MODAL.
      * @param aLibrary is the library to open when starting (default = NULL).
      */
-    SYMBOL_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    SYMBOL_VIEWER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
     ~SYMBOL_VIEWER_FRAME();
 
@@ -130,17 +130,20 @@ protected:
      */
     void setupLayout( wxPanel* libPanel, wxPanel* symbolPanel );
 
-    void doReCreateMenuBar() override;
-
-private:
-    // Set up the tool framework.
-    void setupTools();
+    /// The events of the frame that depend on the toolkit (see symbol_viewer_frame_wx.cpp).
+    void setupToolkitEvents();
 
     /**
      * Called when the frame is activated to reload the libraries and symbol lists
      * that can be changed by the schematic editor or the library editor.
      */
-    void OnActivate( wxActivateEvent& event );
+    void handleActivateEvent( bool aActive ) override;
+
+    void doReCreateMenuBar() override;
+
+private:
+    // Set up the tool framework.
+    void setupTools();
 
     void DClickOnSymbolList( wxCommandEvent& event );
 
@@ -186,8 +189,6 @@ private:
     bool                m_selection_changed;
 
     std::unique_ptr<LIB_SYMBOL> m_previewItem;
-
-    DECLARE_EVENT_TABLE()
 };
 
 #endif  // LIB_VIEW_FRAME_H__

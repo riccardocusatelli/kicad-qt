@@ -42,12 +42,14 @@
 #include <vector>
 
 #include <QColor>
+#include <QCursor>
 #include <QFont>
 #include <QIcon>
 #include <QImage>
 #include <QPixmap>
 #include <QTransform>
 
+#include <wx/arrstr.h>
 #include <wx/gdicmn.h>
 #include <wx/string.h>
 
@@ -225,6 +227,12 @@ public:
 
     /// A lighter (> 100) or darker (< 100) colour.
     wxColour ChangeLightness( int aAlpha ) const;
+
+    /// The perceived brightness of the colour, between 0 and 1.
+    double GetLuminance() const
+    {
+        return ( 0.299 * Red() + 0.587 * Green() + 0.114 * Blue() ) / 255.0;
+    }
 
     bool operator==( const wxColour& aOther ) const
     {
@@ -475,6 +483,89 @@ class wxOutputStream;
 
 
 /// An image (wxImage): a QImage with the API of wxWidgets, RGB with an optional alpha.
+/// The stock cursors (wxStockCursor), in the order of wxWidgets.
+enum wxStockCursor
+{
+    wxCURSOR_NONE,
+    wxCURSOR_ARROW,
+    wxCURSOR_RIGHT_ARROW,
+    wxCURSOR_BULLSEYE,
+    wxCURSOR_CHAR,
+    wxCURSOR_CROSS,
+    wxCURSOR_HAND,
+    wxCURSOR_IBEAM,
+    wxCURSOR_LEFT_BUTTON,
+    wxCURSOR_MAGNIFIER,
+    wxCURSOR_MIDDLE_BUTTON,
+    wxCURSOR_NO_ENTRY,
+    wxCURSOR_PAINT_BRUSH,
+    wxCURSOR_PENCIL,
+    wxCURSOR_POINT_LEFT,
+    wxCURSOR_POINT_RIGHT,
+    wxCURSOR_QUESTION_ARROW,
+    wxCURSOR_RIGHT_BUTTON,
+    wxCURSOR_SIZENESW,
+    wxCURSOR_SIZENS,
+    wxCURSOR_SIZENWSE,
+    wxCURSOR_SIZEWE,
+    wxCURSOR_SIZING,
+    wxCURSOR_SPRAYCAN,
+    wxCURSOR_WAIT,
+    wxCURSOR_WATCH,
+    wxCURSOR_BLANK,
+    wxCURSOR_DEFAULT,
+    wxCURSOR_ARROWWAIT,
+    wxCURSOR_MAX
+};
+
+
+/// A cursor: a QCursor with the API of wxWidgets (a null cursor is the default one).
+class wxCursor
+{
+public:
+    wxCursor() = default;
+    wxCursor( const QCursor& aCursor ) : m_cursor( aCursor ), m_ok( true ) {}
+
+    wxCursor( wxStockCursor aId ) : m_ok( aId != wxCURSOR_NONE )
+    {
+        switch( aId )
+        {
+        case wxCURSOR_CHAR:
+        case wxCURSOR_IBEAM:          m_cursor = QCursor( Qt::IBeamCursor );        break;
+        case wxCURSOR_CROSS:
+        case wxCURSOR_BULLSEYE:       m_cursor = QCursor( Qt::CrossCursor );        break;
+        case wxCURSOR_HAND:           m_cursor = QCursor( Qt::PointingHandCursor ); break;
+        case wxCURSOR_NO_ENTRY:       m_cursor = QCursor( Qt::ForbiddenCursor );    break;
+        case wxCURSOR_QUESTION_ARROW: m_cursor = QCursor( Qt::WhatsThisCursor );    break;
+        case wxCURSOR_SIZENESW:       m_cursor = QCursor( Qt::SizeBDiagCursor );    break;
+        case wxCURSOR_SIZENS:         m_cursor = QCursor( Qt::SizeVerCursor );      break;
+        case wxCURSOR_SIZENWSE:       m_cursor = QCursor( Qt::SizeFDiagCursor );    break;
+        case wxCURSOR_SIZEWE:         m_cursor = QCursor( Qt::SizeHorCursor );      break;
+        case wxCURSOR_SIZING:         m_cursor = QCursor( Qt::SizeAllCursor );      break;
+        case wxCURSOR_WAIT:
+        case wxCURSOR_WATCH:          m_cursor = QCursor( Qt::WaitCursor );         break;
+        case wxCURSOR_ARROWWAIT:      m_cursor = QCursor( Qt::BusyCursor );         break;
+        case wxCURSOR_BLANK:          m_cursor = QCursor( Qt::BlankCursor );        break;
+        default:                      m_cursor = QCursor( Qt::ArrowCursor );        break;
+        }
+    }
+
+    bool IsOk() const { return m_ok; }
+    operator QCursor() const { return m_cursor; }
+
+private:
+    QCursor m_cursor;
+    bool    m_ok = false;
+};
+
+
+/// The default cursor (no cursor of its own).
+inline const wxCursor wxNullCursor;
+#define wxSTANDARD_CURSOR wxCursor( wxCURSOR_ARROW )
+#define wxHOURGLASS_CURSOR wxCursor( wxCURSOR_WAIT )
+#define wxCROSS_CURSOR wxCursor( wxCURSOR_CROSS )
+
+
 class KIQT_API wxImage : public QImage
 {
 public:
@@ -503,6 +594,10 @@ public:
 
     /// Add an alpha channel (opaque).
     void InitAlpha();
+
+    /// Add an alpha channel: opaque, or the values of @a aAlpha (one per pixel, freed with
+    /// free() unless @a aStaticData).
+    void SetAlpha( unsigned char* aAlpha = nullptr, bool aStaticData = false );
 
     void SetRGB( int aX, int aY, unsigned char aRed, unsigned char aGreen, unsigned char aBlue );
     void SetAlpha( int aX, int aY, unsigned char aAlpha );
@@ -627,6 +722,17 @@ public:
         bundle.addPixmap( aBitmap2 );
         return bundle;
     }
+};
+
+
+/// The icons of a window at several sizes (wxIconBundle).
+class wxIconBundle : public wxBitmapBundle
+{
+public:
+    wxIconBundle() = default;
+
+    void AddIcon( const wxBitmap& aIcon ) { addPixmap( aIcon ); }
+    bool IsEmpty() const { return isNull(); }
 };
 
 
@@ -903,6 +1009,12 @@ public:
     wxSize GetTextExtent( const wxString& aText ) const;
     wxSize GetMultiLineTextExtent( const wxString& aText ) const;
 
+    wxCoord GetCharHeight() const;
+    wxCoord GetCharWidth() const;
+
+    /// The widths of the beginnings of a text (of its first character, of its first two...).
+    bool GetPartialTextExtents( const wxString& aText, wxArrayInt& aWidths ) const;
+
     void SetClippingRegion( const wxRect& aRect );
     void SetClippingRegion( int aX, int aY, int aWidth, int aHeight );
 
@@ -1061,8 +1173,13 @@ public:
 
     const QImage* GetImageCompat() const override { return &m_image; }
 
+    /// The bitmap of the drawing (a copy of the drawing for a constant bitmap).
+    wxBitmap& GetSelectedBitmap();
+
 private:
     void release();
+
+    wxBitmap                  m_sourceCompat;
 
     std::unique_ptr<QPainter> m_ownPainter;
     QImage                    m_image;

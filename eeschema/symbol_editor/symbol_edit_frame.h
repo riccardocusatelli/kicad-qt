@@ -54,7 +54,7 @@ class EDA_LIST_DIALOG;
 class SYMBOL_EDIT_FRAME : public SCH_BASE_FRAME
 {
 public:
-    SYMBOL_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    SYMBOL_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
     ~SYMBOL_EDIT_FRAME() override;
 
@@ -427,6 +427,9 @@ protected:
      */
     void setupLayout();
 
+    /// The events of the frame that depend on the toolkit (see symbol_edit_frame_wx.cpp).
+    void setupToolkitEvents();
+
     void doReCreateMenuBar() override;
 
     void updateSelectionFilterVisbility() override;
@@ -534,7 +537,6 @@ private:
      */
     bool replaceLibTableEntry( const wxString& aLibNickname, const wxString& aLibFile );
 
-    DECLARE_EVENT_TABLE()
 
 public:
     /**

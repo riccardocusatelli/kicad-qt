@@ -81,6 +81,25 @@ wxComboCtrl::wxComboCtrl( wxWidgetArgCompat aParent, int aId, const wxString& aV
 
     QObject::connect( m_button, &QToolButton::clicked, this, [this]() { OnButtonClick(); } );
 
+    // The events of the text of the control are the ones of the control, as with wxWidgets
+    QObject::connect( m_text, &QLineEdit::textChanged, this,
+                      [this]( const QString& aText )
+                      {
+                          wxCommandEvent event( wxEVT_TEXT, GetId() );
+                          event.SetEventObject( this );
+                          event.SetString( ToWxString( aText ) );
+                          ProcessWindowEvent( event );
+                      } );
+
+    QObject::connect( m_text, &QLineEdit::returnPressed, this,
+                      [this]()
+                      {
+                          wxCommandEvent event( wxEVT_TEXT_ENTER, GetId() );
+                          event.SetEventObject( this );
+                          event.SetString( GetValue() );
+                          ProcessWindowEvent( event );
+                      } );
+
     if( !aName.IsEmpty() )
         SetName( aName );
 }
@@ -115,6 +134,31 @@ void wxComboCtrl::SetPopupControl( wxComboPopup* aPopup )
     {
         m_popup->InitBase( this );
         m_popup->Init();
+
+        // As wxWidgets, the popup is created now unless it asks to be created when shown
+        if( !m_popup->LazyCreate() )
+            createPopupCompat();
+    }
+}
+
+
+void wxComboCtrl::createPopupCompat()
+{
+    if( !m_popupWindow )
+    {
+        m_popupWindow = new QFrame( this, Qt::Popup );
+        m_popupWindow->setFrameShape( QFrame::StyledPanel );
+        QVBoxLayout* layout = new QVBoxLayout( m_popupWindow );
+        layout->setContentsMargins( 1, 1, 1, 1 );
+    }
+
+    if( !m_popup->m_created )
+    {
+        m_popup->m_created = true;
+        m_popup->Create( wxWindowFromQt( m_popupWindow ) );
+
+        if( wxWindow* control = m_popup->GetControl() )
+            m_popupWindow->layout()->addWidget( control->GetHandle() );
     }
 }
 
@@ -136,22 +180,7 @@ void wxComboCtrl::Popup()
     if( !m_popup )
         return;
 
-    if( !m_popupWindow )
-    {
-        m_popupWindow = new QFrame( this, Qt::Popup );
-        m_popupWindow->setFrameShape( QFrame::StyledPanel );
-        QVBoxLayout* layout = new QVBoxLayout( m_popupWindow );
-        layout->setContentsMargins( 1, 1, 1, 1 );
-    }
-
-    if( !m_popup->m_created )
-    {
-        m_popup->Create( wxWindowFromQt( m_popupWindow ) );
-        m_popup->m_created = true;
-
-        if( wxWindow* control = m_popup->GetControl() )
-            m_popupWindow->layout()->addWidget( control->GetHandle() );
-    }
+    createPopupCompat();
 
     m_popup->SetStringValue( GetValue() );
 

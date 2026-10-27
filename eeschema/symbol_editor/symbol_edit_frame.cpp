@@ -100,28 +100,7 @@
 bool SYMBOL_EDIT_FRAME::m_showDeMorgan = false;
 
 
-BEGIN_EVENT_TABLE( SYMBOL_EDIT_FRAME, SCH_BASE_FRAME )
-    EVT_COMBOBOX( ID_LIBEDIT_SELECT_UNIT_NUMBER, SYMBOL_EDIT_FRAME::OnSelectUnit )
-    EVT_COMBOBOX( ID_LIBEDIT_SELECT_BODY_STYLE, SYMBOL_EDIT_FRAME::OnSelectBodyStyle )
-
-    // menubar commands
-    EVT_MENU( wxID_EXIT, SYMBOL_EDIT_FRAME::OnExitKiCad )
-    EVT_MENU( wxID_CLOSE, SYMBOL_EDIT_FRAME::CloseWindow )
-
-    // Update user interface elements.
-    EVT_UPDATE_UI( ID_LIBEDIT_SELECT_UNIT_NUMBER, SYMBOL_EDIT_FRAME::OnUpdateUnitNumber )
-    EVT_UPDATE_UI( ID_LIBEDIT_SELECT_BODY_STYLE, SYMBOL_EDIT_FRAME::OnUpdateBodyStyle )
-
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, SYMBOL_EDIT_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, SYMBOL_EDIT_FRAME::OnSelectGrid )
-
-    // Drop files event
-    EVT_DROP_FILES( SYMBOL_EDIT_FRAME::OnDropFiles )
-
-END_EVENT_TABLE()
-
-
-SYMBOL_EDIT_FRAME::SYMBOL_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+SYMBOL_EDIT_FRAME::SYMBOL_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         SCH_BASE_FRAME( aKiway, aParent, FRAME_SCH_SYMBOL_EDITOR, _( "Library Editor" ),
                         wxDefaultPosition, wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE,
                         LIB_EDIT_FRAME_NAME ),
@@ -234,10 +213,7 @@ SYMBOL_EDIT_FRAME::SYMBOL_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Library changes are unsaved" ) );
 
-    // Catch unhandled accelerator command characters that were no handled by the library tree
-    // panel.
-    Bind( wxEVT_CHAR, &TOOL_DISPATCHER::DispatchWxEvent, m_toolDispatcher );
-    Bind( wxEVT_CHAR_HOOK, &TOOL_DISPATCHER::DispatchWxEvent, m_toolDispatcher );
+    setupToolkitEvents();
 
     // Ensure the window is on top
     Raise();
@@ -741,7 +717,7 @@ void SYMBOL_EDIT_FRAME::ToggleProperties()
     if( !m_propertiesPanel )
         return;
 
-    bool show = !m_propertiesPanel->IsShownOnScreen();
+    bool show = !IsPaneShown( PropertiesPaneName() );
 
     ShowPane( PropertiesPaneName(), show );
     updateSelectionFilterVisbility();
@@ -752,7 +728,7 @@ void SYMBOL_EDIT_FRAME::ToggleProperties()
     }
     else
     {
-        m_settings->m_AuiPanels.properties_panel_width = m_propertiesPanel->GetSize().x;
+        m_settings->m_AuiPanels.properties_panel_width = GetPaneSize( PropertiesPaneName() ).x;
     }
 
     UpdatePanes();
