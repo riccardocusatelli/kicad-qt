@@ -138,24 +138,16 @@ void wxFillKeyEventCompat( wxKeyEvent& aEvent, QEvent* aQtEvent )
         return;
 
     aEvent.m_keyCode = TOOLKIT::KeyCodeFromQt( *key );
-    aEvent.m_modifiers = 0;
     aEvent.m_uniChar = key->text().isEmpty() ? 0 : wxChar( key->text().front().unicode() );
 
     // The letters are the upper case ones, as the codes of the keys of wxWidgets
     if( aEvent.m_uniChar >= 'a' && aEvent.m_uniChar <= 'z' )
         aEvent.m_uniChar -= 'a' - 'A';
 
-    if( key->modifiers() & Qt::ShiftModifier )
-        aEvent.m_modifiers |= wxMOD_SHIFT;
-
-    if( key->modifiers() & Qt::ControlModifier )
-        aEvent.m_modifiers |= wxMOD_CONTROL;
-
-    if( key->modifiers() & Qt::AltModifier )
-        aEvent.m_modifiers |= wxMOD_ALT;
-
-    if( key->modifiers() & Qt::MetaModifier )
-        aEvent.m_modifiers |= wxMOD_META;
+    aEvent.m_shiftDown = key->modifiers() & Qt::ShiftModifier;
+    aEvent.m_controlDown = key->modifiers() & Qt::ControlModifier;
+    aEvent.m_altDown = key->modifiers() & Qt::AltModifier;
+    aEvent.m_metaDown = key->modifiers() & Qt::MetaModifier;
 }
 
 

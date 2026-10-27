@@ -250,6 +250,7 @@ COMPAT_CLASSES = {
     'wxStyledTextCtrl': 'wxStyledTextCtrl',
     'wxGenericDirCtrl': 'wxGenericDirCtrl',
     'wxDatePickerCtrl': 'wxDatePickerCtrl',
+    'wxPropertyGridManager': 'wxPropertyGridManager',
 }
 
 # The events of the compatibility mode: name -> (class of the event, type of the event, how it
@@ -1056,7 +1057,7 @@ class FormClass:
                 # The arguments of the constructors of wxWidgets, for the controls made with them
                 if cls not in ( 'wxHyperlinkCtrl', 'wxFilePickerCtrl', 'wxDirPickerCtrl', 'wxListCtrl',
                                 'wxTreeCtrl', 'wxDataViewCtrl', 'wxDataViewListCtrl', 'wxDataViewTreeCtrl',
-                                'wxGrid', 'wxGenericDirCtrl' ):
+                                'wxGrid', 'wxGenericDirCtrl', 'wxPropertyGridManager' ):
                     args = aParent
             else:
                 self.qt( aQtClass )
@@ -1143,6 +1144,10 @@ class FormClass:
                 self.radioGroup = self.tmp( 'radioGroup' )
                 self.qt( 'QButtonGroup' )
                 self.code.append( '    QButtonGroup* %s = new QButtonGroup( this );' % self.radioGroup )
+
+                # As in wxWidgets, the first button of a group is selected
+                if self.gen.compat:
+                    self.code.append( '    %s->setChecked( true );' % var )
 
             self.code.append( '    %s->addButton( %s );' % ( self.radioGroup, var ) )
 
@@ -1318,6 +1323,23 @@ class FormClass:
 
             if aObj.findall( 'object' ):
                 raise FbpError( 'columns of %s in the fbp: not supported' % cls )
+
+        elif cls == 'wxPropertyGridManager' and self.gen.compat:
+            # The property grid of the compatibility layer, with its pages
+            qt = 'QWidget'
+            self.include( '<wx/propgrid/manager.h>' )
+            var, t = make( qt, '%s, wxID_ANY, wxDefaultPosition, wxDefaultSize, %s'
+                               % ( aParent, self.wx_style( p ) ) )
+
+            if p.get( 'extra_style', '' ).strip():
+                self.code.append( '    %s->SetExtraStyle( %s );' % ( var, p['extra_style'].strip() ) )
+
+            for page in aObj.findall( 'object' ):
+                if page.get( 'class' ) != 'propGridPage':
+                    raise FbpError( 'child %s of %s: not supported' % ( page.get( 'class' ), cls ) )
+
+                self.var( page, 'wxPropertyGridPage', '%s->AddPage( _( %s ), wxNullBitmap )'
+                                                      % ( var, cstr( props( page ).get( 'label', '' ) ) ) )
 
         elif cls == 'wxListCtrl':
             # The report view of a list (the columns are added by the code of the dialog)

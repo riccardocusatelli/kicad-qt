@@ -49,6 +49,7 @@ set( KIQT_EESCHEMA_GUI_SRCS
     dialogs/dialog_export_netlist.cpp
     dialogs/dialog_field_properties.cpp
     dialogs/dialog_global_edit_text_and_graphics.cpp
+    dialogs/dialog_ibis_parser_reporter.cpp
     dialogs/dialog_image_properties.cpp
     dialogs/dialog_import_symbol_select.cpp
     dialogs/dialog_junction_props.cpp
@@ -67,6 +68,7 @@ set( KIQT_EESCHEMA_GUI_SRCS
     dialogs/dialog_sch_import_settings.cpp
     dialogs/dialog_schematic_setup.cpp
     dialogs/dialog_shape_properties.cpp
+    dialogs/dialog_sim_model.cpp
     dialogs/dialog_sheet_pin_properties.cpp
     dialogs/dialog_sheet_properties.cpp
     dialogs/dialog_symbol_chooser.cpp
@@ -187,6 +189,7 @@ set( KIQT_EESCHEMA_GUI_SRCS
     widgets/search_handlers.cpp
     widgets/symbol_diff_widget.cpp
     widgets/symbol_filter_combobox.cpp
+    sim/sim_property.cpp
     widgets/symbol_preview_widget.cpp
     )
 
@@ -198,6 +201,8 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_change_symbols_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_database_lib_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_edit_symbols_libid_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_ibis_parser_reporter_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_model_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_erc_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_export_netlist_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_field_properties_base.fbp

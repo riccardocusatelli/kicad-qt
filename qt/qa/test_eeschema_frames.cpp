@@ -33,6 +33,11 @@
 #include <QFileInfo>
 #include <QImage>
 #include <QTemporaryDir>
+#include <QTimer>
+#include <QComboBox>
+#include <QRadioButton>
+#include <QTreeWidget>
+#include <QTreeWidgetItemIterator>
 #include <wx/init.h>
 
 #include <kiqt_app.h>
@@ -108,6 +113,87 @@ bool canvasDraws( EDA_DRAW_PANEL_GAL* aCanvas, const QString& aScreenshot )
         image.save( aScreenshot );
 
     return varied;
+}
+
+
+/// The editor of the simulation model (DIALOG_SIM_MODEL, with its property grid), opened by a
+/// button of the symbol properties dialog: shown with the parameters of the model, then closed.
+void testSimModelDialog( QDialog* aParent, const QString& aButton, const QString& aScreenshot )
+{
+    bool shown = false;
+    int  params = 0;
+
+    QTimer* poll = new QTimer();
+
+    QObject::connect( poll, &QTimer::timeout, poll,
+                      [&, poll]()
+                      {
+                          for( QWidget* widget : QApplication::topLevelWidgets() )
+                          {
+                              QDialog* dialog = qobject_cast<QDialog*>( widget );
+
+                              if( !dialog || dialog == aParent || !dialog->isVisible() )
+                                  continue;
+
+                              poll->stop();
+                              poll->deleteLater();
+                              shown = true;
+                              settle( 200 );
+
+                              // The built-in model: its parameters in the property grid
+                              for( QRadioButton* radio : dialog->findChildren<QRadioButton*>() )
+                              {
+                                  if( radio->text() == QStringLiteral( "Built-in SPICE model" ) )
+                                      radio->click();
+                              }
+
+                              settle( 300 );
+
+                              // A device of the built-in models: the resistor
+                              for( QComboBox* combo : dialog->findChildren<QComboBox*>() )
+                              {
+                                  int index = combo->findText( QStringLiteral( "Resistor" ) );
+
+                                  if( index >= 0 && combo->isEnabled() )
+                                  {
+                                      combo->setCurrentIndex( index );
+                                      Q_EMIT combo->activated( index );
+                                      break;
+                                  }
+                              }
+
+                              settle( 300 );
+
+                              for( QTreeWidget* tree : dialog->findChildren<QTreeWidget*>() )
+                              {
+                                  for( QTreeWidgetItemIterator it( tree ); *it; ++it )
+                                  {
+                                      if( !( *it )->isHidden() && ( *it )->childCount() == 0 )
+                                          params++;
+                                  }
+                              }
+
+                              if( !aScreenshot.isEmpty() )
+                                  dialog->grab().save( aScreenshot );
+
+                              if( !pressButton( dialog, QStringLiteral( "Cancel" ) ) )
+                                  dialog->reject();
+
+                              return;
+                          }
+                      } );
+
+    poll->start( 20 );
+    QPointer<QTimer> pollPtr( poll );
+
+    check( pressButton( aParent, aButton ), "the simulation model button" );
+    settle( 300 );
+
+    if( pollPtr && !shown )
+        delete pollPtr.data();
+
+    check( shown, "the simulation model dialog is shown" );
+    check( params > 0, "the simulation model dialog shows the parameters of a resistor" );
 }
 
 
@@ -254,7 +340,12 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const QString
         selTool->ClearSelection();
         selTool->AddItemToSel( symbol );
         testDialog( toolMgr, SCH_ACTIONS::properties, "symbol properties", aScreenshot,
-                    QStringLiteral( "Cancel" ) );
+                    QStringLiteral( "Cancel" ),
+                    [&]( QDialog* aDialog )
+                    {
+                        testSimModelDialog( aDialog, QStringLiteral( "Simulation Model..." ),
+                                            screenshotPath( aScreenshot, "sim-model" ) );
+                    } );
         selTool->ClearSelection();
     }
 

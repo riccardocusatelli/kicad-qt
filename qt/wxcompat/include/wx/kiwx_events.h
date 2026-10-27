@@ -617,7 +617,7 @@ class wxKeyEvent : public wxEvent
 public:
     explicit wxKeyEvent( wxEventType aType = wxEVT_NULL ) :
             wxEvent( 0, aType ),
-            m_keyCode( 0 ), m_modifiers( 0 ), m_uniChar( 0 )
+            m_keyCode( 0 ), m_uniChar( 0 )
     {
     }
 
@@ -627,15 +627,28 @@ public:
     wxChar GetUnicodeKey() const { return m_uniChar; }
     int GetRawKeyCode() const { return m_keyCode; }
 
-    int GetModifiers() const { return m_modifiers; }
-    bool HasAnyModifiers() const { return m_modifiers != 0; }
-    bool HasModifiers() const { return ( m_modifiers & ~wxMOD_SHIFT ) != 0; }
-    bool ShiftDown() const { return m_modifiers & wxMOD_SHIFT; }
-    bool ControlDown() const { return m_modifiers & wxMOD_CONTROL; }
-    bool RawControlDown() const { return m_modifiers & wxMOD_RAW_CONTROL; }
-    bool CmdDown() const { return m_modifiers & wxMOD_CMD; }
-    bool AltDown() const { return m_modifiers & wxMOD_ALT; }
-    bool MetaDown() const { return m_modifiers & wxMOD_META; }
+    int GetModifiers() const
+    {
+        return ( m_shiftDown ? wxMOD_SHIFT : 0 ) | ( m_controlDown ? wxMOD_CONTROL : 0 )
+               | ( m_altDown ? wxMOD_ALT : 0 ) | ( m_metaDown ? wxMOD_META : 0 );
+    }
+
+    void SetModifiersCompat( int aModifiers )
+    {
+        m_shiftDown = aModifiers & wxMOD_SHIFT;
+        m_controlDown = aModifiers & wxMOD_CONTROL;
+        m_altDown = aModifiers & wxMOD_ALT;
+        m_metaDown = aModifiers & wxMOD_META;
+    }
+
+    bool HasAnyModifiers() const { return GetModifiers() != 0; }
+    bool HasModifiers() const { return ( GetModifiers() & ~wxMOD_SHIFT ) != 0; }
+    bool ShiftDown() const { return m_shiftDown; }
+    bool ControlDown() const { return m_controlDown; }
+    bool RawControlDown() const { return m_controlDown; }
+    bool CmdDown() const { return m_controlDown; }
+    bool AltDown() const { return m_altDown; }
+    bool MetaDown() const { return m_metaDown; }
 
     /// The key is in a category of keys (WXK_CATEGORY_TAB...).
     bool IsKeyInCategory( int aCategory ) const
@@ -667,8 +680,13 @@ public:
     void DoAllowNextEvent() {}
 
     int    m_keyCode;
-    int    m_modifiers;
     wxChar m_uniChar;
+
+    // The state of the modifiers (wxKeyboardState): the code of KiCad changes them
+    bool m_shiftDown = false;
+    bool m_controlDown = false;
+    bool m_altDown = false;
+    bool m_metaDown = false;
 };
 
 
