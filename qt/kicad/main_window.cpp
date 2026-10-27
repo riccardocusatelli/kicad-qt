@@ -160,8 +160,16 @@ MAIN_WINDOW::MAIN_WINDOW( KIWAY& aKiway ) :
              {
                  openDocument( siblingFile( QStringLiteral( "kicad_pcb" ) ) );
              } );
+    connect( m_launcher, &LAUNCHER_PANEL::symbolEditorRequested, this,
+             [this]()
+             {
+                 openLibraryEditor( FRAME_SCH_SYMBOL_EDITOR );
+             } );
     connect( m_launcher, &LAUNCHER_PANEL::footprintEditorRequested, this,
-             &MAIN_WINDOW::openFootprintEditor );
+             [this]()
+             {
+                 openLibraryEditor( FRAME_FOOTPRINT_EDITOR );
+             } );
 
     // Files of the project
     m_projectModel = new QFileSystemModel( this );
@@ -438,7 +446,7 @@ void MAIN_WINDOW::OpenPath( const QString& aPath )
 }
 
 
-void MAIN_WINDOW::openProject( const QString& aProjectFile )
+bool MAIN_WINDOW::openProject( const QString& aProjectFile )
 {
     QFileInfo info( aProjectFile );
 
@@ -446,8 +454,13 @@ void MAIN_WINDOW::openProject( const QString& aProjectFile )
     {
         QMessageBox::warning( this, tr( "Open Project" ),
                               tr( "The project %1 does not exist." ).arg( aProjectFile ) );
-        return;
+        return false;
     }
+
+    // The editors of the current project close first (they ask to save their changes), as in
+    // the project manager of KiCad: their documents belong to the project that is unloaded
+    if( info.absoluteFilePath() != m_projectFile && !m_kiway.PlayersClose( false ) )
+        return false;
 
     m_projectFile = info.absoluteFilePath();
     Pgm().GetSettingsManager().LoadProject( ToWxString( m_projectFile ), true );
@@ -466,6 +479,7 @@ void MAIN_WINDOW::openProject( const QString& aProjectFile )
     setWindowTitle( tr( "%1 — KiCad" ).arg( info.completeBaseName() ) );
     addRecentFile( m_projectFile );
     statusBar()->showMessage( tr( "Project %1" ).arg( m_projectFile ), 5000 );
+    return true;
 }
 
 
@@ -494,10 +508,11 @@ void MAIN_WINDOW::openDocument( const QString& aFileName )
         return;
     }
 
-    // The boards are edited by the PCB editor of KiCad
-    if( face == KIWAY_FACES::FACE_PCB )
+    // The schematics and the boards are edited by the editors of KiCad
+    if( face == KIWAY_FACES::FACE_SCH || face == KIWAY_FACES::FACE_PCB )
     {
-        openBoardEditor( fileName );
+        openDocumentEditor( fileName, face == KIWAY_FACES::FACE_SCH ? FRAME_SCH
+                                                                    : FRAME_PCB_EDITOR );
         return;
     }
 
@@ -565,36 +580,40 @@ void MAIN_WINDOW::openDocument( const QString& aFileName )
 }
 
 
-void MAIN_WINDOW::openBoardEditor( const QString& aFileName )
+void MAIN_WINDOW::openDocumentEditor( const QString& aFileName, FRAME_T aFrameType )
 {
-    // The board of another project: its project first, as the project manager of KiCad
-    const QFileInfo board( aFileName );
-    const QFileInfo project( board.absoluteDir().filePath( board.completeBaseName()
-                                                           + QStringLiteral( ".kicad_pro" ) ) );
+    // The document of another project: its project first, as the project manager of KiCad
+    const QFileInfo document( aFileName );
+    const QFileInfo project( document.absoluteDir().filePath( document.completeBaseName()
+                                                              + QStringLiteral( ".kicad_pro" ) ) );
 
-    if( project.exists() && project.absoluteFilePath() != m_projectFile )
-        openProject( project.absoluteFilePath() );
+    if( project.exists() && project.absoluteFilePath() != m_projectFile
+        && !openProject( project.absoluteFilePath() ) )
+    {
+        return;
+    }
 
+    const QString title = aFrameType == FRAME_SCH ? tr( "Schematic Editor" ) : tr( "PCB Editor" );
     KIWAY_PLAYER* frame = nullptr;
 
     try
     {
-        frame = m_kiway.Player( FRAME_PCB_EDITOR, true );
+        frame = m_kiway.Player( aFrameType, true );
     }
     catch( const IO_ERROR& error )
     {
-        QMessageBox::critical( this, tr( "PCB Editor" ), ToQString( error.What() ) );
+        QMessageBox::critical( this, title, ToQString( error.What() ) );
         return;
     }
 
     if( !frame )
     {
-        QMessageBox::critical( this, tr( "PCB Editor" ), tr( "The PCB editor cannot be opened." ) );
+        QMessageBox::critical( this, title, tr( "The editor cannot be opened." ) );
         return;
     }
 
     QApplication::setOverrideCursor( Qt::WaitCursor );
-    const std::vector<wxString> files( 1, ToWxString( board.absoluteFilePath() ) );
+    const std::vector<wxString> files( 1, ToWxString( document.absoluteFilePath() ) );
     const bool                  opened = frame->OpenProjectFiles( files );
     QApplication::restoreOverrideCursor();
 
@@ -603,21 +622,23 @@ void MAIN_WINDOW::openBoardEditor( const QString& aFileName )
     frame->activateWindow();
 
     if( opened )
-        addRecentFile( board.absoluteFilePath() );
+        addRecentFile( document.absoluteFilePath() );
 }
 
 
-void MAIN_WINDOW::openFootprintEditor()
+void MAIN_WINDOW::openLibraryEditor( FRAME_T aFrameType )
 {
     KIWAY_PLAYER* frame = nullptr;
 
     try
     {
-        frame = m_kiway.Player( FRAME_FOOTPRINT_EDITOR, true );
+        frame = m_kiway.Player( aFrameType, true );
     }
     catch( const IO_ERROR& error )
     {
-        QMessageBox::critical( this, tr( "Footprint Editor" ), ToQString( error.What() ) );
+        QMessageBox::critical( this, aFrameType == FRAME_SCH_SYMBOL_EDITOR ? tr( "Symbol Editor" )
+                                                                           : tr( "Footprint Editor" ),
+                               ToQString( error.What() ) );
         return;
     }
 

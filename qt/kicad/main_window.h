@@ -24,6 +24,8 @@
 #include <QMainWindow>
 #include <QStringList>
 
+#include <frame_type.h>
+
 class KIWAY;
 class QAction;
 class QFileSystemModel;
@@ -64,14 +66,15 @@ private:
 
     void openProjectDialog();
     void openFileDialog();
-    void openProject( const QString& aProjectFile );
+    bool openProject( const QString& aProjectFile );
     void openDocument( const QString& aFileName );
 
-    /// Open a board in the PCB editor of KiCad (a frame of the KIFACE of pcbnew).
-    void openBoardEditor( const QString& aFileName );
+    /// Open a schematic or a board in its editor of KiCad (a frame of the KIFACE of eeschema
+    /// or pcbnew).
+    void openDocumentEditor( const QString& aFileName, FRAME_T aFrameType );
 
-    /// Show the footprint editor of KiCad.
-    void openFootprintEditor();
+    /// Show an editor of KiCad without a document (the symbol or footprint editor).
+    void openLibraryEditor( FRAME_T aFrameType );
     void closeTab( int aIndex );
 
     /// Save a document; on failure, say why.  @return true if saved.

@@ -23,8 +23,8 @@
  *
  * The program has the settings, the libraries and the project of KiCad, with the user interface
  * of the programs of KiCad (PGM_GUI, as kicad); its KIWAY loads the Qt KIFACEs: the PCB editor
- * of KiCad (_pcbnew_qtgui.kiface) edits the boards, the schematics are shown in the tabs of the
- * shell (_eeschema_qt.kiface).
+ * of KiCad (_pcbnew_qtgui.kiface) edits the boards, the schematic editor of KiCad
+ * (_eeschema_qtgui.kiface) the schematics.
  */
 
 #include <kiqt.h>     // Qt, without its METHOD macro

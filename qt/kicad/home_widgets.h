@@ -218,6 +218,7 @@ public:
 signals:
     void schematicRequested();
     void boardRequested();
+    void symbolEditorRequested();
     void footprintEditorRequested();
 
 private:

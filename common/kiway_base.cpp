@@ -110,7 +110,7 @@ const wxString KIWAY_BASE::dso_search_path( FACE_T aFaceId )
 
     if( ( m_ctl & KFCTL_CLI ) && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB ) )
         dsoName += wxT( "_cli" );
-    else if( ( m_ctl & KFCTL_QT_GUI ) && aFaceId == FACE_PCB )
+    else if( ( m_ctl & KFCTL_QT_GUI ) && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB ) )
         dsoName += wxT( "_qtgui" );
     else if( ( m_ctl & KFCTL_QT ) && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB ) )
         dsoName += wxT( "_qt" );

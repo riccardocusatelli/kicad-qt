@@ -21,10 +21,11 @@
  * @file test_kicad_shell.cpp
  * The test of kicad-qt: the program itself (kicad_qt.cpp, its main() renamed), driven from the
  * event loop of its application.  Its start wizard is finished, a board opens in the PCB editor
- * of KiCad (the frame of _pcbnew_qtgui.kiface), the launcher opens the footprint editor, and the
- * shell closes the editors with it.
+ * of KiCad (the frame of _pcbnew_qtgui.kiface), a schematic of another project in the schematic
+ * editor of KiCad (_eeschema_qtgui.kiface) once the editors of the board's project are closed,
+ * the launcher opens the symbol and footprint editors, and the shell closes the editors with it.
  *
- * Usage: qa_qt_kicad_shell <board.kicad_pcb> [screenshot.png]
+ * Usage: qa_qt_kicad_shell <board.kicad_pcb> [schematic.kicad_sch] [screenshot.png]
  */
 
 // The program, its main() renamed (the test runs it)
@@ -58,6 +59,7 @@ namespace
 {
 int     s_failures = 0;
 QString s_board;
+QString s_schematic;
 QString s_screenshot;
 bool    s_started = false;
 
@@ -98,7 +100,8 @@ bool pressButton( QWidget* aDialog, const QString& aLabel )
 }
 
 
-/// The shell: a board in the PCB editor, the footprint editor, then the shell closes them.
+/// The shell: a board in the PCB editor, a schematic in the schematic editor, the library
+/// editors, then the shell closes them.
 void runScenario( MAIN_WINDOW* aWindow )
 {
     std::printf( "KICAD-QT\n" );
@@ -114,14 +117,40 @@ void runScenario( MAIN_WINDOW* aWindow )
     check( pcb && pcb->windowTitle().contains( QFileInfo( s_board ).completeBaseName() ),
            "the PCB editor has the board" );
 
-    // The launcher: the footprint editor
+    // A schematic of another project: the editors of the board's project close (as in the
+    // project manager of KiCad), then the schematic editor of KiCad opens it
+    KIWAY_PLAYER* sch = nullptr;
+
+    if( !s_schematic.isEmpty() )
+    {
+        aWindow->OpenPath( s_schematic );
+        settle( 1000 );
+
+        check( !s_kiway.Player( FRAME_PCB_EDITOR, false ),
+               "the PCB editor of the previous project is closed" );
+        pcb = nullptr;
+
+        sch = s_kiway.Player( FRAME_SCH, false );
+        check( sch != nullptr, "the KIFACE of eeschema with the GUI makes the schematic editor" );
+        check( sch && sch->isVisible(), "the schematic editor is shown" );
+        check( sch && sch->windowTitle().contains( QFileInfo( s_schematic ).completeBaseName() ),
+               "the schematic editor has the schematic" );
+    }
+
+    // The launcher: the library editors
     LAUNCHER_PANEL* launcher = aWindow->findChild<LAUNCHER_PANEL*>();
     check( launcher != nullptr, "the shell has its launcher" );
 
     if( launcher )
+    {
+        Q_EMIT launcher->symbolEditorRequested();
+        settle( 1000 );
         Q_EMIT launcher->footprintEditorRequested();
+        settle( 1000 );
+    }
 
-    settle( 1000 );
+    KIWAY_PLAYER* symbols = s_kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false );
+    check( symbols && symbols->isVisible(), "the launcher opens the symbol editor" );
 
     KIWAY_PLAYER* footprints = s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false );
     check( footprints && footprints->isVisible(), "the launcher opens the footprint editor" );
@@ -131,7 +160,8 @@ void runScenario( MAIN_WINDOW* aWindow )
 
     for( QWidget* widget : QApplication::topLevelWidgets() )
     {
-        if( widget->isVisible() && widget != aWindow && widget != pcb && widget != footprints )
+        if( widget->isVisible() && widget != aWindow && widget != pcb && widget != sch
+            && widget != symbols && widget != footprints )
         {
             std::printf( "    open: %s \"%s\"\n", widget->metaObject()->className(),
                          qPrintable( widget->windowTitle() ) );
@@ -150,7 +180,8 @@ void runScenario( MAIN_WINDOW* aWindow )
     // The changes of the test are not saved: the editors are closed, then the shell
     check( s_kiway.PlayersClose( true ), "the shell closes the editors" );
     settle( 200 );
-    check( !s_kiway.Player( FRAME_PCB_EDITOR, false )
+    check( !s_kiway.Player( FRAME_PCB_EDITOR, false ) && !s_kiway.Player( FRAME_SCH, false )
+                   && !s_kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
                    && !s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false ),
            "the editors are closed" );
 
@@ -211,7 +242,8 @@ int main( int argc, char** argv )
 {
     if( argc < 2 )
     {
-        std::fprintf( stderr, "usage: %s <board.kicad_pcb> [screenshot.png]\n", argv[0] );
+        std::fprintf( stderr, "usage: %s <board.kicad_pcb> [schematic.kicad_sch] [screenshot.png]\n",
+                      argv[0] );
         return 2;
     }
 
@@ -226,8 +258,29 @@ int main( int argc, char** argv )
     s_board = dir.filePath( QFileInfo( QString::fromUtf8( argv[1] ) ).fileName() );
     QFile::copy( QString::fromUtf8( argv[1] ), s_board );
 
-    if( argc > 2 )
-        s_screenshot = QString::fromUtf8( argv[2] );
+    // The other arguments, by their extension
+    for( int i = 2; i < argc; ++i )
+    {
+        const QString arg = QString::fromUtf8( argv[i] );
+
+        if( arg.endsWith( QStringLiteral( ".kicad_sch" ) ) )
+        {
+            // Copied too, with its project
+            s_schematic = dir.filePath( QFileInfo( arg ).fileName() );
+            QFile::copy( arg, s_schematic );
+
+            const QFileInfo source( arg );
+            const QString   project = source.path() + QLatin1Char( '/' ) + source.completeBaseName()
+                                    + QStringLiteral( ".kicad_pro" );
+
+            if( QFile::exists( project ) )
+                QFile::copy( project, dir.filePath( QFileInfo( project ).fileName() ) );
+        }
+        else
+        {
+            s_screenshot = arg;
+        }
+    }
 
     // The program, with its board (its arguments are the test's ones, without the board)
     char* programArgv[] = { argv[0], nullptr };

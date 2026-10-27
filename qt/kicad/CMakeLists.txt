@@ -1,5 +1,5 @@
-# kicad-qt: the Qt shell (project, documents in tabs), with the Qt KIFACEs: the PCB editor of
-# KiCad (_pcbnew_qtgui.kiface) runs in it, as in the project manager of KiCad
+# kicad-qt: the Qt shell (project, launcher), with the Qt KIFACEs: the editors of KiCad
+# (_eeschema_qtgui.kiface, _pcbnew_qtgui.kiface) run in it, as in the project manager of KiCad
 
 add_executable( kicad-qt
     home_widgets.cpp
@@ -26,7 +26,7 @@ target_link_libraries( kicad-qt
     ${wxWidgets_BASE_LIBRARIES}
     )
 
-add_dependencies( kicad-qt common pcbnew_qtgui_kiface eeschema_qt_kiface )
+add_dependencies( kicad-qt common pcbnew_qtgui_kiface eeschema_qtgui_kiface )
 
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     target_link_options( kicad-qt PRIVATE "LINKER:--no-undefined" )
