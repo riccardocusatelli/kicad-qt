@@ -179,6 +179,9 @@ wxColour KIGFX::COLOR4D::ToColour() const
 static const wxPen   s_transparentPen( wxColour( 0, 0, 0 ), 1, wxPENSTYLE_TRANSPARENT );
 static const wxPen   s_blackPen( wxColour( 0, 0, 0 ) );
 static const wxPen   s_whitePen( wxColour( 255, 255, 255 ) );
+static const wxPen   s_greyPen( wxColour( 128, 128, 128 ) );
+static const wxPen   s_mediumGreyPen( wxColour( 100, 100, 100 ) );
+static const wxPen   s_lightGreyPen( wxColour( 192, 192, 192 ) );
 static const wxBrush s_transparentBrush( wxColour( 0, 0, 0 ), wxBRUSHSTYLE_TRANSPARENT );
 static const wxBrush s_blackBrush( wxColour( 0, 0, 0 ) );
 static const wxBrush s_whiteBrush( wxColour( 255, 255, 255 ) );
@@ -186,6 +189,9 @@ static const wxBrush s_whiteBrush( wxColour( 255, 255, 255 ) );
 const wxPen*   wxTRANSPARENT_PEN = &s_transparentPen;
 const wxPen*   wxBLACK_PEN = &s_blackPen;
 const wxPen*   wxWHITE_PEN = &s_whitePen;
+const wxPen*   wxGREY_PEN = &s_greyPen;
+const wxPen*   wxMEDIUM_GREY_PEN = &s_mediumGreyPen;
+const wxPen*   wxLIGHT_GREY_PEN = &s_lightGreyPen;
 const wxBrush* wxTRANSPARENT_BRUSH = &s_transparentBrush;
 const wxBrush* wxBLACK_BRUSH = &s_blackBrush;
 const wxBrush* wxWHITE_BRUSH = &s_whiteBrush;
@@ -294,6 +300,51 @@ wxFont& wxFont::MakeLarger()
 
 
 const wxFont wxNullFont;
+
+
+// The stock fonts of wxWidgets: the font of the application, in sizes and styles as wxStockGDI
+
+const wxFont* wxNormalFontCompat()
+{
+    static const wxFont font( QApplication::font() );
+    return &font;
+}
+
+
+const wxFont* wxSmallFontCompat()
+{
+    static const wxFont font = []()
+                               {
+                                   wxFont small( QApplication::font() );
+                                   small.SetPointSize( std::max( small.GetPointSize() - 2, 1 ) );
+                                   return small;
+                               }();
+    return &font;
+}
+
+
+const wxFont* wxSwissFontCompat()
+{
+    static const wxFont font = []()
+                               {
+                                   wxFont swiss( QApplication::font() );
+                                   swiss.setStyleHint( QFont::SansSerif );
+                                   return swiss;
+                               }();
+    return &font;
+}
+
+
+const wxFont* wxItalicFontCompat()
+{
+    static const wxFont font = []()
+                               {
+                                   wxFont italic( QApplication::font() );
+                                   italic.SetStyle( wxFONTSTYLE_ITALIC );
+                                   return italic;
+                               }();
+    return &font;
+}
 
 
 // Bitmaps ----------------------------------------------------------------------------------

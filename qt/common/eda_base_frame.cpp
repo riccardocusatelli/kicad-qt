@@ -292,6 +292,19 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxSt
 }
 
 
+QWidget* EDA_BASE_FRAME::GetClientWidgetCompat() const
+{
+    // The layout of a QMainWindow is its own (its toolbars, its docks...): a sizer goes on the
+    // central widget
+    auto* self = const_cast<EDA_BASE_FRAME*>( this );
+
+    if( !self->centralWidget() )
+        self->setCentralWidget( new QWidget( self ) );
+
+    return self->centralWidget();
+}
+
+
 EDA_BASE_FRAME::~EDA_BASE_FRAME()
 {
     m_autoSaveTimer->Stop();

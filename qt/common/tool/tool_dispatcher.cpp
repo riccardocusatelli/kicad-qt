@@ -58,6 +58,7 @@
 #include <core/ki_assert.h>
 
 #include <toolkit/qt_keys.h>
+#include <wx/event.h>
 
 
 /// The time, in milliseconds.
@@ -572,4 +573,15 @@ bool TOOL_DISPATCHER::DispatchQtEvent( QEvent* aEvent )
     // A dropped stale auto-repeat is fully swallowed.  The special keys (page up/down), which
     // scroll the widgets, and Escape, which cancels the tools, never go to the GUI.
     return handled || droppedStaleAutoRepeat || keyIsSpecial || keyIsEscape;
+}
+
+
+void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
+{
+    wxKeyEvent* key = dynamic_cast<wxKeyEvent*>( &aEvent );
+
+    if( key && key->m_qtEventCompat && DispatchQtEvent( key->m_qtEventCompat ) )
+        return;
+
+    aEvent.Skip();
 }

@@ -30,7 +30,7 @@ install( TARGETS eeschema_qt_kiface
 # The GUI of eeschema on Qt (the schematic and symbol editors, the symbol viewer and chooser, their
 # tools, panels and dialogs): the sources of the eeschema KIFACE with a GUI of the wxWidgets build,
 # built on the wxWidgets compatibility layer (qt/wxcompat), with the Qt versions of the panes.  The
-# simulator isn't on Qt yet (sim/simulator_frame_qt.cpp).
+# simulator (its plots with mathplot).
 set( KIQT_EESCHEMA_GUI_SRCS
     annotate.cpp
     api/api_handler_sch.cpp
@@ -68,9 +68,11 @@ set( KIQT_EESCHEMA_GUI_SRCS
     dialogs/dialog_sch_import_settings.cpp
     dialogs/dialog_schematic_setup.cpp
     dialogs/dialog_shape_properties.cpp
-    dialogs/dialog_sim_model.cpp
     dialogs/dialog_sheet_pin_properties.cpp
     dialogs/dialog_sheet_properties.cpp
+    dialogs/dialog_sim_command.cpp
+    dialogs/dialog_sim_format_value.cpp
+    dialogs/dialog_sim_model.cpp
     dialogs/dialog_symbol_chooser.cpp
     dialogs/dialog_symbol_fields_table.cpp
     dialogs/dialog_symbol_properties.cpp
@@ -80,6 +82,7 @@ set( KIQT_EESCHEMA_GUI_SRCS
     dialogs/dialog_text_properties.cpp
     dialogs/dialog_update_from_pcb.cpp
     dialogs/dialog_update_symbol_fields.cpp
+    dialogs/dialog_user_defined_signals.cpp
     dialogs/dialog_wire_bus_properties.cpp
     dialogs/panel_bom_presets.cpp
     dialogs/panel_eeschema_annotation_options.cpp
@@ -126,6 +129,15 @@ set( KIQT_EESCHEMA_GUI_SRCS
     sch_validators.cpp
     schematic_undo_redo.cpp
     sheet.cpp
+    sim/legacy_workbook.cpp
+    sim/sim_plot_colors.cpp
+    sim/sim_plot_tab.cpp
+    sim/sim_property.cpp
+    sim/sim_tab.cpp
+    sim/simulator_frame.cpp
+    sim/simulator_frame_ui.cpp
+    sim/spice_validator.cpp
+    sim/toolbars_simulator_frame.cpp
     symbol_chooser_frame.cpp
     symbol_editor/lib_logger.cpp
     symbol_editor/lib_symbol_library_manager.cpp
@@ -171,6 +183,7 @@ set( KIQT_EESCHEMA_GUI_SRCS
     tools/sch_point_editor.cpp
     tools/sch_selection_tool.cpp
     tools/sch_tool_utils.cpp
+    tools/simulator_control.cpp
     tools/symbol_editor_control.cpp
     tools/symbol_editor_drawing_tools.cpp
     tools/symbol_editor_edit_tool.cpp
@@ -189,8 +202,8 @@ set( KIQT_EESCHEMA_GUI_SRCS
     widgets/search_handlers.cpp
     widgets/symbol_diff_widget.cpp
     widgets/symbol_filter_combobox.cpp
-    sim/sim_property.cpp
     widgets/symbol_preview_widget.cpp
+    widgets/tuner_slider.cpp
     )
 
 list( TRANSFORM KIQT_EESCHEMA_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/eeschema/ )
@@ -201,12 +214,11 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_change_symbols_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_database_lib_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_edit_symbols_libid_base.fbp
-    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_ibis_parser_reporter_base.fbp
-    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_model_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_erc_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_export_netlist_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_field_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_global_edit_text_and_graphics_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_ibis_parser_reporter_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_image_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_import_symbol_select_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_increment_annotations.fbp
@@ -226,6 +238,9 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_shape_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sheet_pin_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sheet_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_command_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_format_value_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_model_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_symbol_fields_table_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_symbol_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_symbol_remap_base.fbp
@@ -234,6 +249,7 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_text_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_update_from_pcb_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_update_symbol_fields_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_user_defined_signals_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_wire_bus_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_bom_presets.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_eeschema_annotation_options_base.fbp
@@ -250,18 +266,12 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_template_fieldnames_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/import_gfx/dialog_import_gfx_sch_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/printing/dialog_print_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/sim/simulator_frame_ui_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/sync_sheet_pin/dialog_sync_sheet_pins_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/sync_sheet_pin/panel_sync_sheet_pins_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/widgets/panel_sch_selection_filter_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/widgets/tuner_slider_base.fbp
     )
-
-# The bases of the simulator included by the headers of the simulator frame
-kiqt_generate_fbp_compat( KIQT_EESCHEMA_SIM_FBP_SRCS
-    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_command_base.fbp
-    ${CMAKE_SOURCE_DIR}/eeschema/sim/simulator_frame_ui_base.fbp
-    )
-
-add_custom_target( eeschema_qt_sim_fbp_headers DEPENDS ${KIQT_EESCHEMA_SIM_FBP_SRCS} )
 
 add_library( eeschema_gui_qt STATIC
     ${KIQT_EESCHEMA_GUI_SRCS}
@@ -274,10 +284,8 @@ add_library( eeschema_gui_qt STATIC
     widgets/sch_design_block_pane_qt.cpp
     widgets/sch_design_block_preview_widget_qt.cpp
     widgets/sch_properties_panel_qt.cpp
-    sim/simulator_frame_qt.cpp
+    ${CMAKE_SOURCE_DIR}/common/widgets/mathplot.cpp
     )
-
-add_dependencies( eeschema_gui_qt eeschema_qt_sim_fbp_headers )
 
 set_target_properties( eeschema_gui_qt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 

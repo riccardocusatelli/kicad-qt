@@ -1509,6 +1509,7 @@ mpWindow::~mpWindow()
     // Free all the layers:
     DelAllLayers( true, false );
 
+    m_buff_dc.SelectObject( wxNullBitmap );
     delete m_buff_bmp;
     m_buff_bmp = nullptr;
 }

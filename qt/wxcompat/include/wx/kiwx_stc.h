@@ -95,6 +95,7 @@ class QListWidget;
 
 #define wxSTC_LEX_CONTAINER 0
 #define wxSTC_LEX_NULL 1
+#define wxSTC_LEX_SPICE 78
 
 #define wxSTC_TECHNOLOGY_DEFAULT 0
 #define wxSTC_TECHNOLOGY_DIRECTWRITE 1

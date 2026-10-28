@@ -867,6 +867,11 @@ public:
     /// The attributes of a cell, merged with the default ones (with a reference for the caller).
     wxGridCellAttr* GetCellAttr( int aRow, int aCol ) const;
     wxGridCellAttr* GetOrCreateCellAttr( int aRow, int aCol ) const;
+
+    wxGridCellAttrPtr GetOrCreateCellAttrPtr( int aRow, int aCol ) const
+    {
+        return wxGridCellAttrPtr( GetOrCreateCellAttr( aRow, aCol ) );
+    }
     wxGridCellAttr* GetDefaultCellAttr() const { return m_defaultAttr; }
 
     void SetReadOnly( int aRow, int aCol, bool aReadOnly = true );

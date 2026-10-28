@@ -35,6 +35,24 @@
 class QAction;
 
 
+/// The styles of an AUI toolbar (the toolbars of the layer are QToolBars: only the orientation
+/// matters).
+enum wxAuiToolBarStyle
+{
+    wxAUI_TB_TEXT = 1 << 0,
+    wxAUI_TB_NO_TOOLTIPS = 1 << 1,
+    wxAUI_TB_NO_AUTORESIZE = 1 << 2,
+    wxAUI_TB_GRIPPER = 1 << 3,
+    wxAUI_TB_OVERFLOW = 1 << 4,
+    wxAUI_TB_VERTICAL = 1 << 5,
+    wxAUI_TB_HORZ_LAYOUT = 1 << 6,
+    wxAUI_TB_HORIZONTAL = 1 << 7,
+    wxAUI_TB_PLAIN_BACKGROUND = 1 << 8,
+    wxAUI_TB_HORZ_TEXT = ( wxAUI_TB_HORZ_LAYOUT | wxAUI_TB_TEXT ),
+    wxAUI_TB_DEFAULT_STYLE = 0
+};
+
+
 class wxAuiToolBarItem
 {
 public:

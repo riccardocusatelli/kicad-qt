@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <utility>
 
 #include <QApplication>
 #include <QBoxLayout>
@@ -66,7 +67,63 @@ public:
 private:
     QWidget* m_widget;
 };
+
+
+/// The widget of a window of its own: deleted with its parent, it deletes the window.
+class KIWX_OWN_WIDGET : public QWidget
+{
+public:
+    KIWX_OWN_WIDGET( QWidget* aParent, wxWindow* aWindow ) :
+            QWidget( aParent ),
+            m_window( aWindow )
+    {
+    }
+
+    ~KIWX_OWN_WIDGET() override
+    {
+        if( wxWindow* window = std::exchange( m_window, nullptr ) )
+            delete window;
+    }
+
+    /// The window, until it is deleted.
+    wxWindow* m_window;
+};
 } // namespace
+
+
+wxWindow::wxWindow( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+                    long aStyle, const wxString& aName )
+{
+    m_ownWidgetCompat = new KIWX_OWN_WIDGET( aParent.get(), this );
+    registerWindowCompat();
+
+    SetId( aId );
+    SetWindowStyleFlag( aStyle );
+
+    if( !aName.IsEmpty() )
+        SetName( aName );
+
+    if( aPos != wxDefaultPosition )
+        Move( aPos );
+
+    if( aSize != wxDefaultSize )
+        SetSize( aSize );
+}
+
+
+wxWindow::~wxWindow()
+{
+    auto* widget = static_cast<KIWX_OWN_WIDGET*>( m_ownWidgetCompat );
+
+    if( !widget )
+        return;
+
+    unregisterWindowCompat();
+
+    // Deleted by the program (not by its widget): the widget goes with it
+    if( std::exchange( widget->m_window, nullptr ) )
+        delete widget;
+}
 
 
 wxWindow* wxWindowFromQt( QWidget* aWidget )

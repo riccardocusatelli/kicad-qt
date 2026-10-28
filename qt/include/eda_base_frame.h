@@ -169,6 +169,12 @@ public:
     /**
      * Return a reference to the default ORIGIN_TRANSFORMS object
      */
+    /**
+     * The content of the frame for the code of the wxWidgets build (its sizer and its child
+     * windows): the central widget of the main window, made if the frame has none.
+     */
+    QWidget* GetClientWidgetCompat() const override;
+
     ORIGIN_TRANSFORMS& GetOriginTransforms() override
     {
         return m_originTransforms;

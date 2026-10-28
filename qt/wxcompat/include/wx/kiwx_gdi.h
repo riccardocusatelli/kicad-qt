@@ -343,6 +343,9 @@ private:
 KIQT_API extern const wxPen* wxTRANSPARENT_PEN;
 KIQT_API extern const wxPen* wxBLACK_PEN;
 KIQT_API extern const wxPen* wxWHITE_PEN;
+KIQT_API extern const wxPen* wxGREY_PEN;
+KIQT_API extern const wxPen* wxMEDIUM_GREY_PEN;
+KIQT_API extern const wxPen* wxLIGHT_GREY_PEN;
 KIQT_API extern const wxBrush* wxTRANSPARENT_BRUSH;
 KIQT_API extern const wxBrush* wxBLACK_BRUSH;
 KIQT_API extern const wxBrush* wxWHITE_BRUSH;
@@ -423,6 +426,18 @@ private:
 };
 
 KIQT_API extern const wxFont wxNullFont;
+
+/// The stock fonts (made once the application is, as the font of the application they derive
+/// from).
+KIQT_API const wxFont* wxNormalFontCompat();
+KIQT_API const wxFont* wxSmallFontCompat();
+KIQT_API const wxFont* wxSwissFontCompat();
+KIQT_API const wxFont* wxItalicFontCompat();
+
+#define wxNORMAL_FONT wxNormalFontCompat()
+#define wxSMALL_FONT wxSmallFontCompat()
+#define wxSWISS_FONT wxSwissFontCompat()
+#define wxITALIC_FONT wxItalicFontCompat()
 
 
 #define wxIMAGE_ALPHA_TRANSPARENT 0
@@ -943,6 +958,8 @@ private:
  * when the DC was given it) as wxWidgets: (logical - logical origin) * user scale * axis sign
  * + device origin.
  */
+class wxGraphicsContext;
+
 class KIQT_API wxDC
 {
 public:
@@ -1074,6 +1091,21 @@ public:
 
     wxSize GetSize() const;
 
+    void GetSize( int* aWidth, int* aHeight ) const
+    {
+        wxSize size = GetSize();
+
+        if( aWidth )
+            *aWidth = size.x;
+
+        if( aHeight )
+            *aHeight = size.y;
+    }
+
+    /// No graphic context of wxWidgets: the painters of the DCs of the layer already draw
+    /// antialiased, with a smooth transform of their images.
+    wxGraphicsContext* GetGraphicsContext() const { return nullptr; }
+
     /// The resolution of the device, in dots per inch.
     wxSize GetPPI() const;
 
@@ -1107,6 +1139,34 @@ private:
 
 protected:
     void SetPainterCompat( QPainter* aPainter );
+};
+
+/// The quality of the scaling of the images (wxGraphicsContext).
+enum wxInterpolationQuality
+{
+    wxINTERPOLATION_DEFAULT,
+    wxINTERPOLATION_NONE,
+    wxINTERPOLATION_FAST,
+    wxINTERPOLATION_GOOD,
+    wxINTERPOLATION_BEST
+};
+
+/// The antialiasing of the drawings (wxGraphicsContext).
+enum wxAntialiasMode
+{
+    wxANTIALIAS_NONE,
+    wxANTIALIAS_DEFAULT
+};
+
+/// The graphic context of a DC: none in the layer (wxDC::GetGraphicsContext()), the class only
+/// declares the methods the code calls on it.
+class KIQT_API wxGraphicsContext
+{
+public:
+    virtual ~wxGraphicsContext() = default;
+
+    virtual bool SetInterpolationQuality( wxInterpolationQuality aQuality ) { return true; }
+    virtual bool SetAntialiasMode( wxAntialiasMode aMode ) { return true; }
 };
 
 /// A DC drawing with a graphic context (wxGCDC): the DCs of the layer all draw with a QPainter.

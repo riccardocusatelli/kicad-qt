@@ -25,6 +25,7 @@
 #ifndef SIMULATOR_CONTROL_H
 #define SIMULATOR_CONTROL_H
 
+#include <wx/event.h>
 #include <tool/tool_interactive.h>
 
 class SIMULATOR_FRAME;

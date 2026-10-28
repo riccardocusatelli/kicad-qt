@@ -39,6 +39,7 @@
 #ifndef KIWX_GUI_H
 #define KIWX_GUI_H
 
+#include <optional>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -1035,6 +1036,19 @@ public:
     virtual wxAuiTabArt* Clone() = 0;
 };
 
+/// The tab arts of wxWidgets: the tabs of Qt.
+class wxAuiGenericTabArt : public wxAuiTabArt
+{
+public:
+    wxAuiTabArt* Clone() override { return new wxAuiGenericTabArt; }
+};
+
+class wxAuiSimpleTabArt : public wxAuiTabArt
+{
+public:
+    wxAuiTabArt* Clone() override { return new wxAuiSimpleTabArt; }
+};
+
 
 class KIQT_API wxNotebook : public wxWindowCompat<QTabWidget>
 {
@@ -1229,12 +1243,20 @@ public:
     void SetSashInvisible( bool aInvisible = true ) { setHandleWidth( aInvisible ? 0 : 5 ); }
     void UpdateSize() {}
 
+protected:
+    /// The position of the sash asked before the splitter had a size (as wxWidgets).
+    void resizeEvent( QResizeEvent* aEvent ) override;
+
 private:
     bool split( Qt::Orientation aOrientation, QWidget* aWindow1, QWidget* aWindow2,
                 int aSashPosition );
 
-    double m_gravity = 0.0;
-    int    m_minimumPaneSize = 0;
+    /// The position of a sash (0: the middle, negative: from the end) in the splitter.
+    int convertSashPosition( int aPosition ) const;
+
+    double         m_gravity = 0.0;
+    int            m_minimumPaneSize = 0;
+    std::optional<int> m_requestedSashPosition;
 };
 
 

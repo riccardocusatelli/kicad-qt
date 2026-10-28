@@ -37,6 +37,7 @@
 #include <QContextMenuEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QNativeGestureEvent>
 #include <QResizeEvent>
 #include <QTextBrowser>
 #include <QWheelEvent>
@@ -111,17 +112,40 @@ void wxFillMouseEventCompat( wxMouseEvent& aEvent, QEvent* aQtEvent )
     {
         aEvent.m_x = int( mouse->position().x() );
         aEvent.m_y = int( mouse->position().y() );
-        aEvent.m_leftIsDown = mouse->buttons() & Qt::LeftButton;
-        aEvent.m_middleIsDown = mouse->buttons() & Qt::MiddleButton;
-        aEvent.m_rightIsDown = mouse->buttons() & Qt::RightButton;
+        aEvent.m_leftDown = mouse->buttons() & Qt::LeftButton;
+        aEvent.m_middleDown = mouse->buttons() & Qt::MiddleButton;
+        aEvent.m_rightDown = mouse->buttons() & Qt::RightButton;
         modifiers = mouse->modifiers();
     }
     else if( QWheelEvent* wheel = dynamic_cast<QWheelEvent*>( aQtEvent ) )
     {
+        QPoint delta = wheel->angleDelta();
+
         aEvent.m_x = int( wheel->position().x() );
         aEvent.m_y = int( wheel->position().y() );
-        aEvent.m_wheelRotation = wheel->angleDelta().y();
+
+        // A horizontal wheel (or a horizontal scroll of a touchpad)
+        if( delta.y() == 0 && delta.x() != 0 )
+        {
+            aEvent.m_wheelAxis = wxMOUSE_WHEEL_HORIZONTAL;
+            aEvent.m_wheelRotation = delta.x();
+        }
+        else
+        {
+            aEvent.m_wheelRotation = delta.y();
+        }
+
+        aEvent.m_leftDown = wheel->buttons() & Qt::LeftButton;
+        aEvent.m_middleDown = wheel->buttons() & Qt::MiddleButton;
+        aEvent.m_rightDown = wheel->buttons() & Qt::RightButton;
         modifiers = wheel->modifiers();
+    }
+    else if( QNativeGestureEvent* gesture = dynamic_cast<QNativeGestureEvent*>( aQtEvent ) )
+    {
+        aEvent.m_x = int( gesture->position().x() );
+        aEvent.m_y = int( gesture->position().y() );
+        aEvent.m_magnification = float( gesture->value() );
+        modifiers = gesture->modifiers();
     }
 
     aEvent.m_shift = modifiers & Qt::ShiftModifier;
@@ -137,6 +161,7 @@ void wxFillKeyEventCompat( wxKeyEvent& aEvent, QEvent* aQtEvent )
     if( !key )
         return;
 
+    aEvent.m_qtEventCompat = key;
     aEvent.m_keyCode = TOOLKIT::KeyCodeFromQt( *key );
     aEvent.m_uniChar = key->text().isEmpty() ? 0 : wxChar( key->text().front().unicode() );
 
@@ -985,6 +1010,18 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
 
                     case wxEVT_RIGHT_UP:
                         return qtType == QEvent::MouseButtonRelease && mouseButton( Qt::RightButton ) && mouse( aType );
+
+                    case wxEVT_MIDDLE_DOWN:
+                        return qtType == QEvent::MouseButtonPress && mouseButton( Qt::MiddleButton ) && mouse( aType );
+
+                    case wxEVT_MIDDLE_UP:
+                        return qtType == QEvent::MouseButtonRelease && mouseButton( Qt::MiddleButton ) && mouse( aType );
+
+                    case wxEVT_MAGNIFY:
+                        return qtType == QEvent::NativeGesture
+                               && static_cast<QNativeGestureEvent*>( aQtEvent )->gestureType()
+                                          == Qt::ZoomNativeGesture
+                               && mouse( aType );
 
                     case wxEVT_MOTION:
                         return qtType == QEvent::MouseMove && mouse( aType );
@@ -3349,9 +3386,13 @@ bool wxSplitterWindow::split( Qt::Orientation aOrientation, QWidget* aWindow1,
     aWindow1->show();
     aWindow2->show();
 
-    if( aSashPosition != 0 )
-        SetSashPosition( aSashPosition );
+    // The gravity and the minimum size of the panes, set before the split
+    SetSashGravity( m_gravity );
 
+    if( m_minimumPaneSize > 0 )
+        SetMinimumPaneSize( m_minimumPaneSize );
+
+    SetSashPosition( aSashPosition );
     return true;
 }
 
@@ -3455,19 +3496,20 @@ void wxSplitterWindow::SetSashPosition( int aPosition, bool aRedraw )
     if( count() < 2 )
         return;
 
-    int total = orientation() == Qt::Horizontal ? width() : height();
-
-    if( total <= 0 )
+    // Without a size yet: applied once the splitter has one
+    if( ( orientation() == Qt::Horizontal ? width() : height() ) <= 1 || !isVisible() )
     {
-        total = orientation() == Qt::Horizontal ? sizeHint().width() : sizeHint().height();
-        total = std::max( total, std::abs( aPosition ) * 2 );
+        m_requestedSashPosition = aPosition;
+        return;
     }
 
-    int first = aPosition >= 0 ? aPosition : total + aPosition;
-    first = std::clamp( first, 0, total );
+    m_requestedSashPosition.reset();
+
+    int total = orientation() == Qt::Horizontal ? width() : height();
+    int first = std::clamp( convertSashPosition( aPosition ), 0, total );
 
     QList<int> sizes;
-    sizes << first << std::max( total - first, 0 );
+    sizes << first << std::max( total - first - handleWidth(), 0 );
 
     for( int i = 2; i < count(); ++i )
         sizes << 0;
@@ -3476,8 +3518,33 @@ void wxSplitterWindow::SetSashPosition( int aPosition, bool aRedraw )
 }
 
 
+int wxSplitterWindow::convertSashPosition( int aPosition ) const
+{
+    int total = orientation() == Qt::Horizontal ? width() : height();
+
+    if( aPosition > 0 )
+        return aPosition;
+    else if( aPosition < 0 )
+        return total + aPosition;
+    else
+        return total / 2;
+}
+
+
+void wxSplitterWindow::resizeEvent( QResizeEvent* aEvent )
+{
+    wxWindowCompat<QSplitter>::resizeEvent( aEvent );
+
+    if( m_requestedSashPosition && isVisible() )
+        SetSashPosition( *m_requestedSashPosition );
+}
+
+
 int wxSplitterWindow::GetSashPosition() const
 {
+    if( m_requestedSashPosition && *m_requestedSashPosition > 0 )
+        return *m_requestedSashPosition;
+
     QList<int> list = sizes();
     return list.isEmpty() ? 0 : list.first();
 }

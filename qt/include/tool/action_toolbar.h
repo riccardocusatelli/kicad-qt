@@ -139,6 +139,15 @@ public:
      */
     ACTION_TOOLBAR( EDA_BASE_FRAME* aParent, bool aVertical = false );
 
+    /**
+     * The constructor of the wxWidgets build (an AUI toolbar): vertical with wxAUI_TB_VERTICAL.
+     */
+    ACTION_TOOLBAR( EDA_BASE_FRAME* aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
+                    long aStyle ) :
+            ACTION_TOOLBAR( aParent, ( aStyle & wxAUI_TB_VERTICAL ) != 0 )
+    {
+    }
+
     ~ACTION_TOOLBAR() override;
 
     void SetToolManager( TOOL_MANAGER* aManager ) { m_toolManager = aManager; }
@@ -289,6 +298,7 @@ public:
      * Make the toolbar take its final size (nothing to do with Qt; kept for the frames).
      */
     bool KiRealize();
+    bool Realize() { return KiRealize(); }
 
     /**
      * Reload all the bitmaps for the tools (e.g. when switching icon themes)

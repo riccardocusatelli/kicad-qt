@@ -29,9 +29,11 @@
 #include <string>
 #include <kiqt.h>     // Qt, without its METHOD macro
 #include <QApplication>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QImage>
+#include <QLabel>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QComboBox>
@@ -51,6 +53,9 @@
 #include <sch_screen.h>
 #include <sch_symbol.h>
 #include <schematic.h>
+#include <sim/simulator_frame.h>
+#include <sim/sim_plot_tab.h>
+#include <widgets/mathplot.h>
 #include <settings/kicad_settings.h>
 #include <libraries/library_manager.h>
 #include <symbol_editor/symbol_edit_frame.h>
@@ -234,6 +239,127 @@ void testSymbolEditor( KIWAY& aKiway, SCH_SYMBOL* aSymbol, const QString& aScree
 }
 
 
+/// The simulator of the schematic (SIMULATOR_FRAME, with its plots): shown, then closed.
+void testSimulator( KIWAY& aKiway, TOOL_MANAGER* aToolMgr, const QString& aScreenshot )
+{
+    std::printf( "SIMULATOR_FRAME\n" );
+
+    aToolMgr->RunAction( SCH_ACTIONS::showSimulator );
+    settle( 500 );
+
+    auto* frame = static_cast<SIMULATOR_FRAME*>( aKiway.Player( FRAME_SIMULATOR, false ) );
+    check( frame != nullptr, "the schematic editor opens the simulator" );
+
+    if( !frame )
+        return;
+
+    check( frame->isVisible(), "the simulator is shown" );
+
+    if( !aScreenshot.isEmpty() )
+        frame->grab().save( screenshotPath( aScreenshot, "simulator" ) );
+
+    closeFrame( frame, "the simulator" );
+}
+
+
+/// A simulation of a schematic: its transient analysis run by ngspice, a voltage plotted.
+void testSimulation( KIWAY& aKiway, SCH_EDIT_FRAME* aFrame, const wxString& aSchematic,
+                     const QString& aScreenshot )
+{
+    std::printf( "SIMULATION\n" );
+
+    check( aFrame->OpenProjectFiles( { aSchematic } ), "the schematic editor opens the circuit" );
+    settle( 300 );
+
+    // The errors of the netlist of the circuit (none expected): shown, then closed
+    bool    netlistError = false;
+    QTimer* poll = onNextDialog( [&]( QDialog* aDialog )
+                                 {
+                                     netlistError = true;
+
+                                     for( QLabel* label : aDialog->findChildren<QLabel*>() )
+                                         std::printf( "  dialog: %s\n", label->text().toUtf8().constData() );
+
+                                     aDialog->reject();
+                                 } );
+    QPointer<QTimer> pollPtr( poll );
+
+    aFrame->GetToolManager()->RunAction( SCH_ACTIONS::showSimulator );
+    settle( 500 );
+
+    if( pollPtr && !netlistError )
+        delete pollPtr.data();
+
+    check( !netlistError, "the netlist of the circuit has no errors" );
+
+    auto* frame = static_cast<SIMULATOR_FRAME*>( aKiway.Player( FRAME_SIMULATOR, false ) );
+    check( frame != nullptr, "the simulator of the circuit" );
+
+    if( !frame )
+        return;
+
+    SIM_TAB* tab = frame->GetCurrentSimTab();
+
+    if( !tab )
+        tab = frame->NewSimTab( wxS( ".tran 1u 10m" ) );
+
+    check( tab != nullptr, "the transient analysis" );
+
+    if( !tab )
+        return;
+
+    frame->StartSimulation();
+
+    for( int i = 0; i < 300 && !frame->SimFinished(); ++i )
+        settle( 50 );
+
+    check( frame->SimFinished(), "ngspice runs the simulation" );
+
+    frame->AddVoltageTrace( wxS( "/out" ) );
+    settle( 300 );
+
+    auto* plotTab = dynamic_cast<SIM_PLOT_TAB*>( frame->GetCurrentSimTab() );
+    check( plotTab && !plotTab->GetTraces().empty(), "the voltage is plotted" );
+
+    if( plotTab && plotTab->GetPlotWin() )
+    {
+        QWidget* plot = plotTab->GetPlotWin()->GetHandle();
+        QImage   image = plot->grab().toImage();
+        bool     varied = false;
+
+        for( int y = 0; y < image.height() && !varied; y += 3 )
+        {
+            for( int x = 0; x < image.width() && !varied; x += 3 )
+                varied = image.pixel( x, y ) != image.pixel( 0, 0 );
+        }
+
+        check( image.width() > 100 && varied, "mathplot draws the plot" );
+    }
+
+    if( !aScreenshot.isEmpty() )
+        frame->grab().save( screenshotPath( aScreenshot, "simulation" ) );
+
+    // The workbook of the simulation is modified: its changes are discarded
+    bool             asked = false;
+    QPointer<QTimer> discard = onNextDialog( [&]( QDialog* aDialog )
+                  {
+                      asked = true;
+                      std::printf( "  dialog %s: %s\n", aDialog->metaObject()->className(),
+                                   aDialog->windowTitle().toUtf8().constData() );
+
+                      if( !pressButton( aDialog, "Discard Changes" ) )
+                          aDialog->reject();
+                  } );
+
+    closeFrame( frame, "the simulator of the circuit" );
+
+    if( discard )
+        delete discard.data();
+
+    check( asked, "the simulator asks to save its workbook" );
+}
+
+
 /// The symbol viewer: shown, then closed.
 void testSymbolViewer( KIWAY& aKiway )
 {
@@ -252,7 +378,8 @@ void testSymbolViewer( KIWAY& aKiway )
 }
 
 
-void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const QString& aScreenshot )
+void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxString& aSimSchematic,
+                    const QString& aScreenshot )
 {
     std::printf( "SCH_EDIT_FRAME\n" );
 
@@ -352,11 +479,21 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const QString
     if( !aScreenshot.isEmpty() )
         check( frame->grab().save( aScreenshot ), "screenshot of the schematic editor" );
 
+    testSimulator( aKiway, toolMgr, aScreenshot );
     testSymbolEditor( aKiway, symbol, aScreenshot );
     testSymbolViewer( aKiway );
 
     // The changes of the test are not saved (the editor would ask)
     screen->SetContentModified( false );
+
+    if( !aSimSchematic.IsEmpty() )
+    {
+        testSimulation( aKiway, frame, aSimSchematic, aScreenshot );
+
+        if( frame->GetScreen() )
+            frame->GetScreen()->SetContentModified( false );
+    }
+
     closeFrame( frame, "the schematic editor" );
 }
 
@@ -419,10 +556,27 @@ int main( int argc, char** argv )
     if( QFile::exists( project ) )
         QFile::copy( project, dir.filePath( QFileInfo( project ).fileName() ) );
 
+    // The circuit of the simulation: the rectifier of the QA data of eeschema (next to the
+    // schematics of the test), copied in its own directory
+    QFileInfo simSource( source.dir().filePath(
+            QStringLiteral( "spice_netlists/rectifier/rectifier.kicad_sch" ) ) );
+    QString   simCopy;
+
+    if( simSource.exists() && dir.path().size() && QDir( dir.path() ).mkdir( QStringLiteral( "sim" ) ) )
+    {
+        // The files of the circuit: its schematic, its project and its model libraries
+        QDir simDir( dir.filePath( QStringLiteral( "sim" ) ) );
+        simCopy = simDir.filePath( simSource.fileName() );
+
+        for( const QFileInfo& file : simSource.dir().entryInfoList( QDir::Files ) )
+            QFile::copy( file.filePath(), simDir.filePath( file.fileName() ) );
+    }
+
     testStartWizard( argc > 2 ? QString::fromUtf8( argv[2] ) : QString() );
     program.GetLibraryManager().LoadGlobalTables();
 
     testSchEditor( kiway, wxString::FromUTF8( copy.toUtf8().constData() ),
+                   wxString::FromUTF8( simCopy.toUtf8().constData() ),
                    argc > 2 ? QString::fromUtf8( argv[2] ) : QString() );
 
     Kiface().OnKifaceEnd();

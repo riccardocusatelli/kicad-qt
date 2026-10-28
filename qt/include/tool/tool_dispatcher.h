@@ -42,6 +42,7 @@
 #include <tool/tool_event.h>   // Needed for MD_ constants
 
 class QEvent;
+class wxEvent;
 class QKeyEvent;
 class TOOL_MANAGER;
 class ACTIONS;
@@ -91,6 +92,13 @@ public:
      * @return true if the event was used by the tools.
      */
     bool DispatchEvent( TOOLKIT_EVENT& aEvent ) { return DispatchQtEvent( &aEvent ); }
+
+    /**
+     * Process a key event of the wxWidgets compatibility layer (the frames of KiCad bind their
+     * key events to the dispatcher): its event of Qt goes to the tools; skipped if they don't
+     * use it.
+     */
+    void DispatchWxEvent( wxEvent& aEvent );
 
     /**
      * Tell the tools that the position of the cursor in the world changed while the mouse did

@@ -404,10 +404,23 @@ class KIQT_API wxWindow : public wxEvtHandler
 {
 public:
     wxWindow() = default;
-    ~wxWindow() override = default;
 
-    /// The widget of the window.
-    virtual QWidget* GetHandle() const = 0;
+    /**
+     * A window of its own (a class of the program derived from wxWindow, as mpWindow): its
+     * widget is made for it, a child of the widget of the parent, and deletes the window when
+     * the parent deletes it (as the children of a window of wxWidgets).
+     */
+    wxWindow( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos = wxDefaultPosition,
+              const wxSize& aSize = wxDefaultSize, long aStyle = 0,
+              const wxString& aName = wxEmptyString );
+
+    ~wxWindow() override;
+
+    wxWindow( const wxWindow& ) = delete;
+    wxWindow& operator=( const wxWindow& ) = delete;
+
+    /// The widget of the window (the one made for it, for a window of its own).
+    virtual QWidget* GetHandle() const { return m_ownWidgetCompat; }
 
     /// The widget of the children and of the sizer of the window (the content of a scrolled
     /// window): the widget of the window by default.
@@ -739,6 +752,9 @@ private:
     long                          m_extraStyle = 0;
     int                           m_freezeCount = 0;
     std::unique_ptr<wxSizerProxy> m_sizerProxy;
+
+    /// The widget made for a window of its own (see the constructor).
+    QWidget*                      m_ownWidgetCompat = nullptr;
 };
 
 

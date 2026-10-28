@@ -47,6 +47,7 @@
 #include <wx/gdicmn.h>
 #include <wx/string.h>
 
+class QKeyEvent;
 class QObject;
 class QWidget;
 class wxWindow;
@@ -85,6 +86,9 @@ enum wxEventTypeCompat
     wxEVT_LEFT_DCLICK,
     wxEVT_RIGHT_DOWN,
     wxEVT_RIGHT_UP,
+    wxEVT_MIDDLE_DOWN,
+    wxEVT_MIDDLE_UP,
+    wxEVT_MAGNIFY,
     wxEVT_MOTION,
     wxEVT_MOUSEWHEEL,
     wxEVT_CHAR_HOOK,
@@ -542,6 +546,14 @@ KIQT_API wxMouseState wxGetMouseState();
 KIQT_API wxPoint wxGetMousePosition();
 
 
+/// The axis of the mouse wheel.
+enum wxMouseWheelAxis
+{
+    wxMOUSE_WHEEL_VERTICAL,
+    wxMOUSE_WHEEL_HORIZONTAL
+};
+
+
 class wxMouseEvent : public wxEvent
 {
 public:
@@ -567,21 +579,32 @@ public:
     int GetY() const { return m_y; }
     int GetWheelRotation() const { return m_wheelRotation; }
     int GetWheelDelta() const { return 120; }
+    wxMouseWheelAxis GetWheelAxis() const { return m_wheelAxis; }
+    float GetMagnification() const { return m_magnification; }
     bool ShiftDown() const { return m_shift; }
     bool ControlDown() const { return m_control; }
     bool CmdDown() const { return m_control; }
     bool AltDown() const { return m_alt; }
+
+    int GetModifiers() const
+    {
+        return ( m_shift ? wxMOD_SHIFT : 0 ) | ( m_control ? wxMOD_CONTROL : 0 )
+               | ( m_alt ? wxMOD_ALT : 0 );
+    }
 
     bool LeftDown() const { return GetEventType() == wxEVT_LEFT_DOWN; }
     bool LeftUp() const { return GetEventType() == wxEVT_LEFT_UP; }
     bool LeftDClick() const { return GetEventType() == wxEVT_LEFT_DCLICK; }
     bool RightDown() const { return GetEventType() == wxEVT_RIGHT_DOWN; }
     bool RightUp() const { return GetEventType() == wxEVT_RIGHT_UP; }
+    bool MiddleDown() const { return GetEventType() == wxEVT_MIDDLE_DOWN; }
+    bool MiddleUp() const { return GetEventType() == wxEVT_MIDDLE_UP; }
+    bool Magnify() const { return GetEventType() == wxEVT_MAGNIFY; }
 
-    bool LeftIsDown() const { return m_leftIsDown; }
-    bool MiddleIsDown() const { return m_middleIsDown; }
-    bool RightIsDown() const { return m_rightIsDown; }
-    bool ButtonIsDown() const { return m_leftIsDown || m_middleIsDown || m_rightIsDown; }
+    bool LeftIsDown() const { return m_leftDown; }
+    bool MiddleIsDown() const { return m_middleDown; }
+    bool RightIsDown() const { return m_rightDown; }
+    bool ButtonIsDown() const { return m_leftDown || m_middleDown || m_rightDown; }
 
     /// The mouse moves without a button pressed.
     bool Moving() const { return GetEventType() == wxEVT_MOTION && !ButtonIsDown(); }
@@ -594,9 +617,14 @@ public:
     int  m_x, m_y;
     int  m_wheelRotation;
     bool m_shift, m_control, m_alt;
-    bool m_leftIsDown = false;
-    bool m_middleIsDown = false;
-    bool m_rightIsDown = false;
+
+    /// The buttons held down (the members of wxMouseState).
+    bool m_leftDown = false;
+    bool m_middleDown = false;
+    bool m_rightDown = false;
+
+    wxMouseWheelAxis m_wheelAxis = wxMOUSE_WHEEL_VERTICAL;
+    float            m_magnification = 0.0f;
 };
 
 
@@ -681,6 +709,9 @@ public:
 
     int    m_keyCode;
     wxChar m_uniChar;
+
+    /// The key event of Qt the event is made from (while it is processed), if any.
+    QKeyEvent* m_qtEventCompat = nullptr;
 
     // The state of the modifiers (wxKeyboardState): the code of KiCad changes them
     bool m_shiftDown = false;
@@ -1196,6 +1227,7 @@ private:
 };
 
 
+class QKeyEvent;
 class QObject;
 class QWidget;
 
@@ -1548,6 +1580,9 @@ public:
 #define EVT_LEFT_DCLICK( fn ) wx__DECLARE_EVT0( wxEVT_LEFT_DCLICK, fn )
 #define EVT_RIGHT_DOWN( fn ) wx__DECLARE_EVT0( wxEVT_RIGHT_DOWN, fn )
 #define EVT_RIGHT_UP( fn ) wx__DECLARE_EVT0( wxEVT_RIGHT_UP, fn )
+#define EVT_MIDDLE_DOWN( fn ) wx__DECLARE_EVT0( wxEVT_MIDDLE_DOWN, fn )
+#define EVT_MIDDLE_UP( fn ) wx__DECLARE_EVT0( wxEVT_MIDDLE_UP, fn )
+#define EVT_MAGNIFY( fn ) wx__DECLARE_EVT0( wxEVT_MAGNIFY, fn )
 #define EVT_MOTION( fn ) wx__DECLARE_EVT0( wxEVT_MOTION, fn )
 #define EVT_MOUSEWHEEL( fn ) wx__DECLARE_EVT0( wxEVT_MOUSEWHEEL, fn )
 #define EVT_ENTER_WINDOW( fn ) wx__DECLARE_EVT0( wxEVT_ENTER_WINDOW, fn )
@@ -1561,9 +1596,6 @@ public:
 
 // The events that the layer doesn't produce
 #define EVT_DROP_FILES( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
-#define EVT_MIDDLE_DOWN( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
-#define EVT_MIDDLE_UP( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
-#define EVT_MAGNIFY( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
 #define EVT_MOVE( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
 #define EVT_ICONIZE( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
 #define EVT_MAXIMIZE( fn ) wx__DECLARE_EVT_UNSUPPORTED_COMPAT( fn )
