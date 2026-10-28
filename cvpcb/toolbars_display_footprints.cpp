@@ -23,6 +23,7 @@
 #include <tool/actions.h>
 #include <tool/ui/toolbar_configuration.h>
 #include <tools/pcb_actions.h>
+#include <wx/translation.h>
 
 std::optional<TOOLBAR_CONFIGURATION> DISPLAY_FOOTPRINTS_TOOLBAR_SETTINGS::DefaultToolbarConfig( TOOLBAR_LOC aToolbar )
 {

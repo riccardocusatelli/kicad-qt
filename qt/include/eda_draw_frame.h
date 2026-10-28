@@ -550,8 +550,14 @@ protected:
     /// The user chose an entry of the grid selection box.
     void OnSelectGrid();
 
+    /// The event of the grid choice of the wxWidgets code (the Qt choice calls OnSelectGrid()).
+    void OnSelectGrid( wxCommandEvent& aEvent ) { aEvent.Skip(); }
+
     /// The user chose an entry of the zoom selection box.
     void OnSelectZoom();
+
+    /// The event of the zoom choice of the wxWidgets code (the Qt choice calls OnSelectZoom()).
+    void OnSelectZoom( wxCommandEvent& aEvent ) { aEvent.Skip(); }
 
     virtual void SetScreen( BASE_SCREEN* aScreen )  { m_currentScreen = aScreen; }
 

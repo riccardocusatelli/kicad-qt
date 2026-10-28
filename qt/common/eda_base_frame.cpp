@@ -1832,8 +1832,19 @@ void EDA_BASE_FRAME::PrintMsg( const wxString& text )
 
 void EDA_BASE_FRAME::CreateInfoBar()
 {
-    // The frame puts the info bar above its main area (see EDA_DRAW_FRAME)
+    // The frame puts the info bar above its main area (see EDA_DRAW_FRAME), or its panes do
+    // (the frames made by the code of wxWidgets)
     m_infoBar = new WX_INFOBAR( this );
+
+    if( m_auimgr.GetManagedWindow() )
+        m_auimgr.AddPane( m_infoBar, EDA_PANE().InfoBar().Name( wxS( "InfoBar" ) ).Top().Layer( 1 ) );
+}
+
+
+void EDA_BASE_FRAME::FinishAUIInitialization()
+{
+    if( m_auimgr.GetManagedWindow() )
+        m_auimgr.Update();
 }
 
 
@@ -2108,4 +2119,14 @@ void EDA_BASE_FRAME::DoWithAcceptedFiles()
         wxString fn = file.GetFullPath();
         m_toolManager->RunAction<wxString*>( *m_acceptedExts.at( file.GetExt() ), &fn );
     }
+}
+
+
+bool EDA_BASE_FRAME::PopupMenu( ACTION_MENU* aMenu )
+{
+    if( !aMenu )
+        return false;
+
+    aMenu->PopupAtMouse( this );
+    return true;
 }

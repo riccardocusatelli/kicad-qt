@@ -122,10 +122,11 @@ add_subdirectory( common )
 add_subdirectory( 3d-viewer )
 
 # The archives of the Qt build are linked by the headless KIFACEs, as the wx-free ones
-list( APPEND KICAD_WX_FREE_TARGETS 3d-viewer_qt kiqt_common )
+list( APPEND KICAD_WX_FREE_TARGETS 3d-viewer_qt kiqt_common pcbnew_gui_qt )
 
 add_subdirectory( pcbnew )
 add_subdirectory( eeschema )
+add_subdirectory( cvpcb )
 add_subdirectory( kicad )
 add_subdirectory( qa )
 
@@ -135,6 +136,7 @@ set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_KEPT_TARGETS
     pcbnew_qt_kiface pcbnew_qt_kiface_iface
     eeschema_qt_kiface eeschema_qt_kiface_iface
     eeschema_gui_qt eeschema_qtgui_kiface eeschema_qtgui_kiface_iface
+    cvpcb_gui_qt cvpcb_qtgui_kiface cvpcb_qtgui_kiface_iface
     kicad-qt
     qa_qt_tool_framework qa_qt_tool_framework_objects
     qa_qt_3d_viewer qa_qt_3d_viewer_objects

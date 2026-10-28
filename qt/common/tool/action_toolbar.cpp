@@ -56,6 +56,7 @@
 
 #include <qt_strings.h>
 #include <ui_hooks.h>
+#include <wx/kiwx_gdi.h>
 
 
 ACTION_GROUP::ACTION_GROUP( const std::string_view& aName )
@@ -806,4 +807,10 @@ void ACTION_TOOLBAR::changeEvent( QEvent* aEvent )
         RefreshBitmaps();
 
     QToolBar::changeEvent( aEvent );
+}
+
+
+wxFont ACTION_TOOLBAR::GetFont() const
+{
+    return wxFont( font() );
 }

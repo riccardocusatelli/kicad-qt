@@ -707,8 +707,14 @@ public:
     /// The character event follows the key event anyway (Qt sends both).
     void DoAllowNextEvent() {}
 
+    /// The position of the mouse in the window when the key was pressed (not known: 0, 0).
+    wxCoord GetX() const { return m_x; }
+    wxCoord GetY() const { return m_y; }
+
     int    m_keyCode;
     wxChar m_uniChar;
+    wxCoord m_x = 0;
+    wxCoord m_y = 0;
 
     /// The key event of Qt the event is made from (while it is processed), if any.
     QKeyEvent* m_qtEventCompat = nullptr;

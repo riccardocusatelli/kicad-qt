@@ -23,7 +23,8 @@
  * event loop of its application.  Its start wizard is finished, a board opens in the PCB editor
  * of KiCad (the frame of _pcbnew_qtgui.kiface), a schematic of another project in the schematic
  * editor of KiCad (_eeschema_qtgui.kiface) once the editors of the board's project are closed,
- * the launcher opens the symbol and footprint editors, and the shell closes the editors with it.
+ * the schematic editor opens CvPcb (_cvpcb_qtgui.kiface) to assign the footprints of the
+ * schematic, the launcher opens the symbol and footprint editors, and the shell closes the editors with it.
  *
  * Usage: qa_qt_kicad_shell <board.kicad_pcb> [schematic.kicad_sch] [screenshot.png]
  */
@@ -37,6 +38,7 @@
 
 #include <QCoreApplication>
 #include <QDialog>
+#include <QAbstractItemView>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -51,6 +53,7 @@
 
 #include <frame_type.h>
 #include <kiway_player.h>
+#include <tool/tool_manager.h>
 
 #include "../kicad/home_widgets.h"
 
@@ -137,6 +140,76 @@ void runScenario( MAIN_WINDOW* aWindow )
                "the schematic editor has the schematic" );
     }
 
+    // The footprint assignment of the schematic: the schematic editor opens CvPcb (the frame of
+    // _cvpcb_qtgui.kiface) and sends it the symbols of its netlist
+    KIWAY_PLAYER* cvpcb = nullptr;
+
+    if( sch && sch->GetToolManager() )
+    {
+        // The messages of CvPcb (the footprint library table of the test configuration is
+        // empty: CvPcb says it) are answered
+        QStringList messages;
+        QTimer      answer;
+
+        QObject::connect( &answer, &QTimer::timeout,
+                          [&]()
+                          {
+                              auto* dialog =
+                                      qobject_cast<QDialog*>( QApplication::activeModalWidget() );
+
+                              if( !dialog )
+                                  return;
+
+                              messages << dialog->windowTitle();
+                              std::printf( "    message: \"%s\"\n", qPrintable( dialog->windowTitle() ) );
+
+                              if( !pressButton( dialog, QStringLiteral( "OK" ) ) )
+                                  dialog->reject();
+                          } );
+
+        answer.start( 100 );
+        sch->GetToolManager()->RunAction( "eeschema.EditorControl.assignFootprints" );
+        settle( 1000 );
+        answer.stop();
+        settle( 200 );
+
+        check( messages.size() <= 1, "CvPcb opens without errors other than the empty library "
+                                     "table of the test" );
+
+        cvpcb = s_kiway.Player( FRAME_CVPCB, false );
+        check( cvpcb != nullptr, "the KIFACE of cvpcb with the GUI makes CvPcb" );
+        check( cvpcb && cvpcb->isVisible(), "CvPcb is shown" );
+
+        // Its lists: the libraries, the symbols of the schematic and the footprints
+        int lists = 0;
+        int filled = 0;
+
+        if( cvpcb )
+        {
+            for( QAbstractItemView* view : cvpcb->findChildren<QAbstractItemView*>() )
+            {
+                if( !view->isVisible() || !view->model() )
+                    continue;
+
+                lists++;
+
+                if( view->model()->rowCount() > 0 )
+                    filled++;
+            }
+        }
+
+        std::printf( "    CvPcb: %d lists, %d with rows\n", lists, filled );
+        check( lists >= 3, "CvPcb shows its three lists" );
+        check( filled >= 1, "CvPcb lists the symbols of the schematic" );
+
+        if( cvpcb && !s_screenshot.isEmpty() )
+        {
+            QFileInfo shot( s_screenshot );
+            cvpcb->grab().save( shot.path() + QStringLiteral( "/" ) + shot.completeBaseName()
+                                + QStringLiteral( "-cvpcb." ) + shot.suffix() );
+        }
+    }
+
     // The launcher: the library editors
     LAUNCHER_PANEL* launcher = aWindow->findChild<LAUNCHER_PANEL*>();
     check( launcher != nullptr, "the shell has its launcher" );
@@ -161,7 +234,7 @@ void runScenario( MAIN_WINDOW* aWindow )
     for( QWidget* widget : QApplication::topLevelWidgets() )
     {
         if( widget->isVisible() && widget != aWindow && widget != pcb && widget != sch
-            && widget != symbols && widget != footprints )
+            && widget != symbols && widget != footprints && widget != cvpcb )
         {
             std::printf( "    open: %s \"%s\"\n", widget->metaObject()->className(),
                          qPrintable( widget->windowTitle() ) );
@@ -182,7 +255,8 @@ void runScenario( MAIN_WINDOW* aWindow )
     settle( 200 );
     check( !s_kiway.Player( FRAME_PCB_EDITOR, false ) && !s_kiway.Player( FRAME_SCH, false )
                    && !s_kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
-                   && !s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false ),
+                   && !s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false )
+                   && !s_kiway.Player( FRAME_CVPCB, false ),
            "the editors are closed" );
 
     aWindow->close();

@@ -72,7 +72,7 @@
 #include <kiway.h>
 
 
-CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
+CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         KIWAY_PLAYER( aKiway, aParent, FRAME_CVPCB, _( "Assign Footprints" ), wxDefaultPosition,
                       wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, wxT( "CvpcbFrame" ),
                       unityScale ),
@@ -1161,7 +1161,7 @@ DISPLAY_FOOTPRINTS_FRAME* CVPCB_MAINFRAME::GetFootprintViewerFrame() const
 }
 
 
-wxWindow* CVPCB_MAINFRAME::GetToolCanvas() const
+TOOLKIT_WINDOW* CVPCB_MAINFRAME::GetToolCanvas() const
 {
     return GetFootprintViewerFrame();
 }

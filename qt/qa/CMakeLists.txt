@@ -97,7 +97,8 @@ target_link_libraries( qa_qt_kicad_shell
     ${wxWidgets_BASE_LIBRARIES}
     )
 
-add_dependencies( qa_qt_kicad_shell common pcbnew_qtgui_kiface eeschema_qtgui_kiface )
+add_dependencies( qa_qt_kicad_shell common pcbnew_qtgui_kiface eeschema_qtgui_kiface
+                  cvpcb_qtgui_kiface )
 
 # In the kicad directory of the build tree, as kicad-qt (KICAD_RUN_FROM_BUILD_DIR finds the
 # KIFACEs from there)

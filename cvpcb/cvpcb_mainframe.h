@@ -26,6 +26,7 @@
 #define _CVPCB_MAINFRAME_H_
 
 #include <kiway_player.h>
+#include <wx/timer.h>
 #include <netlist_reader/pcb_netlist.h>
 
 #include <auto_associate.h>
@@ -115,7 +116,7 @@ public:
      */
     DISPLAY_FOOTPRINTS_FRAME* GetFootprintViewerFrame() const;
 
-    wxWindow* GetToolCanvas() const override;
+    TOOLKIT_WINDOW* GetToolCanvas() const override;
 
     /**
      * Find out which control currently has focus.
@@ -306,7 +307,7 @@ public:
     void SetStatusText( const wxString& aText, int aNumber = 0 ) override;
 
 protected:
-    CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent );
+    CVPCB_MAINFRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
     void configureToolbars() override;
 

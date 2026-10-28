@@ -39,6 +39,7 @@
 #include <ui_hooks.h>
 
 #include <qt_strings.h>
+#include <wx/aui/framemanager.h>
 #include <wx/kiwx_gui.h>
 #include <wx/kiwx_menu.h>
 #include <wx/kiwx_validators.h>
@@ -1006,7 +1007,13 @@ wxString wxWindow::GetToolTipText() const
 
 wxWindow* wxWindow::GetParent() const
 {
-    return wxWindowFromQt( GetHandle()->parentWidget() );
+    QWidget* parent = GetHandle()->parentWidget();
+
+    // The panes of wxAuiManager are in docks of the frame they were made in, their parent
+    while( parent && parent->property( wxAUI_CONTAINER_PROPERTY_COMPAT ).toBool() )
+        parent = parent->parentWidget();
+
+    return wxWindowFromQt( parent );
 }
 
 

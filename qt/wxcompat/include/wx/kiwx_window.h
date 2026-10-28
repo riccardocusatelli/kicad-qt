@@ -632,6 +632,9 @@ public:
     void Thaw();
     bool IsFrozen() const { return m_freezeCount > 0; }
     virtual bool Layout();
+    /// The layouts of Qt always follow the size of the window
+    void SetAutoLayout( bool aAutoLayout ) {}
+    bool GetAutoLayout() const { return true; }
     virtual void Fit();
     virtual void FitInside() { Fit(); }
     void InvalidateBestSize() { GetHandle()->updateGeometry(); }

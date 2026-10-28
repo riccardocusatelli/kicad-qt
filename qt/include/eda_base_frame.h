@@ -49,6 +49,7 @@
 #include <wx/filename.h>
 #include <wx/gdicmn.h>
 #include <wx/toplevel.h>         // the styles of the frames (kiwx)
+#include <wx/aui/framemanager.h>  // the panes of the frames of the wxWidgets code (wxcompat)
 #include <layer_ids.h>
 #include <frame_type.h>
 #include <frame_panes.h>
@@ -340,6 +341,14 @@ public:
     /// Lay out again the panes of the frame (after they were shown, hidden or changed).
     void UpdatePanes();
 
+    /// The default handler of the close events of the frames of wxWidgets (wxTopLevelWindow): the
+    /// frame closes (see closeEvent()).
+    void OnCloseWindow( wxCloseEvent& aEvent ) { aEvent.Skip(); }
+
+    /// Show a context menu of the tools at the mouse cursor (the menus of wxWidgets as well).
+    using wxWindowCompat<QMainWindow>::PopupMenu;
+    bool PopupMenu( ACTION_MENU* aMenu );
+
     /**
      * The panes of the frame (the panels docked around the canvas), by name.
      *
@@ -378,8 +387,11 @@ public:
     wxSize GetPaneSize( const wxString& aName ) const;
 
     /// The panes are laid out (wxWidgets: the end of the setup of the AUI manager): the dock
-    /// widgets of Qt are laid out when they are added.
-    void FinishAUIInitialization() {}
+    /// widgets of Qt are laid out when they are added, the panes of m_auimgr here.
+    void FinishAUIInitialization();
+
+    /// The layout of the panes of m_auimgr: kept by Qt (QMainWindow::saveState()).
+    void RestoreAuiLayout() {}
 
     /**
      * Give the frame its icons (in the sizes the system needs).
@@ -903,6 +915,10 @@ protected:
     wxString                m_aboutTitle;        // Name of program displayed in About.
 
     WX_INFOBAR*                m_infoBar;           // Infobar for the frame
+
+    /// The panes of the frames made by the code of wxWidgets (the frames of the editors of the
+    /// Qt build lay out their panes with addPane()).
+    wxAuiManager               m_auimgr;
     KISTATUSBAR*               m_statusBar = nullptr;  // The status bar, if any
     APPEARANCE_CONTROLS_3D*    m_appearancePanel = nullptr;
 
@@ -962,6 +978,86 @@ protected:
     bool            m_isNonUserClose;
 
     wxString        m_name;                     // The name of the frame
+};
+
+
+/**
+ * A pane of the frames made by the code of wxWidgets (m_auimgr), as in the wxWidgets build:
+ * the kinds of the panes of KiCad.
+ */
+class EDA_PANE : public wxAuiPaneInfo
+{
+public:
+    EDA_PANE()
+    {
+        Gripper( false );
+        CloseButton( false );
+        PaneBorder( false );
+    }
+
+    /// A horizontal toolbar.
+    EDA_PANE& HToolbar()
+    {
+        SetFlag( optionToolbar, true );
+        CaptionVisible( false );
+        TopDockable().BottomDockable();
+        DockFixed( true );
+        Movable( false );
+        Resizable( true );
+        return *this;
+    }
+
+    /// A vertical toolbar.
+    EDA_PANE& VToolbar()
+    {
+        SetFlag( optionToolbar, true );
+        CaptionVisible( false );
+        LeftDockable().RightDockable();
+        DockFixed( true );
+        Movable( false );
+        Resizable( true );
+        return *this;
+    }
+
+    /// A captioned palette (a symbol tree, a layers manager).
+    EDA_PANE& Palette()
+    {
+        CaptionVisible( true );
+        PaneBorder( true );
+        return *this;
+    }
+
+    /// An undecorated pane for a drawing canvas.
+    EDA_PANE& Canvas()
+    {
+        CaptionVisible( false );
+        Layer( 0 );
+        PaneBorder( true );
+        Resizable( true );
+        return *this;
+    }
+
+    /// The messages pane.
+    EDA_PANE& Messages()
+    {
+        CaptionVisible( false );
+        BottomDockable( true );
+        DockFixed( true );
+        Movable( false );
+        Resizable( true );
+        return *this;
+    }
+
+    /// The info bar.
+    EDA_PANE& InfoBar()
+    {
+        CaptionVisible( false );
+        Movable( false );
+        Resizable( true );
+        PaneBorder( false );
+        DockFixed( true );
+        return *this;
+    }
 };
 
 #endif  // EDA_BASE_FRAME_H_

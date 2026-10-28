@@ -80,6 +80,18 @@ class KIWX_LIST_MODEL;
 #define wxLIST_AUTOSIZE -1
 #define wxLIST_AUTOSIZE_USEHEADER -2
 
+#define wxLIST_HITTEST_ABOVE 0x0001
+#define wxLIST_HITTEST_BELOW 0x0002
+#define wxLIST_HITTEST_NOWHERE 0x0004
+#define wxLIST_HITTEST_ONITEMICON 0x0020
+#define wxLIST_HITTEST_ONITEMLABEL 0x0080
+#define wxLIST_HITTEST_ONITEMRIGHT 0x0100
+#define wxLIST_HITTEST_ONITEMSTATEICON 0x0200
+#define wxLIST_HITTEST_TOLEFT 0x0400
+#define wxLIST_HITTEST_TORIGHT 0x0800
+#define wxLIST_HITTEST_ONITEM ( wxLIST_HITTEST_ONITEMICON | wxLIST_HITTEST_ONITEMLABEL \
+                                | wxLIST_HITTEST_ONITEMSTATEICON )
+
 #define wxLIST_FIND_UP 0
 #define wxLIST_FIND_DOWN 1
 
@@ -120,6 +132,37 @@ public:
 private:
     wxSize                m_size;
     std::vector<wxBitmap> m_images;
+};
+
+
+/// The colours and the font of an item of a virtual list (wxListCtrl::OnGetItemAttr()).
+class wxListItemAttr
+{
+public:
+    wxListItemAttr() = default;
+    wxListItemAttr( const wxColour& aText, const wxColour& aBackground, const wxFont& aFont ) :
+            m_text( aText ),
+            m_background( aBackground ),
+            m_font( aFont )
+    {
+    }
+
+    void SetTextColour( const wxColour& aColour ) { m_text = aColour; }
+    void SetBackgroundColour( const wxColour& aColour ) { m_background = aColour; }
+    void SetFont( const wxFont& aFont ) { m_font = aFont; }
+
+    bool HasTextColour() const { return m_text.IsOk(); }
+    bool HasBackgroundColour() const { return m_background.IsOk(); }
+    bool HasFont() const { return m_font.IsOk(); }
+
+    const wxColour& GetTextColour() const { return m_text; }
+    const wxColour& GetBackgroundColour() const { return m_background; }
+    const wxFont& GetFont() const { return m_font; }
+
+private:
+    wxColour m_text;
+    wxColour m_background;
+    wxFont   m_font;
 };
 
 
@@ -322,6 +365,7 @@ public:
     /// The texts and images of a virtual list: override them.
     virtual wxString OnGetItemText( long aItem, long aColumn ) const { return wxString(); }
     virtual int OnGetItemImage( long aItem ) const { return -1; }
+    virtual wxListItemAttr* OnGetItemAttr( long aItem ) const { return nullptr; }
     virtual int OnGetItemColumnImage( long aItem, long aColumn ) const
     {
         return aColumn == 0 ? OnGetItemImage( aItem ) : -1;

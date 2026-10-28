@@ -161,18 +161,27 @@ public:
         case Qt::FontRole:
             if( entry && entry->font.IsOk() )
                 return QFont( entry->font );
+            else if( wxListItemAttr* attr = entry ? nullptr : m_list->OnGetItemAttr( row ) )
+                return attr->HasFont() ? QVariant( QFont( attr->GetFont() ) ) : QVariant();
 
             return QVariant();
 
         case Qt::ForegroundRole:
             if( entry && entry->foreground.IsOk() )
                 return QColor( entry->foreground );
+            else if( wxListItemAttr* attr = entry ? nullptr : m_list->OnGetItemAttr( row ) )
+                return attr->HasTextColour() ? QVariant( QColor( attr->GetTextColour() ) ) : QVariant();
 
             return QVariant();
 
         case Qt::BackgroundRole:
             if( entry && entry->background.IsOk() )
                 return QColor( entry->background );
+            else if( wxListItemAttr* attr = entry ? nullptr : m_list->OnGetItemAttr( row ) )
+            {
+                return attr->HasBackgroundColour() ? QVariant( QColor( attr->GetBackgroundColour() ) )
+                                                   : QVariant();
+            }
 
             return QVariant();
 
@@ -1014,7 +1023,7 @@ long wxListCtrl::HitTest( const wxPoint& aPoint, int& aFlags, long* aSubItem ) c
 {
     QModelIndex index = indexAt( QPoint( aPoint.x, aPoint.y ) );
 
-    aFlags = index.isValid() ? 0x0080 /* wxLIST_HITTEST_ONITEMLABEL */ : 0x0004 /* NOWHERE */;
+    aFlags = index.isValid() ? wxLIST_HITTEST_ONITEMLABEL : wxLIST_HITTEST_NOWHERE;
 
     if( aSubItem )
         *aSubItem = index.isValid() ? index.column() : -1;

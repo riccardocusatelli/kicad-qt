@@ -52,6 +52,7 @@ add_library( kiqt SHARED
     widgets/wx_progress_reporters.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/printing.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_aui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gdi.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_grid.cpp

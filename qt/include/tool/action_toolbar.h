@@ -51,6 +51,7 @@
 class QAction;
 class QToolButton;
 class ACTION_MENU;
+class wxFont;
 class EDA_BASE_FRAME;
 class TOOL_ACTION;
 class TOOL_MANAGER;
@@ -217,6 +218,15 @@ public:
      * @param aLabel is the label of the control.
      */
     void Add( QWidget* aControl, const wxString& aLabel = wxEmptyString );
+
+    /// Add a custom control to the toolbar (wxAuiToolBar::AddControl()).
+    void AddControl( QWidget* aControl, const wxString& aLabel = wxEmptyString )
+    {
+        Add( aControl, aLabel );
+    }
+
+    /// The font of the toolbar (wxWindow::GetFont()).
+    wxFont GetFont() const;
 
     /**
      * Add a context menu to a specific tool item on the toolbar.

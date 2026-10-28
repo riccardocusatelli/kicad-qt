@@ -44,7 +44,7 @@ class COMPONENT;
 class DISPLAY_FOOTPRINTS_FRAME : public PCB_BASE_FRAME
 {
 public:
-    DISPLAY_FOOTPRINTS_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    DISPLAY_FOOTPRINTS_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
     ~DISPLAY_FOOTPRINTS_FRAME() override;
 
     /**
