@@ -54,7 +54,8 @@ add_dependencies( qa_qt_pcbnew_frames pcbnew_gui_qt )
 
 # The Python module of pcbnew (pcbnew.py, next to the KIFACEs of pcbnew)
 target_compile_definitions( qa_qt_pcbnew_frames_objects PRIVATE
-    QA_PCBNEW_PYTHON_DIR="${CMAKE_BINARY_DIR}/pcbnew" )
+    QA_PCBNEW_PYTHON_DIR="${CMAKE_BINARY_DIR}/pcbnew"
+    QA_PCBNEW_PLUGINS_DIR="${CMAKE_SOURCE_DIR}/pcbnew/python/plugins" )
 
 if( UNIX AND NOT APPLE )
     target_link_libraries( qa_qt_pcbnew_frames PRIVATE ${SPNAV_LIBRARIES} )

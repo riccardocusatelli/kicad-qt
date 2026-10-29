@@ -75,6 +75,12 @@
 #include <tools/pcb_actions.h>
 #include <tools/pcb_selection_tool.h>
 #include <zone.h>
+#include <action_plugin.h>
+#include <footprint_wizard.h>
+#include <paths.h>
+#include <pcb_text.h>
+#include <QAction>
+#include <QDir>
 #include <tool/tool_manager.h>
 
 
@@ -236,6 +242,99 @@ void testPython( BOARD* aBoard )
                                              "else 0\n",
                                              "qa_plugins" );
     check( plugins == 1, "the classes of the action plugins and footprint wizards" );
+}
+
+
+/// The Python plugins of the user: an action plugin, run by the PCB editor, and the QFN wizard of
+/// KiCad (with its base classes), which makes a footprint.
+void testPythonPlugins( PCB_EDIT_FRAME* aFrame, BOARD* aBoard )
+{
+    std::printf( "PYTHON PLUGINS\n" );
+
+    QDir plugins( QString::fromStdString( std::string(
+            PATHS::GetUserScriptingPath().ToUTF8() ) ) + QStringLiteral( "/plugins" ) );
+    check( plugins.mkpath( QStringLiteral( "." ) ), "the plugin folder of the user" );
+
+    QFile action( plugins.filePath( QStringLiteral( "qa_action.py" ) ) );
+
+    if( action.open( QIODevice::WriteOnly | QIODevice::Text ) )
+    {
+        action.write( "import pcbnew\n"
+                      "\n"
+                      "class QaAction( pcbnew.ActionPlugin ):\n"
+                      "    def defaults( self ):\n"
+                      "        self.name = 'QA action'\n"
+                      "        self.category = 'QA'\n"
+                      "        self.description = 'Adds a text to the board'\n"
+                      "\n"
+                      "    def Run( self ):\n"
+                      "        board = pcbnew.GetBoard()\n"
+                      "        text = pcbnew.PCB_TEXT( board )\n"
+                      "        text.SetText( 'QA action plugin' )\n"
+                      "        board.Add( text )\n"
+                      "\n"
+                      "QaAction().register()\n" );
+        action.close();
+    }
+
+    for( const char* name : { "FootprintWizardBase.py", "PadArray.py", "qfn_wizard.py" } )
+    {
+        QFile::copy( QStringLiteral( QA_PCBNEW_PLUGINS_DIR "/" ) + QLatin1String( name ),
+                     plugins.filePath( QLatin1String( name ) ) );
+    }
+
+    aFrame->GetToolManager()->RunAction( ACTIONS::pluginsReload );
+    settle( 200 );
+
+    ACTION_PLUGIN* qaAction = ACTION_PLUGINS::GetAction( wxT( "QA action" ) );
+    check( qaAction != nullptr, "the PCB editor loads the action plugin of the user" );
+
+    // The menus are made again with the actions of the plugins: the one of the plugin runs it
+    QAction* menuItem = nullptr;
+
+    for( QAction* item : aFrame->findChildren<QAction*>() )
+    {
+        if( item->text().remove( QLatin1Char( '&' ) ) == QStringLiteral( "QA action" ) )
+            menuItem = item;
+    }
+
+    check( menuItem != nullptr, "the action plugin is in the menu of the PCB editor" );
+
+    if( qaAction && menuItem )
+    {
+        menuItem->trigger();
+        settle( 100 );
+
+        bool added = false;
+
+        for( BOARD_ITEM* item : aBoard->Drawings() )
+        {
+            if( item->Type() == PCB_TEXT_T
+                && static_cast<PCB_TEXT*>( item )->GetText() == wxT( "QA action plugin" ) )
+            {
+                added = true;
+            }
+        }
+
+        check( added, "the action plugin adds its text to the board" );
+    }
+
+    FOOTPRINT_WIZARD* wizard = nullptr;
+
+    for( int ii = 0; ii < FOOTPRINT_WIZARD_LIST::GetWizardsCount(); ++ii )
+    {
+        if( FOOTPRINT_WIZARD_LIST::GetWizard( ii )->GetName().Contains( wxT( "QFN" ) ) )
+            wizard = FOOTPRINT_WIZARD_LIST::GetWizard( ii );
+    }
+
+    check( wizard != nullptr, "the QFN footprint wizard is loaded" );
+
+    if( wizard )
+    {
+        wxString                   message;
+        std::unique_ptr<FOOTPRINT> footprint( wizard->GetFootprint( &message ) );
+        check( footprint && footprint->Pads().size() > 4, "the QFN wizard makes its footprint" );
+    }
 }
 
 
@@ -491,6 +590,7 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
     }
 
     testPython( board );
+    testPythonPlugins( frame, board );
 
     // The footprint editor, with a footprint of the board
     testFootprintEditor( aKiway, board->Footprints().empty() ? nullptr : board->Footprints().front(),
@@ -521,6 +621,12 @@ int main( int argc, char** argv )
 
     if( !qEnvironmentVariableIsSet( "KICAD_CONFIG_HOME" ) )
         qputenv( "KICAD_CONFIG_HOME", configHome.path().toUtf8() );
+
+    // The documents of the test (the Python plugins of the user it writes)
+    QTemporaryDir documentsHome;
+
+    if( !qEnvironmentVariableIsSet( "KICAD_DOCUMENTS_HOME" ) )
+        qputenv( "KICAD_DOCUMENTS_HOME", documentsHome.path().toUtf8() );
 
     // The application object of a program with a user interface (Pgm().IsGUI())
     KIQT_APP      kiqtApp;

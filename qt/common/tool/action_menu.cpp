@@ -54,13 +54,14 @@
 using namespace std::placeholders;
 
 
-/// The ID of an entry (the QAction data), or -1 (separators, titles, submenus).
+/// The ID of an entry (the QAction data), or wxID_NONE (separators, titles, submenus).  The ids
+/// made for wxID_ANY (wxWindowIDNew()) are negative, as in wxWidgets.
 static int itemId( const QAction* aAction )
 {
     bool ok = false;
     int  id = aAction->data().toInt( &ok );
 
-    return ok ? id : -1;
+    return ok ? id : int( wxID_NONE );
 }
 
 
@@ -72,7 +73,7 @@ class MENU_ITEM_HOLDER : public QObject
 public:
     MENU_ITEM_HOLDER( QAction* aAction ) :
             QObject( aAction ),
-            m_item( aAction, itemId( aAction ) >= 0 ? itemId( aAction ) : int( wxID_NONE ) )
+            m_item( aAction, itemId( aAction ) )
     {
     }
 
@@ -107,8 +108,7 @@ ACTION_MENU_ITEM::operator wxMenuItem*() const
 
 int ACTION_MENU_ITEM::GetId() const
 {
-    int id = m_action ? itemId( m_action ) : -1;
-    return id >= 0 ? id : int( wxID_NONE );
+    return m_action ? itemId( m_action ) : int( wxID_NONE );
 }
 
 
@@ -580,7 +580,7 @@ void ACTION_MENU::onHovered( QAction* aAction )
 
     // The hovered() signal of a menu is also emitted for the entries of its submenus: the entry
     // is handled by the menu it belongs to
-    if( !toolMgr || id < 0 || !actions().contains( aAction ) )
+    if( !toolMgr || id == wxID_NONE || !actions().contains( aAction ) )
         return;
 
     TOOL_EVENT evt( TC_COMMAND, TA_CHOICE_MENU_UPDATE, id );
@@ -776,7 +776,7 @@ QAction* ACTION_MENU::appendCopy( const ACTION_MENU& aMenu, const QAction* aSour
     if( labelIt != aMenu.m_labels.end() )
         m_labels[newItem] = labelIt->second;
 
-    if( itemId( aSource ) >= 0 )
+    if( itemId( aSource ) != wxID_NONE )
     {
         connect( newItem, &QAction::triggered, this,
                  [this, newItem]()
