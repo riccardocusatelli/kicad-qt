@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "panel_gerbview_excellon_settings_base.h"
+#include <panel_gerbview_excellon_settings_base.h>
 
 
 struct EXCELLON_DEFAULTS;

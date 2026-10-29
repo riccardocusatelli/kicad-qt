@@ -54,6 +54,7 @@
 #include <base_screen.h>
 #include <gerbview_painter.h>
 #include <wx/wupdlock.h>
+#include <widgets/msgpanel.h>
 
 #include "widgets/gbr_layer_box_selector.h"
 #include "widgets/gerbview_layer_widget.h"
@@ -70,7 +71,7 @@
 
 #include <wx/log.h>
 
-GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         EDA_DRAW_FRAME( aKiway, aParent, FRAME_GERBER, wxT( "GerbView" ), wxDefaultPosition,
                         wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, GERBVIEW_FRAME_NAME,
                         gerbIUScale ),

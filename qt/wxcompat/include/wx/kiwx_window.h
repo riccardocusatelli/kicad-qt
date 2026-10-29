@@ -208,6 +208,26 @@ private:
 };
 
 
+/// The items of a sizer (wxSizerItemList): the items of its layout, in their order.
+class wxSizerItemList
+{
+public:
+    explicit wxSizerItemList( std::vector<wxSizerItem*> aItems ) : m_items( std::move( aItems ) ) {}
+
+    size_t GetCount() const { return m_items.size(); }
+    size_t size() const { return m_items.size(); }
+    bool IsEmpty() const { return m_items.empty(); }
+
+    wxSizerItem* operator[]( size_t aIndex ) const { return m_items[aIndex]; }
+
+    auto begin() const { return m_items.begin(); }
+    auto end() const { return m_items.end(); }
+
+private:
+    std::vector<wxSizerItem*> m_items;
+};
+
+
 /**
  * A sizer (wxSizer): the API of wxSizer on a layout of Qt (GetLayoutCompat()).  The sizers of
  * the compatibility layer (wxBoxSizer...) are layouts; the layout of a window that isn't one
@@ -282,6 +302,18 @@ public:
     }
 
     wxSizerItem* GetItem( size_t aIndex );
+
+    /// The items of the layout.
+    wxSizerItemList GetChildren() const
+    {
+        wxSizer*                  self = const_cast<wxSizer*>( this );
+        std::vector<wxSizerItem*> items;
+
+        for( size_t i = 0; i < GetItemCount(); ++i )
+            items.push_back( self->GetItem( i ) );
+
+        return wxSizerItemList( std::move( items ) );
+    }
 
     /// Remove the items; delete their widgets if @a aDeleteWindows.
     void Clear( bool aDeleteWindows = false );
@@ -555,6 +587,9 @@ public:
     wxSize GetSize() const;
     void GetSize( int* aWidth, int* aHeight ) const;
     wxSize GetClientSize() const;
+
+    /// The size of the borders around the client area (both sides).
+    wxSize GetWindowBorderSize() const { return GetSize() - GetClientSize(); }
 
     /// Where a point (in client coordinates) is in the window.
     wxHitTest HitTest( const wxPoint& aPos ) const

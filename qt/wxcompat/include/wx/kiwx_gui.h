@@ -1050,6 +1050,20 @@ public:
 };
 
 
+/// The styles of wxNotebook: the tabs on a side (the tabs of Qt are on top).
+enum
+{
+    wxNB_DEFAULT = 0,
+    wxNB_TOP = 0x10,
+    wxNB_BOTTOM = 0x20,
+    wxNB_LEFT = 0x40,
+    wxNB_RIGHT = 0x80,
+    wxNB_FIXEDWIDTH = 0x100,
+    wxNB_MULTILINE = 0x200,
+    wxNB_NOPAGETHEME = 0x400
+};
+
+
 class KIQT_API wxNotebook : public wxWindowCompat<QTabWidget>
 {
 public:
@@ -1523,6 +1537,10 @@ public:
     void AddStretchSpacer( int aProportion = 1 ) override { Add( 0, 0, aProportion ); }
 
     int GetCols() const { return m_cols; }
+
+    /// The heights of the rows and the widths of the columns, as laid out (or their hints).
+    wxArrayInt GetRowHeights() const;
+    wxArrayInt GetColWidths() const;
 
     /// As wxWidgets: without a growable row (or column), the rows (or columns) keep their size
     /// and the free space stays at the end (Qt gives it to all of them), unless all of them grow

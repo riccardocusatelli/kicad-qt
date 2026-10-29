@@ -63,7 +63,7 @@ class NL_GERBVIEW_PLUGIN;
 class GERBVIEW_FRAME : public EDA_DRAW_FRAME
 {
 public:
-    GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    GERBVIEW_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
     ~GERBVIEW_FRAME();
 
     void doCloseWindow() override;

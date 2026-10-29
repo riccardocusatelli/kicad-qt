@@ -2788,6 +2788,60 @@ wxStaticBoxSizer::wxStaticBoxSizer( int aOrient, wxWidgetArgCompat aParent, cons
 }
 
 
+namespace
+{
+
+/// The extent of the cells of a row (or of a column) of a grid: the largest one.
+int gridLineExtent( const QGridLayout* aGrid, int aIndex, bool aRow )
+{
+    int extent = 0;
+    int count = aRow ? aGrid->columnCount() : aGrid->rowCount();
+
+    for( int i = 0; i < count; ++i )
+    {
+        QLayoutItem* item = aRow ? aGrid->itemAtPosition( aIndex, i )
+                                 : aGrid->itemAtPosition( i, aIndex );
+
+        if( !item || item->isEmpty() )
+            continue;
+
+        // As laid out, or as hinted if not laid out yet (or squeezed)
+        QRect geometry = item->geometry();
+        QSize hint = item->sizeHint();
+        int   size = aRow ? std::max( geometry.height(), hint.height() )
+                          : std::max( geometry.width(), hint.width() );
+
+        extent = std::max( extent, size );
+    }
+
+    return extent;
+}
+
+} // namespace
+
+
+wxArrayInt wxFlexGridSizer::GetRowHeights() const
+{
+    wxArrayInt heights;
+
+    for( int row = 0; row < rowCount(); ++row )
+        heights.push_back( gridLineExtent( this, row, true ) );
+
+    return heights;
+}
+
+
+wxArrayInt wxFlexGridSizer::GetColWidths() const
+{
+    wxArrayInt widths;
+
+    for( int col = 0; col < columnCount(); ++col )
+        widths.push_back( gridLineExtent( this, col, false ) );
+
+    return widths;
+}
+
+
 void wxFlexGridSizer::setGeometry( const QRect& aRect )
 {
     QRect rect = aRect;
@@ -3002,6 +3056,11 @@ wxFlexGridSizer::wxFlexGridSizer( int aRows, int aCols, int aVGap, int aHGap ) :
 void wxFlexGridSizer::nextCell( int& aRow, int& aCol )
 {
     int cols = std::max( m_cols, 1 );
+
+    // A cleared grid is filled again from its first cell
+    if( count() == 0 )
+        m_next = 0;
+
     aRow = m_next / cols;
     aCol = m_next % cols;
     m_next++;

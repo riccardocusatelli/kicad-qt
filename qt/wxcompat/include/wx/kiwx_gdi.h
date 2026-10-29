@@ -740,6 +740,20 @@ public:
         bundle.addPixmap( aBitmap2 );
         return bundle;
     }
+
+    /// The images of the icon at several scales.
+    static wxBitmapBundle FromBitmaps( const std::vector<wxBitmap>& aBitmaps )
+    {
+        if( aBitmaps.empty() )
+            return wxBitmapBundle();
+
+        wxBitmapBundle bundle( aBitmaps.front() );
+
+        for( size_t i = 1; i < aBitmaps.size(); ++i )
+            bundle.addPixmap( aBitmaps[i] );
+
+        return bundle;
+    }
 };
 
 

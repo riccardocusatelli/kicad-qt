@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "panel_gerbview_display_options_base.h"
+#include <panel_gerbview_display_options_base.h>
 
 
 class PANEL_GAL_OPTIONS;

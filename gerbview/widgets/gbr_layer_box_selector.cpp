@@ -29,6 +29,7 @@
 
 #include <gerbview_frame.h>
 #include <gerber_file_image_list.h>
+#include <toolkit/gui_services.h>
 
 #ifdef __WXMSW__
 #include <dpi_scaling_common.h>
@@ -63,12 +64,12 @@ private:
 };
 
 
-GBR_LAYER_BOX_SELECTOR::GBR_LAYER_BOX_SELECTOR( wxWindow* parent, wxWindowID id, const wxPoint& pos,
+GBR_LAYER_BOX_SELECTOR::GBR_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW_ARG parent, wxWindowID id, const wxPoint& pos,
                                                 const wxSize& size, int n,
                                                 const wxString choices[] ) :
         LAYER_BOX_SELECTOR( parent, id, pos, size, n, choices ),
         m_layerPresentation( std::make_unique<GBR_LAYER_PRESENTATION>(
-                static_cast<GERBVIEW_FRAME&>( *parent->GetParent() ) ) )
+                static_cast<GERBVIEW_FRAME&>( *TOOLKIT::GetTopLevelParent( parent ) ) ) )
 {
     m_layerhotkeys = false;
 }

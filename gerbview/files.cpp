@@ -542,7 +542,7 @@ bool GERBVIEW_FRAME::unarchiveFiles( const wxString& aFullFileName, REPORTER* aR
         {
             wxFFileOutputStream temporary_ofile( unzipped_tempfile );
 
-            if( temporary_ofile.Ok() )
+            if( temporary_ofile.IsOk() )
                 temporary_ofile.Write( zipArchive );
             else
             {

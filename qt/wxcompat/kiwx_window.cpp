@@ -365,6 +365,13 @@ void wxSizer::Insert( size_t aIndex, wxWidgetArgCompat aWindow, int aProportion,
     if( !layout || !aWindow )
         return;
 
+    // The cells of a grid are filled in order (also when its code calls wxSizer::Insert())
+    if( wxFlexGridSizer* grid = dynamic_cast<wxFlexGridSizer*>( this ) )
+    {
+        grid->wxFlexGridSizer::Add( aWindow, aProportion, aFlag, aBorder, aUserData );
+        return;
+    }
+
     if( QBoxLayout* box = boxLayout( this ) )
     {
         box->insertWidget( int( std::min<size_t>( aIndex, box->count() ) ), aWindow, aProportion,
@@ -395,6 +402,12 @@ void wxSizer::Insert( size_t aIndex, wxSizer* aSizer, int aProportion, int aFlag
         }
     }
 
+    if( wxFlexGridSizer* grid = dynamic_cast<wxFlexGridSizer*>( this ) )
+    {
+        grid->wxFlexGridSizer::Add( aSizer, aProportion, aFlag, aBorder, aUserData );
+        return;
+    }
+
     if( QBoxLayout* box = boxLayout( this ) )
     {
         box->insertLayout( int( std::min<size_t>( aIndex, box->count() ) ),
@@ -410,6 +423,12 @@ void wxSizer::Insert( size_t aIndex, wxSizer* aSizer, int aProportion, int aFlag
 void wxSizer::Insert( size_t aIndex, int aWidth, int aHeight, int aProportion, int aFlag,
                       int aBorder, void* aUserData )
 {
+    if( wxFlexGridSizer* grid = dynamic_cast<wxFlexGridSizer*>( this ) )
+    {
+        grid->wxFlexGridSizer::Add( aWidth, aHeight, aProportion, aFlag, aBorder, aUserData );
+        return;
+    }
+
     if( QBoxLayout* box = boxLayout( this ) )
     {
         int index = int( std::min<size_t>( aIndex, box->count() ) );
@@ -626,8 +645,12 @@ void wxSizer::Clear( bool aDeleteWindows )
 
     while( QLayoutItem* item = layout->takeAt( 0 ) )
     {
+        // Gone at once for the code of wxWidgets (deleted once back in the event loop)
         if( aDeleteWindows && item->widget() )
+        {
+            item->widget()->hide();
             item->widget()->deleteLater();
+        }
 
         // An item of a layout is the layout itself: it is deleted with the item
         delete item;

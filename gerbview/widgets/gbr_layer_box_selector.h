@@ -27,6 +27,7 @@
 
 #include <memory>
 
+#include <toolkit/toolkit_window_arg.h>
 #include <widgets/layer_box_selector.h>
 
 class LAYER_PRESENTATION;
@@ -35,7 +36,7 @@ class LAYER_PRESENTATION;
 class GBR_LAYER_BOX_SELECTOR : public LAYER_BOX_SELECTOR
 {
 public:
-    GBR_LAYER_BOX_SELECTOR( wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
+    GBR_LAYER_BOX_SELECTOR( TOOLKIT_WINDOW_ARG parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition,
                             const wxSize& size = wxDefaultSize, int n = 0,
                             const wxString choices[] = nullptr );
 

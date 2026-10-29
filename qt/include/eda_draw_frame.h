@@ -567,6 +567,9 @@ protected:
     /// The event of the grid choice of the wxWidgets code (the Qt choice calls OnSelectGrid()).
     void OnSelectGrid( wxCommandEvent& aEvent ) { aEvent.Skip(); }
 
+    /// The update of the grid choice of the wxWidgets code.
+    void OnUpdateSelectGrid( wxUpdateUIEvent& aEvent ) { SyncGridSelectBox(); }
+
     /// The user chose an entry of the zoom selection box.
     void OnSelectZoom();
 

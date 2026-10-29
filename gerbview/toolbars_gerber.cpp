@@ -137,22 +137,23 @@ void GERBVIEW_FRAME::configureToolbars()
                 {
                     m_SelLayerBox = new GBR_LAYER_BOX_SELECTOR( aToolbar, ID_TOOLBARH_GERBVIEW_SELECT_ACTIVE_LAYER,
                                                                 wxDefaultPosition, wxDefaultSize, 0, nullptr );
+
+                    m_SelLayerBox->Bind( wxEVT_COMBOBOX, &GERBVIEW_FRAME::OnSelectActiveLayer, this );
+
+                    // UI update handler for the control
+                    m_SelLayerBox->Bind( wxEVT_UPDATE_UI,
+                                         [this]( wxUpdateUIEvent& aEvent )
+                                         {
+                                             if( m_SelLayerBox->GetCount() )
+                                             {
+                                                 if( m_SelLayerBox->GetSelection() != GetActiveLayer() )
+                                                     m_SelLayerBox->SetSelection( GetActiveLayer() );
+                                             }
+                                         } );
                 }
 
                 m_SelLayerBox->Resync();
                 aToolbar->Add( m_SelLayerBox );
-
-                // UI update handler for the control
-                aToolbar->Bind( wxEVT_UPDATE_UI,
-                                [this]( wxUpdateUIEvent& aEvent )
-                                    {
-                                        if( m_SelLayerBox->GetCount() )
-                                        {
-                                            if( m_SelLayerBox->GetSelection() != GetActiveLayer() )
-                                                m_SelLayerBox->SetSelection( GetActiveLayer() );
-                                        }
-                                    },
-                                m_SelLayerBox->GetId() );
             };
 
     RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::layerSelector, layerBoxFactory );
@@ -180,7 +181,10 @@ void GERBVIEW_FRAME::configureToolbars()
             [this]( ACTION_TOOLBAR* aToolbar )
             {
                 if( !m_SelComponentBox )
+                {
                     m_SelComponentBox = new wxChoice( aToolbar, ID_GBR_AUX_TOOLBAR_PCB_CMP_CHOICE );
+                    m_SelComponentBox->Bind( wxEVT_CHOICE, &GERBVIEW_FRAME::OnSelectHighlightChoice, this );
+                }
 
                 if( !m_cmpText )
                     m_cmpText = new wxStaticText( aToolbar, wxID_ANY, _( "Cmp:" ) + wxS( " " ) );
@@ -202,7 +206,10 @@ void GERBVIEW_FRAME::configureToolbars()
             [this]( ACTION_TOOLBAR* aToolbar )
             {
                 if( !m_SelNetnameBox )
-                m_SelNetnameBox = new wxChoice( aToolbar, ID_GBR_AUX_TOOLBAR_PCB_NET_CHOICE );
+                {
+                    m_SelNetnameBox = new wxChoice( aToolbar, ID_GBR_AUX_TOOLBAR_PCB_NET_CHOICE );
+                    m_SelNetnameBox->Bind( wxEVT_CHOICE, &GERBVIEW_FRAME::OnSelectHighlightChoice, this );
+                }
 
                 if( !m_netText )
                     m_netText = new wxStaticText( aToolbar, wxID_ANY, _( "Net:" ) );
@@ -224,7 +231,10 @@ void GERBVIEW_FRAME::configureToolbars()
             [this]( ACTION_TOOLBAR* aToolbar )
             {
                 if( !m_SelAperAttributesBox )
+                {
                     m_SelAperAttributesBox = new wxChoice( aToolbar, ID_GBR_AUX_TOOLBAR_PCB_APERATTRIBUTES_CHOICE );
+                    m_SelAperAttributesBox->Bind( wxEVT_CHOICE, &GERBVIEW_FRAME::OnSelectHighlightChoice, this );
+                }
 
                 if( !m_apertText )
                     m_apertText = new wxStaticText( aToolbar, wxID_ANY, _( "Attr:" ) );
@@ -249,6 +259,8 @@ void GERBVIEW_FRAME::configureToolbars()
                 {
                     m_DCodeSelector = new DCODE_SELECTION_BOX( aToolbar, ID_TOOLBARH_GERBER_SELECT_ACTIVE_DCODE,
                                                                wxDefaultPosition, wxSize( 150, -1 ) );
+                    m_DCodeSelector->Bind( wxEVT_COMBOBOX, &GERBVIEW_FRAME::OnSelectActiveDCode, this );
+                    m_DCodeSelector->Bind( wxEVT_UPDATE_UI, &GERBVIEW_FRAME::OnUpdateSelectDCode, this );
                 }
 
                 if( !m_dcodeText )

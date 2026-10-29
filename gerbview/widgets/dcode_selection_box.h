@@ -29,6 +29,8 @@
 
 #include <wx/combobox.h>
 
+#include <toolkit/toolkit_window_arg.h>
+
 // Define event type for DCODE_SELECTION_BOX
 #define EVT_SELECT_DCODE EVT_COMBOBOX
 
@@ -39,7 +41,7 @@
 class DCODE_SELECTION_BOX : public wxComboBox
 {
 public:
-    DCODE_SELECTION_BOX( wxAuiToolBar* aParent, wxWindowID aId,
+    DCODE_SELECTION_BOX( TOOLKIT_WINDOW_ARG aParent, wxWindowID aId,
                          const wxPoint& aLocation, const wxSize& aSize,
                          const wxArrayString* aChoices = nullptr );
     ~DCODE_SELECTION_BOX();

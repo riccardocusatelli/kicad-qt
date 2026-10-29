@@ -249,7 +249,7 @@ bool GERBER_FILE_IMAGE::LoadGerberFile( const wxString& aFullFileName )
                 char    charBuf[2] = { *text, 0 };
                 wchar_t wcharBuf[2] = { 0 };
 
-                wxWhateverWorksConv().ToWChar( wcharBuf, 1, charBuf, 1 );
+                wxConvWhateverWorks.ToWChar( wcharBuf, 1, charBuf, 1 );
 
                 if( wcharBuf[0] < 32 ) // Don't render control characters
                     wcharBuf[0] = '?';

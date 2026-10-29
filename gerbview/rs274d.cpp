@@ -34,6 +34,8 @@
 #include <X2_gerber_attributes.h>
 #include <core/ki_assert.h>
 
+#include <wx/translation.h>
+
 
 /* Gerber: NOTES about some important commands found in RS274D and RS274X (G codes).
  * Some are now deprecated, but deprecated commands must be known by the Gerber reader

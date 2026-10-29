@@ -48,6 +48,7 @@
 #include <toolbars_gerber.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
+#include <toolkit/toolkit_window_arg.h>
 
 using json = nlohmann::json;
 
@@ -67,9 +68,12 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
     void OnKifaceEnd() override;
 
-    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway,
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParentWindow, int aClassId, KIWAY* aKiway,
                                     int aCtlBits = 0 ) override
     {
+        // The parent of the frames and of the dialogs and panels of the toolkit
+        TOOLKIT_WINDOW_ARG aParent = aParentWindow;
+
         switch( aClassId )
         {
         case FRAME_GERBER:

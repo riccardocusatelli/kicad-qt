@@ -732,10 +732,11 @@ LAUNCHER_PANEL::LAUNCHER_PANEL( QWidget* aParent ) :
         const char* monogram;
         const char* title;
         const char* help;
-    } utilities[] = { { "GB", "Gerber Viewer", "Preview Gerber files" },
-                      { "CA", "Calculator Tools", "Resistance, current capacity, etc." },
-                      { "IM", "Image Converter", "Bitmaps to symbols or footprints" },
-                      { "PM", "Plugin and Content Manager", "KiCad and third-party packages" } };
+        int         frameType;      ///< The frame of the tool (-1: not available yet)
+    } utilities[] = { { "GB", "Gerber Viewer", "Preview Gerber files", FRAME_GERBER },
+                      { "CA", "Calculator Tools", "Resistance, current capacity, etc.", -1 },
+                      { "IM", "Image Converter", "Bitmaps to symbols or footprints", -1 },
+                      { "PM", "Plugin and Content Manager", "KiCad and third-party packages", -1 } };
 
     int index = 0;
 
@@ -744,8 +745,20 @@ LAUNCHER_PANEL::LAUNCHER_PANEL( QWidget* aParent ) :
         auto* card = new LAUNCHER_CARD( QString::fromLatin1( utility.monogram ), tr( utility.title ),
                                         tr( utility.help ), true );
 
-        card->setEnabled( false );
-        card->setToolTip( tr( "%1 (not available in kicad-qt yet)" ).arg( tr( utility.help ) ) );
+        if( utility.frameType >= 0 )
+        {
+            connect( card, &LAUNCHER_CARD::clicked, this,
+                     [this, frameType = utility.frameType]()
+                     {
+                         emit toolRequested( frameType );
+                     } );
+        }
+        else
+        {
+            card->setEnabled( false );
+            card->setToolTip( tr( "%1 (not available in kicad-qt yet)" ).arg( tr( utility.help ) ) );
+        }
+
         grid->addWidget( card, index / 2, index % 2 );
         ++index;
     }

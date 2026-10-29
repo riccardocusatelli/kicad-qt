@@ -93,6 +93,40 @@ void settle( int aMilliseconds = 50 )
 
 
 /// Press a button of a dialog, by its label.
+/**
+ * The image of the canvas of an editor (read from the canvas: the window of the OpenGL canvas is
+ * not in the grab of the screen), once it is drawn.
+ *
+ * @return the number of the sampled pixels that are not of the color of the background (the one
+ *         of the corner).
+ */
+int canvasDrawing( KIWAY_PLAYER* aFrame, QImage& aImage )
+{
+    auto* canvas = dynamic_cast<EDA_DRAW_PANEL_GAL*>( aFrame->GetToolCanvas() );
+    int   drawn = 0;
+
+    for( int attempt = 0; canvas && attempt < 20 && !drawn; ++attempt )
+    {
+        canvas->ForceRefresh();
+        settle( 100 );
+
+        if( !canvas->GetScreenshot( aImage ) || aImage.width() < 100 )
+            continue;
+
+        for( int y = 0; y < aImage.height(); y += 7 )
+        {
+            for( int x = 0; x < aImage.width(); x += 7 )
+            {
+                if( aImage.pixel( x, y ) != aImage.pixel( 0, 0 ) )
+                    drawn++;
+            }
+        }
+    }
+
+    return drawn;
+}
+
+
 bool pressButton( QWidget* aDialog, const QString& aLabel )
 {
     for( QPushButton* button : aDialog->findChildren<QPushButton*>() )
@@ -306,34 +340,58 @@ void runScenario( MAIN_WINDOW* aWindow )
         check( properties && properties->isVisible(),
                "the drawing sheet editor shows the properties" );
 
-        // The canvas draws the drawing sheet (read from the canvas: the window of the OpenGL
-        // canvas is not in the grab of the screen)
-        auto*  canvas = dynamic_cast<EDA_DRAW_PANEL_GAL*>( drawingSheets->GetToolCanvas() );
+        // The canvas draws the drawing sheet
         QImage image;
-        bool   varied = false;
-
-        for( int attempt = 0; canvas && attempt < 20 && !varied; ++attempt )
-        {
-            canvas->ForceRefresh();
-            settle( 100 );
-
-            if( !canvas->GetScreenshot( image ) || image.width() < 100 )
-                continue;
-
-            for( int y = 0; y < image.height() && !varied; y += 7 )
-            {
-                for( int x = 0; x < image.width() && !varied; x += 7 )
-                    varied = image.pixel( x, y ) != image.pixel( 0, 0 );
-            }
-        }
-
-        check( varied, "the drawing sheet editor draws the drawing sheet" );
+        check( canvasDrawing( drawingSheets, image ) > 0,
+               "the drawing sheet editor draws the drawing sheet" );
 
         if( !s_screenshot.isEmpty() )
         {
             QString path = s_screenshot;
             path.replace( QStringLiteral( ".png" ), QStringLiteral( "-pleditor.png" ) );
             check( image.save( path ), "screenshot of the drawing sheet editor" );
+        }
+    }
+
+    // The Gerber viewer, from the launcher: it shows its layers and draws a Gerber file
+    if( launcher )
+    {
+        Q_EMIT launcher->toolRequested( FRAME_GERBER );
+        settle( 1000 );
+    }
+
+    KIWAY_PLAYER* gerbers = s_kiway.Player( FRAME_GERBER, false );
+    check( gerbers && gerbers->isVisible(), "the launcher opens the Gerber viewer" );
+
+    if( gerbers )
+    {
+        QDockWidget* layers = nullptr;
+
+        for( QDockWidget* dock : gerbers->findChildren<QDockWidget*>() )
+        {
+            if( dock->windowTitle() == QStringLiteral( "Layers Manager" ) )
+                layers = dock;
+        }
+
+        check( layers && layers->isVisible(), "the Gerber viewer shows its layers" );
+
+        QImage empty;
+        int    emptyDrawn = canvasDrawing( gerbers, empty );
+
+        const std::vector<wxString> files( 1, wxString( QA_GERBER_FILE ) );
+        check( gerbers->OpenProjectFiles( files ), "the Gerber viewer loads a Gerber file" );
+        settle( 500 );
+
+        QImage image;
+        int    drawn = canvasDrawing( gerbers, image );
+        std::printf( "    drawn: %d (empty: %d)\n", drawn, emptyDrawn );
+        check( drawn > emptyDrawn + 100, "the Gerber viewer draws the Gerber file" );
+
+        if( !s_screenshot.isEmpty() )
+        {
+            QString path = s_screenshot;
+            path.replace( QStringLiteral( ".png" ), QStringLiteral( "-gerbview.png" ) );
+            check( image.save( path ), "screenshot of the Gerber viewer" );
         }
     }
 
@@ -344,7 +402,7 @@ void runScenario( MAIN_WINDOW* aWindow )
     {
         if( widget->isVisible() && widget != aWindow && widget != pcb && widget != sch
             && widget != symbols && widget != footprints && widget != cvpcb
-            && widget != drawingSheets )
+            && widget != drawingSheets && widget != gerbers )
         {
             std::printf( "    open: %s \"%s\"\n", widget->metaObject()->className(),
                          qPrintable( widget->windowTitle() ) );
@@ -367,7 +425,8 @@ void runScenario( MAIN_WINDOW* aWindow )
                    && !s_kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
                    && !s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false )
                    && !s_kiway.Player( FRAME_CVPCB, false )
-                   && !s_kiway.Player( FRAME_PL_EDITOR, false ),
+                   && !s_kiway.Player( FRAME_PL_EDITOR, false )
+                   && !s_kiway.Player( FRAME_GERBER, false ),
            "the editors are closed" );
 
     aWindow->close();

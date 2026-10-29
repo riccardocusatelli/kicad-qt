@@ -22,13 +22,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <wx/aui/aui.h>
 #include <dcode.h>
 
 #include "dcode_selection_box.h"
 
 
-DCODE_SELECTION_BOX::DCODE_SELECTION_BOX( wxAuiToolBar* aParent, wxWindowID aId,
+DCODE_SELECTION_BOX::DCODE_SELECTION_BOX( TOOLKIT_WINDOW_ARG aParent, wxWindowID aId,
                                           const wxPoint& aLocation, const wxSize& aSize,
                                           const wxArrayString* aChoices ) :
     wxComboBox( aParent, aId, wxEmptyString, aLocation, aSize, 0, nullptr, wxCB_READONLY )

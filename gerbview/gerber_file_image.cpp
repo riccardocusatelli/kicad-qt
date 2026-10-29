@@ -35,6 +35,8 @@
 #include <core/profile.h>
 #include <core/ki_assert.h>
 
+#include <wx/translation.h>
+
 
 /**
  * Function scaletoIU
