@@ -73,8 +73,9 @@ private:
     /// or pcbnew).
     void openDocumentEditor( const QString& aFileName, FRAME_T aFrameType );
 
-    /// Show an editor of KiCad without a document (the symbol or footprint editor).
-    void openLibraryEditor( FRAME_T aFrameType );
+    /// Show an editor of KiCad without a document (the symbol, footprint or drawing sheet
+    /// editor, a utility).
+    void openEditorFrame( FRAME_T aFrameType );
     void closeTab( int aIndex );
 
     /// Save a document; on failure, say why.  @return true if saved.

@@ -221,6 +221,9 @@ signals:
     void symbolEditorRequested();
     void footprintEditorRequested();
 
+    /// A tool of its own frame (the drawing sheet editor, the utilities): its FRAME_T.
+    void toolRequested( int aFrameType );
+
 private:
     LAUNCHER_CARD* m_schematic;
     LAUNCHER_CARD* m_board;

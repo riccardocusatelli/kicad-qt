@@ -30,7 +30,7 @@
 #ifndef  _PROPERTIES_FRAME_H
 #define  _PROPERTIES_FRAME_H
 
-#include "dialogs/properties_frame_base.h"
+#include <properties_frame_base.h>
 #include <widgets/unit_binder.h>
 
 class DS_DATA_ITEM;

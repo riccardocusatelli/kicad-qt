@@ -32,7 +32,7 @@
 #include <drawing_sheet/ds_data_model.h>
 #include <tool/tool_manager.h>
 
-#include "dialogs/dialog_design_inspector_base.h"
+#include <dialog_design_inspector_base.h>
 #include "design_inspector.h"
 #include "pl_editor_frame.h"
 #include "properties_frame.h"

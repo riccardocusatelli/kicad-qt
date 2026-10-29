@@ -93,7 +93,7 @@ BEGIN_EVENT_TABLE( PL_EDITOR_FRAME, EDA_DRAW_FRAME )
 END_EVENT_TABLE()
 
 
-PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         EDA_DRAW_FRAME( aKiway, aParent, FRAME_PL_EDITOR, wxT( "PlEditorFrame" ), wxDefaultPosition,
                         wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, PL_EDITOR_FRAME_NAME,
                         drawSheetIUScale ),
@@ -147,70 +147,7 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     configureToolbars();
     RecreateToolbars();
 
-    wxStatusBar* stsbar = GetStatusBar();
-    int          spacer = KIUI::GetTextSize( wxT( "M" ), stsbar ).x * 2;
-
-    int dims[] = {
-
-        // balance of status bar on far left is set to a default or whatever is left over.
-        -1,
-
-        // When using GetTextSize() remember the width of '1' is not the same
-        // as the width of '0' unless the font is fixed width, and it usually won't be.
-
-        // zoom:
-        KIUI::GetTextSize( wxT( "Z 762000" ), stsbar ).x + spacer,
-
-        // cursor coords
-        KIUI::GetTextSize( wxT( "X 0234.567  Y 0234.567" ), stsbar ).x + spacer,
-
-        // delta distances
-        KIUI::GetTextSize( wxT( "dx 0234.567  dx 0234.567" ), stsbar ).x + spacer,
-
-        // grid size
-        KIUI::GetTextSize( wxT( "grid 0234.567" ), stsbar ).x + spacer,
-
-        // Coord origin (use the bigger message)
-        KIUI::GetTextSize( _( "coord origin: Right Bottom page corner" ), stsbar ).x + spacer,
-
-        // units display, Inches is bigger than mm
-        KIUI::GetTextSize( _( "Inches" ), stsbar ).x + spacer,
-
-        // constraint mode
-        KIUI::GetTextSize( _( "Constrain to H, V, 45" ), stsbar ).x + spacer
-    };
-
-    if( stsbar )
-        stsbar->SetFieldsCount( arrayDim( dims ), dims );
-
-    m_auimgr.SetManagedWindow( this );
-
-    CreateInfoBar();
-    m_propertiesPagelayout = new PROPERTIES_FRAME( this );
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-                      .Top().Layer( 6 ) );
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" )
-                      .Left().Layer( 3 ) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" )
-                      .Bottom().Layer( 6 ) );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
-                      .Right().Layer( 2 ) );
-
-    m_auimgr.AddPane( m_propertiesPagelayout, EDA_PANE().Palette().Name( "Props" )
-                      .Right().Layer( 3 )
-                      .Caption( _( "Properties" ) )
-                      .MinSize( m_propertiesPagelayout->GetMinSize() )
-                      .BestSize( m_propertiesFrameWidth, -1 ) );
-
-    // Center
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" )
-                      .Center() );
-
-    FinishAUIInitialization();
+    setupLayout();
 
     resolveCanvasType();
     SwitchCanvas( m_canvasType );

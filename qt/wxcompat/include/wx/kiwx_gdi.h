@@ -670,6 +670,9 @@ public:
     wxBitmap( int aWidth, int aHeight, int aDepth = -1 );
     wxBitmap( const wxSize& aSize, int aDepth = -1 ) : wxBitmap( aSize.x, aSize.y, aDepth ) {}
 
+    /// An image in the XPM format (the data of a .xpm file).
+    explicit wxBitmap( const char* const* aXpm ) : QPixmap( aXpm ) {}
+
     bool IsOk() const { return !isNull(); }
 
     /// The image of a bitmap (wxIcon::CopyFromBitmap(): an icon is a bitmap here).

@@ -163,12 +163,17 @@ MAIN_WINDOW::MAIN_WINDOW( KIWAY& aKiway ) :
     connect( m_launcher, &LAUNCHER_PANEL::symbolEditorRequested, this,
              [this]()
              {
-                 openLibraryEditor( FRAME_SCH_SYMBOL_EDITOR );
+                 openEditorFrame( FRAME_SCH_SYMBOL_EDITOR );
              } );
     connect( m_launcher, &LAUNCHER_PANEL::footprintEditorRequested, this,
              [this]()
              {
-                 openLibraryEditor( FRAME_FOOTPRINT_EDITOR );
+                 openEditorFrame( FRAME_FOOTPRINT_EDITOR );
+             } );
+    connect( m_launcher, &LAUNCHER_PANEL::toolRequested, this,
+             [this]( int aFrameType )
+             {
+                 openEditorFrame( static_cast<FRAME_T>( aFrameType ) );
              } );
 
     // Files of the project
@@ -626,7 +631,7 @@ void MAIN_WINDOW::openDocumentEditor( const QString& aFileName, FRAME_T aFrameTy
 }
 
 
-void MAIN_WINDOW::openLibraryEditor( FRAME_T aFrameType )
+void MAIN_WINDOW::openEditorFrame( FRAME_T aFrameType )
 {
     KIWAY_PLAYER* frame = nullptr;
 
@@ -636,9 +641,17 @@ void MAIN_WINDOW::openLibraryEditor( FRAME_T aFrameType )
     }
     catch( const IO_ERROR& error )
     {
-        QMessageBox::critical( this, aFrameType == FRAME_SCH_SYMBOL_EDITOR ? tr( "Symbol Editor" )
-                                                                           : tr( "Footprint Editor" ),
-                               ToQString( error.What() ) );
+        QString title;
+
+        switch( aFrameType )
+        {
+        case FRAME_SCH_SYMBOL_EDITOR: title = tr( "Symbol Editor" );        break;
+        case FRAME_FOOTPRINT_EDITOR:  title = tr( "Footprint Editor" );     break;
+        case FRAME_PL_EDITOR:         title = tr( "Drawing Sheet Editor" ); break;
+        default:                      title = tr( "KiCad" );                break;
+        }
+
+        QMessageBox::critical( this, title, ToQString( error.What() ) );
         return;
     }
 

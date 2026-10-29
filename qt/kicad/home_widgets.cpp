@@ -36,6 +36,8 @@
 #include <QSettings>
 #include <QVBoxLayout>
 
+#include <frame_type.h>
+
 
 /// The setting of the theme of the window (see main_window.cpp)
 static const char* const DARK_THEME_KEY = "appearance/dark";
@@ -715,8 +717,9 @@ LAUNCHER_PANEL::LAUNCHER_PANEL( QWidget* aParent ) :
     LAUNCHER_CARD* footprints = addRow( QStringLiteral( "FP" ), tr( "Footprint Editor" ),
                                         tr( "Edit global and/or project PCB footprint libraries" ),
                                         true );
-    addRow( QStringLiteral( "DS" ), tr( "Drawing Sheet Editor" ),
-            tr( "Edit drawing sheet borders and title blocks" ), false );
+    LAUNCHER_CARD* drawingSheets = addRow( QStringLiteral( "DS" ), tr( "Drawing Sheet Editor" ),
+                                           tr( "Edit drawing sheet borders and title blocks" ),
+                                           true );
 
     addSection( tr( "Manufacturing and Utilities" ) );
 
@@ -754,6 +757,11 @@ LAUNCHER_PANEL::LAUNCHER_PANEL( QWidget* aParent ) :
     connect( m_board, &LAUNCHER_CARD::clicked, this, &LAUNCHER_PANEL::boardRequested );
     connect( symbols, &LAUNCHER_CARD::clicked, this, &LAUNCHER_PANEL::symbolEditorRequested );
     connect( footprints, &LAUNCHER_CARD::clicked, this, &LAUNCHER_PANEL::footprintEditorRequested );
+    connect( drawingSheets, &LAUNCHER_CARD::clicked, this,
+             [this]()
+             {
+                 emit toolRequested( FRAME_PL_EDITOR );
+             } );
 
     SetDocuments( false, false );
 }

@@ -51,7 +51,7 @@ class NL_PL_EDITOR_PLUGIN;
 class PL_EDITOR_FRAME : public EDA_DRAW_FRAME
 {
 public:
-    PL_EDITOR_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    PL_EDITOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
     ~PL_EDITOR_FRAME();
 
     PROPERTIES_FRAME* GetPropertiesFrame() { return m_propertiesPagelayout; }
@@ -101,6 +101,9 @@ public:
 
     // The Tool Framework initialization
     void setupTools();
+
+    /// The fields of the status bar and the panes of the frame (the parts of the toolkit).
+    void setupLayout();
 
     void UpdateToolbarControlSizes() override;
 

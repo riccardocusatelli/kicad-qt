@@ -223,6 +223,51 @@ void wxPrintout::GetPageSizeMM( int* aWidth, int* aHeight ) const
 }
 
 
+wxRect wxPrintout::GetLogicalPageRect() const
+{
+    if( !m_dc )
+        return GetPaperRectPixels();
+
+    return wxRect( m_dc->DeviceToLogicalX( 0 ), m_dc->DeviceToLogicalY( 0 ),
+                   m_dc->DeviceToLogicalXRel( m_pageSize.x ),
+                   m_dc->DeviceToLogicalYRel( m_pageSize.y ) );
+}
+
+
+void wxPrintout::FitThisSizeToPaper( const wxSize& aImageSize )
+{
+    if( !m_dc || aImageSize.x <= 0 || aImageSize.y <= 0 )
+        return;
+
+    // The paper is the whole page of the device (the DC has the size of the page)
+    double scale = std::min( double( m_pageSize.x ) / aImageSize.x,
+                             double( m_pageSize.y ) / aImageSize.y );
+
+    m_dc->SetUserScale( scale, scale );
+    m_dc->SetDeviceOrigin( 0, 0 );
+
+    wxRect paper = GetLogicalPaperRect();
+    SetLogicalOrigin( paper.x, paper.y );
+}
+
+
+void wxPrintout::SetLogicalOrigin( wxCoord aX, wxCoord aY )
+{
+    if( m_dc )
+        m_dc->SetLogicalOrigin( aX, aY );
+}
+
+
+void wxPrintout::OffsetLogicalOrigin( wxCoord aX, wxCoord aY )
+{
+    if( !m_dc )
+        return;
+
+    wxPoint origin = m_dc->GetLogicalOrigin();
+    m_dc->SetLogicalOrigin( origin.x - aX, origin.y - aY );
+}
+
+
 void wxPrintout::SetupCompat( wxDC* aDC, const wxSize& aPageSizePixels,
                               const wxSize& aPageSizeMM, int aPPI, bool aPreview )
 {

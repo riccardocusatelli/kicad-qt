@@ -50,6 +50,7 @@
 #include <bitmaps/bitmap_types.h>
 #include <confirm.h>
 #include <dialogs/hotkey_cycle_popup.h>
+#include <drawing_sheet/ds_painter.h>
 #include <core/kicad_algo.h>
 #include <eda_search_data.h>
 #include <gal/graphics_abstraction_layer.h>
@@ -1286,6 +1287,36 @@ wxString EDA_DRAW_FRAME::GetFullScreenDesc() const
 {
     // Virtual function. Base class implementation returns an empty string.
     return wxEmptyString;
+}
+
+
+void EDA_DRAW_FRAME::PrintDrawingSheet( const RENDER_SETTINGS* aSettings, BASE_SCREEN* aScreen,
+                                        const std::map<wxString, wxString>* aProperties,
+                                        double aMils2Iu, const wxString &aFilename,
+                                        const wxString &aSheetLayer )
+{
+    if( !m_showBorderAndTitleBlock )
+        return;
+
+    wxDC*   DC = aSettings->GetPrintDC();
+    wxPoint origin = DC->GetDeviceOrigin();
+
+    if( origin.y > 0 )
+    {
+        DC->SetDeviceOrigin( 0, 0 );
+        DC->SetAxisOrientation( true, false );
+    }
+
+    ::PrintDrawingSheet( aSettings, GetPageSettings(), GetScreenDesc(), GetFullScreenDesc(),
+                         aFilename, GetTitleBlock(), aProperties, aScreen->GetPageCount(),
+                         aScreen->GetPageNumber(), aMils2Iu, &Prj(), aSheetLayer,
+                         aScreen->GetVirtualPageNumber() == 1 );
+
+    if( origin.y > 0 )
+    {
+        DC->SetDeviceOrigin( origin.x, origin.y );
+        DC->SetAxisOrientation( true, true );
+    }
 }
 
 

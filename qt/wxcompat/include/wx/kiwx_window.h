@@ -544,7 +544,7 @@ public:
     void SetSizeHints( int aMinW, int aMinH, int aMaxW = -1, int aMaxH = -1, int aIncW = -1,
                        int aIncH = -1 );
 
-    wxSize GetMinSize() const;
+    virtual wxSize GetMinSize() const;
     wxSize GetMaxSize() const;
     wxSize GetMinClientSize() const { return GetMinSize(); }
     int GetMinWidth() const { return GetMinSize().x; }

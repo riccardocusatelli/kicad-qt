@@ -40,6 +40,8 @@
 #include <QDialog>
 #include <QAbstractItemView>
 #include <QDir>
+#include <QDockWidget>
+#include <QImage>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
@@ -53,6 +55,7 @@
 
 #include <wx/wizard.h>
 
+#include <class_draw_panel_gal.h>
 #include <frame_type.h>
 #include <kiway_player.h>
 #include <tool/tool_manager.h>
@@ -279,13 +282,69 @@ void runScenario( MAIN_WINDOW* aWindow )
     KIWAY_PLAYER* footprints = s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false );
     check( footprints && footprints->isVisible(), "the launcher opens the footprint editor" );
 
+    // The drawing sheet editor, with the default drawing sheet and its properties
+    if( launcher )
+    {
+        Q_EMIT launcher->toolRequested( FRAME_PL_EDITOR );
+        settle( 1000 );
+    }
+
+    KIWAY_PLAYER* drawingSheets = s_kiway.Player( FRAME_PL_EDITOR, false );
+    check( drawingSheets && drawingSheets->isVisible(),
+           "the launcher opens the drawing sheet editor" );
+
+    if( drawingSheets )
+    {
+        QDockWidget* properties = nullptr;
+
+        for( QDockWidget* dock : drawingSheets->findChildren<QDockWidget*>() )
+        {
+            if( dock->windowTitle() == QStringLiteral( "Properties" ) )
+                properties = dock;
+        }
+
+        check( properties && properties->isVisible(),
+               "the drawing sheet editor shows the properties" );
+
+        // The canvas draws the drawing sheet (read from the canvas: the window of the OpenGL
+        // canvas is not in the grab of the screen)
+        auto*  canvas = dynamic_cast<EDA_DRAW_PANEL_GAL*>( drawingSheets->GetToolCanvas() );
+        QImage image;
+        bool   varied = false;
+
+        for( int attempt = 0; canvas && attempt < 20 && !varied; ++attempt )
+        {
+            canvas->ForceRefresh();
+            settle( 100 );
+
+            if( !canvas->GetScreenshot( image ) || image.width() < 100 )
+                continue;
+
+            for( int y = 0; y < image.height() && !varied; y += 7 )
+            {
+                for( int x = 0; x < image.width() && !varied; x += 7 )
+                    varied = image.pixel( x, y ) != image.pixel( 0, 0 );
+            }
+        }
+
+        check( varied, "the drawing sheet editor draws the drawing sheet" );
+
+        if( !s_screenshot.isEmpty() )
+        {
+            QString path = s_screenshot;
+            path.replace( QStringLiteral( ".png" ), QStringLiteral( "-pleditor.png" ) );
+            check( image.save( path ), "screenshot of the drawing sheet editor" );
+        }
+    }
+
     // Only the shell and the editors are open (the progress of the loading is closed)
     int others = 0;
 
     for( QWidget* widget : QApplication::topLevelWidgets() )
     {
         if( widget->isVisible() && widget != aWindow && widget != pcb && widget != sch
-            && widget != symbols && widget != footprints && widget != cvpcb )
+            && widget != symbols && widget != footprints && widget != cvpcb
+            && widget != drawingSheets )
         {
             std::printf( "    open: %s \"%s\"\n", widget->metaObject()->className(),
                          qPrintable( widget->windowTitle() ) );
@@ -307,7 +366,8 @@ void runScenario( MAIN_WINDOW* aWindow )
     check( !s_kiway.Player( FRAME_PCB_EDITOR, false ) && !s_kiway.Player( FRAME_SCH, false )
                    && !s_kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
                    && !s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false )
-                   && !s_kiway.Player( FRAME_CVPCB, false ),
+                   && !s_kiway.Player( FRAME_CVPCB, false )
+                   && !s_kiway.Player( FRAME_PL_EDITOR, false ),
            "the editors are closed" );
 
     aWindow->close();

@@ -20,7 +20,7 @@
 #ifndef KICAD_PANEL_PL_EDITOR_COLOR_SETTINGS_H
 #define KICAD_PANEL_PL_EDITOR_COLOR_SETTINGS_H
 
-#include "panel_pl_editor_color_settings_base.h"
+#include <panel_pl_editor_color_settings_base.h>
 
 
 class PANEL_PL_EDITOR_COLOR_SETTINGS : public PANEL_PL_EDITOR_COLOR_SETTINGS_BASE

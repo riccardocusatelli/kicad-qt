@@ -24,7 +24,6 @@
  */
 
 #include <wx/file.h>
-#include <wx/snglinst.h>
 
 #include <kiface_gui.h>
 #include <gestfich.h>
@@ -41,6 +40,7 @@
 #include "pl_editor_settings.h"
 #include <core/ki_assert.h>
 #include <kiway.h>
+#include <toolkit/toolkit_window_arg.h>
 
 
 namespace PGE {
@@ -58,9 +58,12 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
     void OnKifaceEnd() override;
 
-    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway,
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParentWindow, int aClassId, KIWAY* aKiway,
                                     int aCtlBits = 0 ) override
     {
+        // The parent of the frames and of the dialogs and panels of the toolkit
+        TOOLKIT_WINDOW_ARG aParent = aParentWindow;
+
         switch( aClassId )
         {
         case FRAME_PL_EDITOR:

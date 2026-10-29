@@ -305,10 +305,21 @@ public:
     void GetPageSizePixels( int* aWidth, int* aHeight ) const;
     void GetPageSizeMM( int* aWidth, int* aHeight ) const;
 
-    /// The page and the paper, in logical coordinates (the pixels of the device).
-    wxRect GetLogicalPageRect() const { return wxRect( 0, 0, m_pageSize.x, m_pageSize.y ); }
+    /// The page and the paper (the same: no margins), in the logical coordinates of the DC.
+    wxRect GetLogicalPageRect() const;
     wxRect GetLogicalPaperRect() const { return GetLogicalPageRect(); }
-    wxRect GetPaperRectPixels() const { return GetLogicalPageRect(); }
+
+    /// The paper, in the pixels of the device.
+    wxRect GetPaperRectPixels() const { return wxRect( 0, 0, m_pageSize.x, m_pageSize.y ); }
+
+    /// Scale the DC so that an image of @a aImageSize (logical units) fits the paper, its
+    /// origin at the corner of the paper.
+    void FitThisSizeToPaper( const wxSize& aImageSize );
+
+    void SetLogicalOrigin( wxCoord aX, wxCoord aY );
+
+    /// Move the logical origin of the DC by an offset (in logical units).
+    void OffsetLogicalOrigin( wxCoord aX, wxCoord aY );
 
     /// Print with the DC on a device: called by the printers and the previews.
     void SetupCompat( wxDC* aDC, const wxSize& aPageSizePixels, const wxSize& aPageSizeMM,
@@ -394,6 +405,9 @@ public:
 
     void Initialize() { InitializeWithModality( wxPreviewFrame_AppModal ); }
     void InitializeWithModality( wxPreviewFrameModalityKind aKind );
+
+    /// The window closes (the handler of the derived frames calls it).
+    void OnCloseWindow( wxCloseEvent& aEvent ) { aEvent.Skip(); }
 
 private:
     void paintPages( QPrinter* aPrinter );
