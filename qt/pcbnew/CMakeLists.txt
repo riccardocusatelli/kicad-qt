@@ -144,6 +144,8 @@ set( KIQT_PCBNEW_GUI_SRCS
     pcbnew_settings.cpp
     python/scripting/pcb_scripting_tool.cpp
     python/scripting/pcbnew_action_plugins.cpp
+    python/scripting/pcbnew_footprint_wizards.cpp
+    python/scripting/pcbnew_utils_3d.cpp
     python/scripting/pcbnew_scripting.cpp
     python/scripting/pcbnew_scripting_helpers_gui.cpp
     ratsnest/ratsnest.cpp
@@ -472,7 +474,48 @@ set( KIQT_PNS_SRCS
 
 list( TRANSFORM KIQT_PNS_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/router/ )
 
+# The legacy Python module of pcbnew (KIFACE_SCRIPTING_LEGACY): the SWIG bindings of the wxWidgets
+# build, generated from the same interface files, built on the wxWidgets API of kiwx.  The module
+# (pcbnew.py) is next to the KIFACEs of pcbnew, where KiCad finds it when run from the build tree.
+set( KIQT_SWIG_DIR ${CMAKE_BINARY_DIR}/pcbnew )
+
+set( KIQT_SWIG_FLAGS
+    -I${CMAKE_SOURCE_DIR}/pcbnew
+    -I${CMAKE_SOURCE_DIR}/include
+    -I${CMAKE_SOURCE_DIR}/scripting
+    -I${CMAKE_SOURCE_DIR}/pcbnew/python/scripting
+    -I${CMAKE_SOURCE_DIR}/common/swig
+    -I${CMAKE_SOURCE_DIR}/libs/core/include
+    -I${CMAKE_SOURCE_DIR}/libs/kimath/include
+    -I${CMAKE_BINARY_DIR}
+    )
+
+get_directory_property( _kiqt_pcbnew_defs DIRECTORY ${CMAKE_SOURCE_DIR}/pcbnew COMPILE_DEFINITIONS )
+
+foreach( _def ${_kiqt_pcbnew_defs} )
+    list( APPEND KIQT_SWIG_FLAGS -D${_def} )
+endforeach()
+
+add_custom_command( OUTPUT ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx ${KIQT_SWIG_DIR}/pcbnew.py
+    DEPENDS ${CMAKE_SOURCE_DIR}/pcbnew/python/swig/pcbnew.i
+    DEPFILE ${KIQT_SWIG_DIR}/pcbnew_wrap.d
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${KIQT_SWIG_DIR}/docstrings
+    COMMAND ${CMAKE_COMMAND} -E touch ${KIQT_SWIG_DIR}/docstrings/docstrings.i
+    COMMAND ${SWIG_EXECUTABLE} -python -c++ -nothreads -fastdispatch -fvirtual
+            -outdir ${KIQT_SWIG_DIR} ${KIQT_SWIG_FLAGS} -w401 -w402
+            -MMD -MF ${KIQT_SWIG_DIR}/pcbnew_wrap.d -MT pcbnew/pcbnew_wrap.cxx
+            -o ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx
+            ${CMAKE_SOURCE_DIR}/pcbnew/python/swig/pcbnew.i
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
+    set_source_files_properties( ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx PROPERTIES COMPILE_FLAGS "-w" )
+endif()
+
 add_library( pcbnew_gui_qt STATIC
+    ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx
+    ${CMAKE_SOURCE_DIR}/common/swig/wx_python_helpers.cpp
     ${KIQT_PNS_SRCS}
     ${KIQT_PCBNEW_COMPAT_FBP_SRCS}
     ${KIQT_PCBNEW_COMPAT_DIALOGS}
@@ -496,7 +539,6 @@ add_library( pcbnew_gui_qt STATIC
     footprint_viewer_frame_qt.cpp
     footprint_wizard_frame_qt.cpp
     pcb_edit_frame_qt.cpp
-    pcbnew_swig_qt.cpp
     pcb_layer_box_selector_qt.cpp
     widgets/appearance_controls_qt.cpp
     widgets/panel_selection_filter.cpp

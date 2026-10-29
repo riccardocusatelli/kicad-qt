@@ -66,7 +66,8 @@ struct PGM_SINGLE_TOP : public PGM_GUI
     {
         PGM_BASE::BuildArgvUtf8();
 
-        if( !InitPgm( false, true ) )
+        // With the Python interpreter (the scripting of pcbnew, its plugins)
+        if( !InitPgm( false, false ) )
             return false;
 
         // The KIFACE of pcbnew is linked in this program

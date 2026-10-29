@@ -32,6 +32,7 @@
 
 %{
 #include <wx_python_helpers.h>
+#include <wx/gdicmn.h>      // wxPoint, wxSize and wxRect, wrapped below
 %}
 
 // encoding setup, ascii by default ///////////////////////////////////////////

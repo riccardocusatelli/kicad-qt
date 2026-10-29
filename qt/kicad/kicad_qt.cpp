@@ -89,7 +89,8 @@ public:
         PGM_BASE::BuildArgvUtf8();
         wxAppConsole::GetInstance()->SetAppDisplayName( wxT( "kicad-qt" ) );
 
-        if( !InitPgm( false, true ) )
+        // With the Python interpreter (the scripting of pcbnew, its plugins)
+        if( !InitPgm( false, false ) )
             return false;
 
         m_bm.InitSettings( new KICAD_SETTINGS );

@@ -21,12 +21,15 @@
  * @file test_pcbnew_frames.cpp
  * The test of the frames of pcbnew on Qt: the KIFACE with the GUI (pcbnew/pcbnew.cpp and
  * pcbnew_gui_qt) makes the original frames (the PCB editor, the footprint editor, the footprint
- * viewer), which open a board and run their tools.
+ * viewer), which open a board and run their tools.  The Python module of pcbnew (its SWIG
+ * bindings) reads and changes the board of the PCB editor.
  */
 
 #include <kicad_gl/kiglad.h> // Must be included first (OpenGL GAL)
+#include <Python.h>          // Before Qt (its slots macro)
 #include <cstdio>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include <kiqt.h>     // Qt, without its METHOD macro
@@ -164,6 +167,75 @@ void testFootprintEditor( KIWAY& aKiway, FOOTPRINT* aFootprint, const QString& a
 
     frame->GetScreen()->SetContentModified( false );
     closeFrame( frame, "the footprint editor" );
+}
+
+
+/// Run Python code in the interpreter of the program, and get an integer variable it sets.
+std::optional<long> runPython( const char* aCode, const char* aResult )
+{
+    if( !Py_IsInitialized() )
+        return std::nullopt;
+
+    PyGILState_STATE state = PyGILState_Ensure();
+    std::optional<long> result;
+
+    if( PyRun_SimpleString( aCode ) == 0 )
+    {
+        PyObject* globals = PyModule_GetDict( PyImport_AddModule( "__main__" ) );
+
+        if( PyObject* value = PyDict_GetItemString( globals, aResult ) )
+            result = PyLong_AsLong( value );
+    }
+
+    PyGILState_Release( state );
+    return result;
+}
+
+
+/// The Python module of pcbnew (the SWIG bindings in the KIFACE): the board of the PCB editor,
+/// read and changed from Python.
+void testPython( BOARD* aBoard )
+{
+    std::printf( "PYTHON\n" );
+    check( Py_IsInitialized(), "the program starts the Python interpreter" );
+
+    // The module of the build tree (the program finds it next to its own directory)
+    runPython( "import sys\n"
+               "sys.path.insert( 0, '" QA_PCBNEW_PYTHON_DIR "' )\n"
+               "qa_path = 1\n",
+               "qa_path" );
+
+    std::optional<long> imported = runPython( "import pcbnew\n"
+                                              "qa_version = 1 if pcbnew.Version() else 0\n",
+                                              "qa_version" );
+    check( imported == 1, "import pcbnew" );
+
+    std::optional<long> footprints = runPython( "qa_board = pcbnew.GetBoard()\n"
+                                                "qa_count = len( qa_board.GetFootprints() )\n",
+                                                "qa_count" );
+    check( footprints && *footprints == (long) aBoard->Footprints().size(),
+           "Python reads the footprints of the board of the editor" );
+
+    size_t tracks = aBoard->Tracks().size();
+
+    runPython( "qa_track = pcbnew.PCB_TRACK( qa_board )\n"
+               "qa_track.SetStart( pcbnew.VECTOR2I( 0, 0 ) )\n"
+               "qa_track.SetEnd( pcbnew.VECTOR2I( pcbnew.FromMM( 10 ), 0 ) )\n"
+               "qa_board.Add( qa_track )\n"
+               "qa_added = 1\n",
+               "qa_added" );
+    check( aBoard->Tracks().size() == tracks + 1, "Python adds a track to the board" );
+
+    runPython( "qa_board.Remove( qa_track )\n"
+               "qa_removed = 1\n",
+               "qa_removed" );
+    check( aBoard->Tracks().size() == tracks, "Python removes the track" );
+
+    std::optional<long> plugins = runPython( "qa_plugins = 1 if hasattr( pcbnew, 'ActionPlugin' ) "
+                                             "and hasattr( pcbnew, 'FootprintWizardPlugin' ) "
+                                             "else 0\n",
+                                             "qa_plugins" );
+    check( plugins == 1, "the classes of the action plugins and footprint wizards" );
 }
 
 
@@ -418,6 +490,8 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
         frame->grab().save( path );
     }
 
+    testPython( board );
+
     // The footprint editor, with a footprint of the board
     testFootprintEditor( aKiway, board->Footprints().empty() ? nullptr : board->Footprints().front(),
                          aScreenshot );
@@ -458,7 +532,8 @@ int main( int argc, char** argv )
     PGM_QT_TEST program;
     SetPgm( &program );
 
-    if( !program.InitPgm( true, true ) )
+    // With the Python interpreter (the scripting of the PCB editor)
+    if( !program.InitPgm( true, false ) )
     {
         std::fprintf( stderr, "cannot initialise the program\n" );
         return 2;
