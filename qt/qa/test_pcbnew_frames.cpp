@@ -77,6 +77,8 @@
 #include <zone.h>
 #include <action_plugin.h>
 #include <footprint_wizard.h>
+#include <footprint_wizard_frame.h>
+#include <dialogs/dialog_footprint_wizard_list.h>
 #include <paths.h>
 #include <pcb_text.h>
 #include <QAction>
@@ -338,6 +340,79 @@ void testPythonPlugins( PCB_EDIT_FRAME* aFrame, BOARD* aBoard )
 }
 
 
+void testFootprintWizard( KIWAY& aKiway )
+{
+    std::printf( "FOOTPRINT_WIZARD_FRAME\n" );
+
+    // The list of the wizards is shown when the frame is activated, and by its tool: the first
+    // wizard (the QFN one, the only one of the plugin folder of the test) is chosen
+    int    listsShown = 0;
+    QTimer answer;
+
+    QObject::connect( &answer, &QTimer::timeout,
+                      [&]()
+                      {
+                          auto* list = dynamic_cast<DIALOG_FOOTPRINT_WIZARD_LIST*>(
+                                  QApplication::activeModalWidget() );
+
+                          if( list )
+                          {
+                              ++listsShown;
+                              list->EndModal( wxID_OK );
+                          }
+                      } );
+    answer.start( 50 );
+
+    auto* frame = createFrame<FOOTPRINT_WIZARD_FRAME>( aKiway, FRAME_FOOTPRINT_WIZARD );
+    check( frame != nullptr, "the KIFACE makes the footprint wizard" );
+
+    if( !frame )
+        return;
+
+    // A modal frame, as the footprint editor uses it: the built footprint is exported to the
+    // caller, which deletes the frame
+    bool shown = false;
+    bool built = false;
+
+    QTimer::singleShot( 400,
+                        [&]()
+                        {
+                            shown = frame->isVisible();
+
+                            if( listsShown == 0 )
+                            {
+                                wxCommandEvent dummy;
+                                frame->SelectCurrentWizard( dummy );
+                            }
+
+                            BOARD*     board = frame->GetBoard();
+                            FOOTPRINT* fp = board ? board->GetFirstFootprint() : nullptr;
+                            built = fp && fp->Pads().size() > 4;
+
+                            wxCommandEvent dummy;
+                            frame->ExportSelectedFootprint( dummy );
+                        } );
+
+    wxString result;
+    bool     exported = frame->ShowModal( &result, nullptr );
+    answer.stop();
+
+    check( shown, "the footprint wizard is shown" );
+    check( listsShown > 0, "the footprint wizard shows the list of the wizards" );
+    check( built, "the footprint wizard builds the QFN" );
+    check( exported, "the footprint wizard exports its footprint" );
+
+    std::unique_ptr<FOOTPRINT> footprint( exported ? frame->GetBuiltFootprint() : nullptr );
+    check( footprint && footprint->Pads().size() > 4, "the caller gets the QFN footprint" );
+
+    QPointer<QWidget> alive( frame );
+    frame->Destroy();
+    settle( 100 );
+    QCoreApplication::sendPostedEvents( nullptr, QEvent::DeferredDelete );
+    check( alive.isNull(), "the footprint wizard is deleted" );
+}
+
+
 void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aScreenshot )
 {
     std::printf( "PCB_EDIT_FRAME\n" );
@@ -591,6 +666,7 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
 
     testPython( board );
     testPythonPlugins( frame, board );
+    testFootprintWizard( aKiway );
 
     // The footprint editor, with a footprint of the board
     testFootprintEditor( aKiway, board->Footprints().empty() ? nullptr : board->Footprints().front(),
