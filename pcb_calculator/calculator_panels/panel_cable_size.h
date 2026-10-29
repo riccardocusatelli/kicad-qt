@@ -20,7 +20,7 @@
 #ifndef PANEL_CABLE_SIZE_H
 #define PANEL_CABLE_SIZE_H
 
-#include "panel_cable_size_base.h"
+#include <panel_cable_size_base.h>
 #include <vector>
 
 // Helper to convert values (in m2) to mm2, more useful to display these values

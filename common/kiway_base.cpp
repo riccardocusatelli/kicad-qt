@@ -113,7 +113,8 @@ const wxString KIWAY_BASE::dso_search_path( FACE_T aFaceId )
     else if( ( m_ctl & KFCTL_QT_GUI )
              && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB || aFaceId == FACE_CVPCB
                   || aFaceId == FACE_PYTHON || aFaceId == FACE_PL_EDITOR
-                  || aFaceId == FACE_GERBVIEW ) )
+                  || aFaceId == FACE_GERBVIEW || aFaceId == FACE_PCB_CALCULATOR
+                  || aFaceId == FACE_BMP2CMP ) )
         dsoName += wxT( "_qtgui" );
     else if( ( m_ctl & KFCTL_QT ) && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB ) )
         dsoName += wxT( "_qt" );

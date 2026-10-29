@@ -202,6 +202,26 @@ public:
 };
 
 
+/// The style of a text (wxTextAttr): a single-line control has one style only.
+class wxTextAttr
+{
+public:
+    wxTextAttr() = default;
+    wxTextAttr( const wxColour& aText, const wxColour& aBackground = wxNullColour ) :
+            m_text( aText ),
+            m_background( aBackground )
+    {
+    }
+
+    const wxColour& GetTextColour() const { return m_text; }
+    const wxColour& GetBackgroundColour() const { return m_background; }
+
+private:
+    wxColour m_text;
+    wxColour m_background;
+};
+
+
 class KIQT_API wxTextCtrl : public wxWindowCompat<QLineEdit>, public wxLineEditTextEntryCompat
 {
 public:
@@ -219,8 +239,16 @@ public:
     wxString GetLineText( long aLine ) const { return aLine == 0 ? GetValue() : wxString(); }
     int GetNumberOfLines() const { return 1; }
 
+    /// The styles of the ranges of text: the colours of the control apply to all its text.
+    bool SetStyle( long aStart, long aEnd, const wxTextAttr& aStyle ) { return true; }
+    bool SetDefaultStyle( const wxTextAttr& aStyle ) { m_defaultStyle = aStyle; return true; }
+    const wxTextAttr& GetDefaultStyle() const { return m_defaultStyle; }
+
 protected:
     QLineEdit* lineEditCompat() const override { return const_cast<wxTextCtrl*>( this ); }
+
+private:
+    wxTextAttr m_defaultStyle;
 };
 
 
@@ -1017,6 +1045,9 @@ private:
     /// The user selected an item.
     void onItemSelected( QTreeWidgetItem* aItem );
 
+    /// Make the tree as wide as its titles.
+    void fitTree();
+
     QTreeWidget*      m_tree;
     QStackedWidget*   m_stack;
     std::vector<PAGE> m_pages;
@@ -1156,8 +1187,14 @@ public:
     void ShowScrollbars( int aHorizontal, int aVertical );
 
     wxSize GetVirtualSize() const;
-    void SetVirtualSize( const wxSize& aSize ) {}
-    void SetVirtualSize( int, int ) {}
+
+    /// The size of the content (the area painted by the handlers of wxEVT_PAINT).
+    void SetVirtualSize( const wxSize& aSize ) { SetVirtualSize( aSize.x, aSize.y ); }
+    void SetVirtualSize( int aWidth, int aHeight );
+
+    /// Translate a device context of the window to the scrolled position of its content.
+    void PrepareDC( wxDC& aDC ) const;
+    void DoPrepareDC( wxDC& aDC ) const { PrepareDC( aDC ); }
     void FitInside();
     void SetTargetWindow( wxWidgetArgCompat ) {}
 
@@ -1651,6 +1688,38 @@ using wxWrapSizer = wxBoxSizer;
 
 
 // Dialogs and messages --------------------------------------------------------------------
+
+// Drag and drop --------------------------------------------------------------------------
+
+class QMimeData;
+
+/// The target of the drag and drop on a window (wxDropTarget).
+class KIQT_API wxDropTarget
+{
+public:
+    virtual ~wxDropTarget() = default;
+
+    /// The window accepts the data dragged on it.
+    virtual bool AcceptsCompat( const QMimeData* aData ) const = 0;
+
+    /// The data dropped at a position of the window; true if it took them.
+    virtual bool DropCompat( int aX, int aY, const QMimeData* aData ) = 0;
+};
+
+
+/// The target of the files dropped on a window (wxFileDropTarget).
+class KIQT_API wxFileDropTarget : public wxDropTarget
+{
+public:
+    virtual bool OnDropFiles( wxCoord aX, wxCoord aY, const wxArrayString& aFilenames ) = 0;
+
+    bool AcceptsCompat( const QMimeData* aData ) const override;
+    bool DropCompat( int aX, int aY, const QMimeData* aData ) override;
+};
+
+
+/// The default caption of the message boxes.
+inline constexpr const char wxMessageBoxCaptionStr[] = "Message";
 
 /// The message boxes of wxWidgets (wxOK, wxYES_NO, wxCANCEL, wxICON_...).
 KIQT_API int wxMessageBox( const wxString& aMessage, const wxString& aCaption = wxS( "Message" ),

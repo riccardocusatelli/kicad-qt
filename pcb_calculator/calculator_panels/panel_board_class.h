@@ -20,7 +20,7 @@
 #ifndef PANEL_BOARD_CLASS_H
 #define PANEL_BOARD_CLASS_H
 
-#include "panel_board_class_base.h"
+#include <panel_board_class_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

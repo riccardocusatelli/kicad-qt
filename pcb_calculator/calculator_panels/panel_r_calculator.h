@@ -21,7 +21,7 @@
 #define PANEL_R_CALCULATOR_H
 
 #include <eseries.h>
-#include "panel_r_calculator_base.h"
+#include <panel_r_calculator_base.h>
 #include "resistor_substitution_utils.h"
 
 class PCB_CALCULATOR_SETTINGS;

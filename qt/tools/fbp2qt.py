@@ -477,6 +477,9 @@ def wx_ctor_args( aClass, aProps, aStyle ):
     if aClass in ( 'wxBitmapComboBox', 'wxComboBox' ):
         return 'wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, nullptr, %s' % aStyle
     if aClass == 'wxChoice':
+        # wxFormBuilder emits a wxArrayString when the choices list is empty
+        if not aProps.get( 'choices', '' ).strip():
+            return 'wxDefaultPosition, wxDefaultSize, wxArrayString(), %s' % aStyle
         return 'wxDefaultPosition, wxDefaultSize, 0, nullptr, %s' % aStyle
     if aClass in ( 'wxGrid', 'wxHtmlWindow', 'wxTreeCtrl', 'CustomControl' ):
         return 'wxDefaultPosition, wxDefaultSize, %s' % aStyle

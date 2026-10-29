@@ -20,7 +20,7 @@
 #ifndef PANEL_ELECTRICAL_SPACING_H
 #define PANEL_ELECTRICAL_SPACING_H
 
-#include "panel_electrical_spacing_base.h"
+#include <panel_electrical_spacing_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

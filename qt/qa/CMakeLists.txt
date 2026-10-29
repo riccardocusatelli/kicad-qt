@@ -102,14 +102,16 @@ target_link_libraries( qa_qt_kicad_shell
     ${wxWidgets_BASE_LIBRARIES}
     )
 
-# The Gerber file the Gerber viewer of the shell loads
+# The Gerber file the Gerber viewer of the shell loads, the image the image converter loads
 target_compile_definitions( qa_qt_kicad_shell PRIVATE
     QA_GERBER_FILE="${CMAKE_SOURCE_DIR}/gerbview/gerber_test_files/Ucamco_Polarities_and_Apertures.gbr"
+    QA_IMAGE_FILE="${CMAKE_SOURCE_DIR}/resources/bitmaps_png/png/icon_bitmap2component_128.png"
     )
 
 add_dependencies( qa_qt_kicad_shell common pcbnew_qtgui_kiface eeschema_qtgui_kiface
                   cvpcb_qtgui_kiface kipython_qtgui_kiface
-                  pl_editor_qtgui_kiface gerbview_qtgui_kiface )
+                  pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface
+                  bitmap2component_qtgui_kiface )
 
 # In the kicad directory of the build tree, as kicad-qt (KICAD_RUN_FROM_BUILD_DIR finds the
 # KIFACEs from there)

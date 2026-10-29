@@ -20,7 +20,7 @@
 #ifndef PANEL_CORROSION_H
 #define PANEL_CORROSION_H
 
-#include "panel_galvanic_corrosion_base.h"
+#include <panel_galvanic_corrosion_base.h>
 #include <vector>
 
 class PCB_CALCULATOR_SETTINGS;

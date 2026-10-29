@@ -909,6 +909,14 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
         if( QAbstractScrollArea* area = qobject_cast<QAbstractScrollArea*>( w ) )
             painted = area->viewport();
 
+        // The content of a scroll area is opaque (QScrollArea::setWidget()): it would hide what
+        // the handlers paint on the viewport
+        if( QScrollArea* area = qobject_cast<QScrollArea*>( w ) )
+        {
+            if( area->widget() )
+                area->widget()->setAutoFillBackground( false );
+        }
+
         KIQT::FilterEvents( painted,
                 [w, painted, aSink]( QEvent* aQtEvent ) -> bool
                 {
@@ -2208,8 +2216,20 @@ bool wxTreebook::insertPage( wxWidgetArgCompat aPage, const wxString& aText, int
     if( aSelect || m_selection == wxNOT_FOUND )
         ChangeSelection( m_pages.size() - 1 );
 
-    m_tree->resizeColumnToContents( 0 );
+    fitTree();
     return true;
+}
+
+
+void wxTreebook::fitTree()
+{
+    // The tree is as wide as its titles, as with wxWidgets
+    m_tree->resizeColumnToContents( 0 );
+
+    int width = m_tree->columnWidth( 0 ) + 2 * m_tree->frameWidth()
+                + m_tree->style()->pixelMetric( QStyle::PM_ScrollBarExtent ) / 2;
+
+    m_tree->setMinimumWidth( width );
 }
 
 
@@ -2352,6 +2372,7 @@ bool wxTreebook::ExpandNode( size_t aPage, bool aExpand )
         return false;
 
     m_pages[aPage].m_item->setExpanded( aExpand );
+    fitTree();
     return true;
 }
 
@@ -3402,6 +3423,22 @@ wxSize wxScrolledWindow::GetVirtualSize() const
 
     QSize size = content->size().expandedTo( content->sizeHint() );
     return wxSize( size.width(), size.height() );
+}
+
+
+void wxScrolledWindow::SetVirtualSize( int aWidth, int aHeight )
+{
+    if( QWidget* content = widget() )
+    {
+        content->setMinimumSize( std::max( aWidth, 0 ), std::max( aHeight, 0 ) );
+        content->updateGeometry();
+    }
+}
+
+
+void wxScrolledWindow::PrepareDC( wxDC& aDC ) const
+{
+    aDC.SetDeviceOrigin( -horizontalScrollBar()->value(), -verticalScrollBar()->value() );
 }
 
 

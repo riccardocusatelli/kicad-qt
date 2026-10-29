@@ -270,6 +270,8 @@ enum wxEventCategory
 #define wxEVT_COMMAND_SPINCTRL_UPDATED     wxEVT_SPINCTRL
 #define wxEVT_COMMAND_SPINCTRLDOUBLE_UPDATED wxEVT_SPINCTRLDOUBLE
 #define wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED wxEVT_NOTEBOOK_PAGE_CHANGED
+#define wxEVT_COMMAND_TREEBOOK_PAGE_CHANGED wxEVT_TREEBOOK_PAGE_CHANGED
+#define wxEVT_COMMAND_TREEBOOK_PAGE_CHANGING wxEVT_TREEBOOK_PAGE_CHANGING
 #define wxEVT_AUINOTEBOOK_PAGE_CHANGED wxEVT_NOTEBOOK_PAGE_CHANGED
 #define wxEVT_BOOKCTRL_PAGE_CHANGED wxEVT_NOTEBOOK_PAGE_CHANGED
 #define wxEVT_BOOKCTRL_PAGE_CHANGING wxEVT_NOTEBOOK_PAGE_CHANGING
@@ -1640,6 +1642,7 @@ inline wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget )
 #define wxSpinDoubleEventHandler( func ) ( &func )
 #define wxIdleEventHandler( func ) ( &func )
 #define wxNotebookEventHandler( func ) ( &func )
+#define wxTreebookEventHandler( func ) ( &func )
 #define wxBookCtrlEventHandler( func ) ( &func )
 #define wxHyperlinkEventHandler( func ) ( &func )
 #define wxScrollEventHandler( func ) ( &func )

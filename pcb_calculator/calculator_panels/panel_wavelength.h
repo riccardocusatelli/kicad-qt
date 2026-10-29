@@ -20,7 +20,7 @@
 #ifndef PANEL_WAVELENGTH_H
 #define PANEL_WAVELENGTH_H
 
-#include "panel_wavelength_base.h"
+#include <panel_wavelength_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

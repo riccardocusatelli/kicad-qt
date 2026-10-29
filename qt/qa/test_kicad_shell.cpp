@@ -53,6 +53,8 @@
 #include <QThread>
 #include <QTimer>
 
+#include <wx/notebook.h>
+#include <wx/treebook.h>
 #include <wx/wizard.h>
 
 #include <class_draw_panel_gal.h>
@@ -395,6 +397,104 @@ void runScenario( MAIN_WINDOW* aWindow )
         }
     }
 
+    // The calculator, from the launcher: its book shows all its tools
+    if( launcher )
+    {
+        Q_EMIT launcher->toolRequested( FRAME_CALC );
+        settle( 1000 );
+    }
+
+    KIWAY_PLAYER* calculator = s_kiway.Player( FRAME_CALC, false );
+    check( calculator && calculator->isVisible(), "the launcher opens the calculator" );
+
+    if( calculator )
+    {
+        wxTreebook* book = nullptr;
+
+        for( QWidget* child : calculator->findChildren<QWidget*>() )
+        {
+            if( !book )
+                book = dynamic_cast<wxTreebook*>( child );
+        }
+
+        check( book && book->GetPageCount() > 10, "the calculator shows its tools" );
+
+        if( book )
+        {
+            book->SetSelection( book->GetPageCount() - 1 );
+            settle( 200 );
+            check( book->GetCurrentPage() && book->GetCurrentPage()->IsShown(),
+                   "the calculator shows the chosen tool" );
+            book->SetSelection( 1 );
+            settle( 200 );
+        }
+
+        if( !s_screenshot.isEmpty() )
+        {
+            QString path = s_screenshot;
+            path.replace( QStringLiteral( ".png" ), QStringLiteral( "-calculator.png" ) );
+            check( calculator->grab().save( path ), "screenshot of the calculator" );
+        }
+    }
+
+    // The image converter, from the launcher: it loads an image
+    if( launcher )
+    {
+        Q_EMIT launcher->toolRequested( FRAME_BM2CMP );
+        settle( 1000 );
+    }
+
+    KIWAY_PLAYER* images = s_kiway.Player( FRAME_BM2CMP, false );
+    check( images && images->isVisible(), "the launcher opens the image converter" );
+
+    if( images )
+    {
+        const std::vector<wxString> files( 1, wxString( QA_IMAGE_FILE ) );
+        check( images->OpenProjectFiles( files ), "the image converter loads an image" );
+        settle( 500 );
+
+        // The page of the original picture draws it
+        wxNotebook* pictures = nullptr;
+
+        for( QWidget* child : images->findChildren<QWidget*>() )
+        {
+            if( !pictures )
+                pictures = dynamic_cast<wxNotebook*>( child );
+        }
+
+        int drawn = 0;
+
+        if( pictures )
+        {
+            pictures->SetSelection( 0 );
+            settle( 200 );
+
+            if( QWidget* page = pictures->currentWidget() )
+            {
+                QImage picture = page->grab().toImage();
+                QRgb   background = picture.pixel( picture.width() - 2, picture.height() - 2 );
+
+                for( int y = 0; y < picture.height(); y += 2 )
+                {
+                    for( int x = 0; x < picture.width(); x += 2 )
+                    {
+                        if( picture.pixel( x, y ) != background )
+                            drawn++;
+                    }
+                }
+            }
+        }
+
+        std::printf( "    drawn: %d\n", drawn );
+        check( drawn > 500, "the image converter draws the image" );
+        if( !s_screenshot.isEmpty() )
+        {
+            QString path = s_screenshot;
+            path.replace( QStringLiteral( ".png" ), QStringLiteral( "-bitmap2component.png" ) );
+            check( images->grab().save( path ), "screenshot of the image converter" );
+        }
+    }
+
     // Only the shell and the editors are open (the progress of the loading is closed)
     int others = 0;
 
@@ -402,7 +502,7 @@ void runScenario( MAIN_WINDOW* aWindow )
     {
         if( widget->isVisible() && widget != aWindow && widget != pcb && widget != sch
             && widget != symbols && widget != footprints && widget != cvpcb
-            && widget != drawingSheets && widget != gerbers )
+            && widget != drawingSheets && widget != gerbers && widget != calculator && widget != images )
         {
             std::printf( "    open: %s \"%s\"\n", widget->metaObject()->className(),
                          qPrintable( widget->windowTitle() ) );
@@ -426,7 +526,9 @@ void runScenario( MAIN_WINDOW* aWindow )
                    && !s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false )
                    && !s_kiway.Player( FRAME_CVPCB, false )
                    && !s_kiway.Player( FRAME_PL_EDITOR, false )
-                   && !s_kiway.Player( FRAME_GERBER, false ),
+                   && !s_kiway.Player( FRAME_GERBER, false )
+                   && !s_kiway.Player( FRAME_CALC, false )
+                   && !s_kiway.Player( FRAME_BM2CMP, false ),
            "the editors are closed" );
 
     aWindow->close();

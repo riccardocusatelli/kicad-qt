@@ -20,7 +20,7 @@
 #ifndef PANEL_COLOR_CODE_H
 #define PANEL_COLOR_CODE_H
 
-#include "panel_color_code_base.h"
+#include <panel_color_code_base.h>
 class PCB_CALCULATOR_SETTINGS;
 
 

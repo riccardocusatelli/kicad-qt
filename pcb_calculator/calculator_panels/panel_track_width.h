@@ -20,7 +20,7 @@
 #ifndef PANEL_TRACK_WIDTH_H
 #define PANEL_TRACK_WIDTH_H
 
-#include "panel_track_width_base.h"
+#include <panel_track_width_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

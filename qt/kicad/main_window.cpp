@@ -649,6 +649,8 @@ void MAIN_WINDOW::openEditorFrame( FRAME_T aFrameType )
         case FRAME_FOOTPRINT_EDITOR:  title = tr( "Footprint Editor" );     break;
         case FRAME_PL_EDITOR:         title = tr( "Drawing Sheet Editor" ); break;
         case FRAME_GERBER:            title = tr( "Gerber Viewer" );        break;
+        case FRAME_CALC:              title = tr( "Calculator Tools" );     break;
+        case FRAME_BM2CMP:            title = tr( "Image Converter" );      break;
         default:                      title = tr( "KiCad" );                break;
         }
 

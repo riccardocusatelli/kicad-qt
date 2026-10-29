@@ -130,6 +130,8 @@ add_subdirectory( cvpcb )
 add_subdirectory( scripting )
 add_subdirectory( pagelayout_editor )
 add_subdirectory( gerbview )
+add_subdirectory( pcb_calculator )
+add_subdirectory( bitmap2component )
 add_subdirectory( kicad )
 add_subdirectory( qa )
 
@@ -143,6 +145,9 @@ set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_KEPT_TARGETS
     kipython_gui_qt kipython_qtgui_kiface kipython_qtgui_kiface_iface kipython_qtgui_kiface_archive
     pl_editor_gui_qt pl_editor_qtgui_kiface pl_editor_qtgui_kiface_iface pl_editor_qtgui_kiface_archive
     gerbview_gui_qt gerbview_qtgui_kiface gerbview_qtgui_kiface_iface gerbview_qtgui_kiface_archive
+    pcb_calculator_gui_qt pcb_calculator_qtgui_kiface pcb_calculator_qtgui_kiface_iface pcb_calculator_qtgui_kiface_archive
+    bitmap2component_gui_qt bitmap2component_qtgui_kiface bitmap2component_qtgui_kiface_iface bitmap2component_qtgui_kiface_archive
+    potrace
     kicad-qt
     qa_qt_tool_framework qa_qt_tool_framework_objects
     qa_qt_3d_viewer qa_qt_3d_viewer_objects

@@ -27,7 +27,8 @@ target_link_libraries( kicad-qt
     )
 
 add_dependencies( kicad-qt common pcbnew_qtgui_kiface eeschema_qtgui_kiface cvpcb_qtgui_kiface
-                  kipython_qtgui_kiface pl_editor_qtgui_kiface gerbview_qtgui_kiface )
+                  kipython_qtgui_kiface pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface
+                  bitmap2component_qtgui_kiface )
 
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     target_link_options( kicad-qt PRIVATE "LINKER:--no-undefined" )

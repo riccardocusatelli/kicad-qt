@@ -19,7 +19,7 @@
 
 #ifndef PANEL_REGULATOR_H
 #define PANEL_REGULATOR_H
-#include "panel_regulator_base.h"
+#include <panel_regulator_base.h>
 #include "class_regulator_data.h"
 
 class  PCB_CALCULATOR_SETTINGS;

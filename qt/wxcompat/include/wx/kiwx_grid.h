@@ -803,6 +803,7 @@ public:
     void SetLabelFont( const wxFont& aFont );
     wxFont GetLabelFont() const;
     void SetLabelBackgroundColour( const wxColour& ) {}
+    wxColour GetLabelBackgroundColour() const { return wxColour( palette().color( QPalette::Button ) ); }
     void SetLabelTextColour( const wxColour& ) {}
     void SetUseNativeColLabels( bool = true ) {}
     void UseNativeColHeader( bool = true ) {}
@@ -814,6 +815,18 @@ public:
     void HideRow( int aRow ) { setRowHidden( aRow, true ); }
     void ShowRow( int aRow ) { setRowHidden( aRow, false ); }
     bool IsRowShown( int aRow ) const { return !isRowHidden( aRow ); }
+
+    // The spans of the cells (one cell covering aRows x aCols cells)
+    void SetCellSize( int aRow, int aCol, int aRows, int aCols )
+    {
+        setSpan( aRow, aCol, std::max( aRows, 1 ), std::max( aCols, 1 ) );
+    }
+
+    void GetCellSize( int aRow, int aCol, int* aRows, int* aCols ) const
+    {
+        *aRows = rowSpan( aRow, aCol );
+        *aCols = columnSpan( aRow, aCol );
+    }
 
     // The attributes of the cells
     void SetDefaultCellAlignment( int aHAlign, int aVAlign );

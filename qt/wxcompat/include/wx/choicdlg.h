@@ -105,3 +105,38 @@ inline int wxGetSingleChoiceIndex( const wxString& aMessage, const wxString& aCa
     dialog.SetSelection( aInitialSelection );
     return dialog.ShowModal() == wxID_OK ? dialog.GetSelection() : -1;
 }
+
+
+/// Choose a string of a list, starting from @a aInitialSelection.
+inline int wxGetSingleChoiceIndex( const wxString& aMessage, const wxString& aCaption,
+                                   const wxArrayString& aChoices, int aInitialSelection,
+                                   wxWidgetArgCompat aParent = nullptr )
+{
+    wxSingleChoiceDialog dialog( aParent, aMessage, aCaption, aChoices );
+    dialog.SetSelection( aInitialSelection );
+    return dialog.ShowModal() == wxID_OK ? dialog.GetSelection() : -1;
+}
+
+
+/// Choose a string of a list; the chosen string, empty if the user cancels.
+inline wxString wxGetSingleChoice( const wxString& aMessage, const wxString& aCaption,
+                                   const wxArrayString& aChoices,
+                                   wxWidgetArgCompat aParent = nullptr, int aX = wxDefaultCoord,
+                                   int aY = wxDefaultCoord, bool aCentre = true,
+                                   int aWidth = 0, int aHeight = 0, int aInitialSelection = 0 )
+{
+    wxSingleChoiceDialog dialog( aParent, aMessage, aCaption, aChoices );
+    dialog.SetSelection( aInitialSelection );
+    return dialog.ShowModal() == wxID_OK ? dialog.GetStringSelection() : wxString();
+}
+
+
+/// Choose a string of a list, starting from @a aInitialSelection.
+inline wxString wxGetSingleChoice( const wxString& aMessage, const wxString& aCaption,
+                                   const wxArrayString& aChoices, int aInitialSelection,
+                                   wxWidgetArgCompat aParent = nullptr )
+{
+    wxSingleChoiceDialog dialog( aParent, aMessage, aCaption, aChoices );
+    dialog.SetSelection( aInitialSelection );
+    return dialog.ShowModal() == wxID_OK ? dialog.GetStringSelection() : wxString();
+}

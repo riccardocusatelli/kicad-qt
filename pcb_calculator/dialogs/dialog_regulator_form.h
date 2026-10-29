@@ -25,7 +25,7 @@
 #ifndef DIALOG_REGULATOR_FORM_H
 #define DIALOG_REGULATOR_FORM_H
 
-#include "dialog_regulator_form_base.h"
+#include <dialog_regulator_form_base.h>
 
 class PANEL_REGULATOR;
 class REGULATOR_DATA;

@@ -407,6 +407,7 @@ private:
  * its widget.
  */
 class KIQT_API wxWindow;
+class wxDropTarget;
 
 /// The base of the windows of wxWidgets (wxWindowBase): the window.
 using wxWindowBase = wxWindow;
@@ -748,6 +749,13 @@ public:
     /// Give an event to the handlers pushed on the window, then to the ones of the window.
     bool ProcessEvent( wxEvent& aEvent ) override;
     bool ProcessWindowEvent( wxEvent& aEvent ) { return ProcessEvent( aEvent ); }
+
+    /// Simulate a command of the control (wxControl::Command): process @a aEvent.
+    void Command( wxCommandEvent& aEvent ) { ProcessEvent( aEvent ); }
+
+    /// The target of the drag and drop on the window (owned by the window).
+    void SetDropTarget( wxDropTarget* aTarget );
+    void DragAcceptFiles( bool aAccept );
     bool HandleWindowEvent( wxEvent& aEvent ) { return ProcessEvent( aEvent ); }
 
     /// No events from the widget and its handlers.

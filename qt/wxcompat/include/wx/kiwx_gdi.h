@@ -194,6 +194,13 @@ public:
     {
     }
 
+    /// A colour from its 0xBBGGRR value (wxColour( unsigned long ) of wxWidgets).
+    wxColour( unsigned long aBGR ) :
+            m_color( aBGR & 0xFF, ( aBGR >> 8 ) & 0xFF, ( aBGR >> 16 ) & 0xFF ),
+            m_ok( true )
+    {
+    }
+
     /// A colour from its name or its HTML code ("#RRGGBB").
     wxColour( const wxString& aName );
     wxColour( const char* aName ) : wxColour( wxString( aName ) ) {}
@@ -495,6 +502,21 @@ class wxOutputStream;
 #define wxIMAGE_OPTION_PNG_FILTER                   wxString( wxS( "PngF" ) )
 #define wxIMAGE_OPTION_QUALITY                      wxString( wxS( "quality" ) )
 #define wxIMAGE_OPTION_RESOLUTION                   wxString( wxS( "Resolution" ) )
+#define wxIMAGE_OPTION_RESOLUTIONX                  wxString( wxS( "ResolutionX" ) )
+#define wxIMAGE_OPTION_RESOLUTIONY                  wxString( wxS( "ResolutionY" ) )
+#define wxIMAGE_OPTION_RESOLUTIONUNIT               wxString( wxS( "ResolutionUnit" ) )
+
+/// The units of the resolutions of the images (wxIMAGE_OPTION_RESOLUTIONUNIT).
+enum wxImageResolution
+{
+    wxIMAGE_RESOLUTION_NONE = 0,
+    wxIMAGE_RESOLUTION_INCHES = 1,
+    wxIMAGE_RESOLUTION_CM = 2
+};
+
+/// The values of the alpha channel.
+#define wxALPHA_TRANSPARENT 0
+#define wxALPHA_OPAQUE 0xff
 
 
 /// An image (wxImage): a QImage with the API of wxWidgets, RGB with an optional alpha.
@@ -601,11 +623,18 @@ public:
     }
 
     bool IsOk() const { return !isNull(); }
+    void Destroy() { *this = wxImage(); }
     int GetWidth() const { return width(); }
     int GetHeight() const { return height(); }
     wxSize GetSize() const { return wxSize( width(), height() ); }
 
     bool HasAlpha() const { return hasAlphaChannel(); }
+
+    /// The images of Qt have an alpha channel, never a mask colour.
+    bool HasMask() const { return false; }
+    unsigned char GetMaskRed() const { return 0; }
+    unsigned char GetMaskGreen() const { return 0; }
+    unsigned char GetMaskBlue() const { return 0; }
 
     /// Add an alpha channel (opaque).
     void InitAlpha();
@@ -661,6 +690,9 @@ private:
 
 
 /// A bitmap: a QPixmap with the API of wxWidgets.
+class wxMask;
+
+
 class KIQT_API wxBitmap : public QPixmap
 {
 public:
@@ -685,6 +717,10 @@ public:
     int GetWidth() const { return width(); }
     int GetHeight() const { return height(); }
     wxSize GetSize() const { return wxSize( width(), height() ); }
+    int GetDepth() const { return depth(); }
+
+    /// The pixmaps of Qt have an alpha channel, never a mask (wxMask).
+    wxMask* GetMask() const { return nullptr; }
 
     /// The size in logical pixels (the size of the bitmap divided by its scale).
     double GetLogicalWidth() const { return width() / devicePixelRatio(); }
@@ -889,9 +925,29 @@ enum wxSystemFont
 };
 
 
+/// The appearance of the system (wxSystemAppearance of wxWidgets): dark if its windows are.
+class wxSystemAppearance
+{
+public:
+    explicit wxSystemAppearance( bool aDark ) : m_dark( aDark ) {}
+
+    bool IsDark() const { return m_dark; }
+    bool IsUsingDarkBackground() const { return m_dark; }
+    wxString GetName() const { return wxString(); }
+
+private:
+    bool m_dark;
+};
+
+
 class KIQT_API wxSystemSettings
 {
 public:
+    static wxSystemAppearance GetAppearance()
+    {
+        return wxSystemAppearance( QColor( GetColour( wxSYS_COLOUR_WINDOW ) ).lightness() < 128 );
+    }
+
     static wxColour GetColour( wxSystemColour aIndex );
 
     /// The font of the application, or its fixed pitch font.

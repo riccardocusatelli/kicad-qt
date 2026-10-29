@@ -20,7 +20,7 @@
 #ifndef PANEL_RF_ATTENUATORS_H
 #define PANEL_RF_ATTENUATORS_H
 
-#include "panel_rf_attenuators_base.h"
+#include <panel_rf_attenuators_base.h>
 
 #include <vector>
 

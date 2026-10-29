@@ -22,14 +22,16 @@
 #define CALCULATOR_PANEL_H_
 
 #include <wx/panel.h>
+#include <toolkit/toolkit_window_arg.h>
 
 class PCB_CALCULATOR_SETTINGS;
 
 class CALCULATOR_PANEL : public wxPanel
 {
 public:
-    CALCULATOR_PANEL( wxWindow* aParent, wxWindowID aId, const wxPoint& aPos, const wxSize& aSize,
-                      long aStyle, const wxString& aName )
+    CALCULATOR_PANEL( TOOLKIT_WINDOW_ARG aParent, wxWindowID aId = wxID_ANY,
+                      const wxPoint& aPos = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
+                      long aStyle = wxTAB_TRAVERSAL, const wxString& aName = wxEmptyString )
         : wxPanel( aParent, aId, aPos, aSize, aStyle, aName )
     {}
 

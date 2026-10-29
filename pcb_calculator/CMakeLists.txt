@@ -2,6 +2,7 @@ add_compile_definitions( PCB_CALCULATOR_BUILD )
 
 include_directories( BEFORE ${INC_BEFORE} )
 include_directories(
+    calculator_panels
     dialogs
     ${CMAKE_SOURCE_DIR}/common
     ${INC_AFTER}

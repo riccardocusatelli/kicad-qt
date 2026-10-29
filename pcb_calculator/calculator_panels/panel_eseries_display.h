@@ -21,7 +21,7 @@
 #define PANEL_ESERIES_DISPLAY_H
 
 #include <eseries.h>
-#include "panel_eseries_display_base.h"
+#include <panel_eseries_display_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

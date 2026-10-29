@@ -44,6 +44,7 @@
 #include <wx/msgdlg.h>
 #include <kiplatform/ui.h>
 #include <core/ki_assert.h>
+#include <toolkit/toolkit_window_arg.h>
 
 
 #define DEFAULT_DPI 300     // the image DPI used in formats that do not define a DPI
@@ -148,11 +149,10 @@ BEGIN_EVENT_TABLE( BITMAP2CMP_FRAME, KIWAY_PLAYER )
 END_EVENT_TABLE()
 
 
-BITMAP2CMP_FRAME::BITMAP2CMP_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
+BITMAP2CMP_FRAME::BITMAP2CMP_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         KIWAY_PLAYER( aKiway, aParent, FRAME_BM2CMP, _( "Image Converter" ), wxDefaultPosition,
                       wxDefaultSize, wxDEFAULT_FRAME_STYLE, wxT( "bitmap2cmp" ), unityScale ),
-        m_panel( nullptr ),
-        m_statusBar( nullptr )
+        m_panel( nullptr )
 {
     m_aboutTitle = _HKI( "KiCad Image Converter" );
 
@@ -179,7 +179,7 @@ BITMAP2CMP_FRAME::BITMAP2CMP_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_panel = new BITMAP2CMP_PANEL( this );
     mainSizer->Add( m_panel, 1, wxEXPAND, 5 );
 
-    m_statusBar = this->CreateStatusBar( 1, wxSTB_SIZEGRIP, wxID_ANY );
+    CreateStatusBar( 1 );
 
     LoadSettings( config() );
 
@@ -228,9 +228,9 @@ void BITMAP2CMP_FRAME::OnExit( wxCommandEvent& aEvent )
 }
 
 
-wxWindow* BITMAP2CMP_FRAME::GetToolCanvas() const
+TOOLKIT_WINDOW* BITMAP2CMP_FRAME::GetToolCanvas() const
 {
-    return m_panel->GetCurrentPage();
+    return TOOLKIT_WINDOW_ARG( m_panel->GetCurrentPage() );
 }
 
 

@@ -593,6 +593,19 @@ wxString wxImage::GetOption( const wxString& aName ) const
 
 int wxImage::GetOptionInt( const wxString& aName ) const
 {
+    // The resolution of the file, read by Qt (in dots per meter)
+    if( !HasOption( aName ) )
+    {
+        if( aName == wxIMAGE_OPTION_RESOLUTIONX && dotsPerMeterX() > 0 )
+            return int( std::lround( dotsPerMeterX() * 0.0254 ) );
+
+        if( aName == wxIMAGE_OPTION_RESOLUTIONY && dotsPerMeterY() > 0 )
+            return int( std::lround( dotsPerMeterY() * 0.0254 ) );
+
+        if( aName == wxIMAGE_OPTION_RESOLUTIONUNIT )
+            return wxIMAGE_RESOLUTION_INCHES;
+    }
+
     long value = 0;
     GetOption( aName ).ToLong( &value );
     return int( value );

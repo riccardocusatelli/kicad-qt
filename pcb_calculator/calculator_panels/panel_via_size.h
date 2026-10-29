@@ -20,7 +20,7 @@
 #ifndef PANEL_VIA_SIZE_H
 #define PANEL_VIA_SIZE_H
 
-#include "panel_via_size_base.h"
+#include <panel_via_size_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

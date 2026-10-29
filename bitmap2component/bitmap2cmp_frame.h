@@ -34,7 +34,7 @@ class BITMAP2CMP_PANEL;
 class BITMAP2CMP_FRAME : public KIWAY_PLAYER
 {
 public:
-    BITMAP2CMP_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    BITMAP2CMP_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
     ~BITMAP2CMP_FRAME();
 
     // overload KIWAY_PLAYER virtual
@@ -72,7 +72,7 @@ public:
     void LoadSettings( APP_SETTINGS_BASE* aCfg ) override;
     void SaveSettings( APP_SETTINGS_BASE* aCfg ) override;
 
-    wxWindow* GetToolCanvas() const override;
+    TOOLKIT_WINDOW* GetToolCanvas() const override;
 
     /**
      * Event handler for the wxID_EXIT and wxID_CLOSE events.
@@ -86,7 +86,6 @@ protected:
 
 private:
     BITMAP2CMP_PANEL* m_panel;
-    wxStatusBar*      m_statusBar;
 
     wxString          m_srcFileName;
     wxString          m_outFileName;

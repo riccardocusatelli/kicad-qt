@@ -25,6 +25,8 @@
 #include "pcb_calculator_frame.h"
 #include "pcb_calculator_settings.h"
 
+#include <toolkit/toolkit_window_arg.h>
+
 // Pcb_calculator data file extension:
 const wxString PcbCalcDataFileExt( wxT( "pcbcalc" ) );
 
@@ -43,9 +45,12 @@ static struct IFACE : public KIFACE_GUI
 
     void OnKifaceEnd() override;
 
-    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParent, int aClassId, KIWAY* aKiway,
+    TOOLKIT_WINDOW* CreateKiWindow( TOOLKIT_WINDOW* aParentWindow, int aClassId, KIWAY* aKiway,
                                     int aCtlBits = 0 ) override
     {
+        // The parent of the frames and of the dialogs and panels of the toolkit
+        TOOLKIT_WINDOW_ARG aParent = aParentWindow;
+
         return new PCB_CALCULATOR_FRAME( aKiway, aParent );
     }
 

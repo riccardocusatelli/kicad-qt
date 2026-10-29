@@ -930,6 +930,7 @@ protected:
 
     wxSize                  m_frameSize;         // The size of the frame at its creation (the
                                                  // initial size of the canvases)
+    wxPoint                 m_framePos = wxDefaultPosition; // Its position (default: centred)
 
     bool                    m_supportsAutoSave;
     bool                    m_autoSavePending;

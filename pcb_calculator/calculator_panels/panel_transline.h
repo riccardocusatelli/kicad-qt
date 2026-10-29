@@ -20,7 +20,7 @@
 #ifndef PANEL_TRANSLINE_H
 #define PANEL_TRANSLINE_H
 
-#include "panel_transline_base.h"
+#include <panel_transline_base.h>
 #include <transline/transline.h>
 #include "transline_ident.h"
 

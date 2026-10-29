@@ -734,8 +734,8 @@ LAUNCHER_PANEL::LAUNCHER_PANEL( QWidget* aParent ) :
         const char* help;
         int         frameType;      ///< The frame of the tool (-1: not available yet)
     } utilities[] = { { "GB", "Gerber Viewer", "Preview Gerber files", FRAME_GERBER },
-                      { "CA", "Calculator Tools", "Resistance, current capacity, etc.", -1 },
-                      { "IM", "Image Converter", "Bitmaps to symbols or footprints", -1 },
+                      { "CA", "Calculator Tools", "Resistance, current capacity, etc.", FRAME_CALC },
+                      { "IM", "Image Converter", "Bitmaps to symbols or footprints", FRAME_BM2CMP },
                       { "PM", "Plugin and Content Manager", "KiCad and third-party packages", -1 } };
 
     int index = 0;

@@ -31,7 +31,12 @@
 #include <QBoxLayout>
 #include <QCloseEvent>
 #include <QFontMetrics>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QGroupBox>
+#include <QMimeData>
+#include <QScrollArea>
+#include <QUrl>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QVariant>
@@ -1968,4 +1973,127 @@ void wxCentreWindow( wxWidgetArgCompat aWindow, int aDirection )
         pos.setY( area.y() + ( area.height() - size.height() ) / 2 );
 
     aWindow->move( pos );
+}
+
+
+// Drag and drop ------------------------------------------------------------------------------
+
+bool wxFileDropTarget::AcceptsCompat( const QMimeData* aData ) const
+{
+    if( !aData || !aData->hasUrls() )
+        return false;
+
+    for( const QUrl& url : aData->urls() )
+    {
+        if( url.isLocalFile() )
+            return true;
+    }
+
+    return false;
+}
+
+
+bool wxFileDropTarget::DropCompat( int aX, int aY, const QMimeData* aData )
+{
+    wxArrayString files;
+
+    for( const QUrl& url : aData->urls() )
+    {
+        if( url.isLocalFile() )
+            files.Add( ToWxString( url.toLocalFile() ) );
+    }
+
+    return !files.IsEmpty() && OnDropFiles( aX, aY, files );
+}
+
+
+namespace
+{
+
+/// The filter of the drag and drop events of a widget: it owns the target of the window.
+class DROP_TARGET_FILTER : public QObject
+{
+public:
+    DROP_TARGET_FILTER( QWidget* aWidget, wxDropTarget* aTarget ) :
+            QObject( aWidget ),
+            m_target( aTarget )
+    {
+        aWidget->setAcceptDrops( true );
+        aWidget->installEventFilter( this );
+    }
+
+protected:
+    bool eventFilter( QObject* aObject, QEvent* aEvent ) override
+    {
+        switch( aEvent->type() )
+        {
+        case QEvent::DragEnter:
+        case QEvent::DragMove:
+        {
+            QDropEvent* event = static_cast<QDropEvent*>( aEvent );
+
+            if( m_target->AcceptsCompat( event->mimeData() ) )
+                event->acceptProposedAction();
+            else
+                event->ignore();
+
+            return true;
+        }
+
+        case QEvent::Drop:
+        {
+            QDropEvent* event = static_cast<QDropEvent*>( aEvent );
+            QPoint      pos = event->position().toPoint();
+
+            if( m_target->DropCompat( pos.x(), pos.y(), event->mimeData() ) )
+                event->acceptProposedAction();
+            else
+                event->ignore();
+
+            return true;
+        }
+
+        default:
+            return false;
+        }
+    }
+
+private:
+    std::unique_ptr<wxDropTarget> m_target;
+};
+
+} // namespace
+
+
+void wxWindow::SetDropTarget( wxDropTarget* aTarget )
+{
+    QWidget* widget = GetHandle();
+
+    if( !widget )
+    {
+        delete aTarget;
+        return;
+    }
+
+    // The drops on a scroll area go to its viewport
+    if( QAbstractScrollArea* area = qobject_cast<QAbstractScrollArea*>( widget ) )
+        widget = area->viewport();
+
+    for( QObject* child : widget->children() )
+    {
+        if( dynamic_cast<DROP_TARGET_FILTER*>( child ) )
+            delete child;
+    }
+
+    if( aTarget )
+        new DROP_TARGET_FILTER( widget, aTarget );
+    else
+        widget->setAcceptDrops( false );
+}
+
+
+void wxWindow::DragAcceptFiles( bool aAccept )
+{
+    if( QWidget* widget = GetHandle() )
+        widget->setAcceptDrops( aAccept );
 }

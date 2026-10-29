@@ -20,7 +20,7 @@
 #ifndef PANEL_FUSING_CURRENT_H
 #define PANEL_FUSING_CURRENT_H
 
-#include "panel_fusing_current_base.h"
+#include <panel_fusing_current_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

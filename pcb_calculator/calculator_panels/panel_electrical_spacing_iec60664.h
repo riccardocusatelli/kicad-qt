@@ -20,7 +20,7 @@
 #ifndef PANEL_ELECTRICAL_SPACING_IEC60664_H
 #define PANEL_ELECTRICAL_SPACING_IEC60664_H
 
-#include "panel_electrical_spacing_iec60664_base.h"
+#include <panel_electrical_spacing_iec60664_base.h>
 
 class PCB_CALCULATOR_SETTINGS;
 

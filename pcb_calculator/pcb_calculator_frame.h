@@ -22,9 +22,9 @@
 
 #include <calculator_panels/calculator_panel.h>
 #include <kiway_player.h>
+#include <wx/treebook.h>
 
 class wxTreebook;
-class wxTreebookEvent;
 class wxBoxSizer;
 
 class APP_SETTINGS_BASE;
@@ -38,11 +38,11 @@ class PANEL_TRANSLINE;
 class PCB_CALCULATOR_FRAME : public KIWAY_PLAYER
 {
 public:
-    PCB_CALCULATOR_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    PCB_CALCULATOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
     ~PCB_CALCULATOR_FRAME();
 
     // Pcb calculator doesn't host a tool framework
-    wxWindow* GetToolCanvas() const override
+    TOOLKIT_WINDOW* GetToolCanvas() const override
     {
         return nullptr;
     }
