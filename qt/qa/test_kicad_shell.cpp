@@ -23,7 +23,7 @@
  * event loop of its application.  Its start wizard is finished, a board opens in the PCB editor
  * of KiCad (the frame of _pcbnew_qtgui.kiface), a schematic of another project in the schematic
  * editor of KiCad (_eeschema_qtgui.kiface) once the editors of the board's project are closed,
- * the schematic editor opens CvPcb (_cvpcb_qtgui.kiface) to assign the footprints of the
+ * the PCB editor shows the Python console (_kipython_qtgui.kiface), the schematic editor opens CvPcb (_cvpcb_qtgui.kiface) to assign the footprints of the
  * schematic, the launcher opens the symbol and footprint editors, and the shell closes the editors with it.
  *
  * Usage: qa_qt_kicad_shell <board.kicad_pcb> [schematic.kicad_sch] [screenshot.png]
@@ -43,6 +43,8 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QLineEdit>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScreen>
 #include <QTemporaryDir>
@@ -119,6 +121,55 @@ void runScenario( MAIN_WINDOW* aWindow )
     check( pcb && pcb->isVisible(), "the PCB editor is shown" );
     check( pcb && pcb->windowTitle().contains( QFileInfo( s_board ).completeBaseName() ),
            "the PCB editor has the board" );
+
+    // The Python console of the PCB editor (_kipython_qtgui.kiface): a line of Python reads the
+    // board of the editor
+    if( pcb && pcb->GetToolManager() )
+    {
+        pcb->GetToolManager()->RunAction( "pcbnew.Control.showPythonConsole" );
+        settle( 500 );
+
+        KIWAY_PLAYER* console = s_kiway.Player( FRAME_PYTHON, false );
+        check( console && console->isVisible(), "the PCB editor shows the Python console" );
+
+        QLineEdit*      input = console ? console->findChild<QLineEdit*>() : nullptr;
+        QPlainTextEdit* output = console ? console->findChild<QPlainTextEdit*>() : nullptr;
+        check( input && output, "the console has its input and output" );
+
+        if( input && output )
+        {
+            check( output->toPlainText().contains( QStringLiteral( "Python " ) ),
+                   "the console shows the version of Python" );
+
+            input->setText( QStringLiteral(
+                    "print( 'footprints:', len( pcbnew.GetBoard().GetFootprints() ) )" ) );
+            Q_EMIT input->returnPressed();
+            settle( 100 );
+
+            check( output->toPlainText().contains( QStringLiteral( "footprints: " ) ),
+                   "the console runs Python with the module of pcbnew" );
+
+            input->setText( QStringLiteral( "1 / 0" ) );
+            Q_EMIT input->returnPressed();
+            settle( 100 );
+
+            check( output->toPlainText().contains( QStringLiteral( "ZeroDivisionError" ) ),
+                   "the console shows the errors of Python" );
+            std::printf( "%s\n", qPrintable( output->toPlainText().section( '\n', -6 ) ) );
+
+            if( !s_screenshot.isEmpty() )
+            {
+                QFileInfo shot( s_screenshot );
+                console->grab().save( shot.path() + QStringLiteral( "/" ) + shot.completeBaseName()
+                                      + QStringLiteral( "-python." ) + shot.suffix() );
+            }
+        }
+
+        // The console is hidden again (the action toggles it)
+        pcb->GetToolManager()->RunAction( "pcbnew.Control.showPythonConsole" );
+        settle( 200 );
+        check( !console || !console->isVisible(), "the console is hidden" );
+    }
 
     // A schematic of another project: the editors of the board's project close (as in the
     // project manager of KiCad), then the schematic editor of KiCad opens it
