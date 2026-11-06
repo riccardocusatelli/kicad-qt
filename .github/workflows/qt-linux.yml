@@ -44,7 +44,7 @@ jobs:
             libexpat1-dev libpng-dev libjpeg-dev libssl-dev libgtk-3-dev
 
       - name: Compiler cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: .ccache
           key: ccache-qt-linux-${{ github.sha }}
@@ -60,10 +60,18 @@ jobs:
 
       - name: Build
         run: |
-          cmake --build build -- -k 0 all \
-            qt/qa/qa_qt_eeschema_frames qt/qa/qa_qt_pcbnew_frames \
-            qt/qa/qa_qt_tool_framework qt/qa/qa_qt_3d_viewer kicad/qa_qt_kicad_shell
+          cmake --build build --target all \
+            qa_qt_eeschema_frames qa_qt_pcbnew_frames qa_qt_tool_framework \
+            qa_qt_3d_viewer qa_qt_kicad_shell -- -k 0
           ccache --show-stats
+
+      # Saved after the build, also when it or the QA fails
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-qt-linux-${{ github.sha }}
 
       - name: QA of the Qt frames
         env:
@@ -87,8 +95,9 @@ jobs:
           DESTDIR=$PWD/stage cmake --install build
           ls stage/usr/bin
           # Every library the programs and the KIFACEs need is installed or on the system
+          LIBDIR=$(dirname $(find $PWD/stage -name libkiqt.so))
           ! for f in stage/usr/bin/kicad-qt stage/usr/bin/*.kiface; do
-              LD_LIBRARY_PATH=$PWD/stage/usr/lib ldd $f | grep "not found"
+              LD_LIBRARY_PATH=$LIBDIR ldd $f | grep "not found"
             done | grep .
 
       - name: Screenshots

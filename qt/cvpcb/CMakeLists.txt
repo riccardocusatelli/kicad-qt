@@ -81,6 +81,8 @@ add_headless_kiface( cvpcb_qtgui_kiface
     )
 
 target_compile_definitions( cvpcb_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS )
+# The headers generated from the .fbp files of cvpcb_gui_qt come before the sources of the IFACE
+add_dependencies( cvpcb_qtgui_kiface_iface cvpcb_gui_qt pcbnew_gui_qt )
 target_include_directories( cvpcb_qtgui_kiface_iface BEFORE PRIVATE
     $<TARGET_PROPERTY:cvpcb_gui_qt,INCLUDE_DIRECTORIES>
     )

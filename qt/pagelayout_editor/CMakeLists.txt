@@ -70,6 +70,8 @@ add_headless_kiface( pl_editor_qtgui_kiface
     )
 
 target_compile_definitions( pl_editor_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS PL_EDITOR )
+# The headers generated from the .fbp files of pl_editor_gui_qt come before the sources of the IFACE
+add_dependencies( pl_editor_qtgui_kiface_iface pl_editor_gui_qt )
 target_include_directories( pl_editor_qtgui_kiface_iface BEFORE PRIVATE
     $<TARGET_PROPERTY:pl_editor_gui_qt,INCLUDE_DIRECTORIES>
     )

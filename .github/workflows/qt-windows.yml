@@ -117,7 +117,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Compiler cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: .ccache
           key: ccache-qt-windows-${{ github.sha }}
@@ -148,12 +148,20 @@ jobs:
           CCACHE_MAXSIZE: 3G
         run: |
           $env:VCPKG_ROOT = $env:KICAD_VCPKG_ROOT
-          cmake --build build -- -k 0 all `
-            qt/qa/qa_qt_eeschema_frames qt/qa/qa_qt_pcbnew_frames `
-            qt/qa/qa_qt_tool_framework qt/qa/qa_qt_3d_viewer kicad/qa_qt_kicad_shell 2>&1 |
+          # The names of the targets (the paths of the programs end with .exe)
+          cmake --build build --target all `
+            qa_qt_eeschema_frames qa_qt_pcbnew_frames qa_qt_tool_framework `
+            qa_qt_3d_viewer qa_qt_kicad_shell -- -k 0 2>&1 |
             Tee-Object -FilePath build\compilation_log.txt
           if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
           ccache --show-stats
+
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-qt-windows-${{ github.sha }}
 
       - name: Compilation log
         if: always()

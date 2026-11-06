@@ -104,6 +104,8 @@ add_headless_kiface( gerbview_qtgui_kiface
     )
 
 target_compile_definitions( gerbview_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS GERBVIEW )
+# The headers generated from the .fbp files of gerbview_gui_qt come before the sources of the IFACE
+add_dependencies( gerbview_qtgui_kiface_iface gerbview_gui_qt )
 target_include_directories( gerbview_qtgui_kiface_iface BEFORE PRIVATE
     $<TARGET_PROPERTY:gerbview_gui_qt,INCLUDE_DIRECTORIES>
     )

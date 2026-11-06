@@ -170,6 +170,7 @@ if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
 endif()
 
 install( TARGETS kiqt
+    RUNTIME DESTINATION ${KICAD_LIB}
     LIBRARY DESTINATION ${KICAD_LIB}
     COMPONENT binary
     )

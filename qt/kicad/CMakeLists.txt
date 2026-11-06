@@ -35,11 +35,12 @@ add_dependencies( kicad-qt kicad_manager_qt common pcbnew_qtgui_kiface eeschema_
                   kipython_qtgui_kiface pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface
                   bitmap2component_qtgui_kiface )
 
-# The JSON schemas of the API and of the plugin and content manager, in the schemas directory of
-# the build tree (KICAD_RUN_FROM_BUILD_DIR): their copy targets are not in the wx-free default
-foreach( _schema_copy api_schema_build_copy schema_build_copy )
-    if( TARGET ${_schema_copy} )
-        add_dependencies( kicad-qt ${_schema_copy} )
+# The resources the programs read from the build tree (KICAD_RUN_FROM_BUILD_DIR) and install: the
+# JSON schemas of the API and of the plugin and content manager, the archive of the images and
+# the Linux metadata.  Their targets are not in the wx-free default (custom targets).
+foreach( _resources api_schema_build_copy schema_build_copy bitmap_archive_build metadata )
+    if( TARGET ${_resources} )
+        add_dependencies( kicad-qt ${_resources} )
     endif()
 endforeach()
 

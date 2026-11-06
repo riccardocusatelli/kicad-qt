@@ -34,6 +34,8 @@ add_headless_kiface( kipython_qtgui_kiface
     )
 
 target_compile_definitions( kipython_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS )
+# The headers generated from the .fbp files of kipython_gui_qt come before the sources of the IFACE
+add_dependencies( kipython_qtgui_kiface_iface kipython_gui_qt )
 target_include_directories( kipython_qtgui_kiface_iface BEFORE PRIVATE
     $<TARGET_PROPERTY:kipython_gui_qt,INCLUDE_DIRECTORIES>
     )

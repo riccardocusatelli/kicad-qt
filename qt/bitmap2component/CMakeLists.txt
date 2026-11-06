@@ -52,6 +52,8 @@ add_headless_kiface( bitmap2component_qtgui_kiface
     )
 
 target_compile_definitions( bitmap2component_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS BITMAP_2_CMP )
+# The headers generated from the .fbp files of bitmap2component_gui_qt come before the sources of the IFACE
+add_dependencies( bitmap2component_qtgui_kiface_iface bitmap2component_gui_qt )
 target_include_directories( bitmap2component_qtgui_kiface_iface BEFORE PRIVATE
     $<TARGET_PROPERTY:bitmap2component_gui_qt,INCLUDE_DIRECTORIES>
     )

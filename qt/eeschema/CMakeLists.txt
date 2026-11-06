@@ -338,6 +338,8 @@ add_headless_kiface( eeschema_qtgui_kiface
 
 # eeschema.cpp is compiled as the GUI of eeschema (its Qt headers first)
 target_compile_definitions( eeschema_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS )
+# The headers generated from the .fbp files of eeschema_gui_qt come before the sources of the IFACE
+add_dependencies( eeschema_qtgui_kiface_iface eeschema_gui_qt )
 target_include_directories( eeschema_qtgui_kiface_iface BEFORE PRIVATE
     $<TARGET_PROPERTY:eeschema_gui_qt,INCLUDE_DIRECTORIES>
     )

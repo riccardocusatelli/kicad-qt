@@ -601,6 +601,8 @@ add_headless_kiface( pcbnew_qtgui_kiface
 
 # pcbnew.cpp is compiled as the GUI of pcbnew (its Qt headers first)
 target_compile_definitions( pcbnew_qtgui_kiface_iface PRIVATE QT_NO_KEYWORDS )
+# The headers generated from the .fbp files of pcbnew_gui_qt come before the sources of the IFACE
+add_dependencies( pcbnew_qtgui_kiface_iface pcbnew_gui_qt )
 target_include_directories( pcbnew_qtgui_kiface_iface BEFORE PRIVATE
     $<TARGET_PROPERTY:pcbnew_gui_qt,INCLUDE_DIRECTORIES>
     )
