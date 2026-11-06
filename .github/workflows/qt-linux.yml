@@ -65,6 +65,11 @@ jobs:
             qa_qt_3d_viewer qa_qt_kicad_shell -- -k 0
           ccache --show-stats
 
+      # Every generated header (Qt bases of the dialogs, lexers) comes before the objects that
+      # include it: a fresh parallel build can otherwise compile them first
+      - name: Order of the generated headers
+        run: python3 qt/tools/check_generated_deps.py build
+
       # Saved after the build, also when it or the QA fails
       - name: Save the compiler cache
         if: always()

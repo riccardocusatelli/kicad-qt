@@ -2367,10 +2367,10 @@ def main():
         path = os.path.join( sys.argv[2], gen.file + ext )
 
         # Unchanged files keep their date (no rebuild)
-        if os.path.exists( path ) and open( path ).read() == text:
+        if os.path.exists( path ) and open( path, encoding = 'utf-8' ).read() == text:
             continue
 
-        with open( path, 'w' ) as f:
+        with open( path, 'w', encoding = 'utf-8', newline = '\n' ) as f:
             f.write( text )
 
     return 0
