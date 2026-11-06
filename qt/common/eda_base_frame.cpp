@@ -695,7 +695,22 @@ bool EDA_BASE_FRAME::Close( bool aForce )
 bool EDA_BASE_FRAME::event( QEvent* aEvent )
 {
     if( aEvent->type() == QEvent::DeferredDelete )
+    {
+        // The panels kept until the frame is deleted leave their docks, hidden
+        for( const QPointer<QWidget>& panel : m_panesKeptUntilDeleted )
+        {
+            if( !panel )
+                continue;
+
+            if( QDockWidget* dock = qobject_cast<QDockWidget*>( panel->parentWidget() ) )
+                dock->setWidget( nullptr );
+
+            panel->hide();
+            panel->setParent( this );
+        }
+
         qDeleteAll( findChildren<QDockWidget*>( QString(), Qt::FindDirectChildrenOnly ) );
+    }
 
     return wxWindowCompat<QMainWindow>::event( aEvent );
 }

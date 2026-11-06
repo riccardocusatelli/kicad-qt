@@ -620,6 +620,11 @@ set_target_properties( pcbnew_qtgui_kiface PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/pcbnew
     )
 
+install( TARGETS pcbnew_qtgui_kiface
+    DESTINATION ${KICAD_KIFACE}
+    COMPONENT binary
+    )
+
 # pcbnew-qt: the pcbnew program of the Qt build (as the one of single_top), with the KIFACE of
 # pcbnew with the GUI linked in it.
 add_headless_executable( pcbnew-qt

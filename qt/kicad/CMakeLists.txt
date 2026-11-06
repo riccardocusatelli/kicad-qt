@@ -35,6 +35,14 @@ add_dependencies( kicad-qt kicad_manager_qt common pcbnew_qtgui_kiface eeschema_
                   kipython_qtgui_kiface pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface
                   bitmap2component_qtgui_kiface )
 
+# The JSON schemas of the API and of the plugin and content manager, in the schemas directory of
+# the build tree (KICAD_RUN_FROM_BUILD_DIR): their copy targets are not in the wx-free default
+foreach( _schema_copy api_schema_build_copy schema_build_copy )
+    if( TARGET ${_schema_copy} )
+        add_dependencies( kicad-qt ${_schema_copy} )
+    endif()
+endforeach()
+
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     target_link_options( kicad-qt PRIVATE "LINKER:--no-undefined" )
 endif()

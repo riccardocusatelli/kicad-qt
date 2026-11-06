@@ -45,6 +45,66 @@ macro( kicad_wx_free_setup )
 endmacro()
 
 
+# The targets that are not built (see kicad_wx_free_restrict_targets()) keep their install rules:
+# the files of the targets (and the files made in the build tree) are optional in this build.  (A function of the file, not of the
+# macro: the macro would replace its ARGV.)
+get_property( _kicad_wx_free_install GLOBAL PROPERTY KICAD_WX_FREE_INSTALL_OVERRIDE )
+
+if( NOT _kicad_wx_free_install )
+    set_property( GLOBAL PROPERTY KICAD_WX_FREE_INSTALL_OVERRIDE TRUE )
+
+    function( install )
+        # The files made by the build (of targets that might not be built), optional too
+        if( ARGV0 STREQUAL "FILES" OR ARGV0 STREQUAL "PROGRAMS" )
+            set( _generated FALSE )
+
+            foreach( _arg ${ARGV} )
+                string( FIND "${_arg}" "${CMAKE_BINARY_DIR}" _in_build )
+
+                if( _in_build EQUAL 0 OR _arg MATCHES "\\$<" )
+                    set( _generated TRUE )
+                endif()
+            endforeach()
+
+            if( _generated AND NOT "OPTIONAL" IN_LIST ARGV )
+                _install( ${ARGV} OPTIONAL )
+            else()
+                _install( ${ARGV} )
+            endif()
+
+            return()
+        endif()
+
+        if( NOT ARGV0 STREQUAL "TARGETS" )
+            _install( ${ARGV} )
+            return()
+        endif()
+
+        # OPTIONAL for each kind of artifact, or for all of them when no kind is given
+        set( _kinds ARCHIVE LIBRARY RUNTIME OBJECTS FRAMEWORK BUNDLE PRIVATE_HEADER
+                    PUBLIC_HEADER RESOURCE )
+        set( _args "" )
+        set( _has_kind FALSE )
+
+        foreach( _arg ${ARGV} )
+            list( APPEND _args ${_arg} )
+
+            if( _arg IN_LIST _kinds )
+                list( APPEND _args OPTIONAL )
+                set( _has_kind TRUE )
+            endif()
+        endforeach()
+
+        if( NOT _has_kind )
+            list( APPEND _args OPTIONAL )
+        endif()
+
+        _install( ${_args} )
+    endfunction()
+endif()
+
+
+
 # The targets of all the directories under aDir.
 function( _kicad_wx_free_all_targets aDir aResult )
     get_property( _targets DIRECTORY ${aDir} PROPERTY BUILDSYSTEM_TARGETS )

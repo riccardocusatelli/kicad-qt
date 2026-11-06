@@ -42,6 +42,7 @@
 
 #include <kiqt.h>
 #include <QMainWindow>
+#include <QPointer>
 
 #include <wx/kiwx_window.h>     // the wxWidgets API of the windows (wxcompat)
 
@@ -786,6 +787,13 @@ protected:
     /// @return the dock widget of the pane @a aName, or nullptr.
     QDockWidget* findPane( const wxString& aName ) const;
 
+    /**
+     * Keep the panel of a pane until the frame is deleted (as wxWidgets), instead of deleting
+     * it with the other panes when the frame is about to be deleted: for a panel the
+     * destructor of the frame still uses.
+     */
+    void keepPaneUntilDeleted( QWidget* aPanel ) { m_panesKeptUntilDeleted.push_back( aPanel ); }
+
     /// Fill the menu bar (the frames of the editors make their menus).
     virtual void doReCreateMenuBar() {}
 
@@ -983,6 +991,9 @@ protected:
 
     ///< Set by #NonUserClose() to indicate that the user did not request the current close.
     bool            m_isClosing;
+
+    /// The panels of panes deleted with the frame (see keepPaneUntilDeleted()).
+    std::vector<QPointer<QWidget>> m_panesKeptUntilDeleted;
     bool            m_closeInProgress;
     bool            m_isNonUserClose;
 

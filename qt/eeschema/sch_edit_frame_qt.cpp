@@ -95,6 +95,9 @@ void SCH_EDIT_FRAME::setupLayout()
         dock->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
     }
 
+    // The destructor of the frame unbinds the hierarchy (see ~SCH_EDIT_FRAME())
+    keepPaneUntilDeleted( m_hierarchy );
+
     m_hierarchy->setMinimumSize( 120, 60 );
     m_propertiesPanel->setMinimumSize( 240, 60 );
     m_designBlocksPane->setMinimumSize( 240, 60 );
