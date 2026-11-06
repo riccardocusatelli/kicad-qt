@@ -32,10 +32,11 @@
 
 #include <functional>
 
+#include <kicommon.h>
 #include <wx/kiwx_gui.h>
 
 
-class KIQT_API WX_TREEBOOK : public wxTreebook
+class KIQT_COMMON_API WX_TREEBOOK : public wxTreebook
 {
 public:
     WX_TREEBOOK( QWidget* parent, int id, const wxPoint& pos = wxDefaultPosition,

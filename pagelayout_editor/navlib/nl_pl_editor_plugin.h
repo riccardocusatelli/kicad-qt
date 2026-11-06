@@ -23,8 +23,8 @@
  * @brief Declaration of the NL_PL_EDITOR_PLUGIN class
  */
 
-#ifndef NL_GERBVIEW_PLUGIN_H_
-#define NL_GERBVIEW_PLUGIN_H_
+#ifndef NL_PL_EDITOR_PLUGIN_H_
+#define NL_PL_EDITOR_PLUGIN_H_
 
 #include <memory>
 
@@ -66,4 +66,4 @@ private:
     std::unique_ptr<NL_PL_EDITOR_PLUGIN_IMPL> m_impl;
 };
 
-#endif // NL_GERBVIEW_PLUGIN_H_
+#endif // NL_PL_EDITOR_PLUGIN_H_

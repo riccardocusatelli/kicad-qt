@@ -87,7 +87,7 @@ struct BOARD_COUNTS
 BOARD_COUNTS countItems( const BOARD& aBoard )
 {
     return { aBoard.Footprints().size(), aBoard.Tracks().size(), aBoard.Zones().size(),
-             aBoard.Drawings().size(), aBoard.GetNetCount() };
+             aBoard.Drawings().size(), static_cast<int>( aBoard.GetNetCount() ) };
 }
 
 

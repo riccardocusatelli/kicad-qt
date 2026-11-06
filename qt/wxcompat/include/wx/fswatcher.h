@@ -109,8 +109,7 @@ private:
 
 using wxFileSystemWatcherEventFunction = void ( wxEvtHandler::* )( wxFileSystemWatcherEvent& );
 
-#define wxFileSystemWatcherEventHandler( func ) \
-    ( reinterpret_cast<wxFileSystemWatcherEventFunction>( &func ) )
+#define wxFileSystemWatcherEventHandler( func ) ( &func )
 
 
 class wxFileSystemWatcher : public wxEvtHandler

@@ -30,7 +30,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build ccache gettext swig xvfb \
+            build-essential cmake ninja-build ccache gettext swig xvfb gdb \
             qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qt6-wayland \
             libboost-all-dev libglm-dev libglew-dev libgl-dev libglu1-mesa-dev libegl-dev \
             libcairo2-dev libpixman-1-dev libharfbuzz-dev libfontconfig-dev libfreetype-dev \
@@ -83,7 +83,11 @@ jobs:
           SCH=$PWD/qa/data/eeschema/erc_multiple_pin_to_pin.kicad_sch
           OUT=$PWD/qa-screenshots
           mkdir -p $OUT
-          run() { timeout 600 xvfb-run -a -s "-screen 0 1920x1200x24" "$@"; }
+          # Under gdb: the stacks of all the threads if a program crashes
+          run() {
+            timeout 900 xvfb-run -a -s "-screen 0 1920x1200x24" \
+              gdb -q -batch -return-child-result -ex "handle SIGPIPE nostop noprint pass" -ex run -ex "thread apply all bt 40" --args "$@"
+          }
           ( cd build/qt/qa && run ./qa_qt_pcbnew_frames $BOARD )
           ( cd build/qt/qa && run ./qa_qt_tool_framework $BOARD )
           ( cd build/qt/qa && run ./qa_qt_3d_viewer $BOARD )

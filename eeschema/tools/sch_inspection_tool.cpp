@@ -55,6 +55,11 @@
 #include <math/util.h>      // for KiROUND
 #include <core/ki_assert.h>
 
+// The FindWindow() macro of the Windows headers (FindWindowW) hides wxWindow::FindWindow()
+#ifdef FindWindow
+#undef FindWindow
+#endif
+
 
 SCH_INSPECTION_TOOL::SCH_INSPECTION_TOOL() :
         SCH_TOOL_BASE<SCH_BASE_FRAME>( "eeschema.InspectionTool" ), m_busSyntaxHelp( nullptr )

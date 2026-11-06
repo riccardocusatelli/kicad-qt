@@ -37,8 +37,10 @@
 
 /**
  * Carry a payload from one #KIWAY_PLAYER to another within a #PROJECT.
+ *
+ * All inline: no library exports it (with Windows, dllimport would ask for the members).
  */
-class KICOMMON_API KIWAY_MAIL_EVENT
+class KIWAY_MAIL_EVENT
 {
 public:
     /**

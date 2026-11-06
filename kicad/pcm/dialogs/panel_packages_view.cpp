@@ -323,7 +323,9 @@ void PANEL_PACKAGES_VIEW::setPackageDetails( const PACKAGE_VIEW_DATA& aPackageDa
         m_gridVersions->SetCellValue( row, COL_VERSION, version.version );
         m_gridVersions->SetCellValue( row, COL_DOWNLOAD_SIZE, toHumanReadableSize( version.download_size ) );
         m_gridVersions->SetCellValue( row, COL_INSTALL_SIZE, toHumanReadableSize( version.install_size ) );
-        m_gridVersions->SetCellValue( row, COL_COMPATIBILITY, version.compatible ? wxT( "\u2714" ) : wxEmptyString );
+        m_gridVersions->SetCellValue( row, COL_COMPATIBILITY,
+                                      version.compatible ? wxString( wxT( "\u2714" ) )
+                                                         : wxString( wxEmptyString ) );
         m_gridVersions->SetCellValue( row, COL_STATUS, STATUS_ENUM_TO_STR.at( version.status ) );
 
         m_gridVersions->SetCellAlignment( row, COL_COMPATIBILITY, wxALIGN_CENTER, wxALIGN_CENTER );

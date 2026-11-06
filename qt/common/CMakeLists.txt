@@ -484,6 +484,9 @@ if( UNIX AND NOT APPLE )
         ${CMAKE_SOURCE_DIR}/common/spacenav/spnav_2d_plugin.cpp
         )
     target_link_libraries( kiqt_common PUBLIC ${SPNAV_LIBRARIES} )
+else()
+    # Windows and macOS: the SpaceMouse plug-ins of the editors without the 3Dconnexion navlib
+    target_sources( kiqt_common PRIVATE navlib_stub_qt.cpp )
 endif()
 
 set_target_properties( kiqt_common PROPERTIES POSITION_INDEPENDENT_CODE ON )
