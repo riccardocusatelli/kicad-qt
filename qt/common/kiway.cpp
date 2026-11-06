@@ -372,6 +372,14 @@ void KIWAY::SetBlockingDialog( wxWindow* aWin )
 }
 
 
+bool KIWAY::ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, TOOLKIT_WINDOW* aWindow )
+{
+    KIFACE* kiface = KiFACE( aFace );
+
+    return kiface && kiface->HandleJobConfig( aJob, aWindow );
+}
+
+
 void KIWAY::OnKiCadExit()
 {
     if( m_ctl & KFCTL_CPP_PROJECT_SUITE )

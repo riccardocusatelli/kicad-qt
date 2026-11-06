@@ -31,6 +31,8 @@
 
 #include "kiwx_private.h"
 
+#include <cctype>
+#include <cstring>
 #include <cwctype>
 #include <thread>
 
@@ -1077,6 +1079,73 @@ bool wxFileName::SameAs( const wxFileName& aOther, wxPathFormat aFormat ) const
     fn2.Normalize( flags, cwd, aFormat );
 
     return fn1.GetFullPath( aFormat ) == fn2.GetFullPath( aFormat );
+}
+
+
+wxString wxFileName::FileNameToURL( const wxFileName& aFileName )
+{
+    wxFileName fn( aFileName );
+    fn.MakeAbsolute();
+
+    wxString path = fn.GetFullPath();
+    path.Replace( wxT( "\\" ), wxT( "/" ) );
+
+    // A path of Windows (C:/...) has a slash before it: file:///C:/...
+    if( !path.StartsWith( wxT( "/" ) ) )
+        path = wxT( "/" ) + path;
+
+    // The characters of the path escaped as in an URI (the UTF-8 bytes)
+    std::string utf8 = path.ToStdString( wxConvUTF8 );
+    std::string url = "file://";
+
+    for( unsigned char c : utf8 )
+    {
+        if( std::isalnum( c ) || std::strchr( "-._~/:", c ) )
+        {
+            url += char( c );
+        }
+        else
+        {
+            static const char hex[] = "0123456789ABCDEF";
+            url += '%';
+            url += hex[c >> 4];
+            url += hex[c & 0x0F];
+        }
+    }
+
+    return wxString::FromUTF8( url );
+}
+
+
+wxFileName wxFileName::URLToFileName( const wxString& aUrl )
+{
+    std::string url = aUrl.ToStdString( wxConvUTF8 );
+    std::string path;
+
+    if( url.rfind( "file://", 0 ) == 0 )
+        url = url.substr( 7 );
+
+    for( size_t i = 0; i < url.size(); ++i )
+    {
+        if( url[i] == '%' && i + 2 < url.size() && std::isxdigit( (unsigned char) url[i + 1] )
+            && std::isxdigit( (unsigned char) url[i + 2] ) )
+        {
+            path += char( std::stoi( url.substr( i + 1, 2 ), nullptr, 16 ) );
+            i += 2;
+        }
+        else
+        {
+            path += url[i];
+        }
+    }
+
+#ifdef _WIN32
+    // file:///C:/... is the path C:/...
+    if( path.size() > 2 && path[0] == '/' && path[2] == ':' )
+        path = path.substr( 1 );
+#endif
+
+    return wxFileName( wxString::FromUTF8( path ) );
 }
 
 

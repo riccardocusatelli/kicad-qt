@@ -25,6 +25,7 @@
 #include <settings/kicad_settings.h>
 #include <widgets/wx_grid.h>
 #include <widgets/std_bitmap_button.h>
+#include <wx/textdlg.h>
 
 
 #define GRID_CELL_MARGIN 4

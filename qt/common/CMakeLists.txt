@@ -75,6 +75,7 @@ add_library( kiqt SHARED
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_clipboard.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_print.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_wizard.cpp
+    ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_webview.cpp
 
     # The controls of the views (part of the GAL library) and the OpenGL GAL of KiCad, on the
     # OpenGL canvas of Qt
@@ -225,6 +226,7 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_display_html_text_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_grid_settings.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_git_credentials_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_git_repository_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_repositories_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties_base.fbp
@@ -275,6 +277,11 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/dialog_design_block_properties.cpp
     dialogs/dialog_text_entry.cpp
     dialogs/eda_list_dialog.cpp
+    dialogs/dialog_restore_local_history.cpp
+    local_history_ui.cpp
+    dialogs/git/dialog_git_commit.cpp
+    dialogs/git/dialog_git_credentials.cpp
+    dialogs/git/dialog_git_switch.cpp
     dialogs/git/dialog_git_repository.cpp
     dialogs/git/panel_git_repos.cpp
     dialogs/html_message_box.cpp
@@ -321,6 +328,7 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/wx_dataviewctrl.cpp
     widgets/wx_grid.cpp
     widgets/wx_listbox.cpp
+    widgets/wx_splitter_window.cpp
     widgets/zoom_correction_ctrl.cpp
     ptree.cpp
     widgets/app_progress_dialog.cpp

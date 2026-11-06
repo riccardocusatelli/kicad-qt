@@ -83,6 +83,12 @@ FILETIME toFileTime( const wxDateTime& aTime )
 
 // Free functions on files
 
+int wxStat( const wxString& aPath, wxStructStat* aStat )
+{
+    return _wstat64( aPath.wc_str(), aStat );
+}
+
+
 int wxChmod( const wxString& aPath, int aMode )
 {
     // only the write permission exists on Windows

@@ -38,6 +38,11 @@ using TOOLKIT_WINDOW = wxWindow;
 /// An event of the user interface (an input event, given to the tool dispatcher).
 using TOOLKIT_EVENT = wxEvent;
 
+class wxStatusBar;
+
+/// The status bar of a frame (KISTATUSBAR is one).
+using TOOLKIT_STATUSBAR = wxStatusBar;
+
 class wxChoice;
 
 /// A choice box (a drop-down list of strings, as the ones of the toolbars).

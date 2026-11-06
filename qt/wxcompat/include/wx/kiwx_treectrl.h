@@ -98,6 +98,24 @@ private:
 /// The position in the children of an item when they are enumerated (wxTreeItemIdValue).
 using wxTreeItemIdValue = void*;
 
+/// The selected items (wxArrayTreeItemIds).
+using wxArrayTreeItemIds = std::vector<class wxTreeItemId>;
+
+/// The images of an item (the tree shows the normal one in all its states here).
+enum wxTreeItemIcon
+{
+    wxTreeItemIcon_Normal,
+    wxTreeItemIcon_Selected,
+    wxTreeItemIcon_Expanded,
+    wxTreeItemIcon_SelectedExpanded,
+    wxTreeItemIcon_Max
+};
+
+/// The states of an item (an image of the state image list), and the special ones.
+#define wxTREE_ITEMSTATE_NONE -1
+#define wxTREE_ITEMSTATE_NEXT -2
+#define wxTREE_ITEMSTATE_PREV -3
+
 
 /// The data of an item, owned by the tree (wxTreeItemData).
 class wxTreeItemData : public wxClientData
@@ -251,6 +269,19 @@ public:
 
     bool GetBoundingRect( const wxTreeItemId& aItem, wxRect& aRect, bool aTextOnly = false ) const;
 
+    /// The number of images of the image list (or of the bundles).
+    int GetImageCount() const;
+
+    /// The images of the states of the items, shown before their images (the status of the
+    /// files in a git repository).
+    void SetStateImageList( wxImageList* aImageList );
+    void AssignStateImageList( wxImageList* aImageList );
+    wxImageList* GetStateImageList() const { return m_stateImageList; }
+
+    /// The state of an item: an image of the state image list, or wxTREE_ITEMSTATE_NONE.
+    void SetItemState( const wxTreeItemId& aItem, int aState );
+    int GetItemState( const wxTreeItemId& aItem ) const;
+
     void SetImageList( wxImageList* aImageList );
     void AssignImageList( wxImageList* aImageList );
     wxImageList* GetImageList() const { return m_imageList; }
@@ -286,6 +317,9 @@ private:
     /// The icon of an image of the image list or of the bundles.
     QIcon imageCompat( int aImage ) const;
 
+    /// The icon of an item: its state image, then its image.
+    void updateIconCompat( QTreeWidgetItem* aItem );
+
     /// The item is deleted: forget the data of the item and of its children.
     void forgetData( QTreeWidgetItem* aItem );
 
@@ -298,6 +332,8 @@ private:
     wxImageList*                                                       m_imageList = nullptr;
     std::vector<wxBitmapBundle>                                        m_images;
     std::unique_ptr<wxImageList>                                       m_ownedImageList;
+    wxImageList*                                                       m_stateImageList = nullptr;
+    std::unique_ptr<wxImageList>                                       m_ownedStateImageList;
 };
 
 #endif // KIWX_TREECTRL_H

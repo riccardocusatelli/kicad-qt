@@ -301,6 +301,11 @@ public:
         return FindItem( aWindow, aRecursive );
     }
 
+    wxSizerItem* GetItem( wxSizer* aSizer, bool aRecursive = false )
+    {
+        return FindItem( aSizer, aRecursive );
+    }
+
     wxSizerItem* GetItem( size_t aIndex );
 
     /// The items of the layout.

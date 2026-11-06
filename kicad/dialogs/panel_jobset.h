@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "panel_jobset_base.h"
+#include <panel_jobset_base.h>
 #include <memory>
 #include <grid_tricks.h>
 

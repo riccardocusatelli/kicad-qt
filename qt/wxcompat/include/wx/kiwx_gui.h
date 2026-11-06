@@ -65,11 +65,13 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QSlider>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
+#include <QTabBar>
 #include <QTreeWidget>
 #include <QWidget>
 
@@ -161,9 +163,26 @@ public:
 };
 
 
+/// The default font and colours of a class of windows (wxVisualAttributes).
+struct wxVisualAttributes
+{
+    wxFont   font;
+    wxColour colFg;
+    wxColour colBg;
+};
+
+
 class KIQT_API wxStaticText : public wxWindowCompat<QLabel>
 {
 public:
+    /// The default font and colours of the labels: the ones of the windows of the system.
+    static wxVisualAttributes GetClassDefaultAttributes( int = 0 )
+    {
+        return { wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT ),
+                 wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOWTEXT ),
+                 wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) };
+    }
+
     explicit wxStaticText( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                            const wxString& aLabel = wxEmptyString,
                            const wxPoint& aPos = wxDefaultPosition,
@@ -1198,6 +1217,29 @@ public:
     void FitInside();
     void SetTargetWindow( wxWidgetArgCompat ) {}
 
+    /// The window scrolled: the window itself (its content is the widget of the scroll area).
+    wxScrolledWindow* GetTargetWindow() { return this; }
+
+    /// The best size of the content (its layout), unscrolled.
+    wxSize GetBestVirtualSize() const
+    {
+        QSize size = widget() ? widget()->sizeHint() : QSize();
+        return wxSize( size.width(), size.height() );
+    }
+
+    /// Scroll by lines (the scroll steps) or by pages, down for the positive counts.
+    void ScrollLines( int aLines )
+    {
+        verticalScrollBar()->setValue( verticalScrollBar()->value()
+                                       + aLines * std::max( 1, m_rateY ) );
+    }
+
+    void ScrollPages( int aPages )
+    {
+        verticalScrollBar()->setValue( verticalScrollBar()->value()
+                                       + aPages * verticalScrollBar()->pageStep() );
+    }
+
     /**
      * The best size of wxWidgets (wxScrolled::DoGetBestSize): the size of the content in the
      * directions without scrolling, the minimum size and a scroll bar in the directions with
@@ -1255,7 +1297,14 @@ class KIQT_API wxSplitterWindow : public wxWindowCompat<QSplitter>
 public:
     explicit wxSplitterWindow( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                                const wxPoint& aPos = wxDefaultPosition,
-                               const wxSize& aSize = wxDefaultSize, long aStyle = 0 );
+                               const wxSize& aSize = wxDefaultSize, long aStyle = 0,
+                               const wxString& aName = wxString() );
+
+    /// The sash moved by the user: false refuses the position (the sash goes back).
+    virtual bool OnSashPositionChange( int aNewSashPosition ) { return true; }
+
+    /// The size handler of wxWidgets (the panes follow the size by themselves here).
+    void OnSize( wxSizeEvent& aEvent ) { aEvent.Skip(); }
 
     /// The windows side by side (a vertical sash).
     bool SplitVertically( wxWidgetArgCompat aWindow1, wxWidgetArgCompat aWindow2,
@@ -1308,6 +1357,7 @@ private:
     double         m_gravity = 0.0;
     int            m_minimumPaneSize = 0;
     std::optional<int> m_requestedSashPosition;
+    QList<int>     m_acceptedSizes;   ///< The sizes of the panes the last sash accepted
 };
 
 
@@ -1432,6 +1482,15 @@ public:
     void SetArtProvider( wxAuiTabArt* aArt ) { m_artCompat.reset( aArt ); }
     wxAuiTabArt* GetArtProvider() const { return m_artCompat.get(); }
 
+    /// The height of the tabs (-1: the height of their style).
+    void SetTabCtrlHeight( int aHeight )
+    {
+        tabBar()->setMinimumHeight( aHeight > 0 ? aHeight : 0 );
+        tabBar()->setVisible( aHeight != 0 );
+    }
+
+    int GetTabCtrlHeight() const { return tabBar()->height(); }
+
 private:
     std::unique_ptr<wxAuiTabArt> m_artCompat;
 };
@@ -1451,6 +1510,9 @@ public:
 
     /// Add a button made by the caller: its id (wxID_OK...) gives its role and default label.
     void AddButton( wxButton* aButton );
+
+    /// A button added as to a sizer: the flags and the border are the ones of the style here.
+    void Add( wxButton* aButton, int = 0, int = 0, int = 0 ) { AddButton( aButton ); }
 
     wxButton* GetAffirmativeButton() const;
     wxButton* GetApplyButton() const;
@@ -1574,6 +1636,20 @@ public:
     void AddStretchSpacer( int aProportion = 1 ) override { Add( 0, 0, aProportion ); }
 
     int GetCols() const { return m_cols; }
+    int GetRows() const { return m_rows; }
+
+    /// The number of columns (or rows, which are as many as the items need here) of the cells:
+    /// set before the cells are filled.
+    void SetCols( int aCols ) { m_cols = aCols; }
+    void SetRows( int aRows ) { m_rows = aRows; }
+
+    /// The rows and the columns of the filled cells.
+    int GetEffectiveColsCount() const { return m_cols > 0 ? m_cols : 1; }
+    int GetEffectiveRowsCount() const
+    {
+        int cols = GetEffectiveColsCount();
+        return ( count() + cols - 1 ) / cols;
+    }
 
     /// The heights of the rows and the widths of the columns, as laid out (or their hints).
     wxArrayInt GetRowHeights() const;
@@ -1588,6 +1664,7 @@ private:
     void nextCell( int& aRow, int& aCol );
 
     int m_cols;
+    int m_rows = 0;
     int m_next;
     int m_growMode = wxFLEX_GROWMODE_SPECIFIED;
 };

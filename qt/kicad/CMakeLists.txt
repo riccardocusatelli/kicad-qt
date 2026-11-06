@@ -1,18 +1,20 @@
-# kicad-qt: the Qt shell (project, launcher), with the Qt KIFACEs: the editors of KiCad
-# (_eeschema_qtgui.kiface, _pcbnew_qtgui.kiface) run in it, as in the project manager of KiCad
+# kicad-qt: the project manager of KiCad (KICAD_MANAGER_FRAME, on the wxWidgets compatibility
+# layer), with the Qt KIFACEs: the editors of KiCad (_eeschema_qtgui.kiface,
+# _pcbnew_qtgui.kiface...) run in it
+
+
+include( ${CMAKE_CURRENT_SOURCE_DIR}/manager.cmake )
 
 add_executable( kicad-qt
-    home_widgets.cpp
     kicad_qt.cpp
-    main_window.cpp
+    $<TARGET_OBJECTS:kicad_manager_qt>
     )
 
-set_target_properties( kicad-qt PROPERTIES AUTOMOC ON )
+target_compile_definitions( kicad-qt PRIVATE QT_NO_KEYWORDS KICAD PCM )
+kiqt_gui_target( kicad-qt )
 
 # The program classes (BIN_MOD) are in the common archive, linked by file as for kicad-cli
-target_include_directories( kicad-qt PRIVATE
-    $<TARGET_PROPERTY:common,INTERFACE_INCLUDE_DIRECTORIES>
-    )
+target_include_directories( kicad-qt PRIVATE ${KIQT_MANAGER_INCLUDE_DIRS} )
 
 # The program with the user interface of KiCad (PGM_GUI, KIWAY, the start wizard): kiqt_common,
 # as in each KIFACE
@@ -23,10 +25,13 @@ target_link_libraries( kicad-qt
     kicommon_model
     core
     Qt6::Widgets
+    nlohmann_json
+    Boost::headers
+    pads_common
     ${wxWidgets_BASE_LIBRARIES}
     )
 
-add_dependencies( kicad-qt common pcbnew_qtgui_kiface eeschema_qtgui_kiface cvpcb_qtgui_kiface
+add_dependencies( kicad-qt kicad_manager_qt common pcbnew_qtgui_kiface eeschema_qtgui_kiface cvpcb_qtgui_kiface
                   kipython_qtgui_kiface pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface
                   bitmap2component_qtgui_kiface )
 

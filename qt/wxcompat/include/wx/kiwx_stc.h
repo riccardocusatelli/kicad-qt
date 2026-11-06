@@ -85,6 +85,7 @@ class QListWidget;
 
 #define wxSTC_WRAP_NONE 0
 #define wxSTC_WRAP_WORD 1
+#define wxSTC_WRAP_CHAR 2
 
 #define wxSTC_WS_INVISIBLE 0
 #define wxSTC_WS_VISIBLEALWAYS 1

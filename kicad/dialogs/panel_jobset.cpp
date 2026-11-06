@@ -82,8 +82,8 @@ public:
         m_jobList->SetColumnWidth( jobSourceColId, GetTextExtent( wxT( "XXXXXX" ) ).GetWidth() );
 
         wxImageList* imageList = new wxImageList( 16, 16, true, 3 );
-        imageList->Add( KiBitmapBundle( BITMAPS::ercerr ).GetBitmap( wxSize( 16, 16 ) ) );
-        imageList->Add( KiBitmapBundle( BITMAPS::checked_ok ).GetBitmap( wxSize( 16, 16 ) ) );
+        imageList->Add( wxBitmapBundle( KiBitmapBundle( BITMAPS::ercerr ) ).GetBitmap( wxSize( 16, 16 ) ) );
+        imageList->Add( wxBitmapBundle( KiBitmapBundle( BITMAPS::checked_ok ) ).GetBitmap( wxSize( 16, 16 ) ) );
         m_jobList->SetImageList( imageList, wxIMAGE_LIST_SMALL );
 
         int num = 1;

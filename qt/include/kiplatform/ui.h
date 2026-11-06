@@ -172,7 +172,7 @@ namespace KIPLATFORM
         KIQT_API QColor GetDialogBGColour();
 
         /// The size of the visible part of a window (the viewport of a scroll area).
-        KIQT_API wxSize GetUnobscuredSize( const QWidget* aWindow );
+        KIQT_API wxSize GetUnobscuredSize( wxWidgetArgCompat aWindow );
 
         /*
          * The workarounds of the toolkits of wxWidgets (GTK, macOS, MSW): the widgets of Qt need

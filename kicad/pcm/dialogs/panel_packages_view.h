@@ -23,7 +23,7 @@
 
 #include "core/wx_stl_compat.h"
 #include "panel_package.h"
-#include "panel_packages_view_base.h"
+#include <panel_packages_view_base.h>
 #include "pcm.h"
 #include "pcm_data.h"
 

@@ -75,8 +75,8 @@ public:
      * the specified number of fields is the extra number of fields, not the full field count.
      * @return a KISTATUSBAR (derived from wxStatusBar)
      */
-    wxStatusBar* OnCreateStatusBar( int number, long style, wxWindowID id,
-                                    const wxString& name ) override;
+    TOOLKIT_STATUSBAR* OnCreateStatusBar( int number, long style, wxWindowID id,
+                                          const wxString& name ) override;
 
     /**
      * Hides the tabs for Editor notebook if there is only 1 page
@@ -207,7 +207,7 @@ public:
      */
     void SaveOpenJobSetsToLocalSettings( bool aIsExplicitUserSave = false );
 
-    wxWindow* GetToolCanvas() const override;
+    TOOLKIT_WINDOW* GetToolCanvas() const override;
 
     std::shared_ptr<PLUGIN_CONTENT_MANAGER> GetPcm() { return m_pcm; };
 

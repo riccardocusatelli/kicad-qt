@@ -21,7 +21,7 @@
 #ifndef DIALOG_MANAGE_REPOSITORIES_H_
 #define DIALOG_MANAGE_REPOSITORIES_H_
 
-#include "dialog_manage_repositories_base.h"
+#include <dialog_manage_repositories_base.h>
 #include "pcm.h"
 #include <memory>
 #include <vector>

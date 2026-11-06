@@ -23,6 +23,7 @@
 #include <memory>
 
 #include <reporter.h>
+#include <toolkit/toolkit_types.h>
 
 class wxStatusBar;
 class wxTextEntry;
@@ -61,7 +62,7 @@ private:
 class KIQT_COMMON_API STATUSBAR_REPORTER : public REPORTER
 {
 public:
-    STATUSBAR_REPORTER( wxStatusBar* aStatusBar, int aPosition = 0 )
+    STATUSBAR_REPORTER( TOOLKIT_STATUSBAR* aStatusBar, int aPosition = 0 )
             : REPORTER(),
               m_statusBar( aStatusBar ),
               m_position( aPosition )
@@ -70,8 +71,8 @@ public:
     REPORTER& Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override;
 
 private:
-    wxStatusBar* m_statusBar;
-    int          m_position;
+    TOOLKIT_STATUSBAR* m_statusBar;
+    int                m_position;
 };
 
 

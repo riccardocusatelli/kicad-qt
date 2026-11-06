@@ -1742,8 +1742,15 @@ class FormClass:
             self.connect_events( aObj, var, 'QStackedWidget' )
             return var
 
-        if cls == 'wxSplitterWindow' and self.gen.compat and not sub:
-            var = self.var( aObj, 'wxSplitterWindow', 'new wxSplitterWindow( %s )' % aParent )
+        if cls == 'wxSplitterWindow' and self.gen.compat:
+            # A subclass (WX_SPLITTER_WINDOW) is a wxSplitterWindow of the compatibility layer
+            if sub:
+                t = klass( 'QSplitter' )
+                var = self.var( aObj, t, 'new %s( %s, wxID_ANY, wxDefaultPosition, wxDefaultSize, %s )'
+                                % ( t, aParent, p.get( 'style' ) or '0' ) )
+            else:
+                self.include( '<wx/kiwx_gui.h>' )
+                var = self.var( aObj, 'wxSplitterWindow', 'new wxSplitterWindow( %s )' % aParent )
             self.common( aObj, var )
             self.window_id( aObj, var )
             windows = []
@@ -1770,6 +1777,13 @@ class FormClass:
 
             if minPane > 0:
                 self.code.append( '    %s->SetMinimumPaneSize( %d );' % ( var, minPane ) )
+
+            # The idle handler of wxFormBuilder which sets the sash position (the code of KiCad
+            # disconnects it to set its own position)
+            if any( m[2] == var for m in self.members ):
+                self.members.append( ( 'public', None,
+                                       'void %sOnIdle( wxIdleEvent& ) { %s->SetSashPosition( %d ); }'
+                                       % ( var, var, pos ) ) )
 
             self.connect_events( aObj, var, 'QSplitter' )
             return var

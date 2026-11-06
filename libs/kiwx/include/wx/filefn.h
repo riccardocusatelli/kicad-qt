@@ -97,6 +97,14 @@ bool     wxMkdir( const wxString& aDir, int aPerm = wxS_DIR_DEFAULT );
 bool     wxRmdir( const wxString& aDir, int aFlags = 0 );
 bool     wxRemoveFile( const wxString& aFile );
 int      wxChmod( const wxString& aPath, int aMode );
+
+/// The status of a file (stat()): wxStat() returns 0 on success, as stat().
+#ifdef _WIN32
+typedef struct _stat64 wxStructStat;
+#else
+typedef struct stat wxStructStat;
+#endif
+int      wxStat( const wxString& aPath, wxStructStat* aStat );
 bool     wxRenameFile( const wxString& aFrom, const wxString& aTo, bool aOverwrite = true );
 bool     wxCopyFile( const wxString& aFrom, const wxString& aTo, bool aOverwrite = true );
 wxString wxGetCwd();

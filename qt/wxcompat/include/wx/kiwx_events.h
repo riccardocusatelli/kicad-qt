@@ -581,6 +581,9 @@ public:
     int GetY() const { return m_y; }
     int GetWheelRotation() const { return m_wheelRotation; }
     int GetWheelDelta() const { return 120; }
+    int GetLinesPerAction() const { return 3; }
+    int GetColumnsPerAction() const { return 3; }
+    bool IsPageScroll() const { return false; }
     wxMouseWheelAxis GetWheelAxis() const { return m_wheelAxis; }
     float GetMagnification() const { return m_magnification; }
     bool ShiftDown() const { return m_shift; }
@@ -1564,6 +1567,18 @@ public:
 #define EVT_HYPERLINK( id, fn ) wx__DECLARE_EVT1( wxEVT_HYPERLINK, id, fn )
 #define EVT_NOTEBOOK_PAGE_CHANGED( id, fn ) wx__DECLARE_EVT1( wxEVT_NOTEBOOK_PAGE_CHANGED, id, fn )
 #define EVT_LIST_ITEM_SELECTED( id, fn ) wx__DECLARE_EVT1( wxEVT_LIST_ITEM_SELECTED, id, fn )
+#define EVT_TREE_SEL_CHANGED( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_SEL_CHANGED, id, fn )
+#define EVT_TREE_SEL_CHANGING( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_SEL_CHANGING, id, fn )
+#define EVT_TREE_ITEM_ACTIVATED( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_ITEM_ACTIVATED, id, fn )
+#define EVT_TREE_ITEM_RIGHT_CLICK( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_ITEM_RIGHT_CLICK, id, fn )
+#define EVT_TREE_ITEM_MENU( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_ITEM_MENU, id, fn )
+#define EVT_TREE_ITEM_EXPANDED( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_ITEM_EXPANDED, id, fn )
+#define EVT_TREE_ITEM_EXPANDING( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_ITEM_EXPANDING, id, fn )
+#define EVT_TREE_ITEM_COLLAPSED( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_ITEM_COLLAPSED, id, fn )
+#define EVT_TREE_ITEM_COLLAPSING( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_ITEM_COLLAPSING, id, fn )
+#define EVT_TREE_BEGIN_DRAG( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_BEGIN_DRAG, id, fn )
+#define EVT_TREE_END_DRAG( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_END_DRAG, id, fn )
+#define EVT_TREE_KEY_DOWN( id, fn ) wx__DECLARE_EVT1( wxEVT_TREE_KEY_DOWN, id, fn )
 #define EVT_LIST_ITEM_ACTIVATED( id, fn ) wx__DECLARE_EVT1( wxEVT_LIST_ITEM_ACTIVATED, id, fn )
 #define EVT_GRID_CMD_CELL_CHANGED( id, fn ) wx__DECLARE_EVT1( wxEVT_GRID_CELL_CHANGED, id, fn )
 

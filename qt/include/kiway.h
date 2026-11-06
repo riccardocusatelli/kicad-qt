@@ -163,6 +163,9 @@ public:
 
     void OnKiCadExit();
 
+    /// The dialog of the settings of a job, shown by the KIFACE of the job.
+    bool ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, TOOLKIT_WINDOW* aWindow );
+
     /// The dialog that blocks the frames (a DIALOG_SHIM), shown when the user activates them.
     wxWindow* GetBlockingDialog();
     void SetBlockingDialog( wxWindow* aWin );

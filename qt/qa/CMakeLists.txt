@@ -81,15 +81,14 @@ endif()
 # editor, the shell closes them.
 add_executable( qa_qt_kicad_shell
     test_kicad_shell.cpp
-    ${CMAKE_SOURCE_DIR}/qt/kicad/home_widgets.cpp
-    ${CMAKE_SOURCE_DIR}/qt/kicad/main_window.cpp
+    $<TARGET_OBJECTS:kicad_manager_qt>
     )
 
-set_target_properties( qa_qt_kicad_shell PROPERTIES AUTOMOC ON )
+target_compile_definitions( qa_qt_kicad_shell PRIVATE QT_NO_KEYWORDS KICAD PCM )
 
 target_include_directories( qa_qt_kicad_shell PRIVATE
     ${CMAKE_SOURCE_DIR}/qt/kicad
-    $<TARGET_PROPERTY:common,INTERFACE_INCLUDE_DIRECTORIES>
+    ${KIQT_MANAGER_INCLUDE_DIRS}
     )
 
 target_link_libraries( qa_qt_kicad_shell
@@ -99,6 +98,9 @@ target_link_libraries( qa_qt_kicad_shell
     kicommon_model
     core
     Qt6::Widgets
+    nlohmann_json
+    Boost::headers
+    pads_common
     ${wxWidgets_BASE_LIBRARIES}
     )
 
@@ -108,7 +110,7 @@ target_compile_definitions( qa_qt_kicad_shell PRIVATE
     QA_IMAGE_FILE="${CMAKE_SOURCE_DIR}/resources/bitmaps_png/png/icon_bitmap2component_128.png"
     )
 
-add_dependencies( qa_qt_kicad_shell common pcbnew_qtgui_kiface eeschema_qtgui_kiface
+add_dependencies( qa_qt_kicad_shell kicad_manager_qt common pcbnew_qtgui_kiface eeschema_qtgui_kiface
                   cvpcb_qtgui_kiface kipython_qtgui_kiface
                   pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface
                   bitmap2component_qtgui_kiface )

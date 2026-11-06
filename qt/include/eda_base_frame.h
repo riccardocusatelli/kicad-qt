@@ -141,7 +141,7 @@ public:
      * @param aStyle are the wxWidgets styles of the frame (wxSTAY_ON_TOP,
      *        wxFRAME_FLOAT_ON_PARENT, wxFRAME_NO_TASKBAR, the buttons of the title bar).
      */
-    EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxString& aTitle,
+    EDA_BASE_FRAME( wxWidgetArgCompat aParent, FRAME_T aFrameType, const wxString& aTitle,
                     const wxPoint& aPos, const wxSize& aSize, long aStyle,
                     const wxString& aFrameName, KIWAY* aKiway, const EDA_IU_SCALE& aIuScale );
 
@@ -308,6 +308,14 @@ public:
 
     /// Create the status bar of CreateStatusBar() (a status bar with the fields only).
     virtual KISTATUSBAR* OnCreateStatusBar( int aNumber );
+
+    /// The status bar of CreateStatusBar(), as wxFrame::OnCreateStatusBar() (the frames of KiCad
+    /// that make their own status bar override it): OnCreateStatusBar( aNumber ).
+    virtual KISTATUSBAR* OnCreateStatusBar( int aNumber, long aStyle, wxWindowID aId,
+                                            const wxString& aName )
+    {
+        return OnCreateStatusBar( aNumber );
+    }
 
     /**
      * Close the frame.

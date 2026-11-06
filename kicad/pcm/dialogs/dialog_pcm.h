@@ -22,7 +22,7 @@
 #define DIALOG_PCM_H_
 
 #include "core/wx_stl_compat.h"
-#include "dialog_pcm_base.h"
+#include <dialog_pcm_base.h>
 #include "panel_package.h"
 #include "panel_packages_view.h"
 #include "pcm.h"

@@ -27,10 +27,19 @@
 #include <cstdint>
 
 #include <QApplication>
+#include <QPainter>
 #include <QSignalBlocker>
 #include <QTreeWidgetItemIterator>
 
 #include <qt_strings.h>
+
+
+namespace
+{
+// The image and the state of an item
+const int IMAGE_ROLE = Qt::UserRole + 40;
+const int STATE_ROLE = Qt::UserRole + 41;
+}
 
 
 wxTreeCtrl::wxTreeCtrl( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const wxSize& aSize,
@@ -105,7 +114,10 @@ QTreeWidgetItem* wxTreeCtrl::newItem( const wxString& aText, int aImage, wxTreeI
     QTreeWidgetItem* item = new QTreeWidgetItem( QStringList( ToQString( aText ) ) );
 
     if( aImage >= 0 )
+    {
         item->setIcon( 0, imageCompat( aImage ) );
+        item->setData( 0, IMAGE_ROLE, aImage );
+    }
 
     if( aData )
     {
@@ -306,10 +318,100 @@ void wxTreeCtrl::SetItemImage( const wxTreeItemId& aItem, int aImage, int aWhich
 {
     QTreeWidgetItem* item = ToQtCompat( aItem );
 
+    // One image for all the states of an item: the normal one
+    if( !item || aWhich != wxTreeItemIcon_Normal )
+        return;
+
+    item->setData( 0, IMAGE_ROLE, aImage );
+    updateIconCompat( item );
+}
+
+
+int wxTreeCtrl::GetImageCount() const
+{
+    if( !m_images.empty() )
+        return int( m_images.size() );
+
+    return m_imageList ? m_imageList->GetImageCount() : 0;
+}
+
+
+void wxTreeCtrl::SetStateImageList( wxImageList* aImageList )
+{
+    m_ownedStateImageList.reset();
+    m_stateImageList = aImageList;
+}
+
+
+void wxTreeCtrl::AssignStateImageList( wxImageList* aImageList )
+{
+    m_ownedStateImageList.reset( aImageList );
+    m_stateImageList = aImageList;
+}
+
+
+void wxTreeCtrl::SetItemState( const wxTreeItemId& aItem, int aState )
+{
+    QTreeWidgetItem* item = ToQtCompat( aItem );
+
     if( !item )
         return;
 
-    item->setIcon( 0, imageCompat( aImage ) );
+    int count = m_stateImageList ? m_stateImageList->GetImageCount() : 0;
+    int state = GetItemState( aItem );
+
+    // The next and the previous states cycle through the images of the states
+    if( aState == wxTREE_ITEMSTATE_NEXT )
+        aState = count > 0 ? ( state + 1 ) % count : wxTREE_ITEMSTATE_NONE;
+    else if( aState == wxTREE_ITEMSTATE_PREV )
+        aState = count > 0 ? ( state <= 0 ? count - 1 : state - 1 ) : wxTREE_ITEMSTATE_NONE;
+
+    item->setData( 0, STATE_ROLE, aState );
+    updateIconCompat( item );
+}
+
+
+int wxTreeCtrl::GetItemState( const wxTreeItemId& aItem ) const
+{
+    QTreeWidgetItem* item = ToQtCompat( aItem );
+    QVariant         state = item ? item->data( 0, STATE_ROLE ) : QVariant();
+
+    return state.isValid() ? state.toInt() : wxTREE_ITEMSTATE_NONE;
+}
+
+
+void wxTreeCtrl::updateIconCompat( QTreeWidgetItem* aItem )
+{
+    QVariant image = aItem->data( 0, IMAGE_ROLE );
+    QVariant state = aItem->data( 0, STATE_ROLE );
+    QIcon    icon = imageCompat( image.isValid() ? image.toInt() : -1 );
+    int      stateIndex = state.isValid() ? state.toInt() : wxTREE_ITEMSTATE_NONE;
+
+    if( !m_stateImageList || stateIndex < 0 || stateIndex >= m_stateImageList->GetImageCount() )
+    {
+        aItem->setIcon( 0, icon );
+        return;
+    }
+
+    // The state image, then the image of the item, side by side (as wxWidgets draws them)
+    QPixmap stateImage = m_stateImageList->GetBitmap( stateIndex );
+    QSize   size = iconSize().isValid() ? iconSize() : QSize( 16, 16 );
+    QPixmap itemImage = icon.isNull() ? QPixmap() : icon.pixmap( size );
+    int     height = std::max( stateImage.height(), itemImage.height() );
+    QPixmap both( stateImage.width() + itemImage.width(), height );
+
+    both.fill( Qt::transparent );
+
+    {
+        QPainter painter( &both );
+        painter.drawPixmap( 0, ( height - stateImage.height() ) / 2, stateImage );
+
+        if( !itemImage.isNull() )
+            painter.drawPixmap( stateImage.width(), ( height - itemImage.height() ) / 2, itemImage );
+    }
+
+    setIconSize( QSize( both.width(), height ) );
+    aItem->setIcon( 0, QIcon( both ) );
 }
 
 

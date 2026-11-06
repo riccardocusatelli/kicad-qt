@@ -242,11 +242,11 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
 }
 
 
-EDA_BASE_FRAME::EDA_BASE_FRAME( QWidget* aParent, FRAME_T aFrameType, const wxString& aTitle,
+EDA_BASE_FRAME::EDA_BASE_FRAME( wxWidgetArgCompat aParent, FRAME_T aFrameType, const wxString& aTitle,
                                 const wxPoint& aPos, const wxSize& aSize, long aStyle,
                                 const wxString& aFrameName, KIWAY* aKiway,
                                 const EDA_IU_SCALE& aIuScale ) :
-        wxWindowCompat<QMainWindow>( aParent ),
+        wxWindowCompat<QMainWindow>( aParent.get() ),
         TOOLS_HOLDER(),
         KIWAY_HOLDER( aKiway, KIWAY_HOLDER::FRAME ),
         UNITS_PROVIDER( aIuScale, EDA_UNITS::MM ),
@@ -645,7 +645,7 @@ void EDA_BASE_FRAME::SetFrameIcons( const std::vector<std::pair<BITMAPS, int>>& 
 
 KISTATUSBAR* EDA_BASE_FRAME::CreateStatusBar( int aNumber )
 {
-    m_statusBar = OnCreateStatusBar( aNumber );
+    m_statusBar = OnCreateStatusBar( aNumber, 0, wxID_ANY, wxS( "statusBar" ) );
     setStatusBar( m_statusBar );
     return m_statusBar;
 }

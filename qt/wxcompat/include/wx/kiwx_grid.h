@@ -843,6 +843,7 @@ public:
     void SetCellBackgroundColour( int aRow, int aCol, const wxColour& aColour );
     wxColour GetCellBackgroundColour( int aRow, int aCol ) const;
     wxColour GetCellTextColour( int aRow, int aCol ) const;
+    wxFont GetCellFont( int aRow, int aCol ) const;
     void SetCellRenderer( int aRow, int aCol, wxGridCellRenderer* aRenderer );
     void SetCellEditor( int aRow, int aCol, wxGridCellEditor* aEditor );
     void SetDefaultRenderer( wxGridCellRenderer* aRenderer );

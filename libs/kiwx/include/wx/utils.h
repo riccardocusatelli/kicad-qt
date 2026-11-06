@@ -109,6 +109,13 @@ bool wxShell( const wxString& aCommand = wxString() );
 /// Open a document or a directory with the default application of the system.
 bool wxLaunchDefaultApplication( const wxString& aDocument, int aFlags = 0 );
 
+/// The flags of wxLaunchDefaultBrowser (a new window is the only behavior here).
+enum
+{
+    wxBROWSER_NEW_WINDOW = 0x0001,
+    wxBROWSER_NOBUSYCURSOR = 0x0002
+};
+
 /// Open a URL (or a file) with the default browser of the system.
 bool wxLaunchDefaultBrowser( const wxString& aUrl, int aFlags = 0 );
 

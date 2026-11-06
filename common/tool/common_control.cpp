@@ -55,6 +55,7 @@
 #include <widgets/kistatusbar.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
+#include <kiway_player.h>
 #include <settings/common_settings.h>
 
 #define URL_GET_INVOLVED wxS( "https://go.kicad.org/contribute/" )
@@ -237,6 +238,38 @@ int COMMON_CONTROL::Execute( const wxString& aExecutible, const wxString& aParam
         || aExecutible == EESCHEMA_EXE || aExecutible == PCBNEW_EXE )
     {
         isKicadBinary = true;
+    }
+
+    // The project suite of the Qt build runs the tools of KiCad in it: their frames, made by
+    // their KIFACEs (there are no programs of the tools)
+    if( m_frame && ( m_frame->Kiway().GetCtlBits() & KFCTL_QT_GUI ) )
+    {
+        FRAME_T tool = FRAME_T_COUNT;
+
+        if( aExecutible == GERBVIEW_EXE )
+            tool = FRAME_GERBER;
+        else if( aExecutible == BITMAPCONVERTER_EXE )
+            tool = FRAME_BM2CMP;
+        else if( aExecutible == PCB_CALCULATOR_EXE )
+            tool = FRAME_CALC;
+        else if( aExecutible == PL_EDITOR_EXE )
+            tool = FRAME_PL_EDITOR;
+
+        if( tool != FRAME_T_COUNT )
+        {
+            delete callback;
+
+            if( KIWAY_PLAYER* player = m_frame->Kiway().Player( tool, true ) )
+            {
+                if( !aParam.IsEmpty() )
+                    player->OpenProjectFiles( std::vector<wxString>( 1, aParam ) );
+
+                player->Show( true );
+                player->Raise();
+            }
+
+            return 0;
+        }
     }
 
     long pid = ExecuteFile( aExecutible, aParam, callback, isKicadBinary );

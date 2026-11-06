@@ -26,6 +26,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QUrl>
 #include <QFileInfo>
 #include <QGridLayout>
 #include <QLabel>
@@ -284,6 +285,17 @@ int wxFileDialog::ShowModal()
                                   .split( QStringLiteral( ";;" ) );
 
     dialog.setNameFilters( filters );
+
+    // The shortcuts in the places of the dialog (the dialog of Qt, which shows them)
+    if( !m_shortcuts.empty() )
+    {
+        QList<QUrl> urls = dialog.sidebarUrls();
+
+        for( const wxString& shortcut : m_shortcuts )
+            urls.append( QUrl::fromLocalFile( ToQString( shortcut ) ) );
+
+        dialog.setSidebarUrls( urls );
+    }
 
     if( m_filterIndex >= 0 && m_filterIndex < filters.size() )
         dialog.selectNameFilter( filters[m_filterIndex] );

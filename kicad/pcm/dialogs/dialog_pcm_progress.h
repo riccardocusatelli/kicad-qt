@@ -22,7 +22,7 @@
 #define DIALOG_PCM_PROGRESS_H_
 
 
-#include "dialog_pcm_progress_base.h"
+#include <dialog_pcm_progress_base.h>
 #include "reporter.h"
 #include <atomic>
 #include <widgets/progress_reporter_base.h>

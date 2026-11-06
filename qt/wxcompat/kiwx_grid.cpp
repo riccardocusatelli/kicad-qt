@@ -2436,6 +2436,15 @@ wxColour wxGrid::GetCellTextColour( int aRow, int aCol ) const
 }
 
 
+wxFont wxGrid::GetCellFont( int aRow, int aCol ) const
+{
+    wxGridCellAttr* attr = GetCellAttr( aRow, aCol );
+    wxFont          font = attr->GetFont();
+    attr->DecRef();
+    return font;
+}
+
+
 void wxGrid::SetCellRenderer( int aRow, int aCol, wxGridCellRenderer* aRenderer )
 {
     if( wxGridCellAttr* attr = GetOrCreateCellAttr( aRow, aCol ) )

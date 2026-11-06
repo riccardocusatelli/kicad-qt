@@ -103,6 +103,7 @@
 #include "settings/kicad_settings.h"
 
 #include <project/project_file.h>
+#include <toolkit/toolkit_window_arg.h>
 
 
 #define EDITORS_CAPTION _( "Editors" )
@@ -412,8 +413,8 @@ void KICAD_MANAGER_FRAME::onNotebookPageCloseRequest( wxAuiNotebookEvent& evt )
 }
 
 
-wxStatusBar* KICAD_MANAGER_FRAME::OnCreateStatusBar( int number, long style, wxWindowID id,
-                                                     const wxString& name )
+TOOLKIT_STATUSBAR* KICAD_MANAGER_FRAME::OnCreateStatusBar( int number, long style, wxWindowID id,
+                                                           const wxString& name )
 {
     KISTATUSBAR* sb = new KISTATUSBAR( number, this, id,
                                        static_cast<KISTATUSBAR::STYLE_FLAGS>( KISTATUSBAR::NOTIFICATION_ICON
@@ -548,9 +549,9 @@ void KICAD_MANAGER_FRAME::setupUIConditions()
 }
 
 
-wxWindow* KICAD_MANAGER_FRAME::GetToolCanvas() const
+TOOLKIT_WINDOW* KICAD_MANAGER_FRAME::GetToolCanvas() const
 {
-    return m_projectTreePane;
+    return TOOLKIT_WINDOW_ARG( m_projectTreePane );
 }
 
 

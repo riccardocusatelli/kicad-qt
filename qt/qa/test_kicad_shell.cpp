@@ -20,11 +20,13 @@
 /**
  * @file test_kicad_shell.cpp
  * The test of kicad-qt: the program itself (kicad_qt.cpp, its main() renamed), driven from the
- * event loop of its application.  Its start wizard is finished, a board opens in the PCB editor
- * of KiCad (the frame of _pcbnew_qtgui.kiface), a schematic of another project in the schematic
- * editor of KiCad (_eeschema_qtgui.kiface) once the editors of the board's project are closed,
- * the PCB editor shows the Python console (_kipython_qtgui.kiface), the schematic editor opens CvPcb (_cvpcb_qtgui.kiface) to assign the footprints of the
- * schematic, the launcher opens the symbol and footprint editors, and the shell closes the editors with it.
+ * event loop of its application.  Its start wizard is finished, the project manager of KiCad
+ * (KICAD_MANAGER_FRAME) loads the project of a board and shows it in its tree, its launcher opens
+ * the board in the PCB editor of KiCad (_pcbnew_qtgui.kiface), which shows the Python console
+ * (_kipython_qtgui.kiface); the project of a schematic is loaded (the editors of the board's
+ * project close) and opened in the schematic editor (_eeschema_qtgui.kiface), which opens CvPcb
+ * (_cvpcb_qtgui.kiface) to assign the footprints of the schematic; the launcher opens the library
+ * editors and the tools, and the project manager closes the editors with it.
  *
  * Usage: qa_qt_kicad_shell <board.kicad_pcb> [schematic.kicad_sch] [screenshot.png]
  */
@@ -62,7 +64,8 @@
 #include <kiway_player.h>
 #include <tool/tool_manager.h>
 
-#include "../kicad/home_widgets.h"
+#include <kicad_manager_frame.h>
+#include <tool/actions.h>
 
 
 namespace
@@ -144,18 +147,53 @@ bool pressButton( QWidget* aDialog, const QString& aLabel )
 }
 
 
+/// The project of a file (the .kicad_pro next to it): the project manager loads it.
+bool openProject( KICAD_MANAGER_FRAME* aFrame, const QString& aFile )
+{
+    const QFileInfo file( aFile );
+    const QString   project = file.path() + QLatin1Char( '/' ) + file.completeBaseName()
+                            + QStringLiteral( ".kicad_pro" );
+
+    bool loaded = aFrame->LoadProject( wxFileName( ToWxString( project ) ) );
+    settle( 500 );
+    return loaded;
+}
+
+
+/// An action of the project manager (its launcher, its menus).
+void runAction( KICAD_MANAGER_FRAME* aFrame, const char* aAction )
+{
+    aFrame->GetToolManager()->RunAction( aAction );
+    settle( 1000 );
+}
+
+
 /// The shell: a board in the PCB editor, a schematic in the schematic editor, the library
 /// editors, then the shell closes them.
-void runScenario( MAIN_WINDOW* aWindow )
+void runScenario( KICAD_MANAGER_FRAME* aWindow )
 {
     std::printf( "KICAD-QT\n" );
     check( aWindow->isVisible(), "the shell is shown" );
 
-    // A board: the PCB editor of KiCad opens it
-    aWindow->OpenPath( s_board );
-    settle( 1000 );
+    // The project of the board: the project manager loads it, its tree shows its files, then the
+    // PCB editor of KiCad opens the board
+    check( openProject( aWindow, s_board ), "the project manager loads the project of the board" );
+    check( aWindow->GetProjectFileName().EndsWith( wxS( ".kicad_pro" ) ),
+           "the project manager has the project" );
 
-    KIWAY_PLAYER* pcb = s_kiway.Player( FRAME_PCB_EDITOR, false );
+    QAbstractItemView* tree = nullptr;
+
+    for( QAbstractItemView* view : aWindow->findChildren<QAbstractItemView*>() )
+    {
+        if( view->isVisible() && view->model() && view->model()->rowCount() > 0 )
+            tree = view;
+    }
+
+    check( tree != nullptr, "the project tree shows the project" );
+
+    runAction( aWindow, "kicad.Control.editPCB" );
+
+    KIWAY_PLAYER* pcb = Kiway.Player( FRAME_PCB_EDITOR, false );
     check( pcb != nullptr, "the KIFACE of pcbnew with the GUI makes the PCB editor" );
     check( pcb && pcb->isVisible(), "the PCB editor is shown" );
     check( pcb && pcb->windowTitle().contains( QFileInfo( s_board ).completeBaseName() ),
@@ -168,7 +206,7 @@ void runScenario( MAIN_WINDOW* aWindow )
         pcb->GetToolManager()->RunAction( "pcbnew.Control.showPythonConsole" );
         settle( 500 );
 
-        KIWAY_PLAYER* console = s_kiway.Player( FRAME_PYTHON, false );
+        KIWAY_PLAYER* console = Kiway.Player( FRAME_PYTHON, false );
         check( console && console->isVisible(), "the PCB editor shows the Python console" );
 
         QLineEdit*      input = console ? console->findChild<QLineEdit*>() : nullptr;
@@ -216,14 +254,15 @@ void runScenario( MAIN_WINDOW* aWindow )
 
     if( !s_schematic.isEmpty() )
     {
-        aWindow->OpenPath( s_schematic );
-        settle( 1000 );
+        check( openProject( aWindow, s_schematic ),
+               "the project manager loads the project of the schematic" );
+        runAction( aWindow, "kicad.Control.editSchematic" );
 
-        check( !s_kiway.Player( FRAME_PCB_EDITOR, false ),
+        check( !Kiway.Player( FRAME_PCB_EDITOR, false ),
                "the PCB editor of the previous project is closed" );
         pcb = nullptr;
 
-        sch = s_kiway.Player( FRAME_SCH, false );
+        sch = Kiway.Player( FRAME_SCH, false );
         check( sch != nullptr, "the KIFACE of eeschema with the GUI makes the schematic editor" );
         check( sch && sch->isVisible(), "the schematic editor is shown" );
         check( sch && sch->windowTitle().contains( QFileInfo( s_schematic ).completeBaseName() ),
@@ -266,7 +305,7 @@ void runScenario( MAIN_WINDOW* aWindow )
         check( messages.size() <= 1, "CvPcb opens without errors other than the empty library "
                                      "table of the test" );
 
-        cvpcb = s_kiway.Player( FRAME_CVPCB, false );
+        cvpcb = Kiway.Player( FRAME_CVPCB, false );
         check( cvpcb != nullptr, "the KIFACE of cvpcb with the GUI makes CvPcb" );
         check( cvpcb && cvpcb->isVisible(), "CvPcb is shown" );
 
@@ -300,32 +339,20 @@ void runScenario( MAIN_WINDOW* aWindow )
         }
     }
 
-    // The launcher: the library editors
-    LAUNCHER_PANEL* launcher = aWindow->findChild<LAUNCHER_PANEL*>();
-    check( launcher != nullptr, "the shell has its launcher" );
+    // The launcher of the project manager: the library editors
+    runAction( aWindow, "kicad.Control.editSymbols" );
+    runAction( aWindow, "kicad.Control.editFootprints" );
 
-    if( launcher )
-    {
-        Q_EMIT launcher->symbolEditorRequested();
-        settle( 1000 );
-        Q_EMIT launcher->footprintEditorRequested();
-        settle( 1000 );
-    }
-
-    KIWAY_PLAYER* symbols = s_kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false );
+    KIWAY_PLAYER* symbols = Kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false );
     check( symbols && symbols->isVisible(), "the launcher opens the symbol editor" );
 
-    KIWAY_PLAYER* footprints = s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false );
+    KIWAY_PLAYER* footprints = Kiway.Player( FRAME_FOOTPRINT_EDITOR, false );
     check( footprints && footprints->isVisible(), "the launcher opens the footprint editor" );
 
     // The drawing sheet editor, with the default drawing sheet and its properties
-    if( launcher )
-    {
-        Q_EMIT launcher->toolRequested( FRAME_PL_EDITOR );
-        settle( 1000 );
-    }
+    runAction( aWindow, "kicad.Control.editDrawingSheet" );
 
-    KIWAY_PLAYER* drawingSheets = s_kiway.Player( FRAME_PL_EDITOR, false );
+    KIWAY_PLAYER* drawingSheets = Kiway.Player( FRAME_PL_EDITOR, false );
     check( drawingSheets && drawingSheets->isVisible(),
            "the launcher opens the drawing sheet editor" );
 
@@ -356,13 +383,9 @@ void runScenario( MAIN_WINDOW* aWindow )
     }
 
     // The Gerber viewer, from the launcher: it shows its layers and draws a Gerber file
-    if( launcher )
-    {
-        Q_EMIT launcher->toolRequested( FRAME_GERBER );
-        settle( 1000 );
-    }
+    runAction( aWindow, "kicad.Control.viewGerbers" );
 
-    KIWAY_PLAYER* gerbers = s_kiway.Player( FRAME_GERBER, false );
+    KIWAY_PLAYER* gerbers = Kiway.Player( FRAME_GERBER, false );
     check( gerbers && gerbers->isVisible(), "the launcher opens the Gerber viewer" );
 
     if( gerbers )
@@ -398,13 +421,9 @@ void runScenario( MAIN_WINDOW* aWindow )
     }
 
     // The calculator, from the launcher: its book shows all its tools
-    if( launcher )
-    {
-        Q_EMIT launcher->toolRequested( FRAME_CALC );
-        settle( 1000 );
-    }
+    runAction( aWindow, "kicad.Control.showCalculator" );
 
-    KIWAY_PLAYER* calculator = s_kiway.Player( FRAME_CALC, false );
+    KIWAY_PLAYER* calculator = Kiway.Player( FRAME_CALC, false );
     check( calculator && calculator->isVisible(), "the launcher opens the calculator" );
 
     if( calculator )
@@ -438,13 +457,9 @@ void runScenario( MAIN_WINDOW* aWindow )
     }
 
     // The image converter, from the launcher: it loads an image
-    if( launcher )
-    {
-        Q_EMIT launcher->toolRequested( FRAME_BM2CMP );
-        settle( 1000 );
-    }
+    runAction( aWindow, "kicad.Control.convertImage" );
 
-    KIWAY_PLAYER* images = s_kiway.Player( FRAME_BM2CMP, false );
+    KIWAY_PLAYER* images = Kiway.Player( FRAME_BM2CMP, false );
     check( images && images->isVisible(), "the launcher opens the image converter" );
 
     if( images )
@@ -519,16 +534,16 @@ void runScenario( MAIN_WINDOW* aWindow )
     }
 
     // The changes of the test are not saved: the editors are closed, then the shell
-    check( s_kiway.PlayersClose( true ), "the shell closes the editors" );
+    check( Kiway.PlayersClose( true ), "the shell closes the editors" );
     settle( 200 );
-    check( !s_kiway.Player( FRAME_PCB_EDITOR, false ) && !s_kiway.Player( FRAME_SCH, false )
-                   && !s_kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
-                   && !s_kiway.Player( FRAME_FOOTPRINT_EDITOR, false )
-                   && !s_kiway.Player( FRAME_CVPCB, false )
-                   && !s_kiway.Player( FRAME_PL_EDITOR, false )
-                   && !s_kiway.Player( FRAME_GERBER, false )
-                   && !s_kiway.Player( FRAME_CALC, false )
-                   && !s_kiway.Player( FRAME_BM2CMP, false ),
+    check( !Kiway.Player( FRAME_PCB_EDITOR, false ) && !Kiway.Player( FRAME_SCH, false )
+                   && !Kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
+                   && !Kiway.Player( FRAME_FOOTPRINT_EDITOR, false )
+                   && !Kiway.Player( FRAME_CVPCB, false )
+                   && !Kiway.Player( FRAME_PL_EDITOR, false )
+                   && !Kiway.Player( FRAME_GERBER, false )
+                   && !Kiway.Player( FRAME_CALC, false )
+                   && !Kiway.Player( FRAME_BM2CMP, false ),
            "the editors are closed" );
 
     aWindow->close();
@@ -563,7 +578,7 @@ void startTest()
 
                           for( QWidget* widget : QApplication::topLevelWidgets() )
                           {
-                              if( MAIN_WINDOW* window = qobject_cast<MAIN_WINDOW*>( widget ) )
+                              if( auto* window = dynamic_cast<KICAD_MANAGER_FRAME*>( widget ) )
                               {
                                   if( window->isVisible() )
                                   {
@@ -603,6 +618,16 @@ int main( int argc, char** argv )
     QTemporaryDir dir;
     s_board = dir.filePath( QFileInfo( QString::fromUtf8( argv[1] ) ).fileName() );
     QFile::copy( QString::fromUtf8( argv[1] ), s_board );
+
+    // With its project
+    {
+        const QFileInfo source( QString::fromUtf8( argv[1] ) );
+        const QString   project = source.path() + QLatin1Char( '/' ) + source.completeBaseName()
+                                + QStringLiteral( ".kicad_pro" );
+
+        if( QFile::exists( project ) )
+            QFile::copy( project, dir.filePath( QFileInfo( project ).fileName() ) );
+    }
 
     // The other arguments, by their extension
     for( int i = 2; i < argc; ++i )

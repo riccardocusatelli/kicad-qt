@@ -20,7 +20,7 @@
 #ifndef KICAD_PANEL_KICAD_LAUNCHER_H
 #define KICAD_PANEL_KICAD_LAUNCHER_H
 
-#include "panel_kicad_launcher_base.h"
+#include <panel_kicad_launcher_base.h>
 
 class TOOL_MANAGER;
 class KICAD_MANAGER_FRAME;

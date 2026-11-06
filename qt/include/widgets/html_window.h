@@ -34,6 +34,7 @@
 
 #include <kiqt.h>     // Qt, without its METHOD macro
 #include <QTextBrowser>
+#include <QTextDocument>
 
 #include <wx/kiwx_window.h>
 
@@ -83,11 +84,27 @@ public:
     void GetVirtualSize( int* aWidth, int* aHeight ) const;
     using wxWindow::GetVirtualSize;
 
+    /// The cell of the whole page (wxHtmlWindow::GetInternalRepresentation()): its size.
+    class PAGE_CELL
+    {
+    public:
+        explicit PAGE_CELL( const QTextBrowser* aBrowser ) : m_browser( aBrowser ) {}
+
+        int GetWidth() const { return int( m_browser->document()->size().width() ); }
+        int GetHeight() const { return int( m_browser->document()->size().height() ); }
+
+    private:
+        const QTextBrowser* m_browser;
+    };
+
+    const PAGE_CELL* GetInternalRepresentation() const { return &m_pageCell; }
+
 protected:
     void changeEvent( QEvent* aEvent ) override;
 
 private:
-    wxString m_pageSource;
+    wxString  m_pageSource;
+    PAGE_CELL m_pageCell{ this };
 };
 
 #endif /* HTML_WINDOW_H */

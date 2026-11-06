@@ -3457,11 +3457,26 @@ void wxScrolledWindow::FitInside()
 // The splitter windows ----------------------------------------------------------------------
 
 wxSplitterWindow::wxSplitterWindow( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
-                                    const wxSize& aSize, long aStyle ) :
+                                    const wxSize& aSize, long aStyle, const wxString& aName ) :
         wxWindowCompat<QSplitter>( aParent )
 {
     SetId( aId );
     setChildrenCollapsible( false );
+
+    // A sash moved by the user: OnSashPositionChange() can refuse the position (as wxWidgets)
+    QObject::connect( this, &QSplitter::splitterMoved, this,
+                      [this]( int aPos, int )
+                      {
+                          if( OnSashPositionChange( aPos ) )
+                          {
+                              m_acceptedSizes = sizes();
+                          }
+                          else if( !m_acceptedSizes.isEmpty() )
+                          {
+                              QSignalBlocker blocker( this );
+                              setSizes( m_acceptedSizes );
+                          }
+                      } );
 }
 
 

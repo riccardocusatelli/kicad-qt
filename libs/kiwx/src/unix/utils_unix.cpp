@@ -283,6 +283,12 @@ long runForProcess( const std::vector<std::string>& aArgs, int aFlags, wxProcess
 } // namespace
 
 
+int wxStat( const wxString& aPath, wxStructStat* aStat )
+{
+    return stat( fsPath( aPath ).c_str(), aStat );
+}
+
+
 int wxChmod( const wxString& aPath, int aMode )
 {
     return chmod( fsPath( aPath ).c_str(), aMode );

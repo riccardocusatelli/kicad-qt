@@ -13,6 +13,8 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/pcbnew
     ${CMAKE_SOURCE_DIR}/eeschema
     ${CMAKE_SOURCE_DIR}/kicad/pcm
+    ${CMAKE_SOURCE_DIR}/kicad/dialogs
+    ${CMAKE_SOURCE_DIR}/kicad/pcm/dialogs
     ${INC_AFTER}
     )
 

@@ -35,6 +35,11 @@ using TOOLKIT_WINDOW = QWidget;
 /// An event of the user interface (an input event, given to the tool dispatcher).
 using TOOLKIT_EVENT = QEvent;
 
+class KISTATUSBAR;
+
+/// The status bar of a frame (the KISTATUSBAR of the Qt build).
+using TOOLKIT_STATUSBAR = KISTATUSBAR;
+
 class QComboBox;
 
 /// A choice box (a drop-down list of strings, as the ones of the toolbars).

@@ -644,10 +644,10 @@ bool wxBitmap::SaveFile( const wxString& aName, wxBitmapType aType ) const
 }
 
 
-const wxBitmap& wxNullBitmapCompat()
+wxBitmap& wxNullBitmapCompat()
 {
     // Made on the first use: a pixmap needs the application of Qt
-    static const wxBitmap s_nullBitmap;
+    static wxBitmap s_nullBitmap;
     return s_nullBitmap;
 }
 

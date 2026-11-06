@@ -106,7 +106,7 @@ private:
 
 
 KISTATUSBAR::KISTATUSBAR( int aNumberFields, QWidget* parent, wxWindowID id, STYLE_FLAGS aFlags ) :
-        QStatusBar( parent ),
+        wxWindowCompat<QStatusBar>( parent ),
         m_backgroundStopButton( nullptr ),
         m_notificationsButton( nullptr ),
         m_warningButton( nullptr ),
@@ -220,6 +220,8 @@ wxString KISTATUSBAR::GetStatusText( int aField ) const
 
 void KISTATUSBAR::SetStatusWidths( int aSize, const int* aWidths )
 {
+    m_statusWidths.assign( aWidths, aWidths + std::max( aSize, 0 ) );
+
     // Only the fields of the frame: the other ones follow their controls
     for( int ii = 0; ii < aSize && ii < (int) m_fields.size(); ++ii )
     {
@@ -267,7 +269,7 @@ void KISTATUSBAR::onBackgroundProgressClick()
 
 void KISTATUSBAR::resizeEvent( QResizeEvent* aEvent )
 {
-    QStatusBar::resizeEvent( aEvent );
+    wxWindowCompat<QStatusBar>::resizeEvent( aEvent );
     updateBackgroundText();
 }
 

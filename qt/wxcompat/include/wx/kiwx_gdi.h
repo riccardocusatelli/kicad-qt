@@ -705,6 +705,9 @@ public:
     /// An image in the XPM format (the data of a .xpm file).
     explicit wxBitmap( const char* const* aXpm ) : QPixmap( aXpm ) {}
 
+    /// The image of a file (a PNG...).
+    wxBitmap( const wxString& aFile, wxBitmapType aType ) { LoadFile( aFile, aType ); }
+
     bool IsOk() const { return !isNull(); }
 
     /// The image of a bitmap (wxIcon::CopyFromBitmap(): an icon is a bitmap here).
@@ -739,7 +742,7 @@ public:
 };
 
 /// The null bitmap (wxNullBitmap), made on its first use: a pixmap needs the application of Qt.
-KIQT_API const wxBitmap& wxNullBitmapCompat();
+KIQT_API wxBitmap& wxNullBitmapCompat();
 #define wxNullBitmap ( wxNullBitmapCompat() )
 
 
@@ -1057,6 +1060,10 @@ public:
     void DrawRectangle( const wxRect& aRect );
     void DrawRectangle( int aX, int aY, int aWidth, int aHeight );
     void DrawRoundedRectangle( const wxRect& aRect, double aRadius );
+    void DrawRoundedRectangle( int aX, int aY, int aWidth, int aHeight, double aRadius )
+    {
+        DrawRoundedRectangle( wxRect( aX, aY, aWidth, aHeight ), aRadius );
+    }
     void DrawLine( int aX1, int aY1, int aX2, int aY2 );
     void DrawLine( const wxPoint& aP1, const wxPoint& aP2 ) { DrawLine( aP1.x, aP1.y, aP2.x, aP2.y ); }
     void DrawCircle( int aX, int aY, int aRadius );

@@ -75,6 +75,7 @@ public:
      * standalone and manager mode before we actually load anything
      */
     void SetCtlBits( int aCtlBits ) { m_ctl = aCtlBits; }
+    int GetCtlBits() const { return m_ctl; }
 
 protected:
     /// Get the [path &] name of the DSO holding the requested FACE_T.

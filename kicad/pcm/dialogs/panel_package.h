@@ -23,7 +23,7 @@
 
 #include <functional>
 
-#include "panel_package_base.h"
+#include <panel_package_base.h>
 #include "pcm.h"
 
 ///< Collection of data relevant to the package display panel

@@ -148,7 +148,7 @@ set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_KEPT_TARGETS
     pcb_calculator_gui_qt pcb_calculator_qtgui_kiface pcb_calculator_qtgui_kiface_iface pcb_calculator_qtgui_kiface_archive
     bitmap2component_gui_qt bitmap2component_qtgui_kiface bitmap2component_qtgui_kiface_iface bitmap2component_qtgui_kiface_archive
     potrace
-    kicad-qt
+    kicad-qt kicad_manager_qt
     qa_qt_tool_framework qa_qt_tool_framework_objects
     qa_qt_3d_viewer qa_qt_3d_viewer_objects
     )

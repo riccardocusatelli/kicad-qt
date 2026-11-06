@@ -146,6 +146,11 @@ public:
         return wxFileName( aFile, aFormat );
     }
 
+    /// The file: URL of a file (its absolute path, with the special characters escaped), and
+    /// the file of a file: URL.
+    static wxString   FileNameToURL( const wxFileName& aFileName );
+    static wxFileName URLToFileName( const wxString& aUrl );
+
     static wxFileName DirName( const wxString& aDir, wxPathFormat aFormat = wxPATH_NATIVE )
     {
         wxFileName fn;

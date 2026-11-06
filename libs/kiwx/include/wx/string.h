@@ -687,6 +687,7 @@ public:
     wxString& MakeLower();
     wxString& MakeCapitalized();
     wxString  Upper() const { return wxString( *this ).MakeUpper(); }
+    wxString  Clone() const { return *this; }
     wxString  Lower() const { return wxString( *this ).MakeLower(); }
     wxString  Capitalize() const { return wxString( *this ).MakeCapitalized(); }
     wxString& UpperCase() { return MakeUpper(); }

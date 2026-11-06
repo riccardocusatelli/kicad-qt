@@ -237,6 +237,13 @@ public:
     void SetMessage( const wxString& aMessage ) { m_message = aMessage; }
     void SetFilterIndex( int aIndex ) { m_filterIndex = aIndex; }
 
+    /// A directory in the places of the dialog (its side bar).
+    bool AddShortcut( const wxString& aDirectory, int aFlags = 0 )
+    {
+        m_shortcuts.push_back( aDirectory );
+        return true;
+    }
+
     /// The controls of KiCad shown in the dialog (the dialog of Qt is then not the native one).
     bool SetCustomizeHook( wxFileDialogCustomizeHook& aHook )
     {
@@ -270,6 +277,7 @@ private:
     long          m_style;
     int           m_filterIndex;
     wxArrayString m_paths;
+    std::vector<wxString> m_shortcuts;
 };
 
 

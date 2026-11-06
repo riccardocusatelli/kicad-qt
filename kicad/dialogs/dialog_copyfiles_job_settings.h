@@ -18,7 +18,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "dialog_copyfiles_job_settings_base.h"
+#include <dialog_copyfiles_job_settings_base.h>
 
 class JOB_SPECIAL_COPYFILES;
 

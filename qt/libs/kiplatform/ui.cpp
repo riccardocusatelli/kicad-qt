@@ -230,8 +230,10 @@ QColor KIPLATFORM::UI::GetDialogBGColour()
 }
 
 
-wxSize KIPLATFORM::UI::GetUnobscuredSize( const QWidget* aWindow )
+wxSize KIPLATFORM::UI::GetUnobscuredSize( wxWidgetArgCompat aWidget )
 {
+    const QWidget* aWindow = aWidget.get();
+
     if( !aWindow )
         return wxSize();
 

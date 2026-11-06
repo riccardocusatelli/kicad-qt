@@ -44,6 +44,7 @@
 
 #include <string_utils.h>       // LOAD_MESSAGE
 #include <wx/defs.h>
+#include <wx/kiwx_window.h>
 #include <wx/string.h>
 
 class QLabel;
@@ -52,7 +53,7 @@ class QToolButton;
 class BITMAP_BUTTON;
 
 
-class KIQT_COMMON_API KISTATUSBAR : public QStatusBar
+class KIQT_COMMON_API KISTATUSBAR : public wxWindowCompat<QStatusBar>
 {
 public:
     enum STYLE_FLAGS : int
@@ -87,6 +88,13 @@ public:
      * width is fixed, a negative one is a stretch factor.
      */
     virtual void SetStatusWidths( int aSize, const int* aWidths );
+
+    /// The width of a field of the frame, as given to SetStatusWidths() (a negative one is a
+    /// stretch factor).
+    int GetStatusWidth( int aField ) const
+    {
+        return aField >= 0 && aField < (int) m_statusWidths.size() ? m_statusWidths[aField] : -1;
+    }
 
     /**
      * Show the background progress bar.
@@ -162,6 +170,7 @@ private:
     mutable std::mutex m_warningMutex;  ///< Protects m_warningMessages
     std::unordered_map<wxString, std::vector<LOAD_MESSAGE>> m_warningMessages;
     int            m_normalFieldsCount;
+    std::vector<int> m_statusWidths;     ///< The widths of the fields given to SetStatusWidths()
     STYLE_FLAGS    m_styleFlags;
     wxString       m_savedStatusText;       ///< Saved text from adjacent field during background jobs
     wxString       m_backgroundRawText;     ///< Unellipsized background status text
