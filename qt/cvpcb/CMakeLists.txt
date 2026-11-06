@@ -35,6 +35,9 @@ add_library( cvpcb_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/common/trace_helpers_gui.cpp
     )
 
+# The headers generated from the .fbp files of pcbnew (the dialogs of the footprints)
+add_dependencies( cvpcb_gui_qt pcbnew_gui_qt )
+
 set_target_properties( cvpcb_gui_qt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 
 # The code of KiCad includes Python.h, whose structures have members named as the keywords of Qt

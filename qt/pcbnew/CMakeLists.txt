@@ -637,6 +637,7 @@ add_headless_executable( pcbnew-qt
 set_target_properties( pcbnew-qt_objects PROPERTIES AUTOMOC OFF )
 target_sources( pcbnew-qt PRIVATE $<TARGET_OBJECTS:pcbnew_gui_qt> )
 add_dependencies( pcbnew-qt pcbnew_gui_qt )
+add_dependencies( pcbnew-qt_objects pcbnew_gui_qt )   # its generated dialog headers
 
 if( UNIX AND NOT APPLE )
     target_link_libraries( pcbnew-qt PRIVATE ${SPNAV_LIBRARIES} )

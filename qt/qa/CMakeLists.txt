@@ -35,6 +35,9 @@ add_headless_executable( qa_qt_3d_viewer
 
 set_target_properties( qa_qt_3d_viewer_objects PROPERTIES AUTOMOC OFF )
 
+# The test includes the headers generated from the .fbp files of 3d-viewer_qt
+add_dependencies( qa_qt_3d_viewer_objects 3d-viewer_qt )
+
 # The headers of the 3D viewer of the Qt build (its dialogs) first
 target_include_directories( qa_qt_3d_viewer_objects BEFORE PRIVATE
     ${CMAKE_SOURCE_DIR}/qt/3d-viewer
@@ -49,6 +52,9 @@ add_headless_executable( qa_qt_pcbnew_frames
     )
 
 set_target_properties( qa_qt_pcbnew_frames_objects PROPERTIES AUTOMOC OFF )
+
+# The test includes the headers generated from the .fbp files of pcbnew_gui_qt
+add_dependencies( qa_qt_pcbnew_frames_objects pcbnew_gui_qt )
 target_sources( qa_qt_pcbnew_frames PRIVATE $<TARGET_OBJECTS:pcbnew_gui_qt> )
 add_dependencies( qa_qt_pcbnew_frames pcbnew_gui_qt )
 
@@ -69,6 +75,9 @@ add_headless_executable( qa_qt_eeschema_frames
     )
 
 set_target_properties( qa_qt_eeschema_frames_objects PROPERTIES AUTOMOC OFF )
+
+# The test includes the headers generated from the .fbp files of eeschema_gui_qt
+add_dependencies( qa_qt_eeschema_frames_objects eeschema_gui_qt )
 target_sources( qa_qt_eeschema_frames PRIVATE $<TARGET_OBJECTS:eeschema_gui_qt> )
 add_dependencies( qa_qt_eeschema_frames eeschema_gui_qt )
 
