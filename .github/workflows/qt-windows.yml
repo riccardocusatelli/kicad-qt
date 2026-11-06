@@ -1,0 +1,159 @@
+name: 'Qt build (Windows)'
+
+# The Qt suite of KiCad (KICAD_WX_FREE + KICAD_QT_SHELL) on Windows, with MSVC and the libraries
+# of vcpkg (the "qt" feature of vcpkg.json, release only).  Two jobs, each within the time limit
+# of a job: the libraries of vcpkg first (kept in the cache), then KiCad.
+
+on:
+  push:
+    branches: [ 'wx-free-core-upstream' ]
+    paths-ignore: [ '**.md', 'demos/**', 'translation/**' ]
+  workflow_dispatch:
+
+concurrency:
+  group: qt-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_ROOT: C:\vcpkg-kicad
+  VCPKG_DEFAULT_TRIPLET: x64-windows-release
+  VCPKG_OVERLAY_TRIPLETS: ${{ github.workspace }}\qt\tools\vcpkg-triplets
+  VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-cache,readwrite
+  VCPKG_INSTALLED_DIR: ${{ github.workspace }}\vcpkg_installed
+  VCPKG_CACHE_KEY: vcpkg-qt-windows-${{ hashFiles( 'vcpkg.json', 'vcpkg-configuration.json', 'qt/tools/vcpkg-triplets/**' ) }}
+
+jobs:
+  vcpkg:
+    name: 'vcpkg libraries'
+    runs-on: windows-2022
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: vcpkg
+        shell: pwsh
+        run: |
+          git clone --filter=tree:0 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\vcpkg-cache" | Out-Null
+
+      - name: Restore the libraries
+        id: restore
+        uses: actions/cache/restore@v4
+        with:
+          path: vcpkg-cache
+          key: ${{ env.VCPKG_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.VCPKG_CACHE_KEY }}-
+            vcpkg-qt-windows-
+
+      - name: Build the libraries
+        if: steps.restore.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_ROOT\vcpkg.exe" install `
+            --x-manifest-root="${{ github.workspace }}" `
+            --x-install-root="$env:VCPKG_INSTALLED_DIR" `
+            --x-no-default-features --x-feature=qt `
+            --triplet $env:VCPKG_DEFAULT_TRIPLET --host-triplet $env:VCPKG_DEFAULT_TRIPLET `
+            --clean-after-build
+
+      - name: Logs of the failed ports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-logs
+          path: ${{ env.VCPKG_ROOT }}\buildtrees\**\*.log
+          if-no-files-found: ignore
+
+      - name: Save the libraries
+        if: success() && steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: vcpkg-cache
+          key: ${{ env.VCPKG_CACHE_KEY }}
+
+      # Also when a port fails: the next run starts from the ports already built
+      - name: Save the libraries built so far
+        if: failure() && steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: vcpkg-cache
+          key: ${{ env.VCPKG_CACHE_KEY }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+
+  build:
+    name: 'KiCad (MSVC)'
+    needs: vcpkg
+    runs-on: windows-2022
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Tools
+        shell: pwsh
+        run: |
+          choco install -y --no-progress swig ccache
+          git clone --filter=tree:0 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
+
+      - name: Restore the libraries
+        uses: actions/cache/restore@v4
+        with:
+          path: vcpkg-cache
+          key: ${{ env.VCPKG_CACHE_KEY }}
+          fail-on-cache-miss: true
+
+      - name: Compiler cache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-qt-windows-${{ github.sha }}
+          restore-keys: ccache-qt-windows-
+
+      - name: Configure
+        shell: pwsh
+        env:
+          CCACHE_DIR: ${{ github.workspace }}\.ccache
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET="$env:VCPKG_DEFAULT_TRIPLET" `
+            -DVCPKG_HOST_TRIPLET="$env:VCPKG_DEFAULT_TRIPLET" `
+            -DVCPKG_OVERLAY_TRIPLETS="$env:VCPKG_OVERLAY_TRIPLETS" `
+            -DVCPKG_INSTALLED_DIR="$env:VCPKG_INSTALLED_DIR" `
+            -DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON -DVCPKG_MANIFEST_FEATURES=qt `
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
+            -DKICAD_WX_FREE=ON -DKICAD_QT_SHELL=ON -DKICAD_BUILD_QA_TESTS=ON `
+            -DKICAD_SCRIPTING_WXPYTHON=OFF -DKICAD_USE_PCH=OFF
+
+      - name: Build
+        shell: pwsh
+        env:
+          CCACHE_DIR: ${{ github.workspace }}\.ccache
+          CCACHE_MAXSIZE: 3G
+        run: |
+          cmake --build build -- -k 0 all `
+            qt/qa/qa_qt_eeschema_frames qt/qa/qa_qt_pcbnew_frames `
+            qt/qa/qa_qt_tool_framework qt/qa/qa_qt_3d_viewer kicad/qa_qt_kicad_shell 2>&1 |
+            Tee-Object -FilePath build\compilation_log.txt
+          if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          ccache --show-stats
+
+      - name: Compilation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compilation-log-windows
+          path: build/compilation_log.txt
+          if-no-files-found: ignore
