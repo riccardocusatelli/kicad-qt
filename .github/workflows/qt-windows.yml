@@ -20,7 +20,6 @@ env:
   VCPKG_OVERLAY_TRIPLETS: ${{ github.workspace }}\qt\tools\vcpkg-triplets
   VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-cache,readwrite
   VCPKG_INSTALLED_DIR: ${{ github.workspace }}\vcpkg_installed
-  VCPKG_CACHE_KEY: vcpkg-qt-windows-${{ hashFiles( 'vcpkg.json', 'vcpkg-configuration.json', 'qt/tools/vcpkg-triplets/**' ) }}
 
 jobs:
   vcpkg:
@@ -47,9 +46,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: vcpkg-cache
-          key: ${{ env.VCPKG_CACHE_KEY }}
+          key: vcpkg-qt-windows-${{ hashFiles( 'vcpkg.json', 'vcpkg-configuration.json', 'qt/tools/vcpkg-triplets/**' ) }}
           restore-keys: |
-            ${{ env.VCPKG_CACHE_KEY }}-
+            vcpkg-qt-windows-${{ hashFiles( 'vcpkg.json', 'vcpkg-configuration.json', 'qt/tools/vcpkg-triplets/**' ) }}-
             vcpkg-qt-windows-
 
       - name: Build the libraries
@@ -76,7 +75,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: vcpkg-cache
-          key: ${{ env.VCPKG_CACHE_KEY }}
+          key: vcpkg-qt-windows-${{ hashFiles( 'vcpkg.json', 'vcpkg-configuration.json', 'qt/tools/vcpkg-triplets/**' ) }}
 
       # Also when a port fails: the next run starts from the ports already built
       - name: Save the libraries built so far
@@ -84,7 +83,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: vcpkg-cache
-          key: ${{ env.VCPKG_CACHE_KEY }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+          key: vcpkg-qt-windows-${{ hashFiles( 'vcpkg.json', 'vcpkg-configuration.json', 'qt/tools/vcpkg-triplets/**' ) }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
 
   build:
     name: 'KiCad (MSVC)'
@@ -110,7 +109,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: vcpkg-cache
-          key: ${{ env.VCPKG_CACHE_KEY }}
+          key: vcpkg-qt-windows-${{ hashFiles( 'vcpkg.json', 'vcpkg-configuration.json', 'qt/tools/vcpkg-triplets/**' ) }}
           fail-on-cache-miss: true
 
       - name: Compiler cache
