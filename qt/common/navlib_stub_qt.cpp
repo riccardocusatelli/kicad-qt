@@ -33,6 +33,7 @@
 #include "../../3d-viewer/3d_navlib/nl_footprint_properties_plugin.h"
 #include "../../gerbview/navlib/nl_gerbview_plugin.h"
 #include "../../pagelayout_editor/navlib/nl_pl_editor_plugin.h"
+#include "../../eeschema/navlib/nl_schematic_plugin.h"
 
 
 // The implementations are never created: complete types for the destructors of std::unique_ptr
@@ -41,6 +42,7 @@ class NL_3D_VIEWER_PLUGIN_IMPL {};
 class NL_FOOTPRINT_PROPERTIES_PLUGIN_IMPL {};
 class NL_GERBVIEW_PLUGIN_IMPL {};
 class NL_PL_EDITOR_PLUGIN_IMPL {};
+class NL_SCHEMATIC_PLUGIN_IMPL {};
 
 
 NL_PCBNEW_PLUGIN::NL_PCBNEW_PLUGIN( PCB_DRAW_PANEL_GAL* aViewport ) {}
@@ -64,3 +66,8 @@ NL_PL_EDITOR_PLUGIN::NL_PL_EDITOR_PLUGIN() {}
 NL_PL_EDITOR_PLUGIN::~NL_PL_EDITOR_PLUGIN() = default;
 void NL_PL_EDITOR_PLUGIN::SetCanvas( EDA_DRAW_PANEL_GAL* aViewport ) {}
 void NL_PL_EDITOR_PLUGIN::SetFocus( bool aFocus ) {}
+
+NL_SCHEMATIC_PLUGIN::NL_SCHEMATIC_PLUGIN() {}
+NL_SCHEMATIC_PLUGIN::~NL_SCHEMATIC_PLUGIN() = default;
+void NL_SCHEMATIC_PLUGIN::SetCanvas( EDA_DRAW_PANEL_GAL* aViewport ) {}
+void NL_SCHEMATIC_PLUGIN::SetFocus( bool aFocus ) {}

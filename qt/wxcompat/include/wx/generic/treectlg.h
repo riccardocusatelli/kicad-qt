@@ -3,7 +3,8 @@
 #pragma once
 #include <wx/kiwx_treectrl.h>
 
-class KIQT_API wxGenericTreeCtrl : public wxTreeCtrl
+// Only in this header: not exported by libkiqt (with Windows, dllimport would ask for its members)
+class wxGenericTreeCtrl : public wxTreeCtrl
 {
 public:
     using wxTreeCtrl::wxTreeCtrl;
