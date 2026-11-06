@@ -15,7 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  VCPKG_ROOT: C:\vcpkg-kicad
+  # Not VCPKG_ROOT: the environment of MSVC (msvc-dev-cmd) sets it to the vcpkg of Visual Studio
+  KICAD_VCPKG_ROOT: C:\vcpkg-kicad
   VCPKG_DEFAULT_TRIPLET: x64-windows-release
   VCPKG_OVERLAY_TRIPLETS: ${{ github.workspace }}\qt\tools\vcpkg-triplets
   VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-cache,readwrite
@@ -37,6 +38,7 @@ jobs:
       - name: vcpkg
         shell: pwsh
         run: |
+          $env:VCPKG_ROOT = $env:KICAD_VCPKG_ROOT
           git clone --filter=tree:0 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
           & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
           New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\vcpkg-cache" | Out-Null
@@ -55,6 +57,7 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
+          $env:VCPKG_ROOT = $env:KICAD_VCPKG_ROOT
           & "$env:VCPKG_ROOT\vcpkg.exe" install `
             --x-manifest-root="${{ github.workspace }}" `
             --x-install-root="$env:VCPKG_INSTALLED_DIR" `
@@ -67,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vcpkg-logs
-          path: ${{ env.VCPKG_ROOT }}\buildtrees\**\*.log
+          path: ${{ env.KICAD_VCPKG_ROOT }}\buildtrees\**\*.log
           if-no-files-found: ignore
 
       - name: Save the libraries
@@ -101,6 +104,7 @@ jobs:
       - name: Tools
         shell: pwsh
         run: |
+          $env:VCPKG_ROOT = $env:KICAD_VCPKG_ROOT
           choco install -y --no-progress swig ccache
           git clone --filter=tree:0 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
           & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
@@ -124,6 +128,7 @@ jobs:
         env:
           CCACHE_DIR: ${{ github.workspace }}\.ccache
         run: |
+          $env:VCPKG_ROOT = $env:KICAD_VCPKG_ROOT
           cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
@@ -142,6 +147,7 @@ jobs:
           CCACHE_DIR: ${{ github.workspace }}\.ccache
           CCACHE_MAXSIZE: 3G
         run: |
+          $env:VCPKG_ROOT = $env:KICAD_VCPKG_ROOT
           cmake --build build -- -k 0 all `
             qt/qa/qa_qt_eeschema_frames qt/qa/qa_qt_pcbnew_frames `
             qt/qa/qa_qt_tool_framework qt/qa/qa_qt_3d_viewer kicad/qa_qt_kicad_shell 2>&1 |
