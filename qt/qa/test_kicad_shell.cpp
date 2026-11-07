@@ -608,6 +608,9 @@ int main( int argc, char** argv )
         return 2;
     }
 
+    // The results show up even if the test crashes or hangs
+    std::setvbuf( stdout, nullptr, _IONBF, 0 );
+
     // A new configuration of the test (the start wizard runs)
     QTemporaryDir configHome;
 

@@ -219,26 +219,41 @@ jobs:
           $env:PYTHONHOME = ( Get-ChildItem $inst -Recurse -Filter os.py |
                               Where-Object { $_.Directory.Name -eq 'Lib' } |
                               Select-Object -First 1 ).Directory.Parent.FullName
+          # The module pcbnew.py of the build (the Linux code of python_scripting.cpp adds it)
+          $env:PYTHONPATH = "$root\build\pcbnew"
           Write-Output "QT_PLUGIN_PATH=$env:QT_PLUGIN_PATH PYTHONHOME=$env:PYTHONHOME"
 
           $board = "$root\qa\data\pcbnew\api_kitchen_sink.kicad_pcb"
           $sch = "$root\qa\data\eeschema\erc_multiple_pin_to_pin.kicad_sch"
           $out = "$root\qa-screenshots"
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          New-Item -ItemType Directory -Force -Path $out, "$root\qa-logs" | Out-Null
           $failed = @()
 
-          # Each program with a time limit; all of them run, the failures are listed at the end
+          # Each program with a time limit; all of them run, the failures are listed at the end.
+          # Its output in files (the programs of a step have no console), shown after it.
           function Run-Test( [string] $aDir, [string] $aExe, [string[]] $aArgs ) {
             Write-Output "::group::$aExe"
+            $log = "$root\qa-logs\$aExe"
             $p = Start-Process -FilePath "$root\$aDir\$aExe.exe" -ArgumentList $aArgs `
-                   -WorkingDirectory "$root\$aDir" -NoNewWindow -PassThru
+                   -WorkingDirectory "$root\$aDir" -NoNewWindow -PassThru `
+                   -RedirectStandardOutput "$log.out.txt" -RedirectStandardError "$log.err.txt"
             $null = $p.Handle   # keeps the exit code
             if( -not $p.WaitForExit( 900000 ) ) {
+              # What is on the screen (a dialog that waits?)
+              try {
+                Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+                $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+                $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+                [System.Drawing.Graphics]::FromImage( $bmp ).CopyFromScreen( $b.Location, [System.Drawing.Point]::Empty, $b.Size )
+                $bmp.Save( "$out\$aExe-timeout.png" )
+              } catch { Write-Output "No screenshot: $_" }
               Stop-Process -Id $p.Id -Force
+              $p.WaitForExit()
               $code = 'timeout'
             } else {
               $code = if( $p.ExitCode -eq 0 ) { 0 } else { '0x{0:X8}' -f $p.ExitCode }
             }
+            Get-Content "$log.out.txt", "$log.err.txt" -ErrorAction SilentlyContinue
             Write-Output "::endgroup::"
             Write-Output "$aExe : $code"
             if( $code -ne 0 ) { $script:failed += "$aExe ($code)" }
@@ -255,12 +270,13 @@ jobs:
             exit 1
           }
 
-      - name: Screenshots and crash dumps
+      - name: Screenshots, output and crash dumps
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qa-windows
           path: |
             qa-screenshots
+            qa-logs
             qa-dumps
           if-no-files-found: ignore

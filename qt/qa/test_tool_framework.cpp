@@ -666,8 +666,9 @@ int main( int argc, char** argv )
         return 2;
     }
 
-    // The results show up even if the test crashes
-    std::setvbuf( stdout, nullptr, _IOLBF, 0 );
+    // The results show up even if the test crashes (unbuffered: with MSVC _IOLBF is a full
+    // buffer and needs its size, 0 is an invalid parameter that ends the program)
+    std::setvbuf( stdout, nullptr, _IONBF, 0 );
 
     // The settings of the test, not the ones of the user (the test changes them)
     QTemporaryDir configHome;
