@@ -162,12 +162,61 @@ bool openProject( KICAD_MANAGER_FRAME* aFrame, const QString& aFile )
 }
 
 
+/// The activations of the windows (on Windows the drawing sheet editor does not answer: two
+/// windows taking the activation in turn?): the first ones, then one in a thousand.
+class ACTIVATIONS : public QObject
+{
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter( QObject* aObject, QEvent* aEvent ) override
+    {
+        QEvent::Type type = aEvent->type();
+
+        if( type != QEvent::WindowActivate && type != QEvent::WindowDeactivate
+            && type != QEvent::Show && type != QEvent::Hide )
+            return false;
+
+        QWidget* widget = qobject_cast<QWidget*>( aObject );
+
+        if( !widget || !widget->isWindow() )
+            return false;
+
+        ++m_count;
+
+        if( m_count <= 60 || m_count % 1000 == 0 )
+        {
+            const char* what = type == QEvent::WindowActivate     ? "activate"
+                               : type == QEvent::WindowDeactivate ? "deactivate"
+                               : type == QEvent::Show             ? "show"
+                                                                  : "hide";
+            std::printf( "      [%d] %s %s \"%s\"\n", m_count, what,
+                         widget->metaObject()->className(),
+                         qPrintable( widget->windowTitle() ) );
+        }
+
+        return false;
+    }
+
+private:
+    int m_count = 0;
+};
+
+
 /// An action of the project manager (its launcher, its menus).
 void runAction( KICAD_MANAGER_FRAME* aFrame, const char* aAction )
 {
     std::printf( "    action %s\n", aAction );
+
+    // The windows activated by the action (the editors it opens)
+    ACTIVATIONS activations;
+    qApp->installEventFilter( &activations );
+
     aFrame->GetToolManager()->RunAction( aAction );
     settle( 1000 );
+
+    qApp->removeEventFilter( &activations );
 }
 
 
