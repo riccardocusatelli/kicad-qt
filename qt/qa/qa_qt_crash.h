@@ -20,7 +20,8 @@
 /**
  * @file qa_qt_crash.h
  * On Windows, a test that crashes prints the exception and the stack (with the symbols of the
- * PDB files, when the build makes them) before it ends.  Nothing on the other systems.
+ * PDB files, when the build makes them) before it ends; a test whose event loop does not answer
+ * for 90 s prints the stack of the main thread.  Nothing on the other systems.
  */
 
 #ifndef QA_QT_CRASH_H
@@ -28,7 +29,13 @@
 
 #ifdef _WIN32
 
+#include <atomic>
 #include <cstdio>
+#include <memory>
+#include <mutex>
+#include <thread>
+
+#include <QCoreApplication>
 
 #include <windows.h>
 #include <dbghelp.h>
@@ -44,30 +51,31 @@
 namespace QA_QT_CRASH
 {
 
-inline LONG WINAPI printCrash( EXCEPTION_POINTERS* aInfo )
+/// Print the stack of @a aThread from @a aContext (the thread stopped or the current one)
+inline void printStack( HANDLE aThread, CONTEXT aContext )
 {
     HANDLE process = GetCurrentProcess();
-    HANDLE thread = GetCurrentThread();
 
-    std::fprintf( stdout, "CRASH exception 0x%08lX at %p\n",
-                  aInfo->ExceptionRecord->ExceptionCode,
-                  aInfo->ExceptionRecord->ExceptionAddress );
+    static bool symbols = false;
 
-    SymSetOptions( SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_UNDNAME );
-    SymInitialize( process, nullptr, TRUE );
+    if( !symbols )
+    {
+        SymSetOptions( SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_UNDNAME );
+        SymInitialize( process, nullptr, TRUE );
+        symbols = true;
+    }
 
-    CONTEXT      context = *aInfo->ContextRecord;
     STACKFRAME64 frame = {};
-    frame.AddrPC.Offset = context.Rip;
+    frame.AddrPC.Offset = aContext.Rip;
     frame.AddrPC.Mode = AddrModeFlat;
-    frame.AddrFrame.Offset = context.Rbp;
+    frame.AddrFrame.Offset = aContext.Rbp;
     frame.AddrFrame.Mode = AddrModeFlat;
-    frame.AddrStack.Offset = context.Rsp;
+    frame.AddrStack.Offset = aContext.Rsp;
     frame.AddrStack.Mode = AddrModeFlat;
 
     for( int i = 0; i < 64; ++i )
     {
-        if( !StackWalk64( IMAGE_FILE_MACHINE_AMD64, process, thread, &frame, &context, nullptr,
+        if( !StackWalk64( IMAGE_FILE_MACHINE_AMD64, process, aThread, &frame, &aContext, nullptr,
                           SymFunctionTableAccess64, SymGetModuleBase64, nullptr ) )
             break;
 
@@ -81,14 +89,14 @@ inline LONG WINAPI printCrash( EXCEPTION_POINTERS* aInfo )
         symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
         symbol->MaxNameLen = 511;
 
-        char             module[MAX_PATH] = "?";
+        char              module[MAX_PATH] = "?";
         IMAGEHLP_MODULE64 moduleInfo = {};
         moduleInfo.SizeOfStruct = sizeof( moduleInfo );
 
         if( SymGetModuleInfo64( process, address, &moduleInfo ) )
             std::snprintf( module, sizeof( module ), "%s", moduleInfo.ModuleName );
 
-        DWORD64 displacement = 0;
+        DWORD64     displacement = 0;
         const char* name = SymFromAddr( process, address, &displacement, symbol ) ? symbol->Name
                                                                                    : "?";
 
@@ -105,13 +113,104 @@ inline LONG WINAPI printCrash( EXCEPTION_POINTERS* aInfo )
     }
 
     std::fflush( stdout );
+}
+
+
+inline LONG WINAPI printCrash( EXCEPTION_POINTERS* aInfo )
+{
+    std::fprintf( stdout, "CRASH exception 0x%08lX at %p\n",
+                  aInfo->ExceptionRecord->ExceptionCode,
+                  aInfo->ExceptionRecord->ExceptionAddress );
+
+    printStack( GetCurrentThread(), *aInfo->ContextRecord );
     return EXCEPTION_CONTINUE_SEARCH;
+}
+
+
+/// The application of the hang watch: null once it is deleted (its post routine)
+inline std::mutex s_appMutex;
+inline bool       s_appDeleted = false;
+
+inline void appDeleted()
+{
+    std::lock_guard<std::mutex> lock( s_appMutex );
+    s_appDeleted = true;
+}
+
+
+/**
+ * A thread asking the event loop of the main thread to answer: when it does not answer for
+ * @a aSeconds, prints the stack of the main thread (once for each hang).
+ */
+inline void watchHangs( HANDLE aMainThread, int aSeconds )
+{
+    std::thread(
+            [aMainThread, aSeconds]()
+            {
+                auto answered = std::make_shared<std::atomic<bool>>( true );
+
+                for( ;; )
+                {
+                    Sleep( 1000 );
+
+                    {
+                        std::lock_guard<std::mutex> lock( s_appMutex );
+
+                        if( s_appDeleted )
+                            return;
+
+                        if( !QCoreApplication::instance() )
+                            continue;
+
+                        answered->store( false );
+                        QMetaObject::invokeMethod( QCoreApplication::instance(),
+                                                   [answered]() { answered->store( true ); },
+                                                   Qt::QueuedConnection );
+                    }
+
+                    int waited = 0;
+
+                    while( !answered->load() && waited < aSeconds * 10 )
+                    {
+                        Sleep( 100 );
+                        ++waited;
+                    }
+
+                    if( answered->load() )
+                        continue;
+
+                    std::fprintf( stdout, "HANG the event loop does not answer for %d s\n",
+                                  aSeconds );
+
+                    if( SuspendThread( aMainThread ) != (DWORD) -1 )
+                    {
+                        CONTEXT context = {};
+                        context.ContextFlags = CONTEXT_FULL;
+
+                        if( GetThreadContext( aMainThread, &context ) )
+                            printStack( aMainThread, context );
+
+                        ResumeThread( aMainThread );
+                    }
+
+                    // Once for each hang
+                    while( !answered->load() )
+                        Sleep( 1000 );
+                }
+            } )
+            .detach();
 }
 
 
 inline void install()
 {
     SetUnhandledExceptionFilter( printCrash );
+    qAddPostRoutine( appDeleted );
+
+    HANDLE mainThread = nullptr;
+    DuplicateHandle( GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &mainThread,
+                     0, FALSE, DUPLICATE_SAME_ACCESS );
+    watchHangs( mainThread, 90 );
 }
 
 } // namespace QA_QT_CRASH

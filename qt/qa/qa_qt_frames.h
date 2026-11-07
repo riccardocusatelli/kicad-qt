@@ -165,6 +165,10 @@ inline void testDialog( TOOL_MANAGER* aToolMgr, const TOOL_ACTION& aAction, cons
                       fits = aDialog->width() >= content.width()
                              && aDialog->height() >= content.height();
 
+                      if( !fits )
+                          std::printf( "    size %dx%d, content %dx%d\n", aDialog->width(),
+                                       aDialog->height(), content.width(), content.height() );
+
                       if( !aScreenshot.isEmpty() )
                       {
                           QString path = aScreenshot;

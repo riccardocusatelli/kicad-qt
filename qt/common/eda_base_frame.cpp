@@ -781,8 +781,8 @@ void EDA_BASE_FRAME::changeEvent( QEvent* aEvent )
         HandleSystemColorChange();
     else if( aEvent->type() == QEvent::WindowStateChange )
         handleIconizeEvent( isMinimized() );
-    else if( aEvent->type() == QEvent::ActivationChange )
-        handleActivateEvent( isActiveWindow() );
+    else if( aEvent->type() == QEvent::ActivationChange && !m_isClosing )
+        handleActivateEvent( isActiveWindow() );   // not while closing: hide() deactivates
 
     QMainWindow::changeEvent( aEvent );
 }

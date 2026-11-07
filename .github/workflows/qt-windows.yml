@@ -174,6 +174,15 @@ jobs:
           path: build/compilation_log.txt
           if-no-files-found: ignore
 
+      # The screen of the runner is 1024x768: the larger dialogs (the preferences) do not fit.
+      # Close to the virtual screen of the QA on Linux (1920x1200).
+      - name: Screen resolution
+        shell: pwsh
+        run: |
+          try { Set-DisplayResolution -Width 1920 -Height 1080 -Force } catch { Write-Host "Set-DisplayResolution: $_" }
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+
       # OpenGL 2.1+ without a GPU: the llvmpipe of Mesa (opengl32.dll next to the programs, found
       # before the one of the system, which only has OpenGL 1.1).  A fixed version: the archives
       # of mesa-dist-win 26 no longer have the OpenGL of Windows (WGL).
