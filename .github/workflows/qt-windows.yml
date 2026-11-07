@@ -170,3 +170,98 @@ jobs:
           name: compilation-log-windows
           path: build/compilation_log.txt
           if-no-files-found: ignore
+
+      # OpenGL 2.1+ without a GPU: the llvmpipe of Mesa (opengl32.dll next to the programs, found
+      # before the one of the system, which only has OpenGL 1.1)
+      - name: Mesa
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force -Path mesa | Out-Null
+          gh release download -R pal1000/mesa-dist-win --pattern 'mesa3d-*-release-msvc.7z' -D mesa
+          Get-ChildItem mesa
+          7z x -omesa (Get-ChildItem mesa -Filter *.7z | Select-Object -First 1).FullName | Out-Null
+          $gl = Get-ChildItem mesa -Recurse -Filter opengl32.dll |
+                  Where-Object { $_.Directory.Name -eq 'x64' } | Select-Object -First 1
+          if( -not $gl ) { throw 'opengl32.dll (x64) not in the archive of Mesa' }
+          foreach( $dir in 'build\qt\qa', 'build\kicad' ) {
+            Copy-Item "$( $gl.DirectoryName )\*.dll" $dir
+          }
+
+      # Minidumps of the programs that crash (Windows Error Reporting)
+      - name: Crash dumps
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
+          New-Item -Force -Path $key | Out-Null
+          New-ItemProperty -Force -Path $key -Name DumpFolder -PropertyType ExpandString -Value "${{ github.workspace }}\qa-dumps" | Out-Null
+          New-ItemProperty -Force -Path $key -Name DumpType -PropertyType DWord -Value 1 | Out-Null
+          New-Item -ItemType Directory -Force -Path qa-dumps | Out-Null
+
+      - name: QA of the Qt frames
+        shell: pwsh
+        env:
+          KICAD_RUN_FROM_BUILD_DIR: '1'
+          # The Python of vcpkg (PYTHONHOME), not the directory of the program
+          KICAD_USE_EXTERNAL_PYTHONHOME: '1'
+          GALLIUM_DRIVER: llvmpipe
+          QT_QPA_PLATFORM: windows
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "${{ github.workspace }}"
+          $inst = "$env:VCPKG_INSTALLED_DIR\$env:VCPKG_DEFAULT_TRIPLET"
+          # The DLLs: vcpkg (Qt, Python, ngspice...) and the libraries of the build
+          $dirs = @( "$inst\bin" ) + ( Get-ChildItem build -Recurse -Filter *.dll |
+                                       ForEach-Object { $_.DirectoryName } | Sort-Object -Unique )
+          $env:PATH = ( $dirs -join ';' ) + ';' + $env:PATH
+          $env:QT_PLUGIN_PATH = ( Get-ChildItem $inst -Recurse -Filter qwindows.dll |
+                                  Select-Object -First 1 ).Directory.Parent.FullName
+          $env:PYTHONHOME = ( Get-ChildItem $inst -Recurse -Filter os.py |
+                              Where-Object { $_.Directory.Name -eq 'Lib' } |
+                              Select-Object -First 1 ).Directory.Parent.FullName
+          Write-Output "QT_PLUGIN_PATH=$env:QT_PLUGIN_PATH PYTHONHOME=$env:PYTHONHOME"
+
+          $board = "$root\qa\data\pcbnew\api_kitchen_sink.kicad_pcb"
+          $sch = "$root\qa\data\eeschema\erc_multiple_pin_to_pin.kicad_sch"
+          $out = "$root\qa-screenshots"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $failed = @()
+
+          # Each program with a time limit; all of them run, the failures are listed at the end
+          function Run-Test( [string] $aDir, [string] $aExe, [string[]] $aArgs ) {
+            Write-Output "::group::$aExe"
+            $p = Start-Process -FilePath "$root\$aDir\$aExe.exe" -ArgumentList $aArgs `
+                   -WorkingDirectory "$root\$aDir" -NoNewWindow -PassThru
+            $null = $p.Handle   # keeps the exit code
+            if( -not $p.WaitForExit( 900000 ) ) {
+              Stop-Process -Id $p.Id -Force
+              $code = 'timeout'
+            } else {
+              $code = if( $p.ExitCode -eq 0 ) { 0 } else { '0x{0:X8}' -f $p.ExitCode }
+            }
+            Write-Output "::endgroup::"
+            Write-Output "$aExe : $code"
+            if( $code -ne 0 ) { $script:failed += "$aExe ($code)" }
+          }
+
+          Run-Test 'build\qt\qa' 'qa_qt_pcbnew_frames' @( $board )
+          Run-Test 'build\qt\qa' 'qa_qt_tool_framework' @( $board )
+          Run-Test 'build\qt\qa' 'qa_qt_3d_viewer' @( $board )
+          Run-Test 'build\qt\qa' 'qa_qt_eeschema_frames' @( $sch )
+          Run-Test 'build\kicad' 'qa_qt_kicad_shell' @( $board, $sch, "$out\shell.png" )
+
+          if( $failed.Count -gt 0 ) {
+            Write-Output "Failed: $( $failed -join ', ' )"
+            exit 1
+          }
+
+      - name: Screenshots and crash dumps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-windows
+          path: |
+            qa-screenshots
+            qa-dumps
+          if-no-files-found: ignore
