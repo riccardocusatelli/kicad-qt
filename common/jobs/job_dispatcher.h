@@ -37,6 +37,8 @@ class KICOMMON_API JOB_DISPATCHER
 {
 public:
     JOB_DISPATCHER( KIWAY_SERVICES* aKiway );
+    virtual ~JOB_DISPATCHER() = default;
+
     /// Register the function running jobs of type @a aJobTypeName.
     void Register( const std::string& aJobTypeName, std::function<int( JOB* job )> aHandler );
 

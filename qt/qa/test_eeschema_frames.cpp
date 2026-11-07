@@ -63,6 +63,7 @@
 #include <tool/actions.h>
 #include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
+#include "qa_qt_crash.h"   // last: it includes windows.h
 
 
 /// The KIFACE linked in the test is the one of eeschema in its KIWAY, as in the program of
@@ -512,6 +513,7 @@ int main( int argc, char** argv )
     // The results show up even if the test crashes (unbuffered: with MSVC _IOLBF is a full
     // buffer and needs its size, 0 is an invalid parameter that ends the program)
     std::setvbuf( stdout, nullptr, _IONBF, 0 );
+    QA_QT_CRASH::install();
 
     // The settings of the test, not the ones of the user (the test changes them)
     QTemporaryDir configHome;

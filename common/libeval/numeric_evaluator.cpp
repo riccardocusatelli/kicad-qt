@@ -181,7 +181,9 @@ void NUMERIC_EVALUATOR::newString( const wxString& aString )
     Clear();
 
     m_originalText = aString;
-    m_token.input = aString.utf8_str();
+    // A copy: the buffer of utf8_str() is a temporary, freed at the end of the statement
+    m_token.inputUtf8 = aString.utf8_string();
+    m_token.input = m_token.inputUtf8.c_str();
     m_token.inputLen = strlen( m_token.input );
     m_token.outputLen = std::max<std::size_t>( 64, m_token.inputLen + 1 );
     m_token.pos = 0;

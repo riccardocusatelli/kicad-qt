@@ -101,6 +101,7 @@
 
 #include <qt_strings.h>
 #include <widgets/kistatusbar.h>
+#include "qa_qt_crash.h"   // last: it includes windows.h
 
 
 namespace
@@ -669,6 +670,7 @@ int main( int argc, char** argv )
     // The results show up even if the test crashes (unbuffered: with MSVC _IOLBF is a full
     // buffer and needs its size, 0 is an invalid parameter that ends the program)
     std::setvbuf( stdout, nullptr, _IONBF, 0 );
+    QA_QT_CRASH::install();
 
     // The settings of the test, not the ones of the user (the test changes them)
     QTemporaryDir configHome;

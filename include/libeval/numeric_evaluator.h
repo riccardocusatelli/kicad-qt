@@ -192,6 +192,7 @@ private:
             pos( 0 )
         {};
 
+        std::string inputUtf8;  // the input string in UTF-8 (the storage of input)
         const char* input;      // current input string ("var=4")
         char*       token;      // output token ("var", type:VAR; "4", type:VALUE)
         size_t      inputLen;   // strlen(input)

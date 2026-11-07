@@ -41,6 +41,7 @@
 #include <QCoreApplication>
 #include <QDialog>
 #include <QAbstractItemView>
+#include <QApplication>
 #include <QDir>
 #include <QDockWidget>
 #include <QImage>
@@ -66,6 +67,7 @@
 
 #include <kicad_manager_frame.h>
 #include <tool/actions.h>
+#include "qa_qt_crash.h"   // last: it includes windows.h
 
 
 namespace
@@ -163,6 +165,7 @@ bool openProject( KICAD_MANAGER_FRAME* aFrame, const QString& aFile )
 /// An action of the project manager (its launcher, its menus).
 void runAction( KICAD_MANAGER_FRAME* aFrame, const char* aAction )
 {
+    std::printf( "    action %s\n", aAction );
     aFrame->GetToolManager()->RunAction( aAction );
     settle( 1000 );
 }
@@ -174,6 +177,25 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
 {
     std::printf( "KICAD-QT\n" );
     check( aWindow->isVisible(), "the shell is shown" );
+
+    // If the scenario waits (a dialog?): what is shown, every two minutes
+    QTimer* watchdog = new QTimer( qApp );
+    QObject::connect( watchdog, &QTimer::timeout,
+                      []()
+                      {
+                          QWidget* modal = QApplication::activeModalWidget();
+                          std::printf( "    waiting; modal: \"%s\"\n",
+                                       modal ? qPrintable( modal->windowTitle() ) : "" );
+
+                          for( QWidget* widget : QApplication::topLevelWidgets() )
+                          {
+                              if( widget->isVisible() )
+                                  std::printf( "      shown: %s \"%s\"\n",
+                                               widget->metaObject()->className(),
+                                               qPrintable( widget->windowTitle() ) );
+                          }
+                      } );
+    watchdog->start( 120000 );
 
     // The project of the board: the project manager loads it, its tree shows its files, then the
     // PCB editor of KiCad opens the board
@@ -610,6 +632,7 @@ int main( int argc, char** argv )
 
     // The results show up even if the test crashes or hangs
     std::setvbuf( stdout, nullptr, _IONBF, 0 );
+    QA_QT_CRASH::install();
 
     // A new configuration of the test (the start wizard runs)
     QTemporaryDir configHome;
