@@ -32,12 +32,14 @@ class wxWindow;
  * is true) a confirmation before the files are overwritten.  Callers that have already asked
  * the user (the startup recovery prompt) pass false to avoid a double prompt.
  */
-KICOMMON_API bool RestoreLocalHistoryCommit( LOCAL_HISTORY& aHistory, const wxString& aProjectPath,
-                                             const wxString& aHash, wxWindow* aParent,
-                                             bool aConfirm = true );
+KIQT_COMMON_API bool RestoreLocalHistoryCommit( LOCAL_HISTORY& aHistory,
+                                                const wxString& aProjectPath,
+                                                const wxString& aHash, wxWindow* aParent,
+                                                bool aConfirm = true );
 
 /// Show a dialog allowing the user to choose a snapshot to restore.
-KICOMMON_API void ShowLocalHistoryRestoreDialog( LOCAL_HISTORY& aHistory,
-                                                 const wxString& aProjectPath, wxWindow* aParent );
+KIQT_COMMON_API void ShowLocalHistoryRestoreDialog( LOCAL_HISTORY& aHistory,
+                                                    const wxString& aProjectPath,
+                                                    wxWindow* aParent );
 
 #endif // LOCAL_HISTORY_UI_H
