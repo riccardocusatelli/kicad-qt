@@ -60,13 +60,16 @@
 #include <wx/treebook.h>
 #include <wx/wizard.h>
 
+#include <base_screen.h>
 #include <class_draw_panel_gal.h>
+#include <eda_draw_frame.h>
 #include <frame_type.h>
 #include <kiway_player.h>
 #include <tool/tool_manager.h>
 
 #include <kicad_manager_frame.h>
 #include <tool/actions.h>
+#include "qa_qt_menus.h"
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
 
@@ -96,6 +99,13 @@ void settle( int aMilliseconds = 50 )
 
     while( timer.elapsed() < aMilliseconds )
         QCoreApplication::processEvents( QEventLoop::AllEvents, 10 );
+}
+
+
+/// Every item of the menus of a frame, chosen (QA_QT_MENUS).
+void testMenus( EDA_BASE_FRAME* aFrame, const char* aName )
+{
+    QA_QT_MENUS::testMenus( check, aFrame, aName, s_screenshot );
 }
 
 
@@ -317,6 +327,17 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
         pcb->GetToolManager()->RunAction( "pcbnew.Control.showPythonConsole" );
         settle( 200 );
         check( !console || !console->isVisible(), "the console is hidden" );
+    }
+
+    // Every item of the menus of the PCB editor (the frames, dialogs and messages they open are
+    // checked, then closed)
+    if( pcb )
+    {
+        testMenus( pcb, "the PCB editor" );
+
+        // The changes of the items are not saved (the next project would ask)
+        if( auto* drawFrame = dynamic_cast<EDA_DRAW_FRAME*>( pcb ) )
+            drawFrame->GetScreen()->SetContentModified( false );
     }
 
     // A schematic of another project: the editors of the board's project close (as in the
@@ -582,6 +603,23 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
     }
 
     // Only the shell and the editors are open (the progress of the loading is closed)
+    // Every item of the menus of the other frames
+    for( const auto& [frame, name] : std::vector<std::pair<KIWAY_PLAYER*, const char*>>{
+                 { sch, "the schematic editor" },
+                 { symbols, "the symbol editor" },
+                 { footprints, "the footprint editor" },
+                 { cvpcb, "CvPcb" },
+                 { drawingSheets, "the drawing sheet editor" },
+                 { gerbers, "the Gerber viewer" },
+                 { calculator, "the calculator" },
+                 { images, "the image converter" } } )
+    {
+        if( frame )
+            testMenus( frame, name );
+    }
+
+    testMenus( aWindow, "the project manager" );
+
     int others = 0;
 
     for( QWidget* widget : QApplication::topLevelWidgets() )
@@ -604,8 +642,30 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
         check( screen->grabWindow( 0 ).save( s_screenshot ), "screenshot of the screen" );
     }
 
-    // The changes of the test are not saved: the editors are closed, then the shell
+    // The changes of the test are not saved: the editors are closed, then the shell (an editor
+    // the menus changed asks, as KiCad does even for a forced close: its changes are discarded)
+    QTimer discard;
+    QObject::connect( &discard, &QTimer::timeout,
+                      []()
+                      {
+                          QWidget* modal = QApplication::activeModalWidget();
+
+                          if( !modal )
+                              return;
+
+                          for( const char* answer : { "Discard Changes", "Don't Save", "Discard" } )
+                          {
+                              if( QA_QT_MENUS::pressButton( modal, QString::fromUtf8( answer ) ) )
+                              {
+                                  std::printf( "    \"%s\": %s\n",
+                                               qPrintable( modal->windowTitle() ), answer );
+                                  return;
+                              }
+                          }
+                      } );
+    discard.start( 200 );
     check( Kiway.PlayersClose( true ), "the shell closes the editors" );
+    discard.stop();
     settle( 200 );
     check( !Kiway.Player( FRAME_PCB_EDITOR, false ) && !Kiway.Player( FRAME_SCH, false )
                    && !Kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
@@ -729,6 +789,9 @@ int main( int argc, char** argv )
     }
 
     // The program, with its board (its arguments are the test's ones, without the board)
+    // The dialogs of Qt, not the native ones (the test finds and closes them)
+    QCoreApplication::setAttribute( Qt::AA_DontUseNativeDialogs );
+
     char* programArgv[] = { argv[0], nullptr };
     int   ret = kicad_qt_main( 1, programArgv );
 

@@ -454,6 +454,17 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxStrin
     testDialog( toolMgr, SCH_ACTIONS::schematicSetup, "schematic setup", aScreenshot,
                 QStringLiteral( "Cancel" ) );
 
+    testDialog( toolMgr, SCH_ACTIONS::placeGlobalLabel, "global label", aScreenshot,
+                QStringLiteral( "Cancel" ) );
+    toolMgr->RunAction( ACTIONS::cancelInteractive );
+    settle( 100 );
+
+    // The properties of a new directive label (its own controls: the shape, the orientation)
+    testDialog( toolMgr, SCH_ACTIONS::placeClassLabel, "directive label", aScreenshot,
+                QStringLiteral( "Cancel" ) );
+    toolMgr->RunAction( ACTIONS::cancelInteractive );
+    settle( 100 );
+
     // The symbol of the schematic, after the undo (the items are the restored ones)
     symbol = nullptr;
 

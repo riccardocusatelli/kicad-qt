@@ -43,6 +43,7 @@
 
 #include <QFontMetrics>
 #include <QLayout>
+#include <QPointer>
 #include <QWidget>
 
 class QDialog;
@@ -885,7 +886,25 @@ public:
         this->registerWindowCompat();
     }
 
-    ~wxWindowCompat() override { this->unregisterWindowCompat(); }
+    ~wxWindowCompat() override
+    {
+        // As wxWidgets (DestroyChildren() of ~wxWindowBase): the child windows are deleted while
+        // this window is still a window and an event handler, before its bases are destroyed
+        // (~QWidget would delete them after its wxEvtHandler: their destructors unbind their
+        // handlers from it)
+        std::vector<QPointer<QObject>> children;
+
+        for( QObject* child : QObject::children() )
+        {
+            if( child->isWidgetType() )
+                children.emplace_back( child );
+        }
+
+        for( const QPointer<QObject>& child : children )
+            delete child.data();
+
+        this->unregisterWindowCompat();
+    }
 
     // The Qt widgets are not copyable; keep the forwarding constructor from taking over copies
     wxWindowCompat( const wxWindowCompat& ) = delete;

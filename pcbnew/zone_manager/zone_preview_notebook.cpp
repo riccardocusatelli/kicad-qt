@@ -105,7 +105,10 @@ ZONE_PREVIEW_NOTEBOOK::ZONE_PREVIEW_NOTEBOOK( wxWindow* aParent, PCB_BASE_FRAME*
     AssignImageList( imageList );
 
     Layout();
-    GetSizer()->Fit( this );
+
+    // A notebook has no sizer of its own on every toolkit
+    if( wxSizer* sizer = GetSizer() )
+        sizer->Fit( this );
 }
 
 

@@ -416,7 +416,9 @@ wxString GetVersionInfoData( const wxString& aTitle, bool aHtml, bool aBrief )
                 sysHex << wxString::Format( "%02X", (unsigned int) (uint8_t) asChar[i] );
         }
         {
-            const char* asChar = testStr.utf8_str().data();
+            // The buffer lives as long as its bytes are read
+            auto        utf8 = testStr.utf8_str();
+            const char* asChar = utf8.data();
             size_t      length = strlen( asChar );
 
             for( size_t i = 0; i < length; i++ )

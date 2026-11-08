@@ -513,6 +513,37 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
 
         // The dialogs of the editor: board setup (quasi-modal), the properties of a footprint
         // (quasi-modal), DRC (not modal)
+        // The footprint chooser (a modal frame): shown, then closed as by its close button
+        {
+            bool shown = false;
+            QTimer poll;
+
+            QObject::connect( &poll, &QTimer::timeout,
+                              [&]()
+                              {
+                                  for( QWidget* widget : QApplication::topLevelWidgets() )
+                                  {
+                                      auto* chooser = dynamic_cast<KIWAY_PLAYER*>( widget );
+
+                                      if( chooser && chooser->isVisible()
+                                              && chooser->GetFrameType() == FRAME_FOOTPRINT_CHOOSER )
+                                      {
+                                          poll.stop();
+                                          shown = true;
+                                          settle( 1000 );
+                                          chooser->Close();
+                                          return;
+                                      }
+                                  }
+                              } );
+            poll.start( 50 );
+            toolMgr->RunAction( PCB_ACTIONS::placeFootprint );
+            settle( 300 );
+            toolMgr->RunAction( ACTIONS::cancelInteractive );
+            settle( 300 );
+            check( shown, "the footprint chooser is shown and closed" );
+        }
+
         testDialog( toolMgr, PCB_ACTIONS::boardSetup, "board setup", aScreenshot, "Cancel" );
 
         // The properties of an item: selected, then its dialog
@@ -614,6 +645,8 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
                     "Cancel" );
         testDialog( toolMgr, PCB_ACTIONS::cleanupTracksAndVias, "cleanup tracks and vias",
                     aScreenshot, "Cancel" );
+        testDialog( toolMgr, PCB_ACTIONS::zonesManager, "zone manager", aScreenshot, "Cancel" );
+
         testDialog( toolMgr, PCB_ACTIONS::boardStatistics, "board statistics", aScreenshot,
                     "Close" );
         testDialog( toolMgr, PCB_ACTIONS::generateDrillFiles, "drill files", aScreenshot,
