@@ -1914,7 +1914,8 @@ int PCBNEW_JOBS_HANDLER::JobExportFpSvg( JOB* aJob )
 
     wxString outPath = svgJob->GetFullOutputPath( nullptr );
 
-    if( !PATHS::EnsurePathExists( outPath, true ) )
+    // The output is the directory of the SVG files: made with its parents
+    if( !PATHS::EnsurePathExists( outPath, false ) )
     {
         m_reporter->Report( _( "Failed to create output directory\n" ), RPT_SEVERITY_ERROR );
         return CLI::EXIT_CODES::ERR_INVALID_OUTPUT_CONFLICT;
