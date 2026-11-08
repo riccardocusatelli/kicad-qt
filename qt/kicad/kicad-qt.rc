@@ -1,0 +1,2 @@
+// The icon of kicad-qt on Windows (the program, its windows, its shortcuts)
+IDI_APP_KICAD_ICON ICON "../../resources/bitmaps_png/icons/icon_kicad.ico"

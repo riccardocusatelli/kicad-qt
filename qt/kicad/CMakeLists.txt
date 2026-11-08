@@ -53,6 +53,16 @@ set_target_properties( kicad-qt PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/kicad
     )
 
+# On Windows a program of the desktop (no console window; still with main()), with the icon of
+# KiCad
+if( WIN32 )
+    target_sources( kicad-qt PRIVATE kicad-qt.rc )
+
+    if( MSVC )
+        target_link_options( kicad-qt PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup )
+    endif()
+endif()
+
 install( TARGETS kicad-qt
     RUNTIME DESTINATION ${KICAD_BIN}
     COMPONENT binary

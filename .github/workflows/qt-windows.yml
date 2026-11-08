@@ -298,9 +298,11 @@ jobs:
           if-no-files-found: ignore
 
       # The package: the installed tree of KiCad (bin, share\kicad, lib\ngspice), with what it
-      # needs from vcpkg: the DLLs, the plugins of Qt (qt.conf: not the ones of vcpkg), the
-      # library of Python (its home is the directory of the programs) and the code models of
-      # ngspice.  No OpenGL of Mesa: the drivers of the computer.
+      # needs from vcpkg: the DLLs it loads, the plugins of Qt (qt.conf: not the ones of vcpkg),
+      # the library of Python (its home is the directory of the programs), the code models of
+      # ngspice and the configuration of fontconfig (etc\fonts, found by the programs); then the
+      # libraries of KiCad (symbols, footprints, templates; not the 3D models, several GB).
+      # No OpenGL of Mesa: the drivers of the computer.
       - name: Package
         if: always() && steps.build.outcome == 'success'
         shell: pwsh
@@ -313,9 +315,6 @@ jobs:
 
           cmake --install build --prefix $pkg
           if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
-
-          # The DLLs of the libraries (Qt, OpenCASCADE, Python, ngspice...)
-          Copy-Item "$inst\bin\*.dll" $bin
 
           # The plugins of Qt (platforms, styles, image formats...), found by qt.conf
           $plugins = ( Get-ChildItem $inst -Recurse -Filter qwindows.dll |
@@ -331,12 +330,78 @@ jobs:
           if( Test-Path "$python\DLLs" ) { Copy-Item -Recurse -Force "$python\DLLs" $bin }
           Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$bin\Lib\test"
 
-          # The code models of ngspice
-          foreach( $dir in 'lib\ngspice', 'share\ngspice' ) {
+          # The code models of ngspice, the configuration of fontconfig
+          foreach( $dir in 'lib\ngspice', 'share\ngspice', 'etc\fonts' ) {
             if( Test-Path "$inst\$dir" ) {
               New-Item -ItemType Directory -Force -Path ( Split-Path "$pkg\$dir" ) | Out-Null
               Copy-Item -Recurse -Force "$inst\$dir" "$pkg\$dir"
             }
+          }
+          if( -not ( Test-Path "$pkg\etc\fonts\fonts.conf" ) ) { throw "no fonts.conf in $inst\etc\fonts" }
+
+          # The DLLs of the libraries (Qt, OpenCASCADE, Python...): the ones the binaries of the
+          # package depend on, then theirs (dumpbin); and the ones loaded by name: ngspice (the
+          # simulator), OpenSSL (the TLS plugin of Qt)
+          $available = @{}
+          Get-ChildItem "$inst\bin\*.dll" | ForEach-Object { $available[$_.Name.ToLower()] = $_.FullName }
+          $copied = @{}
+          $queue = New-Object System.Collections.Queue
+          function Add-Dll( [string] $aName ) {
+            $key = $aName.ToLower()
+            if( $available.ContainsKey( $key ) -and -not $copied.ContainsKey( $key ) ) {
+              $copied[$key] = $true
+              Copy-Item $available[$key] $bin
+              $queue.Enqueue( "$bin\$( Split-Path -Leaf $available[$key] )" )
+            }
+          }
+          Get-ChildItem $pkg -Recurse -File -Include *.exe, *.dll, *.kiface, *.pyd, *.cm |
+            ForEach-Object { $queue.Enqueue( $_.FullName ) }
+          Get-ChildItem "$inst\bin" -Include ngspice*.dll, libssl*.dll, libcrypto*.dll -Recurse |
+            ForEach-Object { Add-Dll $_.Name }
+          while( $queue.Count -gt 0 ) {
+            $file = $queue.Dequeue()
+            foreach( $line in ( dumpbin /nologo /dependents $file ) ) {
+              if( $line -match '^\s+(\S+\.dll)\s*$' ) { Add-Dll $Matches[1] }
+            }
+          }
+          "DLLs of vcpkg: {0} of {1}" -f $copied.Count, $available.Count
+
+      - name: Libraries
+        if: always() && steps.build.outcome == 'success'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "${{ github.workspace }}"
+          $pkg = "$root\pkg"
+          # The libraries of the version of KiCad (its tag, else the branch of its series)
+          $version = ( Select-String -Path cmake\KiCadVersion.cmake -Pattern 'KICAD_SEMANTIC_VERSION "([^"]+)"' ).Matches[0].Groups[1].Value
+          $series = ( $version -split '\.' )[0..1] -join '.'
+          New-Item -ItemType Directory -Force -Path libs | Out-Null
+
+          foreach( $repo in 'kicad-symbols', 'kicad-footprints', 'kicad-templates' ) {
+            Write-Output "::group::$repo"
+            git clone -q --depth 1 --branch $version "https://gitlab.com/kicad/libraries/$repo.git" "libs\$repo"
+            if( $LASTEXITCODE -ne 0 ) {
+              git clone -q --depth 1 --branch $series "https://gitlab.com/kicad/libraries/$repo.git" "libs\$repo"
+              if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+            }
+            git -C "libs\$repo" log -1 --format='%H %d'
+            # Their install: share\kicad (the symbols packed into one file per library), the tables
+            # in share\kicad\template
+            cmake -S "libs\$repo" -B "libs\build-$repo" -G Ninja "-DCMAKE_INSTALL_PREFIX=$pkg"
+            if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+            cmake --build "libs\build-$repo"
+            if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+            cmake --install "libs\build-$repo" | Select-Object -Last 3
+            if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+            Write-Output "::endgroup::"
+          }
+
+          foreach( $dir in 'symbols', 'footprints', 'template' ) {
+            "{0}: {1} entries" -f $dir, ( Get-ChildItem "$pkg\share\kicad\$dir" ).Count
+          }
+          foreach( $table in 'sym-lib-table', 'fp-lib-table' ) {
+            if( -not ( Test-Path "$pkg\share\kicad\template\$table" ) ) { throw "no $table" }
           }
 
           Get-ChildItem $bin -Filter *.exe | Format-Table Name, Length
@@ -372,7 +437,7 @@ jobs:
                    -WorkingDirectory "$test\bin" -NoNewWindow -PassThru `
                    -RedirectStandardOutput "$out\$aName.out.txt" -RedirectStandardError "$out\$aName.err.txt"
             $null = $p.Handle   # keeps the exit code
-            if( -not $p.WaitForExit( 900000 ) ) {
+            if( -not $p.WaitForExit( 2700000 ) ) {
               Stop-Process -Id $p.Id -Force
               $p.WaitForExit()
               $code = 'timeout'
@@ -389,19 +454,113 @@ jobs:
           Run-Package 'kicad-cli-svg' 'kicad-cli.exe' @( 'pcb', 'export', 'svg', '--layers', 'F.Cu',
                                                          '--output', "$out\board.svg", $board )
           if( -not ( Test-Path "$out\board.svg" ) ) { $failed += 'kicad-cli-svg (no SVG)' }
+
+          # The libraries of the package: a footprint and a symbol plotted
+          $libs = "$test\share\kicad"
+          Run-Package 'kicad-cli-footprint' 'kicad-cli.exe' @( 'fp', 'export', 'svg', '--footprint',
+                      'R_0603_1608Metric', '--output', "$out\footprint", "$libs\footprints\Resistor_SMD.pretty" )
+          if( -not ( Get-ChildItem "$out\footprint\*.svg" -ErrorAction SilentlyContinue ) ) { $failed += 'kicad-cli-footprint (no SVG)' }
+          Run-Package 'kicad-cli-symbol' 'kicad-cli.exe' @( 'sym', 'export', 'svg', '--symbol', 'R',
+                      '--output', "$out\symbol", "$libs\symbols\Device.kicad_sym" )
+          if( -not ( Get-ChildItem "$out\symbol\*.svg" -ErrorAction SilentlyContinue ) ) { $failed += 'kicad-cli-symbol (no SVG)' }
+
           Run-Package 'shell' 'qa_qt_kicad_shell.exe' @( $board, $sch, "$out\shell.png" )
+
+          # Fontconfig finds its configuration (etc\fonts)
+          $fontconfig = Select-String -Path "$out\*.txt" -Pattern 'Fontconfig (error|warning)'
+          if( $fontconfig ) { $fontconfig | Select-Object -First 5; $failed += 'fontconfig' }
 
           if( $failed.Count -gt 0 ) {
             Write-Output "Failed: $( $failed -join ', ' )"
             exit 1
           }
 
-      - name: The package
+      # The installer (NSIS) of the package
+      - name: Installer
+        id: installer
         if: always() && steps.build.outcome == 'success'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "${{ github.workspace }}"
+          $version = ( Select-String -Path cmake\KiCadVersion.cmake -Pattern 'KICAD_SEMANTIC_VERSION "([^"]+)"' ).Matches[0].Groups[1].Value
+          $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if( -not ( Test-Path $makensis ) ) {
+            choco install -y --no-progress nsis
+            if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          }
+          New-Item -ItemType Directory -Force -Path installer | Out-Null
+          $exe = "$root\installer\kicad-qt-$version-x86_64.exe"
+          & $makensis /V2 "/DVERSION=$version" "/DSOURCE=$root\pkg" "/DROOT=$root" "/DOUTFILE=$exe" qt\tools\windows\kicad-qt.nsi
+          if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          "{0:N0} MB" -f ( ( Get-Item $exe ).Length / 1MB )
+          "exe=$exe" >> $env:GITHUB_OUTPUT
+
+      # The installer, silent: installed, KiCad starts from the start menu's program, uninstalled
+      - name: Test of the installer
+        if: always() && steps.installer.outcome == 'success'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "${{ github.workspace }}"
+          $dir = 'C:\kicad-qt-test'
+          $out = "$root\pkg-logs"
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\KiCad-Qt'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+          Remove-Item Env:\PYTHONHOME, Env:\PYTHONPATH, Env:\QT_PLUGIN_PATH -ErrorAction SilentlyContinue
+          $failed = @()
+
+          $p = Start-Process -FilePath "${{ steps.installer.outputs.exe }}" -ArgumentList '/S', "/D=$dir" -Wait -PassThru
+          "install: $( $p.ExitCode )"
+          foreach( $file in 'bin\kicad-qt.exe', 'bin\kicad-cli.exe', 'bin\qt.conf', 'etc\fonts\fonts.conf',
+                            'share\kicad\template\sym-lib-table', 'uninstall.exe' ) {
+            if( -not ( Test-Path "$dir\$file" ) ) { $failed += "installed: $file" }
+          }
+          if( -not ( Test-Path $key ) ) { $failed += 'the uninstall entry' }
+          if( -not ( Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\KiCad (Qt)\KiCad.lnk" ) ) { $failed += 'the start menu' }
+
+          & "$dir\bin\kicad-cli.exe" version
+          if( $LASTEXITCODE -ne 0 ) { $failed += "kicad-cli ($LASTEXITCODE)" }
+
+          # KiCad starts (a new configuration: the start wizard) and runs
+          $env:KICAD_CONFIG_HOME = "$env:RUNNER_TEMP\kicad-config"
+          $p = Start-Process -FilePath "$dir\bin\kicad-qt.exe" -PassThru
+          Start-Sleep -Seconds 40
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage( $bmp ).CopyFromScreen( $b.Location, [System.Drawing.Point]::Empty, $b.Size )
+            $bmp.Save( "$out\installed-kicad.png" )
+          } catch { Write-Output "No screenshot: $_" }
+          if( $p.HasExited ) {
+            $failed += "kicad-qt ended: 0x{0:X8}" -f $p.ExitCode
+          } else {
+            "kicad-qt runs: $( ( Get-Process -Id $p.Id ).MainWindowTitle )"
+            Stop-Process -Id $p.Id -Force
+            $p.WaitForExit()
+          }
+
+          $p = Start-Process -FilePath "$dir\uninstall.exe" -ArgumentList '/S', "_?=$dir" -Wait -PassThru
+          "uninstall: $( $p.ExitCode )"
+          foreach( $file in 'bin', 'share', 'etc', 'lib' ) {
+            if( Test-Path "$dir\$file" ) { $failed += "left after the uninstall: $file" }
+          }
+          if( Test-Path $key ) { $failed += 'the uninstall entry is left' }
+
+          if( $failed.Count -gt 0 ) {
+            Write-Output "Failed: $( $failed -join ', ' )"
+            exit 1
+          }
+
+      - name: The installer
+        if: always() && steps.installer.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: kicad-qt-windows-x64
-          path: pkg
+          name: kicad-qt-windows-x64-installer
+          path: installer/*.exe
+          compression-level: 0
           if-no-files-found: error
 
       - name: Output of the test of the package
