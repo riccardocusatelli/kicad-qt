@@ -131,8 +131,11 @@ jobs:
           CCACHE_DIR: ${{ github.workspace }}\.ccache
         run: |
           $env:VCPKG_ROOT = $env:KICAD_VCPKG_ROOT
+          # The prefix of the package: the Python module and the data have absolute install paths
+          $prefix = "${{ github.workspace }}\pkg" -replace '\\', '/'
           cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX="$prefix" `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET="$env:VCPKG_DEFAULT_TRIPLET" `
             -DVCPKG_HOST_TRIPLET="$env:VCPKG_DEFAULT_TRIPLET" `
@@ -145,6 +148,7 @@ jobs:
             -DKICAD_SCRIPTING_WXPYTHON=OFF -DKICAD_USE_PCH=OFF
 
       - name: Build
+        id: build
         shell: pwsh
         env:
           CCACHE_DIR: ${{ github.workspace }}\.ccache
@@ -291,4 +295,119 @@ jobs:
             qa-screenshots
             qa-logs
             qa-dumps
+          if-no-files-found: ignore
+
+      # The package: the installed tree of KiCad (bin, share\kicad, lib\ngspice), with what it
+      # needs from vcpkg: the DLLs, the plugins of Qt (qt.conf: not the ones of vcpkg), the
+      # library of Python (its home is the directory of the programs) and the code models of
+      # ngspice.  No OpenGL of Mesa: the drivers of the computer.
+      - name: Package
+        if: always() && steps.build.outcome == 'success'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "${{ github.workspace }}"
+          $inst = "$env:VCPKG_INSTALLED_DIR\$env:VCPKG_DEFAULT_TRIPLET"
+          $pkg = "$root\pkg"
+          $bin = "$pkg\bin"
+
+          cmake --install build --prefix $pkg
+          if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+
+          # The DLLs of the libraries (Qt, OpenCASCADE, Python, ngspice...)
+          Copy-Item "$inst\bin\*.dll" $bin
+
+          # The plugins of Qt (platforms, styles, image formats...), found by qt.conf
+          $plugins = ( Get-ChildItem $inst -Recurse -Filter qwindows.dll |
+                       Select-Object -First 1 ).Directory.Parent.FullName
+          Copy-Item -Recurse $plugins "$bin\qtplugins"
+          Set-Content -Path "$bin\qt.conf" -Value "[Paths]`r`nPrefix = .`r`nPlugins = qtplugins"
+
+          # Python: its library in bin\Lib and bin\DLLs (pcbnew.py is in bin\Lib\site-packages)
+          $python = ( Get-ChildItem $inst -Recurse -Filter os.py |
+                      Where-Object { $_.Directory.Name -eq 'Lib' } |
+                      Select-Object -First 1 ).Directory.Parent.FullName
+          Copy-Item -Recurse -Force "$python\Lib" $bin
+          if( Test-Path "$python\DLLs" ) { Copy-Item -Recurse -Force "$python\DLLs" $bin }
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$bin\Lib\test"
+
+          # The code models of ngspice
+          foreach( $dir in 'lib\ngspice', 'share\ngspice' ) {
+            if( Test-Path "$inst\$dir" ) {
+              New-Item -ItemType Directory -Force -Path ( Split-Path "$pkg\$dir" ) | Out-Null
+              Copy-Item -Recurse -Force "$inst\$dir" "$pkg\$dir"
+            }
+          }
+
+          Get-ChildItem $bin -Filter *.exe | Format-Table Name, Length
+          Get-ChildItem $bin -Filter *.kiface | Format-Table Name, Length
+          "{0:N0} MB" -f ( ( Get-ChildItem $pkg -Recurse -File | Measure-Object Length -Sum ).Sum / 1MB )
+
+      # The package alone: a copy with the test of the shell (and the OpenGL of Mesa), without the
+      # build tree, the DLLs of vcpkg or Python in the PATH
+      - name: Test of the package
+        if: always() && steps.build.outcome == 'success'
+        shell: pwsh
+        env:
+          GALLIUM_DRIVER: llvmpipe
+          QT_QPA_PLATFORM: windows
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "${{ github.workspace }}"
+          $test = "$root\pkg-test"
+          Copy-Item -Recurse "$root\pkg" $test
+          Copy-Item "$root\build\kicad\qa_qt_kicad_shell.exe", "$root\mesa\x64\*.dll" "$test\bin"
+          $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+          Remove-Item Env:\PYTHONHOME, Env:\PYTHONPATH, Env:\QT_PLUGIN_PATH -ErrorAction SilentlyContinue
+
+          $board = "$root\qa\data\pcbnew\api_kitchen_sink.kicad_pcb"
+          $sch = "$root\qa\data\eeschema\erc_multiple_pin_to_pin.kicad_sch"
+          $out = "$root\pkg-logs"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $failed = @()
+
+          function Run-Package( [string] $aName, [string] $aExe, [string[]] $aArgs ) {
+            Write-Output "::group::$aName"
+            $p = Start-Process -FilePath "$test\bin\$aExe" -ArgumentList $aArgs `
+                   -WorkingDirectory "$test\bin" -NoNewWindow -PassThru `
+                   -RedirectStandardOutput "$out\$aName.out.txt" -RedirectStandardError "$out\$aName.err.txt"
+            $null = $p.Handle   # keeps the exit code
+            if( -not $p.WaitForExit( 900000 ) ) {
+              Stop-Process -Id $p.Id -Force
+              $p.WaitForExit()
+              $code = 'timeout'
+            } else {
+              $code = if( $p.ExitCode -eq 0 ) { 0 } else { '0x{0:X8}' -f $p.ExitCode }
+            }
+            Get-Content "$out\$aName.out.txt", "$out\$aName.err.txt" -ErrorAction SilentlyContinue
+            Write-Output "::endgroup::"
+            Write-Output "$aName : $code"
+            if( $code -ne 0 ) { $script:failed += "$aName ($code)" }
+          }
+
+          Run-Package 'kicad-cli-version' 'kicad-cli.exe' @( 'version' )
+          Run-Package 'kicad-cli-svg' 'kicad-cli.exe' @( 'pcb', 'export', 'svg', '--layers', 'F.Cu',
+                                                         '--output', "$out\board.svg", $board )
+          if( -not ( Test-Path "$out\board.svg" ) ) { $failed += 'kicad-cli-svg (no SVG)' }
+          Run-Package 'shell' 'qa_qt_kicad_shell.exe' @( $board, $sch, "$out\shell.png" )
+
+          if( $failed.Count -gt 0 ) {
+            Write-Output "Failed: $( $failed -join ', ' )"
+            exit 1
+          }
+
+      - name: The package
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kicad-qt-windows-x64
+          path: pkg
+          if-no-files-found: error
+
+      - name: Output of the test of the package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-test-windows
+          path: pkg-logs
           if-no-files-found: ignore

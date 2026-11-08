@@ -124,6 +124,12 @@ function( add_headless_kiface target )
         )
 
     headless_link( ${target} ${target} )
+
+    # Next to kicad-cli, which loads it
+    install( TARGETS ${target}
+        DESTINATION ${KICAD_KIFACE}
+        COMPONENT binary
+        )
 endfunction()
 
 
