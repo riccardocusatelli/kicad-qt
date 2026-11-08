@@ -369,10 +369,15 @@ jobs:
       - name: Libraries
         if: always() && steps.build.outcome == 'success'
         shell: pwsh
+        # The tools of the libraries write UTF-8 (the symbols have Greek letters): not the code page
+        # of Windows
+        env:
+          PYTHONUTF8: '1'
         run: |
           $ErrorActionPreference = 'Stop'
           $root = "${{ github.workspace }}"
           $pkg = "$root\pkg"
+          $bin = "$pkg\bin"
           # The libraries of the version of KiCad (its tag, else the branch of its series)
           $version = ( Select-String -Path cmake\KiCadVersion.cmake -Pattern 'KICAD_SEMANTIC_VERSION "([^"]+)"' ).Matches[0].Groups[1].Value
           $series = ( $version -split '\.' )[0..1] -join '.'
