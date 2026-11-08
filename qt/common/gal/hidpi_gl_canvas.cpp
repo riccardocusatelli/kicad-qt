@@ -73,6 +73,11 @@ void HIDPI_GL_CANVAS::createSurface( const QSurfaceFormat& aFormat )
     // shown (as a wxGLCanvas)
     m_window->setSurfaceType( QSurface::OpenGLSurface );
     m_window->setFormat( aFormat );
+
+    // The keys go to the canvas (a widget of the frame), never to the native window: on Windows
+    // a native child window taking the focus activates its frame, and two editors open took
+    // the activation from each other without end
+    m_window->setFlag( Qt::WindowDoesNotAcceptFocus );
     m_window->create();
     m_window->installEventFilter( this );
 
