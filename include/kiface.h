@@ -72,7 +72,7 @@ struct KIWAY_FACES
 #ifndef SWIG
 #if defined(__linux__) || defined(__FreeBSD__)
  #define LIB_ENV_VAR    wxT( "LD_LIBRARY_PATH" )
-#elif defined(__WXMAC__)
+#elif defined(__WXMAC__) || defined(__APPLE__)
  #define LIB_ENV_VAR    wxT( "DYLD_LIBRARY_PATH" )
 #elif defined(_WIN32)
  #define LIB_ENV_VAR    wxT( "PATH" )

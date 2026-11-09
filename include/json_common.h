@@ -36,6 +36,7 @@
 #ifdef __APPLE__
 #if __clang_major__ >= 17
 
+#include <string>
 #include <wx/unichar.h>
 
 template <>
