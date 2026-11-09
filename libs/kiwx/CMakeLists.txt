@@ -112,6 +112,11 @@ target_link_libraries( kiwx
         Threads::Threads
     )
 
+if( APPLE )
+    # iconv is a library of its own on macOS (in the libc on Linux)
+    target_link_libraries( kiwx PRIVATE iconv )
+endif()
+
 if( WIN32 )
     # the known folders, PathMatchSpec()
     target_link_libraries( kiwx PRIVATE shell32 shlwapi ole32 uuid )

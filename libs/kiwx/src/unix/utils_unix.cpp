@@ -67,7 +67,13 @@
 #define KIWX_ST_TIME( x ) st_##x##tim
 #endif
 
+#ifdef __APPLE__
+// A shared library on macOS reaches the environment only through _NSGetEnviron()
+#include <crt_externs.h>
+#define environ ( *_NSGetEnviron() )
+#else
 extern char** environ;
+#endif
 
 
 namespace
@@ -216,7 +222,6 @@ long run( const std::vector<std::string>& aArgs, int aFlags, const wxExecuteEnv*
             {
 #ifdef __APPLE__
                 // No clearenv() on macOS
-                extern char** environ;
                 std::vector<std::string> names;
 
                 for( char** var = environ; var && *var; ++var )
