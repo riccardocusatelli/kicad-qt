@@ -1,0 +1,122 @@
+name: 'Qt build (macOS)'
+
+# The Qt suite of KiCad (KICAD_WX_FREE + KICAD_QT_SHELL) on macOS (Apple Silicon): kicad-qt with
+# the Qt KIFACEs, built without wxWidgets from the libraries of Homebrew, and the QA of the Qt
+# frames run in the window server of the runner.
+
+on:
+  push:
+    branches: [ 'wx-free-core-upstream' ]
+    paths-ignore: [ '**.md', 'demos/**', 'translation/**' ]
+  workflow_dispatch:
+
+concurrency:
+  group: qt-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 350
+
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 4G
+      CCACHE_COMPRESS: 'true'
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependencies
+        run: |
+          brew install --quiet ninja ccache swig coreutils pkgconf gettext \
+            qt boost glm glew cairo pixman harfbuzz fontconfig freetype \
+            libgit2 nng unixodbc libngspice protobuf zstd opencascade \
+            python@3.13 pybind11 zint poppler sqlite eigen glib openssl@3 curl
+          brew list --versions qt boost opencascade protobuf python@3.13
+
+      - name: Compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-qt-macos-${{ github.sha }}
+          restore-keys: ccache-qt-macos-
+
+      - name: Configure
+        run: |
+          BREW=$(brew --prefix)
+          PY=$(brew --prefix python@3.13)/bin/python3.13
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PWD/dist \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DCMAKE_PREFIX_PATH="$BREW;$(brew --prefix qt);$(brew --prefix openssl@3);$(brew --prefix curl)" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DPython3_EXECUTABLE=$PY -DPYTHON_EXECUTABLE=$PY \
+            -DKICAD_WX_FREE=ON -DKICAD_QT_SHELL=ON -DKICAD_BUILD_QA_TESTS=ON \
+            -DKICAD_USE_PCH=OFF -DKICAD_APPLE_MAKE_RELOCATEABLE_BUNDLE=OFF
+
+      - name: Build
+        run: |
+          cmake --build build --target all \
+            qa_qt_eeschema_frames qa_qt_pcbnew_frames qa_qt_tool_framework \
+            qa_qt_3d_viewer qa_qt_kicad_shell -- -k 0 2>&1 | tee build.log
+          ccache --show-stats
+          test ${PIPESTATUS[0]} -eq 0
+
+      # Saved after the build, also when it or the QA fails
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-qt-macos-${{ github.sha }}
+
+      # The errors of the compilation, in one file
+      - name: Compilation log
+        if: failure()
+        run: grep -E -B2 -A12 "error:|FAILED:|Undefined symbols" build.log | head -c 3000000 > build-errors.log || true
+
+      - name: Errors of the compilation
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-errors
+          path: build-errors.log
+          if-no-files-found: ignore
+
+      - name: QA of the Qt frames
+        id: qa
+        env:
+          KICAD_RUN_FROM_BUILD_DIR: '1'
+        run: |
+          set -e
+          BOARD=$PWD/qa/data/pcbnew/api_kitchen_sink.kicad_pcb
+          SCH=$PWD/qa/data/eeschema/erc_multiple_pin_to_pin.kicad_sch
+          OUT=$PWD/qa-screenshots
+          mkdir -p $OUT
+          # A crash leaves its report (the stacks of the threads) in DiagnosticReports
+          run() {
+            gtimeout 2700 "$@"
+          }
+          ( cd build/qt/qa && run ./qa_qt_pcbnew_frames $BOARD )
+          ( cd build/qt/qa && run ./qa_qt_tool_framework $BOARD )
+          ( cd build/qt/qa && run ./qa_qt_3d_viewer $BOARD )
+          ( cd build/qt/qa && run ./qa_qt_eeschema_frames $SCH )
+          ( cd build/kicad && run ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png )
+
+      - name: Crash reports
+        if: failure() && steps.qa.outcome == 'failure'
+        run: |
+          mkdir -p qa-screenshots/crashes
+          cp ~/Library/Logs/DiagnosticReports/*.ips qa-screenshots/crashes/ 2>/dev/null || true
+          for f in qa-screenshots/crashes/*.ips; do [ -f "$f" ] && head -c 20000 "$f"; done || true
+
+      - name: Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-qa-screenshots
+          path: qa-screenshots
+          if-no-files-found: ignore

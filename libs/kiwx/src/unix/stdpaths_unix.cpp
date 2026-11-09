@@ -37,7 +37,12 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <climits>
 #include <unistd.h>
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 
 
 namespace
@@ -76,6 +81,25 @@ wxString wxStandardPaths::GetUserConfigDir() const
 wxString wxStandardPaths::GetExecutablePath() const
 {
     wxString exeStr;
+
+#ifdef __APPLE__
+    // macOS has no /proc: the path of the executable from dyld, without its links
+    char     path[PATH_MAX];
+    uint32_t size = sizeof( path );
+
+    if( _NSGetExecutablePath( path, &size ) == 0 )
+    {
+        char resolved[PATH_MAX];
+
+        if( realpath( path, resolved ) )
+            return wxString::FromUTF8( resolved );
+
+        return wxString::FromUTF8( path );
+    }
+
+    return wxStandardPathsBase::GetExecutablePath();
+#endif
+
     char     buf[4096];
     int      result = readlink( "/proc/self/exe", buf, sizeof( buf ) - 1 );
 
