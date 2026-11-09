@@ -54,6 +54,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="$BREW;$(brew --prefix qt);$(brew --prefix openssl@3);$(brew --prefix curl)" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DPython3_EXECUTABLE=$PY -DPYTHON_EXECUTABLE=$PY \
+            -DNGSPICE_LIB_NAME=ngspice \
             -DKICAD_WX_FREE=ON -DKICAD_QT_SHELL=ON -DKICAD_BUILD_QA_TESTS=ON \
             -DKICAD_USE_PCH=OFF -DKICAD_APPLE_MAKE_RELOCATEABLE_BUNDLE=OFF
 
