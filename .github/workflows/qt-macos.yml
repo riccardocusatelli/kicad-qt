@@ -1,6 +1,6 @@
 name: 'Qt build (macOS)'
 
-# The Qt suite of KiCad (KICAD_WX_FREE + KICAD_QT_SHELL) on macOS (Apple Silicon): kicad-qt with
+# The Qt suite of KiCad (KICAD_WX_FREE + KICAD_QT_SHELL) on macOS 15 (Apple Silicon): kicad-qt with
 # the Qt KIFACEs, built without wxWidgets from the libraries of Homebrew, and the QA of the Qt
 # frames run in the window server of the runner.
 
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 350
 
     env:
