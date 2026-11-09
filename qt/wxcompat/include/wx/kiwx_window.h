@@ -282,6 +282,10 @@ public:
                          int aFlag = 0, int aBorder = 0, void* aUserData = nullptr );
 
     virtual void AddSpacer( int aSize );
+
+    /// Insert a spacer of @a aSize (square: the sizer uses the size along its direction).
+    void InsertSpacer( size_t aIndex, int aSize ) { Insert( aIndex, aSize, aSize ); }
+
     virtual void AddStretchSpacer( int aProportion = 1 );
 
     /// Remove a widget or a sizer from the layout (a widget stays a child of its parent).
