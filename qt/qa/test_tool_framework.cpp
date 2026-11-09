@@ -846,6 +846,12 @@ int main( int argc, char** argv )
         check( click && ( click->modifiers & MD_SHIFT ), "shift click" );
 
         press( canvas, at, Qt::LeftButton );
+#ifdef __APPLE__
+        // The dispatcher reads the cursor of the system, which QCursor::setPos() doesn't move
+        // without the accessibility permission (macOS in CI): the drag of macOS starts after
+        // TOOL_DISPATCHER::DragTimeThreshold (300 ms) too
+        settle( 400 );
+#endif
         drag( canvas, at + QPoint( 30, 20 ) );
         drag( canvas, at + QPoint( 60, 40 ) );
         release( canvas, at + QPoint( 60, 40 ), Qt::LeftButton );
