@@ -568,6 +568,40 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
+      # The portable version: the same package (tested alone above) in a zip, to extract and run
+      # without installation (KiCad.cmd, or bin\kicad-qt.exe)
+      - name: Portable
+        id: portable
+        if: always() && steps.build.outcome == 'success'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "${{ github.workspace }}"
+          $version = ( Select-String -Path cmake\KiCadVersion.cmake -Pattern 'KICAD_SEMANTIC_VERSION "([^"]+)"' ).Matches[0].Groups[1].Value
+          New-Item -ItemType Directory -Force -Path portable, portable-extra | Out-Null
+          Set-Content -Path portable-extra\KiCad.cmd -Value "@start `"`" `"%~dp0bin\kicad-qt.exe`" %*"
+          $zip = "$root\portable\kicad-qt-$version-x86_64-portable.zip"
+          7z a -tzip -mx=5 -bso0 -bsp0 $zip "$root\pkg\*" "$root\portable-extra\KiCad.cmd"
+          if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          "{0:N0} MB" -f ( ( Get-Item $zip ).Length / 1MB )
+
+          # The zip extracted works alone (kicad-cli without the PATH of the build)
+          7z x -y -bso0 -bsp0 "-o$root\portable-test" $zip
+          if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot"
+          & "$root\portable-test\bin\kicad-cli.exe" version
+          if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          if( -not ( Test-Path "$root\portable-test\KiCad.cmd" ) ) { exit 1 }
+
+      - name: The portable version
+        if: always() && steps.portable.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kicad-qt-windows-x64-portable
+          path: portable/*.zip
+          compression-level: 0
+          if-no-files-found: error
+
       - name: Output of the test of the package
         if: always()
         uses: actions/upload-artifact@v4
