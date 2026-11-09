@@ -775,6 +775,10 @@ else()
     set( OSX_BUNDLE_INSTALL_KIFACE_DIR "${OSX_BUNDLE_INSTALL_DIR}/${OSX_BUNDLE_KIFACE_DIR}" )
     set( OSX_BUNDLE_INSTALL_PLUGIN_DIR "${OSX_BUNDLE_INSTALL_DIR}/${OSX_BUNDLE_KIFACE_DIR}" )
 
+    # The kifaces installed outside the build of the bundle (the Qt ones) go in its PlugIns
+    set( KICAD_KIFACE ${OSX_BUNDLE_INSTALL_KIFACE_DIR}
+        CACHE PATH "Location of KiCad kifaces." FORCE )
+
     # everything provided with the application bundle goes into
     # KiCad.app/Contents/SharedSupport => accessible via GetDataDir()
     # everything else to the .dmg image
