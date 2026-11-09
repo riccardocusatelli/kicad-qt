@@ -45,10 +45,12 @@
 #include <filesystem>
 #include <fstream>
 #include <thread>
+#include <vector>
 
 #include <dirent.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/time.h>
@@ -57,6 +59,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <utime.h>
+
+// The times of struct stat: st_atim on Linux, st_atimespec on macOS
+#ifdef __APPLE__
+#define KIWX_ST_TIME( x ) st_##x##timespec
+#else
+#define KIWX_ST_TIME( x ) st_##x##tim
+#endif
 
 extern char** environ;
 
@@ -205,7 +214,22 @@ long run( const std::vector<std::string>& aArgs, int aFlags, const wxExecuteEnv*
 
             if( !aEnv->env.empty() )
             {
+#ifdef __APPLE__
+                // No clearenv() on macOS
+                extern char** environ;
+                std::vector<std::string> names;
+
+                for( char** var = environ; var && *var; ++var )
+                {
+                    std::string entry( *var );
+                    names.push_back( entry.substr( 0, entry.find( '=' ) ) );
+                }
+
+                for( const std::string& name : names )
+                    unsetenv( name.c_str() );
+#else
                 clearenv();
+#endif
 
                 for( const auto& [name, value] : aEnv->env )
                     setenv( name.utf8_string().c_str(), value.utf8_string().c_str(), 1 );
@@ -689,13 +713,13 @@ bool wxFileName::GetTimes( wxDateTime* aAccess, wxDateTime* aMod, wxDateTime* aC
             };
 
     if( aAccess )
-        *aAccess = toDateTime( st.st_atim );
+        *aAccess = toDateTime( st.KIWX_ST_TIME( a ) );
 
     if( aMod )
-        *aMod = toDateTime( st.st_mtim );
+        *aMod = toDateTime( st.KIWX_ST_TIME( m ) );
 
     if( aCreate )
-        *aCreate = toDateTime( st.st_ctim );
+        *aCreate = toDateTime( st.KIWX_ST_TIME( c ) );
 
     return true;
 }

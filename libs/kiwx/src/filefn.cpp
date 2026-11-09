@@ -228,8 +228,12 @@ time_t wxFileModificationTime( const wxString& aFile )
     if( ec )
         return -1;
 
-    return std::chrono::system_clock::to_time_t(
-            std::chrono::clock_cast<std::chrono::system_clock>( mtime ) );
+    // From the clock of the files to the system clock (no clock_cast in libc++)
+    using namespace std::chrono;
+    auto sys = time_point_cast<system_clock::duration>(
+            mtime - fs::file_time_type::clock::now() + system_clock::now() );
+
+    return system_clock::to_time_t( sys );
 }
 
 

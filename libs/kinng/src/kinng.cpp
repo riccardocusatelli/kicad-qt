@@ -20,7 +20,11 @@
 
 #include <kinng.h>
 #include <nng/nng.h>
+
+// nng 2 declares the protocols in nng.h
+#if NNG_MAJOR_VERSION < 2
 #include <nng/protocol/reqrep0/rep.h>
+#endif
 #include <core/ki_log.h>
 
 
@@ -90,6 +94,11 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     KI_LOG_TRACE( TraceNng, "KINNG_REQUEST_SERVER starting" );
 
+#if NNG_MAJOR_VERSION >= 2
+    // nng 2 is initialised before its first use (again: no effect)
+    nng_init( nullptr );
+#endif
+
     retCode = nng_rep0_open( &socket );
 
     if( retCode != 0 )
@@ -114,23 +123,22 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     while( !m_shutdown.load() )
     {
-        char*    buf = nullptr;
-        size_t   sz;
-        uint64_t val;
+        // A message (not NNG_FLAG_ALLOC, which nng 2 does not have)
+        nng_msg* msg = nullptr;
 
-        retCode = nng_recv( socket, &buf, &sz, NNG_FLAG_ALLOC );
+        retCode = nng_recvmsg( socket, &msg, 0 );
 
         if( retCode == NNG_ETIMEDOUT )
             continue;
 
         if( retCode != 0 )
         {
-            nng_free( buf, sz );
-            KI_LOG_TRACE( TraceNng, "Got error code %d from nngc_recv!", retCode );
+            KI_LOG_TRACE( TraceNng, "Got error code %d from nng_recvmsg!", retCode );
             break;
         }
 
-        m_sharedMessage.assign( buf, sz );
+        m_sharedMessage.assign( static_cast<const char*>( nng_msg_body( msg ) ), nng_msg_len( msg ) );
+        nng_msg_free( msg );
 
         if( m_callback )
             m_callback( &m_sharedMessage );
@@ -151,5 +159,9 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     KI_LOG_TRACE( TraceNng, "KINNG_REQUEST_SERVER shutting down" );
 
+#if NNG_MAJOR_VERSION < 2
     nng_close( socket );
+#else
+    nng_socket_close( socket );
+#endif
 }
