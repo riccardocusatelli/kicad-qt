@@ -31,11 +31,53 @@
 
 #include <kicad_gl/gl_context_mgr.h>
 
+#include <QOffscreenSurface>
 #include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <QWindow>
 
 #include <gal/hidpi_gl_canvas.h>
 #include <core/ki_assert.h>
+
+
+namespace
+{
+/// The offscreen surfaces of the contexts whose canvas has no native window (not shown yet, or
+/// already released by the destruction of its parents): the GL calls of the creation and the
+/// destruction of a GAL need its context current on a valid surface.
+std::map<KIGL_CONTEXT*, QOffscreenSurface*> s_offscreen;
+
+
+QSurface* validSurface( KIGL_CONTEXT* aContext, KIGL_CANVAS* aCanvas )
+{
+    QWindow* window = aCanvas ? aCanvas->GetSurface() : nullptr;
+
+    if( window && window->handle() )
+        return window;
+
+    QOffscreenSurface*& offscreen = s_offscreen[aContext];
+
+    if( !offscreen )
+    {
+        offscreen = new QOffscreenSurface();
+        offscreen->setFormat( aContext->format() );
+        offscreen->create();
+    }
+
+    return offscreen;
+}
+
+
+/// Make @a aContext current on its offscreen surface before it is destroyed, and finish its
+/// commands: the surface it was last current on can be a window already destroyed (Qt forgets
+/// it only for the current context), and the threads of a software rasterizer (llvmpipe) must
+/// not work on the context while it is freed.
+void releaseFromLastSurface( KIGL_CONTEXT* aContext )
+{
+    if( aContext->makeCurrent( validSurface( aContext, nullptr ) ) )
+        aContext->functions()->glFinish();
+}
+} // namespace
 
 
 GL_CONTEXT_MANAGER* GL_CONTEXT_MANAGER::Get()
@@ -71,7 +113,14 @@ void GL_CONTEXT_MANAGER::DestroyCtx( KIGL_CONTEXT* aContext )
     if( m_glContexts.count( aContext ) )
     {
         m_glContexts.erase( aContext );
+        releaseFromLastSurface( aContext );
         delete aContext;
+
+        if( auto it = s_offscreen.find( aContext ); it != s_offscreen.end() )
+        {
+            delete it->second;
+            s_offscreen.erase( it );
+        }
     }
     else
     {
@@ -89,9 +138,17 @@ void GL_CONTEXT_MANAGER::DeleteAll()
     m_glCtxMutex.lock();
 
     for( auto& ctx : m_glContexts )
+    {
+        releaseFromLastSurface( ctx.first );
         delete ctx.first;
+    }
 
     m_glContexts.clear();
+
+    for( auto& [context, offscreen] : s_offscreen )
+        delete offscreen;
+
+    s_offscreen.clear();
     m_glCtx = nullptr;
     m_glCtxMutex.unlock();
 }
@@ -104,8 +161,9 @@ void GL_CONTEXT_MANAGER::LockCtx( KIGL_CONTEXT* aContext, KIGL_CANVAS* aCanvas )
     m_glCtxMutex.lock();
     KIGL_CANVAS* canvas = aCanvas ? aCanvas : m_glContexts.at( aContext );
 
-    if( canvas && canvas->GetSurface() )
-        aContext->makeCurrent( canvas->GetSurface() );
+    // On the window of the canvas, or offscreen when the window has no native one yet (or
+    // anymore): without a current context the GL calls would go to another context
+    aContext->makeCurrent( validSurface( aContext, canvas ) );
 
     m_glCtx = aContext;
 }
