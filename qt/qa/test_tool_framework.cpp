@@ -438,9 +438,23 @@ void settle( int aMilliseconds = 50 )
 
 
 /// The cursor at a point of the canvas (the tools read the position of the cursor).
+/// Move the cursor of the system to @a aGlobal: the dispatcher reads it, and macOS updates it
+/// asynchronously (at most 500 ms).
+void warpCursor( QPoint aGlobal )
+{
+    QCursor::setPos( aGlobal );
+
+    QElapsedTimer timer;
+    timer.start();
+
+    while( QCursor::pos() != aGlobal && timer.elapsed() < 500 )
+        QCoreApplication::processEvents( QEventLoop::AllEvents, 10 );
+}
+
+
 void moveTo( EDA_DRAW_PANEL_GAL* aCanvas, QPoint aPoint )
 {
-    QCursor::setPos( aCanvas->mapToGlobal( aPoint ) );
+    warpCursor( aCanvas->mapToGlobal( aPoint ) );
 
     QMouseEvent move( QEvent::MouseMove, aPoint, aCanvas->mapToGlobal( aPoint ), Qt::NoButton,
                       QGuiApplication::mouseButtons(), Qt::NoModifier );
@@ -475,7 +489,7 @@ void release( EDA_DRAW_PANEL_GAL* aCanvas, QPoint aPoint, Qt::MouseButton aButto
 
 void drag( EDA_DRAW_PANEL_GAL* aCanvas, QPoint aPoint )
 {
-    QCursor::setPos( aCanvas->mapToGlobal( aPoint ) );
+    warpCursor( aCanvas->mapToGlobal( aPoint ) );
 
     QMouseEvent move( QEvent::MouseMove, aPoint, aCanvas->mapToGlobal( aPoint ), Qt::NoButton,
                       s_buttons, Qt::NoModifier );
