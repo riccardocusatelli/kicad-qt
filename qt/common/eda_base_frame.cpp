@@ -237,8 +237,11 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
 
     // The frames are top level windows of their own (and are deleted when closed)
     setAttribute( Qt::WA_DeleteOnClose, false );
-    setDockOptions( QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks
-                    | QMainWindow::AllowTabbedDocks );
+
+    // The docks are not animated (as the panes of wxAUI): an animation still running when the
+    // frame is deleted ends in the destructor of QMainWindow, in a layout already deleted (a
+    // crash on macOS, of a frame closed just after it is shown)
+    setDockOptions( QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks );
 }
 
 

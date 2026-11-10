@@ -131,15 +131,17 @@ std::vector<wxLanguageInfo>& languageInfos()
 
 std::mutex& i18nMutex()
 {
-    static std::mutex mutex;
-    return mutex;
+    // Never destroyed: the wxLocale of the program (a static object of another module) is
+    // destroyed at exit, on macOS after the statics of this library
+    static std::mutex* mutex = new std::mutex;
+    return *mutex;
 }
 
 
 wxArrayString& lookupPrefixes()
 {
-    static wxArrayString prefixes;
-    return prefixes;
+    static wxArrayString* prefixes = new wxArrayString;
+    return *prefixes;
 }
 
 
@@ -648,11 +650,12 @@ namespace
 /// The untranslated strings returned by reference live here.
 const wxString& untranslated( const wxString& aStr )
 {
-    static std::unordered_set<wxString> strings;
-    static std::mutex                   mutex;
+    // Never destroyed (see i18nMutex())
+    static std::unordered_set<wxString>* strings = new std::unordered_set<wxString>;
+    static std::mutex*                   mutex = new std::mutex;
 
-    std::lock_guard<std::mutex> lock( mutex );
-    return *strings.insert( aStr ).first;
+    std::lock_guard<std::mutex> lock( *mutex );
+    return *strings->insert( aStr ).first;
 }
 
 } // namespace
