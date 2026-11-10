@@ -345,6 +345,24 @@ bool SCRIPTING::scriptingSetup()
 #else
     wxString pypath;
 
+#ifdef __APPLE__
+    // The Qt build on macOS in its bundle: the Python of the bundle (its framework in
+    // Contents/Frameworks, with the module pcbnew in its site-packages) and the scripting
+    // directory of the data (Contents/SharedSupport)
+    if( wxString contents = PATHS::GetQtBundleContentsPath(); !contents.IsEmpty() )
+    {
+        wxString version = wxString::Format( wxT( "%d.%d" ), PY_MAJOR_VERSION, PY_MINOR_VERSION );
+        wxString home = contents + wxT( "/Frameworks/Python.framework/Versions/" ) + version;
+
+        // No compiled files written in the bundle
+        wxSetEnv( wxT( "PYTHONDONTWRITEBYTECODE" ), wxT( "1" ) );
+        wxSetEnv( wxT( "PYTHONHOME" ), home );
+
+        pypath = contents + wxT( "/SharedSupport/scripting:" ) + home + wxT( "/lib/python" )
+                 + version + wxT( "/site-packages" );
+    }
+    else
+#endif
     if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
     {
         // When running from build dir, python module gets built next to Pcbnew binary

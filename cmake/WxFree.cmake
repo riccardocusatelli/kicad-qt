@@ -75,6 +75,13 @@ if( NOT _kicad_wx_free_install )
             return()
         endif()
 
+        # The scripts of the install on macOS make the bundles of the wxWidgets build (KiCad.app
+        # with the bundles of the programs, their dependencies, the signature): the bundle of the
+        # Qt build is made from the build tree (see .github/workflows/qt-macos.yml)
+        if( APPLE AND ARGV0 STREQUAL "CODE" )
+            return()
+        endif()
+
         if( NOT ARGV0 STREQUAL "TARGETS" )
             _install( ${ARGV} )
             return()

@@ -296,6 +296,18 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
     }
 #endif
 
+#if defined( __APPLE__ ) && !defined( __WXMAC__ )
+    // The Qt build on macOS in its bundle: the configuration of fontconfig is in the bundle (the
+    // one fontconfig was built with is in the prefix of Homebrew)
+    if( !wxGetEnv( "FONTCONFIG_PATH", NULL ) )
+    {
+        wxString contents = PATHS::GetQtBundleContentsPath();
+
+        if( !contents.IsEmpty() && wxFileExists( contents + wxS( "/Resources/etc/fonts/fonts.conf" ) ) )
+            wxSetEnv( "FONTCONFIG_PATH", contents + wxS( "/Resources/etc/fonts" ) );
+    }
+#endif
+
 #ifdef _MSC_VER
     winrt::init_apartment(winrt::apartment_type::single_threaded);
 #endif

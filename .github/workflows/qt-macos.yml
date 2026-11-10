@@ -66,6 +66,7 @@ jobs:
             -DKICAD_USE_PCH=OFF -DKICAD_APPLE_MAKE_RELOCATEABLE_BUNDLE=OFF
 
       - name: Build
+        id: build
         run: |
           cmake --build build --target all \
             qa_qt_eeschema_frames qa_qt_pcbnew_frames qa_qt_tool_framework \
@@ -115,8 +116,212 @@ jobs:
           ( cd build/qt/qa && run ./qa_qt_eeschema_frames $SCH )
           ( cd build/kicad && run ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png )
 
+      # KiCad.app, made from the build tree: the programs and the KIFACEs in Contents/MacOS, the 3D
+      # plugins in Contents/PlugIns/3d, the data (installed in the bundle of the prefix) and the
+      # libraries of KiCad (symbols, footprints, templates; not the 3D models) in
+      # Contents/SharedSupport, the configuration of fontconfig in Contents/Resources/etc/fonts and
+      # the Python of Homebrew (its framework, with the module pcbnew); macdeployqt copies the
+      # libraries they load (Qt with its plugins, Homebrew, KiCad) in Contents/Frameworks.
+      # Not signed: an ad-hoc signature (arm64 runs only signed code).
+      - name: Package
+        id: package
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          set -e
+          BREW=$(brew --prefix)
+          PYV=3.13
+          PYFW=$(brew --prefix python@$PYV)/Frameworks/Python.framework
+          VERSION=$(sed -n 's/.*KICAD_SEMANTIC_VERSION "\([^"]*\)".*/\1/p' cmake/KiCadVersion.cmake)
+          APP=$PWD/pkg/KiCad.app
+          C=$APP/Contents
+          rm -rf pkg dist
+          mkdir -p $C/MacOS $C/Frameworks $C/PlugIns/3d $C/Resources/etc
+
+          # The data (KICAD_DATA: dist/KiCad.app/Contents/SharedSupport)
+          cmake --install build > install.log 2>&1 || { tail -40 install.log; exit 1; }
+          cp -R dist/KiCad.app/Contents/SharedSupport $C/
+          ls $C/SharedSupport
+
+          # The programs, the KIFACEs, the 3D plugins
+          cp build/kicad/kicad-qt $C/MacOS/
+          cp $(find build -type f -name kicad-cli -perm -u+x | head -1) $C/MacOS/
+          find build -type f -name '*.kiface' -not -path '*/CMakeFiles/*' -exec cp {} $C/MacOS/ \;
+          find build/plugins/3d -type f -name 'libs3d_plugin_*' -exec cp {} $C/PlugIns/3d/ \;
+          cp kicad/kicad.icns kicad/kicad_doc.icns $C/Resources/
+          ls -l $C/MacOS $C/PlugIns/3d
+
+          # Fontconfig
+          cp -RL $BREW/etc/fonts $C/Resources/etc/
+
+          # Python: the framework of Homebrew without its tests, IDLE and the compiled files
+          mkdir -p $C/Frameworks/Python.framework/Versions
+          cp -R $PYFW/Versions/$PYV $C/Frameworks/Python.framework/Versions/
+          PYLIB=$C/Frameworks/Python.framework/Versions/$PYV/lib/python$PYV
+          rm -rf $PYLIB/test $PYLIB/idlelib $PYLIB/tkinter $PYLIB/turtledemo $PYLIB/config-$PYV-darwin
+          rm -rf $C/Frameworks/Python.framework/Versions/$PYV/{bin,Resources/Python.app,lib/pkgconfig}
+          find $C/Frameworks/Python.framework -name __pycache__ -type d -prune -exec rm -rf {} +
+          rm -rf $PYLIB/site-packages
+          mkdir -p $PYLIB/site-packages
+          cp build/pcbnew/pcbnew.py $PYLIB/site-packages/
+
+          cat > $C/Info.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>kicad-qt</string>
+            <key>CFBundleIdentifier</key><string>org.kicad.kicad-qt</string>
+            <key>CFBundleName</key><string>KiCad</string>
+            <key>CFBundleDisplayName</key><string>KiCad</string>
+            <key>CFBundleIconFile</key><string>kicad.icns</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$VERSION</string>
+            <key>CFBundleVersion</key><string>$VERSION</string>
+            <key>LSMinimumSystemVersion</key><string>13.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+            <key>NSPrincipalClass</key><string>NSApplication</string>
+          </dict>
+          </plist>
+          EOF
+          plutil -lint $C/Info.plist
+
+          # The libraries: of the programs (with the test of the shell, taken out of the bundle
+          # after), the KIFACEs, the 3D plugins and the modules of Python
+          cp build/kicad/qa_qt_kicad_shell $C/MacOS/
+          extra=()
+          for f in $C/MacOS/kicad-cli $C/MacOS/qa_qt_kicad_shell $C/MacOS/*.kiface $C/PlugIns/3d/* $PYLIB/lib-dynload/*.so; do
+            extra+=( "-executable=$f" )
+          done
+          macdeployqt $APP "${extra[@]}" -verbose=1 2>&1 | grep -v '^Log: ' | tail -40 || true
+
+          # The run paths of Homebrew and of the build tree out, the one of the bundle in; then
+          # nothing left from Homebrew or the build tree
+          left=0
+          while IFS= read -r f; do
+            file -b "$f" | grep -q Mach-O || continue
+            for r in $(otool -l "$f" | awk '/cmd LC_RPATH/ { getline; getline; print $2 }'); do
+              case $r in
+                $BREW*|$PWD/build*|/usr/local*) install_name_tool -delete_rpath "$r" "$f" ;;
+              esac
+            done
+            install_name_tool -add_rpath @executable_path/../Frameworks "$f" 2>/dev/null || true
+            id=$(otool -D "$f" | tail -n +2)
+            case $id in
+              $BREW*|$PWD/build*|/usr/local*) install_name_tool -id "@rpath/${f#$C/Frameworks/}" "$f" ;;
+            esac
+            if otool -L "$f" | tail -n +2 | grep -E "$BREW|$PWD/build|/usr/local"; then
+              echo "  ^ in $f"; left=1
+            fi
+          done < <(find $C -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' -o -name '*.kiface' \
+                                     -o -path '*.framework/Versions/*' \))
+          test $left -eq 0
+
+          mkdir -p pkg-extra
+          mv $C/MacOS/qa_qt_kicad_shell pkg-extra/
+          codesign --force --deep --sign - $APP
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          du -sh $APP
+
+      - name: Libraries
+        if: always() && steps.package.outcome == 'success'
+        run: |
+          set -e
+          VERSION=${{ steps.package.outputs.version }}
+          SERIES=$(echo $VERSION | cut -d. -f1-2)
+          C=$PWD/pkg/KiCad.app/Contents
+          mkdir -p libs
+          for repo in kicad-symbols kicad-footprints kicad-templates; do
+            echo "::group::$repo"
+            git clone -q --depth 1 --branch $VERSION https://gitlab.com/kicad/libraries/$repo.git libs/$repo \
+              || git clone -q --depth 1 --branch $SERIES https://gitlab.com/kicad/libraries/$repo.git libs/$repo
+            git -C libs/$repo log -1 --format='%H %d'
+            cmake -S libs/$repo -B libs/build-$repo -G Ninja -DCMAKE_INSTALL_PREFIX=$PWD/libs/inst
+            cmake --build libs/build-$repo
+            cmake --install libs/build-$repo | tail -3
+            echo "::endgroup::"
+          done
+          # Their install: share/kicad (the symbols packed into one file per library), the tables in
+          # share/kicad/template
+          for dir in symbols footprints template; do
+            src=$(find libs/inst -type d -name $dir -path '*kicad*' | head -1)
+            echo "$dir: $src"
+            cp -R $src/. $C/SharedSupport/$dir/
+            echo "$dir: $(ls $C/SharedSupport/$dir | wc -l) entries"
+          done
+          test -f $C/SharedSupport/template/sym-lib-table
+          test -f $C/SharedSupport/template/fp-lib-table
+          codesign --force --deep --sign - $PWD/pkg/KiCad.app
+          du -sh pkg/KiCad.app
+
+      # The disk image, with a link to /Applications
+      - name: Disk image
+        id: dmg
+        if: always() && steps.package.outcome == 'success'
+        run: |
+          set -e
+          ln -sf /Applications pkg/Applications
+          mkdir -p dmg
+          DMG=$PWD/dmg/kicad-qt-${{ steps.package.outputs.version }}-macos-arm64.dmg
+          hdiutil create -volname KiCad -srcfolder pkg -ov -format UDZO -fs HFS+ $DMG
+          ls -l $DMG
+          echo "dmg=$DMG" >> $GITHUB_OUTPUT
+
+      # The disk image alone: KiCad.app copied from it, out of the build tree, with the test of the
+      # shell (in the bundle, for the KIFACEs and the data of the bundle) and kicad-cli
+      - name: Test of the disk image
+        if: always() && steps.dmg.outcome == 'success'
+        run: |
+          set -e
+          MNT=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint $MNT "${{ steps.dmg.outputs.dmg }}"
+          TEST=$(mktemp -d)/Applications
+          mkdir -p $TEST
+          cp -R $MNT/KiCad.app $TEST/
+          hdiutil detach $MNT
+          C=$TEST/KiCad.app/Contents
+          # The test of the shell in the bundle (its libraries in the bundle, see Package)
+          cp pkg-extra/qa_qt_kicad_shell $C/MacOS/
+          codesign --force --sign - $C/MacOS/qa_qt_kicad_shell
+
+          BOARD=$PWD/qa/data/pcbnew/api_kitchen_sink.kicad_pcb
+          SCH=$PWD/qa/data/eeschema/erc_multiple_pin_to_pin.kicad_sch
+          OUT=$PWD/pkg-logs
+          mkdir -p $OUT
+          unset KICAD_RUN_FROM_BUILD_DIR PYTHONHOME PYTHONPATH QT_PLUGIN_PATH
+          LIBS=$C/SharedSupport
+          (
+            cd $TEST
+            $C/MacOS/kicad-cli version
+            $C/MacOS/kicad-cli pcb export svg --layers F.Cu --output $OUT/board.svg $BOARD
+            $C/MacOS/kicad-cli fp export svg --footprint R_0603_1608Metric --output $OUT/footprint \
+              $LIBS/footprints/Resistor_SMD.pretty
+            $C/MacOS/kicad-cli sym export svg --symbol R --output $OUT/symbol $LIBS/symbols/Device.kicad_sym
+          ) 2>&1 | tee $OUT/kicad-cli.txt
+          ls $OUT/board.svg $OUT/footprint/*.svg $OUT/symbol/*.svg
+          ( cd $C/MacOS && gtimeout 2700 ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png 2>&1 | tee $OUT/shell.txt; exit ${PIPESTATUS[0]} )
+          if grep -E 'Fontconfig (error|warning)' $OUT/*.txt; then exit 1; fi
+
+      - name: The disk image
+        if: always() && steps.dmg.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kicad-qt-macos-arm64-dmg
+          path: dmg/*.dmg
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Output of the test of the disk image
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-test-macos
+          path: |
+            pkg-logs
+            install.log
+          if-no-files-found: ignore
+
       - name: Crash reports
-        if: failure() && steps.qa.outcome == 'failure'
+        if: failure()
         run: |
           mkdir -p qa-screenshots/crashes
           cp ~/Library/Logs/DiagnosticReports/*.ips qa-screenshots/crashes/ 2>/dev/null || true

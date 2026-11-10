@@ -200,6 +200,16 @@ public:
     static wxString GetOSXKicadDataDir();
 #endif
 
+#if defined( __APPLE__ ) && !defined( __WXMAC__ )
+    /**
+     * The Contents directory of the application bundle of the Qt build on macOS (KiCad.app: the
+     * programs and the KIFACEs in Contents/MacOS, the data in Contents/SharedSupport, the 3D
+     * plugins in Contents/PlugIns/3d, the configuration of fontconfig in
+     * Contents/Resources/etc/fonts), or empty when the program is not in a bundle (the build tree).
+     */
+    static wxString GetQtBundleContentsPath();
+#endif
+
 #ifdef _WIN32
     /**
      * @return The directory the font config support files can be found

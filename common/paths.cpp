@@ -231,6 +231,28 @@ static wxString getOSXBundleRoot()
 #endif
 
 
+#if defined( __APPLE__ ) && !defined( __WXMAC__ )
+wxString PATHS::GetQtBundleContentsPath()
+{
+    wxFileName fn( wxStandardPaths::Get().GetExecutablePath() );
+    WX_FILENAME::ResolvePossibleSymlinks( fn );
+    fn.SetFullName( wxEmptyString );
+
+    const wxArrayString& dirs = fn.GetDirs();
+
+    if( dirs.GetCount() >= 3 && dirs.Last() == wxT( "MacOS" )
+        && dirs[dirs.GetCount() - 2] == wxT( "Contents" )
+        && dirs[dirs.GetCount() - 3].Lower().EndsWith( wxT( ".app" ) ) )
+    {
+        fn.RemoveLastDir();
+        return fn.GetPath();
+    }
+
+    return wxEmptyString;
+}
+#endif
+
+
 wxString PATHS::GetStockDataPath( bool aRespectRunFromBuildDir )
 {
     wxString path;
@@ -262,6 +284,11 @@ wxString PATHS::GetStockDataPath( bool aRespectRunFromBuildDir )
         path = getWindowsKiCadRoot() + wxT( "share/kicad" );
 #else
         path = wxString::FromUTF8Unchecked( KICAD_DATA );
+
+#ifdef __APPLE__
+        if( wxString contents = GetQtBundleContentsPath(); !contents.IsEmpty() )
+            path = contents + wxT( "/SharedSupport" );
+#endif
 #endif
     }
 
@@ -286,6 +313,9 @@ wxString PATHS::GetStockEDALibraryPath()
 #if defined( __WXMAC__ )
     path = GetOSXKicadMachineDataDir();
 #elif defined( __WXMSW__ )
+    path = GetStockDataPath( false );
+#elif defined( __APPLE__ )
+    // The libraries of the Qt build on macOS: with the data (no KICAD_LIBRARY_DATA)
     path = GetStockDataPath( false );
 #else
     if( wxGetEnv( wxT( "APPDIR" ), &path ) )
@@ -419,6 +449,13 @@ wxString PATHS::GetStockPlugins3DPath()
         fn.AppendDir( wxT( ".." ) );
         fn.AppendDir( wxT( "plugins" ) );
     }
+#ifdef __APPLE__
+    else if( wxString contents = GetQtBundleContentsPath(); !contents.IsEmpty() )
+    {
+        fn.AssignDir( contents );
+        fn.AppendDir( wxT( "PlugIns" ) );
+    }
+#endif
     // AppImages have a different path to the plugins, otherwise we end up with host system
     // plugins being loaded.
     else if( wxGetEnv( wxT( "APPDIR" ), &envPath ) )
