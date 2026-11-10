@@ -146,25 +146,39 @@ void testSimModelDialog( QDialog* aParent, const QString& aButton, const QString
                               shown = true;
                               settle( 200 );
 
-                              // The built-in model: its parameters in the property grid
-                              for( QRadioButton* radio : dialog->findChildren<QRadioButton*>() )
+                              // The built-in model, then a device of its models: the resistor.
+                              // Until they hold (at most 3 s): the dialog sets its controls once
+                              // shown, later on the slower macOS in CI
+                              bool resistor = false;
+
+                              for( int i = 0; i < 30 && !resistor; ++i )
                               {
-                                  if( radio->text() == QStringLiteral( "Built-in SPICE model" ) )
-                                      radio->click();
-                              }
-
-                              settle( 300 );
-
-                              // A device of the built-in models: the resistor
-                              for( QComboBox* combo : dialog->findChildren<QComboBox*>() )
-                              {
-                                  int index = combo->findText( QStringLiteral( "Resistor" ) );
-
-                                  if( index >= 0 && combo->isEnabled() )
+                                  for( QRadioButton* radio : dialog->findChildren<QRadioButton*>() )
                                   {
-                                      combo->setCurrentIndex( index );
-                                      Q_EMIT combo->activated( index );
-                                      break;
+                                      if( radio->text() == QStringLiteral( "Built-in SPICE model" )
+                                              && !radio->isChecked() )
+                                      {
+                                          radio->click();
+                                      }
+                                  }
+
+                                  settle( 100 );
+
+                                  for( QComboBox* combo : dialog->findChildren<QComboBox*>() )
+                                  {
+                                      int index = combo->findText( QStringLiteral( "Resistor" ) );
+
+                                      if( index >= 0 && combo->isEnabled() )
+                                      {
+                                          if( combo->currentIndex() != index )
+                                          {
+                                              combo->setCurrentIndex( index );
+                                              Q_EMIT combo->activated( index );
+                                          }
+
+                                          resistor = true;
+                                          break;
+                                      }
                                   }
                               }
 
