@@ -163,6 +163,10 @@ jobs:
           rm -rf $PYLIB/site-packages
           mkdir -p $PYLIB/site-packages
           cp build/pcbnew/pcbnew.py $PYLIB/site-packages/
+          # The links of a framework (codesign checks its layout)
+          ln -sfn $PYV $C/Frameworks/Python.framework/Versions/Current
+          ln -sfn Versions/Current/Python $C/Frameworks/Python.framework/Python
+          ln -sfn Versions/Current/Resources $C/Frameworks/Python.framework/Resources
 
           cat > $C/Info.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -230,9 +234,15 @@ jobs:
           test $left -eq 0
 
           # An ad-hoc signature of each program and library (arm64 runs only signed code), then
-          # of the bundle (not required to run it)
+          # of the bundle (not required to run it); each file signed out of the bundle (codesign
+          # signs the bundle of the program of a bundle)
+          SIGN=$(mktemp -d)
           while IFS= read -r f; do
-            if file -b "$f" | grep -q Mach-O; then codesign --force --sign - "$f"; fi
+            if file -b "$f" | grep -q Mach-O; then
+              cp "$f" $SIGN/file
+              codesign --force --sign - $SIGN/file
+              mv -f $SIGN/file "$f"
+            fi
           done < <(find $C -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' -o -name '*.kiface' \
                                      -o -path '*.framework/Versions/*' \))
 
@@ -301,7 +311,6 @@ jobs:
           C=$TEST/KiCad.app/Contents
           # The test of the shell in the bundle (its libraries in the bundle, see Package)
           cp pkg-extra/qa_qt_kicad_shell $C/MacOS/
-          codesign --force --sign - $C/MacOS/qa_qt_kicad_shell
 
           BOARD=$PWD/qa/data/pcbnew/api_kitchen_sink.kicad_pcb
           SCH=$PWD/qa/data/eeschema/erc_multiple_pin_to_pin.kicad_sch
