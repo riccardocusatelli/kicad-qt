@@ -27,6 +27,7 @@
 #ifndef QA_QT_MENUS_H
 #define QA_QT_MENUS_H
 
+#include <algorithm>
 #include <cstdio>
 #include <map>
 #include <set>
@@ -304,8 +305,11 @@ private:
         QScreen* screen = dialog->screen();
         QRect   available = screen ? screen->availableGeometry() : frame;
 
-        bool fitsContent = dialog->width() >= content.width()
-                           && dialog->height() >= content.height();
+        // The size of the content, or of the screen when the content is larger (a dialog of
+        // KiCad stays within the screen less a margin of 40 x 80, see PAGED_DIALOG)
+        QSize limit = available.size() - QSize( 40, 80 );
+        bool  fitsContent = dialog->width() >= std::min( content.width(), limit.width() )
+                            && dialog->height() >= std::min( content.height(), limit.height() );
         bool fitsScreen = frame.width() <= available.width()
                           && frame.height() <= available.height();
 

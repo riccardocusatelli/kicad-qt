@@ -26,6 +26,8 @@
 #ifndef QA_QT_FRAMES_H
 #define QA_QT_FRAMES_H
 
+#include <algorithm>
+#include <climits>
 #include <cstdio>
 #include <functional>
 #include <string>
@@ -35,6 +37,7 @@
 #include <QElapsedTimer>
 #include <QPointer>
 #include <QPushButton>
+#include <QScreen>
 #include <QTimer>
 
 #include <api/api_server.h>
@@ -140,6 +143,23 @@ inline bool pressButton( QWidget* aDialog, const QString& aLabel )
 
 
 /**
+ * A dialog has the size of its content, or of the screen when its content is larger (a dialog
+ * of KiCad stays within the screen, less a margin: 40 x 80, see PAGED_DIALOG; the screen of a
+ * runner of CI can be 1024 x 768).
+ */
+inline bool fitsContentOrScreen( QWidget* aDialog, const QSize& aContent )
+{
+    QSize limit( INT_MAX, INT_MAX );
+
+    if( QScreen* screen = aDialog->screen() )
+        limit = screen->availableGeometry().size() - QSize( 40, 80 );
+
+    return aDialog->width() >= std::min( aContent.width(), limit.width() )
+           && aDialog->height() >= std::min( aContent.height(), limit.height() );
+}
+
+
+/**
  * A dialog of the editor, opened by an action: shown, with the size of its content (its pages
  * are not squeezed), then closed with one of its buttons.
  */
@@ -162,8 +182,7 @@ inline void testDialog( TOOL_MANAGER* aToolMgr, const TOOL_ACTION& aAction, cons
 
                       // The dialog has the size of its content
                       QSize content = aDialog->minimumSizeHint();
-                      fits = aDialog->width() >= content.width()
-                             && aDialog->height() >= content.height();
+                      fits = fitsContentOrScreen( aDialog, content );
 
                       if( !fits )
                           std::printf( "    size %dx%d, content %dx%d\n", aDialog->width(),

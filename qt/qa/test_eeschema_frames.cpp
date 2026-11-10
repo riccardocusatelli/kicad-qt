@@ -168,14 +168,19 @@ void testSimModelDialog( QDialog* aParent, const QString& aButton, const QString
                                   }
                               }
 
-                              settle( 300 );
-
-                              for( QTreeWidget* tree : dialog->findChildren<QTreeWidget*>() )
+                              // The parameters, once the grid is filled (at most 3 s: macOS in CI
+                              // is slower)
+                              for( int i = 0; i < 30 && params == 0; ++i )
                               {
-                                  for( QTreeWidgetItemIterator it( tree ); *it; ++it )
+                                  settle( 100 );
+
+                                  for( QTreeWidget* tree : dialog->findChildren<QTreeWidget*>() )
                                   {
-                                      if( !( *it )->isHidden() && ( *it )->childCount() == 0 )
-                                          params++;
+                                      for( QTreeWidgetItemIterator it( tree ); *it; ++it )
+                                      {
+                                          if( !( *it )->isHidden() && ( *it )->childCount() == 0 )
+                                              params++;
+                                      }
                                   }
                               }
 
