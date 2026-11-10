@@ -236,7 +236,7 @@ private:
             // window takes no input) nor while the item's action runs (its tool would be
             // deleted under it), but a frame shown as a modal (a chooser) is what the action
             // waits for
-            KIWAY_PLAYER* player = dynamic_cast<KIWAY_PLAYER*>( widget );
+            KIWAY_PLAYER* player = KIWAY_PLAYER::FromWidget( widget );
             bool          modalFrame = player && player->IsModal();
 
             if( !qobject_cast<QDialog*>( widget ) && !modalFrame
@@ -380,7 +380,7 @@ private:
         }
 
         // A frame (a viewer, an editor, a modal chooser): closed as the user would
-        if( KIWAY_PLAYER* player = dynamic_cast<KIWAY_PLAYER*>( aWindow ) )
+        if( KIWAY_PLAYER* player = KIWAY_PLAYER::FromWidget( aWindow ) )
         {
             // Its close button (the frame ends its modal loop itself); forced, then dismissed
             if( aAttempt < 3 )

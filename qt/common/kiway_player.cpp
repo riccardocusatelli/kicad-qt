@@ -49,6 +49,16 @@ KIWAY_PLAYER::KIWAY_PLAYER( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType,
         m_modal_ret_val( false ),
         m_socketServer( nullptr )
 {
+    setProperty( "kicadKiwayPlayer", QVariant::fromValue( static_cast<void*>( this ) ) );
+}
+
+
+KIWAY_PLAYER* KIWAY_PLAYER::FromWidget( const QObject* aWidget )
+{
+    if( !aWidget )
+        return nullptr;
+
+    return static_cast<KIWAY_PLAYER*>( aWidget->property( "kicadKiwayPlayer" ).value<void*>() );
 }
 
 

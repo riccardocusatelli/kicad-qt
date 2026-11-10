@@ -109,8 +109,9 @@ KIWAY_FACES::FACE_T KIWAY::KifaceType( FRAME_T aFrameType )
 
 KIWAY_PLAYER* KIWAY::GetPlayerFrame( FRAME_T aFrameType )
 {
-    // The pointers are cleared by Qt when the frames are deleted
-    return dynamic_cast<KIWAY_PLAYER*>( m_players[aFrameType].data() );
+    // The pointers are cleared by Qt when the frames are deleted.  Not a dynamic_cast: the
+    // players are made by the KIFACEs (see EDA_BASE_FRAME::FromWidget())
+    return KIWAY_PLAYER::FromWidget( m_players[aFrameType].data() );
 }
 
 
@@ -143,7 +144,7 @@ KIWAY_PLAYER* KIWAY::Player( FRAME_T aFrameType, bool doCreate, QWidget* aParent
             if( !kiface )
                 return nullptr;
 
-            frame = dynamic_cast<KIWAY_PLAYER*>( kiface->CreateKiWindow(
+            frame = KIWAY_PLAYER::FromWidget( kiface->CreateKiWindow(
                                             aParent,    // Parent window of frame in modal mode,
                                                         // NULL in non modal mode
                                             aFrameType,
@@ -280,7 +281,7 @@ void KIWAY::SetLanguage( int aLanguage )
 
     if( m_ctl & KFCTL_CPP_PROJECT_SUITE )
     {
-        if( EDA_BASE_FRAME* top = dynamic_cast<EDA_BASE_FRAME*>( m_top.data() ) )
+        if( EDA_BASE_FRAME* top = EDA_BASE_FRAME::FromWidget( m_top.data() ) )
             top->ShowChangedLanguage();
     }
 
@@ -296,7 +297,7 @@ void KIWAY::CommonSettingsChanged( int aFlags )
 {
     if( m_ctl & KFCTL_CPP_PROJECT_SUITE )
     {
-        if( EDA_BASE_FRAME* top = dynamic_cast<EDA_BASE_FRAME*>( m_top.data() ) )
+        if( EDA_BASE_FRAME* top = EDA_BASE_FRAME::FromWidget( m_top.data() ) )
             top->CommonSettingsChanged( aFlags );
     }
 
@@ -321,7 +322,7 @@ void KIWAY::ClearFileHistory()
 {
     if( m_ctl & KFCTL_CPP_PROJECT_SUITE )
     {
-        if( EDA_BASE_FRAME* top = dynamic_cast<EDA_BASE_FRAME*>( m_top.data() ) )
+        if( EDA_BASE_FRAME* top = EDA_BASE_FRAME::FromWidget( m_top.data() ) )
             top->ClearFileHistory();
     }
 
@@ -344,7 +345,7 @@ void KIWAY::ProjectChanged()
 
     if( m_ctl & KFCTL_CPP_PROJECT_SUITE )
     {
-        if( EDA_BASE_FRAME* top = dynamic_cast<EDA_BASE_FRAME*>( m_top.data() ) )
+        if( EDA_BASE_FRAME* top = EDA_BASE_FRAME::FromWidget( m_top.data() ) )
             top->ProjectChanged();
     }
 
@@ -385,7 +386,7 @@ void KIWAY::OnKiCadExit()
     if( m_ctl & KFCTL_CPP_PROJECT_SUITE )
     {
         // A dialog box is displayed if the frame of the project manager has unsaved changes
-        if( EDA_BASE_FRAME* top = dynamic_cast<EDA_BASE_FRAME*>( m_top.data() ) )
+        if( EDA_BASE_FRAME* top = EDA_BASE_FRAME::FromWidget( m_top.data() ) )
             top->Close( false );
     }
 }

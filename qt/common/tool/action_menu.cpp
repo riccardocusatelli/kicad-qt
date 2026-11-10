@@ -648,7 +648,7 @@ void ACTION_MENU::onTriggered( QAction* aAction )
                                         : nullptr;
 
         if( !frame )
-            frame = dynamic_cast<EDA_BASE_FRAME*>( QApplication::activeWindow() );
+            frame = EDA_BASE_FRAME::FromWidget( QApplication::activeWindow() );
 
         if( frame )
             frame->RunMenuCommand( m_selected );

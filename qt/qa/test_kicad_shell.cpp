@@ -119,7 +119,9 @@ void testMenus( EDA_BASE_FRAME* aFrame, const char* aName )
  */
 int canvasDrawing( KIWAY_PLAYER* aFrame, QImage& aImage )
 {
-    auto* canvas = dynamic_cast<EDA_DRAW_PANEL_GAL*>( aFrame->GetToolCanvas() );
+    // Not a dynamic_cast: the frame is made by a KIFACE (see EDA_BASE_FRAME::FromWidget())
+    EDA_DRAW_FRAME*     drawFrame = aFrame->AsDrawFrame();
+    EDA_DRAW_PANEL_GAL* canvas = drawFrame ? drawFrame->GetCanvas() : nullptr;
     int   drawn = 0;
 
     for( int attempt = 0; canvas && attempt < 20 && !drawn; ++attempt )
@@ -336,7 +338,7 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
         testMenus( pcb, "the PCB editor" );
 
         // The changes of the items are not saved (the next project would ask)
-        if( auto* drawFrame = dynamic_cast<EDA_DRAW_FRAME*>( pcb ) )
+        if( EDA_DRAW_FRAME* drawFrame = pcb->AsDrawFrame() )
             drawFrame->GetScreen()->SetContentModified( false );
     }
 

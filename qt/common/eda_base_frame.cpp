@@ -242,6 +242,15 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
 }
 
 
+EDA_BASE_FRAME* EDA_BASE_FRAME::FromWidget( const QObject* aWidget )
+{
+    if( !aWidget )
+        return nullptr;
+
+    return static_cast<EDA_BASE_FRAME*>( aWidget->property( "kicadEdaBaseFrame" ).value<void*>() );
+}
+
+
 EDA_BASE_FRAME::EDA_BASE_FRAME( wxWidgetArgCompat aParent, FRAME_T aFrameType, const wxString& aTitle,
                                 const wxPoint& aPos, const wxSize& aSize, long aStyle,
                                 const wxString& aFrameName, KIWAY* aKiway,
@@ -253,6 +262,7 @@ EDA_BASE_FRAME::EDA_BASE_FRAME( wxWidgetArgCompat aParent, FRAME_T aFrameType, c
         m_name( aFrameName )
 {
     setObjectName( ToQString( aFrameName ) );
+    setProperty( "kicadEdaBaseFrame", QVariant::fromValue( static_cast<void*>( this ) ) );
     SetTitle( aTitle );
 
     // A frame with a parent is a window of its own, on top of its parent

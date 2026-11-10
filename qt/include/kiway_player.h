@@ -61,6 +61,12 @@ public:
     ~KIWAY_PLAYER() throw();
 
     /**
+     * @return the player @a aWidget is, or nullptr: valid across the modules, as
+     *         EDA_BASE_FRAME::FromWidget().
+     */
+    static KIWAY_PLAYER* FromWidget( const QObject* aWidget );
+
+    /**
      * The deferred delete of the frame, as wxWidgets: the KIWAY forgets the frame now, so that
      * the frame being deleted gets no more calls of the KIWAY (its project change, its mail).
      */

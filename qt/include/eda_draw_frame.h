@@ -122,6 +122,8 @@ public:
 
     ~EDA_DRAW_FRAME();
 
+    EDA_DRAW_FRAME* AsDrawFrame() override { return this; }
+
     /**
      * Mark a schematic file as being in use.
      *

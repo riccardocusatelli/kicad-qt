@@ -40,6 +40,8 @@
 #include <QShowEvent>
 #include <QTimer>
 
+#include <algorithm>
+
 #include <nlohmann/json.hpp>
 
 #include <eda_base_frame.h>
@@ -91,7 +93,7 @@ DIALOG_SHIM::DIALOG_SHIM( wxWidgetArgCompat aParent, const wxString& aTitle ) :
     for( QWidget* ancestor = aParent; ancestor && !m_parentFrame;
          ancestor = ancestor->parentWidget() )
     {
-        m_parentFrame = dynamic_cast<EDA_BASE_FRAME*>( ancestor );
+        m_parentFrame = EDA_BASE_FRAME::FromWidget( ancestor );
     }
 
     if( m_parentFrame )
@@ -270,6 +272,34 @@ void DIALOG_SHIM::restoreGeometry()
         QScreen* screen = parentWidget() ? parentWidget()->screen()
                                          : QGuiApplication::primaryScreen();
         move( screen->availableGeometry().center() - QPoint( width() / 2, height() / 2 ) );
+    }
+
+    // In the screen, with the frame of the window (its title bar, which is not known before the
+    // dialog is shown: the one of macOS at least): smaller on a small screen, moved into it
+    QScreen* screen = QGuiApplication::screenAt( pos() + QPoint( width() / 2, 15 ) );
+
+    if( !screen )
+        screen = parentWidget() ? parentWidget()->screen() : QGuiApplication::primaryScreen();
+
+    if( screen )
+    {
+        const QRect available = screen->availableGeometry();
+        const int   frameWidth = std::max( frameGeometry().width() - width(), 0 );
+        const int   frameHeight = std::max( frameGeometry().height() - height(), 28 );
+        const int   maxWidth = available.width() - frameWidth;
+        const int   maxHeight = available.height() - frameHeight;
+
+        if( width() > maxWidth || height() > maxHeight )
+            resize( std::min( width(), maxWidth ), std::min( height(), maxHeight ) );
+
+        QPoint topLeft = pos();
+        topLeft.setX( std::clamp( topLeft.x(), available.left(),
+                                  std::max( available.left(), available.right() + 1 - frameWidth - width() ) ) );
+        topLeft.setY( std::clamp( topLeft.y(), available.top(),
+                                  std::max( available.top(), available.bottom() + 1 - frameHeight - height() ) ) );
+
+        if( topLeft != pos() )
+            move( topLeft );
     }
 }
 

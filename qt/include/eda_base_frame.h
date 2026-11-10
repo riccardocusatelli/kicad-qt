@@ -85,6 +85,7 @@ class wxFileName;
 class EDA_ITEM;
 enum class BITMAPS : unsigned int;
 class EDA_DRAW_PANEL_GAL;
+class EDA_DRAW_FRAME;
 class DIALOG_EDIT_LIBRARY_TABLES;
 class BASE_SCREEN;
 class PAGE_INFO;
@@ -147,6 +148,20 @@ public:
                     const wxString& aFrameName, KIWAY* aKiway, const EDA_IU_SCALE& aIuScale );
 
     ~EDA_BASE_FRAME();
+
+    /**
+     * @return the frame @a aWidget is, or nullptr.  A property of the frame rather than a
+     *         dynamic_cast: the frames are compiled into each module (the static kiqt_common),
+     *         and on macOS the type info of a class differs between the modules (a frame of a
+     *         KIFACE is not an EDA_BASE_FRAME of kicad-qt for a dynamic_cast).
+     */
+    static EDA_BASE_FRAME* FromWidget( const QObject* aWidget );
+
+    /**
+     * @return the frame as an EDA_DRAW_FRAME, or nullptr: a virtual function rather than a
+     *         dynamic_cast, valid across the modules (see FromWidget()).
+     */
+    virtual EDA_DRAW_FRAME* AsDrawFrame() { return nullptr; }
 
     void ChangeUserUnits( EDA_UNITS aUnits );
 
