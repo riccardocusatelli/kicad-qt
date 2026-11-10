@@ -52,6 +52,7 @@
 #include <QScreen>
 #include <QStatusBar>
 #include <QTimer>
+#include <QToolBar>
 
 #include <bitmaps.h>
 #include <wildcards_and_files_ext.h>
@@ -747,6 +748,21 @@ bool EDA_BASE_FRAME::event( QEvent* aEvent )
 
         endAnimations();
         qDeleteAll( findChildren<QDockWidget*>( QString(), Qt::FindDirectChildrenOnly ) );
+
+        // Nothing left in the layout of the main window for its destructor: a widget taken
+        // from the layout there ends its animation with the tab bars of the docks already
+        // deleted (the same crash).  The toolbars stay children of the frame, whose destructors
+        // still use them.
+        for( QToolBar* toolBar : findChildren<QToolBar*>( QString(), Qt::FindDirectChildrenOnly ) )
+            removeToolBar( toolBar );
+
+        for( QDockWidget* dock : findChildren<QDockWidget*>() )
+            removeDockWidget( dock );
+
+        // The layout as it is now, and the animations it made
+        if( layout() )
+            layout()->activate();
+
         endAnimations();
     }
 
