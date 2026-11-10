@@ -37,8 +37,6 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
-#include <QPointer>
-#include <QPropertyAnimation>
 #include <QUrl>
 #include <QDockWidget>
 #include <widgets/kistatusbar.h>
@@ -52,7 +50,6 @@
 #include <QScreen>
 #include <QStatusBar>
 #include <QTimer>
-#include <QToolBar>
 
 #include <bitmaps.h>
 #include <wildcards_and_files_ext.h>
@@ -240,11 +237,8 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
 
     // The frames are top level windows of their own (and are deleted when closed)
     setAttribute( Qt::WA_DeleteOnClose, false );
-
-    // The docks are not animated (as the panes of wxAUI): an animation still running when the
-    // frame is deleted ends in the destructor of QMainWindow, in a layout already deleted (a
-    // crash on macOS, of a frame closed just after it is shown)
-    setDockOptions( QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks );
+    setDockOptions( QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks
+                    | QMainWindow::AllowTabbedDocks );
 }
 
 
@@ -725,45 +719,7 @@ bool EDA_BASE_FRAME::event( QEvent* aEvent )
             panel->setParent( this );
         }
 
-        // The animations of the layout of the docks end now, with the layout: the style of
-        // macOS makes one for each move of a dock (also with the animated docks off), and one
-        // left for the destructor of QMainWindow ends in a layout already deleted (a crash)
-        auto endAnimations =
-                [this]()
-                {
-                    for( int pass = 0; pass < 3; ++pass )
-                    {
-                        QList<QPointer<QPropertyAnimation>> animations;
-
-                        for( QPropertyAnimation* animation : findChildren<QPropertyAnimation*>() )
-                            animations.push_back( animation );
-
-                        if( animations.isEmpty() )
-                            break;
-
-                        for( const QPointer<QPropertyAnimation>& animation : animations )
-                            delete animation.data();
-                    }
-                };
-
-        endAnimations();
         qDeleteAll( findChildren<QDockWidget*>( QString(), Qt::FindDirectChildrenOnly ) );
-
-        // Nothing left in the layout of the main window for its destructor: a widget taken
-        // from the layout there ends its animation with the tab bars of the docks already
-        // deleted (the same crash).  The toolbars stay children of the frame, whose destructors
-        // still use them.
-        for( QToolBar* toolBar : findChildren<QToolBar*>( QString(), Qt::FindDirectChildrenOnly ) )
-            removeToolBar( toolBar );
-
-        for( QDockWidget* dock : findChildren<QDockWidget*>() )
-            removeDockWidget( dock );
-
-        // The layout as it is now, and the animations it made
-        if( layout() )
-            layout()->activate();
-
-        endAnimations();
     }
 
     return wxWindowCompat<QMainWindow>::event( aEvent );

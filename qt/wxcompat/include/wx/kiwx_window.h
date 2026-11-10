@@ -898,10 +898,20 @@ public:
         // handlers from it)
         std::vector<QPointer<QObject>> children;
 
+        // Not the tab bars of the docks of a main window: they are of its layout, which shows
+        // them when a widget leaves it (when one of the other children is deleted here); Qt
+        // deletes them after the layout
+        const bool mainWindow = this->inherits( "QMainWindow" );
+
         for( QObject* child : QObject::children() )
         {
-            if( child->isWidgetType() )
-                children.emplace_back( child );
+            if( !child->isWidgetType() )
+                continue;
+
+            if( mainWindow && child->inherits( "QTabBar" ) )
+                continue;
+
+            children.emplace_back( child );
         }
 
         for( const QPointer<QObject>& child : children )
