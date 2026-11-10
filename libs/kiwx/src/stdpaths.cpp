@@ -42,8 +42,9 @@ public:
 
 STANDARD_PATHS_DEFAULT& stdPaths()
 {
-    static STANDARD_PATHS_DEFAULT s_paths;
-    return s_paths;
+    // Never destroyed (used by the objects of the program destroyed at exit)
+    static STANDARD_PATHS_DEFAULT* s_paths = new STANDARD_PATHS_DEFAULT;
+    return *s_paths;
 }
 
 } // namespace

@@ -37,6 +37,8 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QPointer>
+#include <QPropertyAnimation>
 #include <QUrl>
 #include <QDockWidget>
 #include <widgets/kistatusbar.h>
@@ -722,7 +724,30 @@ bool EDA_BASE_FRAME::event( QEvent* aEvent )
             panel->setParent( this );
         }
 
+        // The animations of the layout of the docks end now, with the layout: the style of
+        // macOS makes one for each move of a dock (also with the animated docks off), and one
+        // left for the destructor of QMainWindow ends in a layout already deleted (a crash)
+        auto endAnimations =
+                [this]()
+                {
+                    for( int pass = 0; pass < 3; ++pass )
+                    {
+                        QList<QPointer<QPropertyAnimation>> animations;
+
+                        for( QPropertyAnimation* animation : findChildren<QPropertyAnimation*>() )
+                            animations.push_back( animation );
+
+                        if( animations.isEmpty() )
+                            break;
+
+                        for( const QPointer<QPropertyAnimation>& animation : animations )
+                            delete animation.data();
+                    }
+                };
+
+        endAnimations();
         qDeleteAll( findChildren<QDockWidget*>( QString(), Qt::FindDirectChildrenOnly ) );
+        endAnimations();
     }
 
     return wxWindowCompat<QMainWindow>::event( aEvent );

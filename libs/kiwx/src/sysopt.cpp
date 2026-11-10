@@ -30,14 +30,14 @@ namespace
 {
 wxArrayString& optionNames()
 {
-    static wxArrayString s_names;
-    return s_names;
+    static wxArrayString* s_names = new wxArrayString;
+    return *s_names;
 }
 
 wxArrayString& optionValues()
 {
-    static wxArrayString s_values;
-    return s_values;
+    static wxArrayString* s_values = new wxArrayString;
+    return *s_values;
 }
 } // namespace
 

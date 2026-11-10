@@ -64,8 +64,9 @@ double cLocaleWcstod( const wchar_t* aStr, wchar_t** aEnd )
 
 const wxString& kiwxEmptyString()
 {
-    static const wxString empty;
-    return empty;
+    // Never destroyed (used by the objects of the program destroyed at exit)
+    static const wxString* empty = new wxString;
+    return *empty;
 }
 
 

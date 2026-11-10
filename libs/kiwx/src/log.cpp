@@ -49,8 +49,10 @@ struct LOG_STATE
 
 LOG_STATE& state()
 {
-    static LOG_STATE s;
-    return s;
+    // Never destroyed: the objects of the program destroyed at exit still log (on macOS after
+    // the statics of this library)
+    static LOG_STATE* s = new LOG_STATE;
+    return *s;
 }
 
 
