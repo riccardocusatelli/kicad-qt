@@ -290,7 +290,17 @@ void DIALOG_SHIM::restoreGeometry()
         const int   maxHeight = available.height() - frameHeight;
 
         if( width() > maxWidth || height() > maxHeight )
+        {
+            // The minimal size of the content too (see finishDialogSettings()), when the screen
+            // is smaller than it
+            if( minimumWidth() > maxWidth || minimumHeight() > maxHeight )
+            {
+                setMinimumSize( std::min( minimumWidth(), maxWidth ),
+                                std::min( minimumHeight(), maxHeight ) );
+            }
+
             resize( std::min( width(), maxWidth ), std::min( height(), maxHeight ) );
+        }
 
         QPoint topLeft = pos();
         topLeft.setX( std::clamp( topLeft.x(), available.left(),

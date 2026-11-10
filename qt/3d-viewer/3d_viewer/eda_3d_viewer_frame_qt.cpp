@@ -89,6 +89,9 @@ void EDA_3D_VIEWER_FRAME::setupWindow( EDA_3D_VIEWER_SETTINGS* aCfg )
     layersManager->setMinimumWidth( 180 );
     addDockWidget( Qt::RightDockWidgetArea, layersManager );
 
+    // The destructor of the frame saves the viewports of the panel
+    keepPaneUntilDeleted( m_appearancePanel );
+
     if( aCfg && aCfg->m_AuiPanels.right_panel_width > 0 )
         resizeDocks( { layersManager }, { aCfg->m_AuiPanels.right_panel_width }, Qt::Horizontal );
 

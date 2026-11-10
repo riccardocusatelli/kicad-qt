@@ -188,6 +188,8 @@ jobs:
           # The libraries: of the programs (with the test of the shell, taken out of the bundle
           # after), the KIFACEs, the 3D plugins and the modules of Python
           cp build/kicad/qa_qt_kicad_shell $C/MacOS/
+          # (no 3D plugins in the wx-free build)
+          shopt -s nullglob
           extra=()
           for f in $C/MacOS/kicad-cli $C/MacOS/qa_qt_kicad_shell $C/MacOS/*.kiface $C/PlugIns/3d/* $PYLIB/lib-dynload/*.so; do
             extra+=( "-executable=$f" )
@@ -209,6 +211,17 @@ jobs:
             case $id in
               $BREW*|$PWD/build*|/usr/local*) install_name_tool -id "@rpath/${f#$C/Frameworks/}" "$f" ;;
             esac
+            # The libraries macdeployqt left (the Python framework of Homebrew): the copy in the
+            # bundle, by its path in Contents/Frameworks
+            for dep in $(otool -L "$f" | tail -n +2 | awk '{ print $1 }' | grep -E "^($BREW|$PWD/build|/usr/local)"); do
+              case $dep in
+                */Python.framework/*) new=@rpath/Python.framework/${dep#*/Python.framework/} ;;
+                *) rel=$(cd $C/Frameworks && find . -name "$(basename $dep)" | head -1)
+                   [ -n "$rel" ] || continue
+                   new=@rpath/${rel#./} ;;
+              esac
+              install_name_tool -change "$dep" "$new" "$f"
+            done
             if otool -L "$f" | tail -n +2 | grep -E "$BREW|$PWD/build|/usr/local"; then
               echo "  ^ in $f"; left=1
             fi
@@ -216,9 +229,16 @@ jobs:
                                      -o -path '*.framework/Versions/*' \))
           test $left -eq 0
 
+          # An ad-hoc signature of each program and library (arm64 runs only signed code), then
+          # of the bundle (not required to run it)
+          while IFS= read -r f; do
+            if file -b "$f" | grep -q Mach-O; then codesign --force --sign - "$f"; fi
+          done < <(find $C -type f \( -perm -u+x -o -name '*.dylib' -o -name '*.so' -o -name '*.kiface' \
+                                     -o -path '*.framework/Versions/*' \))
+
           mkdir -p pkg-extra
           mv $C/MacOS/qa_qt_kicad_shell pkg-extra/
-          codesign --force --deep --sign - $APP
+          codesign --force --sign - $APP || echo "::warning::KiCad.app: no signature of the bundle"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           du -sh $APP
 
@@ -250,7 +270,7 @@ jobs:
           done
           test -f $C/SharedSupport/template/sym-lib-table
           test -f $C/SharedSupport/template/fp-lib-table
-          codesign --force --deep --sign - $PWD/pkg/KiCad.app
+          codesign --force --sign - $PWD/pkg/KiCad.app || echo "::warning::KiCad.app: no signature of the bundle"
           du -sh pkg/KiCad.app
 
       # The disk image, with a link to /Applications
