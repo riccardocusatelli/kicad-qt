@@ -65,6 +65,8 @@ public:
     PGM_GUI();
     ~PGM_GUI() override;
 
+    PGM_GUI* AsGui() override { return this; }
+
     GL_CONTEXT_MANAGER* GetGLContextManager() { return m_glContextManager; }
 
     /**

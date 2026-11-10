@@ -343,7 +343,8 @@ void PGM_GUI::ClearLibraryLoadMessages()
 
 PGM_GUI& PgmGui()
 {
-    PGM_GUI* pgm = dynamic_cast<PGM_GUI*>( PgmOrNull() );
+    PGM_BASE* base = PgmOrNull();
+    PGM_GUI*  pgm = base ? base->AsGui() : nullptr;
     KI_ASSERT( pgm ); // only GUI programs derive from PGM_GUI
     return *pgm;
 }

@@ -47,6 +47,7 @@ class wxLocale;
 class COMMON_SETTINGS;
 class SETTINGS_MANAGER;
 class LIBRARY_MANAGER;
+class PGM_GUI;
 
 
 /**
@@ -93,6 +94,12 @@ class KICOMMON_API PGM_BASE
 public:
     PGM_BASE();
     virtual ~PGM_BASE();
+
+    /**
+     * @return the program as a GUI program (PGM_GUI), or nullptr.  A virtual function rather than
+     *         a dynamic_cast: the type info of a class can differ between the modules (macOS).
+     */
+    virtual PGM_GUI* AsGui() { return nullptr; }
 
     /**
      * Builds the UTF8 based argv variable
