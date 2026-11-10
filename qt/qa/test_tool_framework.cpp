@@ -438,6 +438,29 @@ void settle( int aMilliseconds = 50 )
 
 
 /// The cursor at a point of the canvas (the tools read the position of the cursor).
+/// Drops the events of the mouse of the platform: moving the cursor of the system makes the
+/// platform send motions without the buttons the test pressed (its events are synthetic), which
+/// would end the drags of the test.
+class PLATFORM_MOUSE_FILTER : public QObject
+{
+public:
+    bool eventFilter( QObject* aWatched, QEvent* aEvent ) override
+    {
+        switch( aEvent->type() )
+        {
+        case QEvent::MouseMove:
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseButtonRelease:
+        case QEvent::MouseButtonDblClick:
+            return aEvent->spontaneous();
+
+        default:
+            return QObject::eventFilter( aWatched, aEvent );
+        }
+    }
+};
+
+
 /// Move the cursor of the system to @a aGlobal: the dispatcher reads it, and macOS updates it
 /// asynchronously (at most 500 ms).
 void warpCursor( QPoint aGlobal )
@@ -724,6 +747,9 @@ int main( int argc, char** argv )
         frame.activateWindow();
         settle( 200 );
 
+        PLATFORM_MOUSE_FILTER platformMouse;
+        qApp->installEventFilter( &platformMouse );
+
         EDA_DRAW_PANEL_GAL* canvas = frame.GetCanvas();
         KIGFX::VIEW*        view = canvas->GetView();
         TEST_TOOL*          tool = frame.TestTool();
@@ -928,10 +954,19 @@ int main( int argc, char** argv )
 #ifdef __APPLE__
         settle( 400 ); // Past TOOL_DISPATCHER::DragTimeThreshold, as the drag above
 #endif
-        drag( canvas, from + QPoint( 30, 20 ) );
-        drag( canvas, to );
+        // A few steps: the first drag starts the region of the tool, the next ones make it
+        for( int step = 1; step <= 4; ++step )
+        {
+            drag( canvas, from + ( to - from ) * step / 4 );
+            settle( 20 );
+        }
+
         release( canvas, to, Qt::LeftButton );
         settle();
+
+        if( view->GetScale() <= before * 2 )
+            std::printf( "    scale %g, before %g\n", view->GetScale(), before );
+
         check( view->GetScale() > before * 2, "a drag zooms on its area" );
 
         key( canvas, Qt::Key_Escape );
