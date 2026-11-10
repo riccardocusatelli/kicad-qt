@@ -184,6 +184,38 @@ void testSimModelDialog( QDialog* aParent, const QString& aButton, const QString
                                   }
                               }
 
+                              if( params == 0 )
+                              {
+                                  // What the dialog shows, for the platforms where it fails
+                                  for( QRadioButton* radio : dialog->findChildren<QRadioButton*>() )
+                                  {
+                                      std::printf( "    radio \"%s\" checked %d enabled %d\n",
+                                                   qPrintable( radio->text() ), radio->isChecked(),
+                                                   radio->isEnabled() );
+                                  }
+
+                                  for( QComboBox* combo : dialog->findChildren<QComboBox*>() )
+                                  {
+                                      std::printf( "    combo \"%s\" of %d, enabled %d visible %d\n",
+                                                   qPrintable( combo->currentText() ),
+                                                   combo->count(), combo->isEnabled(),
+                                                   combo->isVisible() );
+                                  }
+
+                                  for( QTreeWidget* tree : dialog->findChildren<QTreeWidget*>() )
+                                  {
+                                      int items = 0;
+
+                                      for( QTreeWidgetItemIterator it( tree ); *it; ++it )
+                                          items++;
+
+                                      std::printf( "    tree of %d items, visible %d\n", items,
+                                                   tree->isVisible() );
+                                  }
+
+                                  std::fflush( stdout );
+                              }
+
                               if( !aScreenshot.isEmpty() )
                                   dialog->grab().save( aScreenshot );
 
