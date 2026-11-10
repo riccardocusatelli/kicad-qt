@@ -375,28 +375,48 @@ void testFootprintWizard( KIWAY& aKiway )
     bool shown = false;
     bool built = false;
 
-    QTimer::singleShot( 400,
-                        [&]()
-                        {
-                            shown = frame->isVisible();
+    // When the list of the wizards is answered and closed (its modal loop ended: on macOS a
+    // nested modal session ends late) and the footprint is built, or after 5 s
+    QTimer        poll;
+    QElapsedTimer waited;
+    bool          selected = false;
 
-                            if( listsShown == 0 )
-                            {
-                                wxCommandEvent dummy;
-                                frame->SelectCurrentWizard( dummy );
-                            }
+    QObject::connect( &poll, &QTimer::timeout,
+                      [&]()
+                      {
+                          bool listOpen = dynamic_cast<DIALOG_FOOTPRINT_WIZARD_LIST*>(
+                                                  QApplication::activeModalWidget() ) != nullptr;
 
-                            BOARD*     board = frame->GetBoard();
-                            FOOTPRINT* fp = board ? board->GetFirstFootprint() : nullptr;
-                            built = fp && fp->Pads().size() > 4;
+                          if( ( waited.elapsed() < 400 || listOpen ) && waited.elapsed() < 5000 )
+                              return;
 
-                            wxCommandEvent dummy;
-                            frame->ExportSelectedFootprint( dummy );
-                        } );
+                          shown = frame->isVisible();
+
+                          if( listsShown == 0 && !selected )
+                          {
+                              selected = true;
+                              wxCommandEvent dummy;
+                              frame->SelectCurrentWizard( dummy );
+                          }
+
+                          BOARD*     board = frame->GetBoard();
+                          FOOTPRINT* fp = board ? board->GetFirstFootprint() : nullptr;
+                          built = fp && fp->Pads().size() > 4;
+
+                          if( !built && waited.elapsed() < 5000 )
+                              return;
+
+                          poll.stop();
+                          wxCommandEvent dummy;
+                          frame->ExportSelectedFootprint( dummy );
+                      } );
+    waited.start();
+    poll.start( 50 );
 
     wxString result;
     bool     exported = frame->ShowModal( &result, nullptr );
     answer.stop();
+    poll.stop();
 
     check( shown, "the footprint wizard is shown" );
     check( listsShown > 0, "the footprint wizard shows the list of the wizards" );
