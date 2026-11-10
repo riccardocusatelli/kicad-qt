@@ -35,6 +35,7 @@
 #include <QDialogButtonBox>
 #include <QEventLoop>
 #include <QGuiApplication>
+#include <QLayout>
 #include <QPushButton>
 #include <QScreen>
 #include <QShowEvent>
@@ -274,6 +275,21 @@ void DIALOG_SHIM::restoreGeometry()
         move( screen->availableGeometry().center() - QPoint( width() / 2, height() / 2 ) );
     }
 
+    fitInScreen();
+
+    // Again once shown, with the content laid out as the dialog shows it (it can grow after
+    // TransferDataToWindow()): a dialog bounded by the screen keeps the size of its content
+    QTimer::singleShot( 0, this,
+                        [this]()
+                        {
+                            if( m_boundedByScreen && isVisible() )
+                                fitInScreen();
+                        } );
+}
+
+
+void DIALOG_SHIM::fitInScreen()
+{
     // In the screen, with the frame of the window (its title bar, which is not known before the
     // dialog is shown: the one of macOS at least): smaller on a small screen, moved into it
     QScreen* screen = QGuiApplication::screenAt( pos() + QPoint( width() / 2, 15 ) );
@@ -281,34 +297,46 @@ void DIALOG_SHIM::restoreGeometry()
     if( !screen )
         screen = parentWidget() ? parentWidget()->screen() : QGuiApplication::primaryScreen();
 
-    if( screen )
+    if( !screen )
+        return;
+
+    const QRect available = screen->availableGeometry();
+    const int   frameWidth = std::max( frameGeometry().width() - width(), 0 );
+    const int   frameHeight = std::max( frameGeometry().height() - height(), 28 );
+    const QSize maxSize( available.width() - frameWidth, available.height() - frameHeight );
+
+    // The layout of the content set in the dialog, not the one of its creation
+    if( layout() )
+        layout()->activate();
+
+    const QSize content = minimumSizeHint().expandedTo( minimumSize() );
+
+    if( width() > maxSize.width() || height() > maxSize.height()
+            || content.width() > maxSize.width() || content.height() > maxSize.height() )
     {
-        const QRect available = screen->availableGeometry();
-        const int   frameWidth = std::max( frameGeometry().width() - width(), 0 );
-        const int   frameHeight = std::max( frameGeometry().height() - height(), 28 );
-        const int   maxWidth = available.width() - frameWidth;
-        const int   maxHeight = available.height() - frameHeight;
-
-        if( width() > maxWidth || height() > maxHeight )
-        {
-            // The size of the content (it can have grown since finishDialogSettings()) within
-            // the screen; the minimal size too, when the screen is smaller than it
-            const QSize maxSize( maxWidth, maxHeight );
-            const QSize content = minimumSizeHint().expandedTo( minimumSize() );
-
-            setMinimumSize( content.boundedTo( maxSize ) );
-            resize( size().expandedTo( content ).boundedTo( maxSize ) );
-        }
-
-        QPoint topLeft = pos();
-        topLeft.setX( std::clamp( topLeft.x(), available.left(),
-                                  std::max( available.left(), available.right() + 1 - frameWidth - width() ) ) );
-        topLeft.setY( std::clamp( topLeft.y(), available.top(),
-                                  std::max( available.top(), available.bottom() + 1 - frameHeight - height() ) ) );
-
-        if( topLeft != pos() )
-            move( topLeft );
+        m_boundedByScreen = true;
     }
+
+    if( m_boundedByScreen )
+    {
+        // The size of the content within the screen; the minimal size too (see
+        // finishDialogSettings()), when the screen is smaller than it
+        setMinimumSize( content.boundedTo( maxSize ) );
+
+        QSize size = this->size().expandedTo( content ).boundedTo( maxSize );
+
+        if( size != this->size() )
+            resize( size );
+    }
+
+    QPoint topLeft = pos();
+    topLeft.setX( std::clamp( topLeft.x(), available.left(),
+                              std::max( available.left(), available.right() + 1 - frameWidth - width() ) ) );
+    topLeft.setY( std::clamp( topLeft.y(), available.top(),
+                              std::max( available.top(), available.bottom() + 1 - frameHeight - height() ) ) );
+
+    if( topLeft != pos() )
+        move( topLeft );
 }
 
 

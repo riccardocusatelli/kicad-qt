@@ -246,6 +246,10 @@ protected:
     /// Show the dialog where it was (and with the size it had).
     void restoreGeometry();
 
+    /// Keep the dialog in its screen: smaller when the screen is (but with its content when it
+    /// fits), moved into it.
+    void fitInScreen();
+
     /**
      * Forget the saved geometry of the dialog: the next time, the dialog has the size computed
      * from its layout.
@@ -266,6 +270,9 @@ protected:
 
     /// Keep the size computed by the dialog instead of the saved one.
     bool                   m_useCalculatedSize = false;
+
+    /// The dialog is larger than its screen (see fitInScreen()).
+    bool                   m_boundedByScreen = false;
 
     /// The size given to the constructor.
     wxSize                 m_initialSize = wxDefaultSize;

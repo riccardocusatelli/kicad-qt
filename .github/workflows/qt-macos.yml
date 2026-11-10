@@ -270,11 +270,12 @@ jobs:
             cmake --install libs/build-$repo | tail -3
             echo "::endgroup::"
           done
-          # Their install: share/kicad (the symbols packed into one file per library), the tables in
-          # share/kicad/template
+          # Their install: symbols (packed into one file per library), footprints, template (with
+          # the tables of the libraries)
           for dir in symbols footprints template; do
-            src=$(find libs/inst -type d -name $dir -path '*kicad*' | head -1)
-            echo "$dir: $src"
+            src=libs/inst/$dir
+            test -d $src
+            mkdir -p $C/SharedSupport/$dir
             cp -R $src/. $C/SharedSupport/$dir/
             echo "$dir: $(ls $C/SharedSupport/$dir | wc -l) entries"
           done
