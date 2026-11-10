@@ -925,6 +925,9 @@ int main( int argc, char** argv )
         QPoint to( canvas->width() / 2 + 60, canvas->height() / 2 + 40 );
         moveTo( canvas, from );
         press( canvas, from, Qt::LeftButton );
+#ifdef __APPLE__
+        settle( 400 ); // Past TOOL_DISPATCHER::DragTimeThreshold, as the drag above
+#endif
         drag( canvas, from + QPoint( 30, 20 ) );
         drag( canvas, to );
         release( canvas, to, Qt::LeftButton );
