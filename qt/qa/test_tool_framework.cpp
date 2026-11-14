@@ -796,6 +796,14 @@ int main( int argc, char** argv )
             // The events of the OpenGL window go to the panel, and to the tools
             QWindow* glWindow = static_cast<KIGFX::OPENGL_GAL*>( canvas->GetGAL() )->GetSurface();
             int      clicks = tool->Count( TA_MOUSE_CLICK );
+
+            // The buffers have the size of the native window (rounded as Qt sizes it): a
+            // smaller buffer leaves a black line at the top and at the right (125%)
+            const QSize native = canvas->size() * glWindow->devicePixelRatio();
+            std::printf( "  canvas %dx%d, ratio %g, native %dx%d, drawing %dx%d\n",
+                         canvas->width(), canvas->height(), glWindow->devicePixelRatio(),
+                         native.width(), native.height(), image.width(), image.height() );
+            check( image.size() == native, "the drawing covers the window of the canvas" );
             QPoint   at = center + QPoint( 20, 10 );
 
             QMouseEvent move( QEvent::MouseMove, at, glWindow->mapToGlobal( at ), Qt::NoButton,
@@ -878,6 +886,23 @@ int main( int argc, char** argv )
         check( click && click->buttons == BUT_LEFT, "left click" );
         check( click && ( click->position - cursor ).EuclideanNorm() < 1.0,
                "the click is at the cursor (world coordinates)" );
+
+        // The cross of the cursor is drawn where the mouse is: the point of the world under
+        // the mouse is at the same fraction of the screen of the GAL as the mouse is of the
+        // canvas (whatever the unit of the GAL: logical pixels for OpenGL, pixels for Cairo)
+        {
+            const VECTOR2D onScreen = view->ToScreen( cursor );
+            const VECTOR2D screen( view->GetScreenPixelSize() );
+            const VECTOR2D fraction( onScreen.x / screen.x, onScreen.y / screen.y );
+            const VECTOR2D expected( double( at.x() ) / canvas->width(),
+                                     double( at.y() ) / canvas->height() );
+
+            std::printf( "  mouse at %.3f, %.3f of the canvas, cursor at %.3f, %.3f of the GAL\n",
+                         expected.x, expected.y, fraction.x, fraction.y );
+            check( std::abs( fraction.x - expected.x ) < 0.01
+                           && std::abs( fraction.y - expected.y ) < 0.01,
+                   "the cursor is drawn under the mouse" );
+        }
 
         press( canvas, at, Qt::LeftButton, Qt::ShiftModifier );
         release( canvas, at, Qt::LeftButton, Qt::ShiftModifier );

@@ -315,20 +315,27 @@ public:
      */
     static KIGFX::VC_SETTINGS GetVcSettings();
 
-    /// A point of the canvas (in logical pixels, as the events of Qt) in device pixels.
+    /**
+     * The pixels of the view (and of its GAL) in a logical pixel of Qt: the ratio of the
+     * screen for the Cairo GAL, which draws in pixels, and 1 for the OpenGL GAL, whose view is
+     * in logical pixels (it scales only its buffers).
+     */
+    double GetViewScale() const;
+
+    /// A point of the canvas (in logical pixels, as the events of Qt) in pixels of the view.
     VECTOR2D ToDevice( const QPointF& aPoint ) const;
 
     /// The size of the canvas in logical pixels.
     wxSize GetClientSize() const { return wxSize( width(), height() ); }
 
-    /// The size of the canvas in device pixels.
+    /// The size of the canvas in pixels of the view.
     VECTOR2I GetClientSizeDevice() const;
 
     /// The size the scroll bars take in the canvas (the Qt canvas has none).
     VECTOR2I GetScrollbarSize() const { return VECTOR2I( 0, 0 ); }
 
     /**
-     * Move the mouse cursor to a point of the canvas, in device pixels.
+     * Move the mouse cursor to a point of the canvas, in pixels of the view.
      *
      * @return true if the cursor was moved.
      */

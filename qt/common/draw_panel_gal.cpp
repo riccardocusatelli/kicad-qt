@@ -204,23 +204,34 @@ void EDA_DRAW_PANEL_GAL::createViewControls()
 }
 
 
+double EDA_DRAW_PANEL_GAL::GetViewScale() const
+{
+    // The OpenGL GAL has the logical size, as the view (it scales only its buffers, as the
+    // wxWidgets build on GTK and macOS); the Cairo GAL draws, and has its view, in pixels
+    if( m_backend == GAL_TYPE_OPENGL )
+        return 1.0;
+
+    return devicePixelRatioF();
+}
+
+
 VECTOR2D EDA_DRAW_PANEL_GAL::ToDevice( const QPointF& aPoint ) const
 {
-    const double ratio = devicePixelRatioF();
+    const double ratio = GetViewScale();
     return VECTOR2D( aPoint.x() * ratio, aPoint.y() * ratio );
 }
 
 
 VECTOR2I EDA_DRAW_PANEL_GAL::GetClientSizeDevice() const
 {
-    const double ratio = devicePixelRatioF();
+    const double ratio = GetViewScale();
     return VECTOR2I( KiROUND( width() * ratio ), KiROUND( height() * ratio ) );
 }
 
 
 bool EDA_DRAW_PANEL_GAL::WarpPointer( const VECTOR2D& aDevicePoint )
 {
-    const double ratio = devicePixelRatioF();
+    const double ratio = GetViewScale();
 
     return KIPLATFORM::UI::WarpPointer( this, KiROUND( aDevicePoint.x / ratio ),
                                         KiROUND( aDevicePoint.y / ratio ) );
@@ -466,8 +477,7 @@ void EDA_DRAW_PANEL_GAL::ResizeGal( bool aForce )
     KIGFX::GAL_CONTEXT_LOCKER locker( m_gal );
 
     // The OpenGL GAL has the logical size (it scales its buffers), the Cairo GAL the pixels
-    VECTOR2I clientSize = m_backend == GAL_TYPE_OPENGL ? VECTOR2I( width(), height() )
-                                                       : GetClientSizeDevice();
+    VECTOR2I clientSize = GetClientSizeDevice();
 
     if( !aForce && clientSize == m_gal->GetScreenPixelSize() )
         return;

@@ -120,6 +120,23 @@ jobs:
             gdb -q -batch -return-child-result -ex "handle SIGPIPE nostop noprint pass" -ex run \
               -ex "thread apply all bt 40" --args ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png
 
+      # The canvas with the OpenGL GAL (Mesa, in software) on a screen scaled to 125%: the cursor
+      # under the mouse and the drawing over the whole window, as on Windows at 125%
+      - name: QA of the OpenGL canvas at 125%
+        if: always()
+        env:
+          KICAD_RUN_FROM_BUILD_DIR: '1'
+          QT_QPA_PLATFORM: xcb
+          QT_SCALE_FACTOR: '1.25'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -e
+          BOARD=$PWD/qa/data/pcbnew/api_kitchen_sink.kicad_pcb
+          cd build/qt/qa
+          timeout 900 xvfb-run -a -s "-screen 0 1920x1200x24" \
+            gdb -q -batch -return-child-result -ex "handle SIGPIPE nostop noprint pass" -ex run \
+              -ex "thread apply all bt 40" --args ./qa_qt_tool_framework --opengl $BOARD
+
       - name: Install (staged)
         run: |
           DESTDIR=$PWD/stage cmake --install build

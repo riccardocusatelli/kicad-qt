@@ -41,6 +41,7 @@
 #include <QWindow>
 
 #include <gal/cursors.h>
+#include <math/util.h>
 #include <qt_strings.h>
 
 
@@ -123,9 +124,10 @@ QSurfaceFormat HIDPI_GL_CANVAS::SurfaceFormat()
 
 wxSize HIDPI_GL_CANVAS::GetNativePixelSize() const
 {
-    const double scaleFactor = GetScaleFactor();
+    // Rounded as Qt sizes the native window (QSize * qreal)
+    const QSize native = QSize( width(), height() ) * GetScaleFactor();
 
-    return wxSize( width() * scaleFactor, height() * scaleFactor );
+    return wxSize( native.width(), native.height() );
 }
 
 
@@ -133,7 +135,7 @@ wxPoint HIDPI_GL_CANVAS::GetNativePosition( const wxPoint& aPoint ) const
 {
     const double scaleFactor = GetScaleFactor();
 
-    return wxPoint( aPoint.x * scaleFactor, aPoint.y * scaleFactor );
+    return wxPoint( KiROUND( aPoint.x * scaleFactor ), KiROUND( aPoint.y * scaleFactor ) );
 }
 
 

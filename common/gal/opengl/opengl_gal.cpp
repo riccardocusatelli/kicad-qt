@@ -1957,9 +1957,11 @@ void OPENGL_GAL::ResizeScreen( int aWidth, int aHeight )
 {
     m_screenSize = VECTOR2I( aWidth, aHeight );
 
-    // Resize framebuffers
-    const float scaleFactor = GetScaleFactor();
-    m_compositor->Resize( aWidth * scaleFactor, aHeight * scaleFactor );
+    // Resize framebuffers.  Rounded as the toolkit sizes the native window: with a fractional
+    // scale (125%), a truncated size left a line of the window undrawn, black, at the top and
+    // at the right (the buffers are drawn from the bottom left corner)
+    const double scaleFactor = GetScaleFactor();
+    m_compositor->Resize( KiROUND( aWidth * scaleFactor ), KiROUND( aHeight * scaleFactor ) );
     m_isFramebufferInitialized = false;
 
     ResizeCanvas( aWidth, aHeight );
