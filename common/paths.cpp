@@ -33,6 +33,15 @@
 #include <core/ki_assert.h>
 
 
+// The layout of KiCad installed on Windows (bin, share\kicad, share\doc\kicad, next to each
+// other): its data is found from the directory of the programs.  Also for the Qt build, without
+// wxWidgets (no __WXMSW__): else the paths of the configuration (KICAD_DATA...) are the absolute
+// ones of the computer that built it, which do not exist on another one (no icons, no data).
+#if defined( __WXMSW__ ) || ( defined( _WIN32 ) && defined( KICAD_WX_FREE ) )
+#define KICAD_WINDOWS_LAYOUT
+#endif
+
+
 void PATHS::getUserDocumentPath( wxFileName& aPath )
 {
     wxString envPath;
@@ -280,7 +289,7 @@ wxString PATHS::GetStockDataPath( bool aRespectRunFromBuildDir )
     {
 #if defined( __WXMAC__ )
         path = GetOSXKicadDataDir();
-#elif defined( __WXMSW__ )
+#elif defined( KICAD_WINDOWS_LAYOUT )
         path = getWindowsKiCadRoot() + wxT( "share/kicad" );
 #else
         path = wxString::FromUTF8Unchecked( KICAD_DATA );
@@ -312,7 +321,7 @@ wxString PATHS::GetStockEDALibraryPath()
 
 #if defined( __WXMAC__ )
     path = GetOSXKicadMachineDataDir();
-#elif defined( __WXMSW__ )
+#elif defined( KICAD_WINDOWS_LAYOUT )
     path = GetStockDataPath( false );
 #elif defined( __APPLE__ )
     // The libraries of the Qt build on macOS: with the data (no KICAD_LIBRARY_DATA)
@@ -409,7 +418,7 @@ wxString PATHS::GetStockPluginsPath()
 {
     wxFileName fn;
 
-#if defined( __WXMSW__ )
+#if defined( KICAD_WINDOWS_LAYOUT )
     fn.AssignDir( GetExecutablePath() );
     fn.AppendDir( wxT( "scripting" ) );
 #else
@@ -425,7 +434,7 @@ wxString PATHS::GetStockPlugins3DPath()
 {
     wxFileName fn;
 
-#if defined( __WXMSW__ )
+#if defined( KICAD_WINDOWS_LAYOUT )
     if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
     {
         fn.AssignDir( getWindowsKiCadRoot() );
@@ -522,7 +531,7 @@ wxString PATHS::GetDocumentationPath()
 
 #if defined( __WXMAC__ )
     path = GetOSXKicadDataDir();
-#elif defined( __WXMSW__ )
+#elif defined( KICAD_WINDOWS_LAYOUT )
     path = getWindowsKiCadRoot() + wxT( "share/doc/kicad" );
 #else
     path = wxString::FromUTF8Unchecked( KICAD_DOCS );

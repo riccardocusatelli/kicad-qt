@@ -249,6 +249,12 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
     std::printf( "KICAD-QT\n" );
     check( aWindow->isVisible(), "the shell is shown" );
 
+    // The data of the program (its icons...) where the program is: the build, the package, its
+    // installation; not where the package was made (on another computer, the icons are "?")
+    const QString icons = ToQString( PATHS::GetStockDataPath() ) + QStringLiteral( "/resources/images.tar.gz" );
+    std::printf( "    icons: %s\n", qPrintable( QDir::toNativeSeparators( icons ) ) );
+    check( QFile::exists( icons ), "the archive of the icons is found" );
+
     // If the scenario waits (a dialog?): what is shown, every two minutes
     QTimer* watchdog = new QTimer( qApp );
     QObject::connect( watchdog, &QTimer::timeout,

@@ -414,7 +414,8 @@ jobs:
           "{0:N0} MB" -f ( ( Get-ChildItem $pkg -Recurse -File | Measure-Object Length -Sum ).Sum / 1MB )
 
       # The package alone: a copy with the test of the shell (and the OpenGL of Mesa), without the
-      # build tree, the DLLs of vcpkg or Python in the PATH
+      # build tree, the DLLs of vcpkg or Python in the PATH, and without the package itself (pkg is
+      # hidden: the paths of the build, its prefix, do not exist on another computer)
       - name: Test of the package
         if: always() && steps.build.outcome == 'success'
         shell: pwsh
@@ -429,6 +430,7 @@ jobs:
           Copy-Item "$root\build\kicad\qa_qt_kicad_shell.exe", "$root\mesa\x64\*.dll" "$test\bin"
           $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
           Remove-Item Env:\PYTHONHOME, Env:\PYTHONPATH, Env:\QT_PLUGIN_PATH -ErrorAction SilentlyContinue
+          Rename-Item "$root\pkg" pkg-hidden
 
           $board = "$root\qa\data\pcbnew\api_kitchen_sink.kicad_pcb"
           $sch = "$root\qa\data\eeschema\erc_multiple_pin_to_pin.kicad_sch"
@@ -470,6 +472,7 @@ jobs:
           if( -not ( Get-ChildItem "$out\symbol\*.svg" -ErrorAction SilentlyContinue ) ) { $failed += 'kicad-cli-symbol (no SVG)' }
 
           Run-Package 'shell' 'qa_qt_kicad_shell.exe' @( $board, $sch, "$out\shell.png" )
+          Rename-Item "$root\pkg-hidden" pkg
 
           # Fontconfig finds its configuration (etc\fonts)
           $fontconfig = Select-String -Path "$out\*.txt" -Pattern 'Fontconfig (error|warning)'
@@ -514,6 +517,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path $out | Out-Null
           $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
           Remove-Item Env:\PYTHONHOME, Env:\PYTHONPATH, Env:\QT_PLUGIN_PATH -ErrorAction SilentlyContinue
+          # Without the package (the paths of the build): the installed KiCad finds its data alone
+          Rename-Item "$root\pkg" pkg-hidden
           $failed = @()
 
           $p = Start-Process -FilePath "${{ steps.installer.outputs.exe }}" -ArgumentList '/S', "/D=$dir" -Wait -PassThru
@@ -553,6 +558,7 @@ jobs:
             if( Test-Path "$dir\$file" ) { $failed += "left after the uninstall: $file" }
           }
           if( Test-Path $key ) { $failed += 'the uninstall entry is left' }
+          Rename-Item "$root\pkg-hidden" pkg
 
           if( $failed.Count -gt 0 ) {
             Write-Output "Failed: $( $failed -join ', ' )"
