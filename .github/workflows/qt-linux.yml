@@ -99,6 +99,27 @@ jobs:
           ( cd build/qt/qa && run ./qa_qt_eeschema_frames $SCH )
           ( cd build/kicad && run ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png )
 
+      # The shell again as on a computer in Italian with the screen scaled to 125% (the decimal
+      # comma, the translated texts, the fractional scale of the icons and of the painted widgets)
+      - name: QA of the shell in Italian at 125%
+        if: always()
+        env:
+          KICAD_RUN_FROM_BUILD_DIR: '1'
+          QT_QPA_PLATFORM: xcb
+          QT_SCALE_FACTOR: '1.25'
+        run: |
+          set -e
+          sudo locale-gen it_IT.UTF-8
+          export LANG=it_IT.UTF-8 LC_ALL=it_IT.UTF-8 LANGUAGE=it
+          BOARD=$PWD/qa/data/pcbnew/api_kitchen_sink.kicad_pcb
+          SCH=$PWD/qa/data/eeschema/erc_multiple_pin_to_pin.kicad_sch
+          OUT=$PWD/qa-screenshots/it
+          mkdir -p $OUT
+          cd build/kicad
+          timeout 900 xvfb-run -a -s "-screen 0 1920x1200x24" \
+            gdb -q -batch -return-child-result -ex "handle SIGPIPE nostop noprint pass" -ex run \
+              -ex "thread apply all bt 40" --args ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png
+
       - name: Install (staged)
         run: |
           DESTDIR=$PWD/stage cmake --install build
