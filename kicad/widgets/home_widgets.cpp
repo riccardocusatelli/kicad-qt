@@ -46,7 +46,7 @@ FLAT_BUTTON::FLAT_BUTTON( wxWindow* aParent, const wxString& aLabel, bool aPrima
     Bind( wxEVT_LEFT_UP, &FLAT_BUTTON::onMouse, this );
 
     InvalidateBestSize();
-    SetMinSize( GetBestSize() );
+    SetMinSize( DoGetBestSize() );
 }
 
 
@@ -54,7 +54,7 @@ void FLAT_BUTTON::SetLabel( const wxString& aLabel )
 {
     m_label = aLabel;
     InvalidateBestSize();
-    SetMinSize( GetBestSize() );
+    SetMinSize( DoGetBestSize() );
     Refresh();
 }
 
@@ -172,7 +172,7 @@ LAUNCHER_CARD::LAUNCHER_CARD( wxWindow* aParent, const wxString& aMonogram, cons
     Bind( wxEVT_LEFT_UP, &LAUNCHER_CARD::onMouse, this );
 
     InvalidateBestSize();
-    SetMinSize( GetBestSize() );
+    SetMinSize( DoGetBestSize() );
 }
 
 

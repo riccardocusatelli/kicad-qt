@@ -37,7 +37,9 @@
 #undef main
 
 #include <cstdio>
+#include <algorithm>
 
+#include <QHash>
 #include <QCoreApplication>
 #include <QDialog>
 #include <QAbstractItemView>
@@ -132,14 +134,22 @@ int canvasDrawing( KIWAY_PLAYER* aFrame, QImage& aImage )
         if( !canvas->GetScreenshot( aImage ) || aImage.width() < 100 )
             continue;
 
+        // What is not the background: the most frequent colour of the samples (the pixel of a
+        // corner can be a dot of the grid, on a scaled screen)
+        QHash<QRgb, int> colours;
+        int              samples = 0;
+        int              background = 0;
+
         for( int y = 0; y < aImage.height(); y += 7 )
         {
             for( int x = 0; x < aImage.width(); x += 7 )
             {
-                if( aImage.pixel( x, y ) != aImage.pixel( 0, 0 ) )
-                    drawn++;
+                background = std::max( background, ++colours[aImage.pixel( x, y )] );
+                samples++;
             }
         }
+
+        drawn = samples - background;
     }
 
     return drawn;
