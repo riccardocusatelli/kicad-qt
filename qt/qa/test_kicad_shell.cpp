@@ -274,6 +274,15 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
 
     check( tree != nullptr, "the project tree shows the project" );
 
+    // The project manager as the user sees it (its icons, the cards of the editors)
+    if( !s_screenshot.isEmpty() )
+    {
+        QString path = s_screenshot;
+        path.replace( QStringLiteral( ".png" ), QStringLiteral( "-manager.png" ) );
+        settle( 300 );
+        check( aWindow->grab().save( path ), "screenshot of the project manager" );
+    }
+
     runAction( aWindow, "kicad.Control.editPCB" );
 
     KIWAY_PLAYER* pcb = Kiway.Player( FRAME_PCB_EDITOR, false );
