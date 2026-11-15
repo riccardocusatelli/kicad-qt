@@ -98,6 +98,73 @@
 #endif
 
 #include "kicad_manager_frame.h"
+
+#ifdef KICAD_WX_FREE
+#include <QDockWidget>
+#include <QEvent>
+#include <QPointer>
+#include <QTimer>
+
+namespace
+{
+
+/**
+ * Qt build: when a pane of the left column (the project files, the recent projects) is shown for
+ * the first time, it takes about 70% of the width of the frame and the launcher of the home,
+ * at its right, the rest (at least the width of its cards).
+ */
+class HOME_PROPORTION_COMPAT : public QObject
+{
+public:
+    HOME_PROPORTION_COMPAT( QMainWindow* aFrame, QWidget* aPane, int aMinLeft, int aMinLauncher ) :
+            QObject( aPane ),
+            m_frame( aFrame ),
+            m_minLeft( aMinLeft ),
+            m_minLauncher( aMinLauncher )
+    {
+        aPane->installEventFilter( this );
+    }
+
+protected:
+    bool eventFilter( QObject* aWatched, QEvent* aEvent ) override
+    {
+        if( aEvent->type() != QEvent::Show || aWatched != parent() )
+            return false;
+
+        QWidget*               pane = static_cast<QWidget*>( parent() );
+        QPointer<QMainWindow>  frame( m_frame );
+        QPointer<QDockWidget>  dock( qobject_cast<QDockWidget*>( pane->parentWidget() ) );
+        const int              minLeft = m_minLeft;
+        const int              minLauncher = m_minLauncher;
+
+        pane->removeEventFilter( this );
+
+        // Once the frame is laid out with the pane
+        QTimer::singleShot( 0, pane,
+                            [frame, dock, minLeft, minLauncher]()
+                            {
+                                if( !frame || !dock || !dock->isVisible() )
+                                    return;
+
+                                const int width = frame->width();
+                                const int launcher = std::max( width * 3 / 10, minLauncher );
+                                const int left = std::max( width - launcher, minLeft );
+
+                                frame->resizeDocks( { dock.data() }, { left }, Qt::Horizontal );
+                            } );
+
+        deleteLater();
+        return false;
+    }
+
+private:
+    QPointer<QMainWindow> m_frame;
+    int                   m_minLeft;
+    int                   m_minLauncher;
+};
+
+} // namespace
+#endif
 #include "widgets/panel_recent_projects.h"
 #include "widgets/home_widgets.h"
 #include "settings/kicad_settings.h"
@@ -289,6 +356,18 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
     // Now the actual m_projectTreePane size is set, give it a reasonable min width
     m_auimgr.GetPane( m_projectTreePane ).MinSize( defaultLeftWinWidth, FromDIP( 80 ) );
     m_auimgr.GetPane( m_recentProjectsPane ).MinSize( defaultLeftWinWidth, FromDIP( 80 ) );
+
+#ifdef KICAD_WX_FREE
+    // The docks of Qt keep the minimal width given before (the saved width of the pane, which
+    // could not be made narrower then): the reasonable one, and the proportion of the home
+    // when the panes are first shown
+    m_projectTreePane->setMinimumWidth( defaultLeftWinWidth );
+    m_recentProjectsPane->setMinimumWidth( defaultLeftWinWidth );
+
+    new HOME_PROPORTION_COMPAT( this, m_projectTreePane, defaultLeftWinWidth, FromDIP( 420 ) );
+    new HOME_PROPORTION_COMPAT( this, m_recentProjectsPane, defaultLeftWinWidth, FromDIP( 420 ) );
+#endif
+
     updateProjectPanes();
 
 

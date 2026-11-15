@@ -345,6 +345,21 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
 
     check( tree != nullptr, "the project tree shows the project" );
 
+    // The tree covers its pane, and the pane of the project files is wider than the launcher
+    // of the home at its right
+    if( tree )
+    {
+        QWidget*     pane = tree->parentWidget();
+        QDockWidget* dock = pane ? qobject_cast<QDockWidget*>( pane->parentWidget() ) : nullptr;
+
+        std::printf( "    tree %dx%d, pane %dx%d, frame %dx%d\n", tree->width(), tree->height(),
+                     pane ? pane->width() : 0, pane ? pane->height() : 0, aWindow->width(),
+                     aWindow->height() );
+        check( pane && tree->size() == pane->size(), "the project tree covers its pane" );
+        check( dock && dock->width() > aWindow->width() / 2,
+               "the project files take most of the width of the project manager" );
+    }
+
     // The project manager as the user sees it (its icons, the cards of the editors)
     if( !s_screenshot.isEmpty() )
     {
