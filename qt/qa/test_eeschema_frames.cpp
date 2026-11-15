@@ -49,6 +49,7 @@
 #include <class_draw_panel_gal.h>
 #include <kiface_base.h>
 #include <lib_symbol.h>
+#include <bitmap_base.h>
 #include <richio.h>
 #include <sch_bitmap.h>
 #include <sch_edit_frame.h>
