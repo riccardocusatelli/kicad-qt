@@ -797,13 +797,15 @@ int main( int argc, char** argv )
             QWindow* glWindow = static_cast<KIGFX::OPENGL_GAL*>( canvas->GetGAL() )->GetSurface();
             int      clicks = tool->Count( TA_MOUSE_CLICK );
 
-            // The buffers have the size of the native window (rounded as Qt sizes it): a
-            // smaller buffer leaves a black line at the top and at the right (125%)
+            // The buffers have the size of the native window (rounded as Qt sizes it), or twice
+            // it with the supersampling antialiasing: a smaller buffer leaves a black line at
+            // the top and at the right (125%)
             const QSize native = canvas->size() * glWindow->devicePixelRatio();
             std::printf( "  canvas %dx%d, ratio %g, native %dx%d, drawing %dx%d\n",
                          canvas->width(), canvas->height(), glWindow->devicePixelRatio(),
                          native.width(), native.height(), image.width(), image.height() );
-            check( image.size() == native, "the drawing covers the window of the canvas" );
+            check( image.size() == native || image.size() == native * 2,
+                   "the drawing covers the window of the canvas" );
             QPoint   at = center + QPoint( 20, 10 );
 
             QMouseEvent move( QEvent::MouseMove, at, glWindow->mapToGlobal( at ), Qt::NoButton,
