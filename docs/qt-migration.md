@@ -133,6 +133,20 @@ Implemented families include: basic controls, books/notebooks, `wxGrid` (`kiwx_g
 dir, font), file/message dialogs, clipboard, DC/GDI drawing on `QPainter` (`kiwx_gdi.cpp`),
 printing, validators, wizards and `wxWebView` (`kiwx_webview.cpp`).
 
+**The web view.** `wxWebView` delegates to a backend (`wx/kiwx_webview_backend.h`), the web engine
+of the platform as in upstream wx: **Qt WebEngine** on Linux (`kiwx_webview_qtwebengine.cpp`,
+option `KICAD_QT_WEBENGINE`, from the distribution; it avoids pulling GTK in through WebKitGTK),
+**WKWebView** on macOS (`kiwx_webview_wkwebview.mm`, built with ARC) and **WebView2** on Windows
+(`kiwx_webview_webview2.cpp`, vcpkg port `webview2`; the Edge runtime of Windows, no Chromium in
+the package). Each one implements navigation, new-window, title and error events, `RunScript()`
+and `RunScriptAsync()`, script message handlers (`window.<name>.postMessage()` in the page,
+`wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED` on the view), user scripts and the cookies used by
+`KIPLATFORM::WEBVIEW` (`qt/libs/kiplatform/webview.cpp`). Without an engine the view falls back
+to a `QTextBrowser` (local HTML, no scripts). The web view events reach the parents of the view
+explicitly (`wxWebView::SendEventCompat()`). The **Remote Symbols** panel of the schematic editor
+is the upstream `eeschema/widgets/panel_remote_symbol.cpp`; its OAuth loopback server has a Qt
+implementation (`qt/common/oauth_loopback_server_qt.cpp`, a `QTcpServer`).
+
 ### Dialogs: fbp2qt
 
 Upstream dialogs are designed in wxFormBuilder (`*.fbp`) and their `*_base.cpp/.h` are generated
@@ -214,6 +228,13 @@ All the main applications start and work from the Qt project manager:
 - Embedded images in schematics and drawing sheets: in addition to the PNG/JPEG decoders of the
   core, `RegisterQtImageDecoder()` (`qt/common/raster_image_qt.cpp`) lets `RASTER_IMAGE` decode any
   format Qt's image plugins read (BMP, GIF, CMYK JPEG...).
+- The layout of the docks of each frame, saved with its settings and restored
+  (`EDA_BASE_FRAME::RestoreAuiLayout()`).
+- Drag and drop in `wxDataViewCtrl` (e.g. zone priorities in the zone manager) and columns of
+  `wxGrid` moved by dragging their labels (e.g. the symbol fields table).
+- The preview popup of the hovered symbol or footprint in the library trees.
+- Web views with a real engine per platform and the **Remote Symbols** panel (see
+  [wxcompat](#wxcompat-the-wx-gui-api-on-qt-widgets)).
 - Packaging: Windows installer and portable zip, macOS `.dmg` (see [CI](#continuous-integration)).
 
 ## Known gaps
@@ -222,11 +243,7 @@ These are known differences from the wxWidgets build on `wx-free-core-upstream`:
 
 | Area | Status |
 | --- | --- |
-| **Web view** | `wxWebView` is a `QTextBrowser`: it shows local HTML and opens links (externally or by navigating), but has no JavaScript, so `RunScript()` and script message handlers do nothing. The **Remote Symbols** panel of the schematic editor is an empty stub (`qt/eeschema/widgets/panel_remote_symbol_qt.cpp`). The planned replacement uses a real engine per platform, as upstream wx does: **Qt WebEngine** on Linux (distribution package; avoids pulling GTK in through WebKitGTK), **WKWebView** on macOS and **WebView2** on Windows (native, no Chromium shipped in the package). This work is in progress and not yet on the main branch. |
-| **Image formats** | TIFF and WebP images cannot be decoded: Qt reads them only through the `qtimageformats` module, which is not in the Windows vcpkg `qt` feature (`vcpkg.json`: `qtbase`, `libpng`, `libjpeg-turbo`) and not installed by the Linux/macOS CI. |
-| **Dock layout** | `EDA_BASE_FRAME::RestoreAuiLayout()` is a no-op and the pane layout is not saved: docks open in their default layout each time. |
-| **Drag and drop** | `wxDataViewCtrl::EnableDragSource()/EnableDropTarget()` and `wxGrid::EnableDragColMove()` are no-ops (e.g. zone priorities cannot be reordered by dragging in the zone manager; grid columns cannot be moved). |
-| **Library tree previews** | Hovering a symbol or footprint in the library trees does not show the preview popup. |
+| **Image formats** | TIFF and WebP images cannot be decoded: Qt reads them only through the `qtimageformats` module, which is not in the Windows vcpkg `qt` feature (`vcpkg.json`: `qtbase`, `libpng`, `libjpeg-turbo`, `webview2`) and not installed by the Linux/macOS CI. |
 | **Styled text** | `wxStyledTextCtrl` is a plain Qt text editor: lexer-based syntax highlighting (e.g. in the custom rules editor) is not applied. |
 | **3D models** | The 3D model loader plugins (`plugins/3d`) are not part of the wx-free target set, so component 3D models are not loaded in the 3D viewer. |
 | **wxPython** | Not available (`KICAD_SCRIPTING_WXPYTHON` is forced off). Action plugins that use wxPython dialogs do not work; the `pcbnew` module itself is available. |
@@ -255,6 +272,7 @@ Tested on Ubuntu 24.04 (its Qt is 6.4).
 sudo apt-get install -y --no-install-recommends \
   build-essential cmake ninja-build ccache gettext swig \
   qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qt6-wayland \
+  qt6-webengine-dev qt6-webchannel-dev \
   libboost-all-dev libglm-dev libglew-dev libgl-dev libglu1-mesa-dev libegl-dev \
   libcairo2-dev libpixman-1-dev libharfbuzz-dev libfontconfig-dev libfreetype-dev \
   libcurl4-openssl-dev libgit2-dev libsecret-1-dev libnng-dev unixodbc-dev \
@@ -405,6 +423,15 @@ is fast-forwarded to it (rebased and re-tested first if a fast-forward is not po
 - **The OpenGL canvas is a separate native window** inside a `QWindowContainer`. Anything that
   makes Qt recreate the native window of a frame destroys the OpenGL window of its canvases;
   keep this in mind when adding native child widgets (web views, video, etc.) to an editor frame.
+- **Qt WebEngine before Qt 6.7 (Ubuntu 24.04 has 6.4).** The first web view shown in a frame
+  needs RHI (OpenGL) composition, so Qt destroys and recreates the frame's native window; before
+  Qt 6.7 it does so without moving the windows of the `QWindowContainer`s aside, so the OpenGL
+  window of the canvas is destroyed with it and the next move of the frame crashes in
+  `QWindowContainer::parentWasMoved()`. On those versions `kiwx_webview_qtwebengine.cpp` sets
+  `QT_WIDGETS_RHI=1` and `QT_WIDGETS_RHI_BACKEND=opengl` when the library is loaded (unless the
+  environment already sets them), so every window is composed with OpenGL from the start and none
+  is recreated. Running Qt WebEngine as root (containers) needs `QTWEBENGINE_DISABLE_SANDBOX=1`;
+  the Linux CI sets it for the GUI tests because the runners do not allow Chromium's sandbox.
 - **Event propagation.** As noted above, wxcompat command events do not bubble to parents. If
   upstream code binds a control's event on a dialog or frame, check that the control forwards it.
 - **Frames are not deleted on close by Qt** (`WA_DeleteOnClose` is off): KiCad's own lifecycle
