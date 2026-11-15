@@ -18,6 +18,7 @@
  */
 
 #include "home_widgets.h"
+#include <bitmaps.h>
 
 #include <ui_theme.h>
 
@@ -152,9 +153,10 @@ void FLAT_BUTTON::onMouse( wxMouseEvent& aEvent )
 
 LAUNCHER_CARD::LAUNCHER_CARD( wxWindow* aParent, const wxString& aMonogram, const wxString& aTitle,
                               const wxString& aDescription, std::function<void()> aOnClick,
-                              bool aCompact ) :
+                              bool aCompact, BITMAPS aIcon ) :
         wxPanel( aParent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE ),
         m_monogram( aMonogram ),
+        m_icon( aIcon ),
         m_title( aTitle ),
         m_description( aDescription ),
         m_onClick( std::move( aOnClick ) ),
@@ -190,7 +192,7 @@ wxSize LAUNCHER_CARD::DoGetBestSize() const
     int lineH = GetCharHeight();
 
     if( m_compact )
-        return wxSize( FromDIP( 150 ), FromDIP( 30 ) + lineH * 2 + FromDIP( 26 ) );
+        return wxSize( FromDIP( 150 ), FromDIP( 32 ) + lineH * 2 + FromDIP( 26 ) );
 
     return wxSize( FromDIP( 240 ), lineH * 2 + FromDIP( 26 ) );
 }
@@ -203,7 +205,7 @@ void LAUNCHER_CARD::onPaint( wxPaintEvent& aEvent )
     const wxSize             size = GetClientSize();
     const bool               enabled = IsEnabled();
     const int                pad = FromDIP( 12 );
-    const int                badgeSize = FromDIP( 30 );
+    const int                badgeSize = FromDIP( 32 );
 
     dc.SetBackground( wxBrush( GetParent()->GetBackgroundColour() ) );
     dc.Clear();
@@ -214,18 +216,36 @@ void LAUNCHER_CARD::onPaint( wxPaintEvent& aEvent )
     dc.SetBrush( wxBrush( hover ? theme.surfaceHover : theme.surface ) );
     dc.DrawRoundedRectangle( 0, 0, size.x, size.y, FromDIP( 6 ) );
 
-    // Monogram badge
+    // The icon of the tool, or a monogram badge for a tool without one
     wxRect badge( pad, m_compact ? pad : ( size.y - badgeSize ) / 2, badgeSize, badgeSize );
-    dc.SetPen( wxPen( theme.border, 1 ) );
-    dc.SetBrush( wxBrush( theme.badge ) );
-    dc.DrawRoundedRectangle( badge, FromDIP( 5 ) );
 
-    wxFont mono = UI_THEME::GetMonoFont( -1, true );
-    dc.SetFont( mono );
-    dc.SetTextForeground( enabled ? theme.accent : theme.muted );
-    wxSize ms = dc.GetTextExtent( m_monogram );
-    dc.DrawText( m_monogram, badge.x + ( badge.width - ms.x ) / 2,
-                 badge.y + ( badge.height - ms.y ) / 2 );
+    if( m_icon != BITMAPS::INVALID_BITMAP )
+    {
+        wxBitmapBundle bundle = enabled ? KiBitmapBundle( m_icon ) : KiDisabledBitmapBundle( m_icon );
+
+#ifdef KICAD_WX_FREE
+        // The image of the icon at the size of the badge, at the scale of the screen
+        wxBitmap bitmap( bundle.pixmap( QSize( badgeSize, badgeSize ), devicePixelRatioF() ) );
+#else
+        wxBitmap bitmap = bundle.GetBitmap( ToPhys( wxSize( badgeSize, badgeSize ) ) );
+        bitmap.SetScaleFactor( GetDPIScaleFactor() );
+#endif
+
+        dc.DrawBitmap( bitmap, badge.x, badge.y, true );
+    }
+    else
+    {
+        dc.SetPen( wxPen( theme.border, 1 ) );
+        dc.SetBrush( wxBrush( theme.badge ) );
+        dc.DrawRoundedRectangle( badge, FromDIP( 5 ) );
+
+        wxFont mono = UI_THEME::GetMonoFont( -1, true );
+        dc.SetFont( mono );
+        dc.SetTextForeground( enabled ? theme.accent : theme.muted );
+        wxSize ms = dc.GetTextExtent( m_monogram );
+        dc.DrawText( m_monogram, badge.x + ( badge.width - ms.x ) / 2,
+                     badge.y + ( badge.height - ms.y ) / 2 );
+    }
 
     // Update-count pill (plugin manager)
     if( m_showCount && !m_countText.IsEmpty() )

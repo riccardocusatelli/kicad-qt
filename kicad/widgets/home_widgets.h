@@ -24,6 +24,8 @@
 #include <wx/control.h>
 #include <wx/panel.h>
 
+#include <bitmaps/bitmaps_list.h>
+
 class wxStaticText;
 
 
@@ -59,7 +61,7 @@ class LAUNCHER_CARD : public wxPanel
 public:
     LAUNCHER_CARD( wxWindow* aParent, const wxString& aMonogram, const wxString& aTitle,
                    const wxString& aDescription, std::function<void()> aOnClick,
-                   bool aCompact = false );
+                   bool aCompact = false, BITMAPS aIcon = BITMAPS::INVALID_BITMAP );
 
     void SetShowBadge( bool aShow ) { m_showCount = aShow; Refresh(); }
     void SetBadgeText( const wxString& aText ) { m_countText = aText; Refresh(); }
@@ -74,6 +76,7 @@ private:
     void onMouse( wxMouseEvent& aEvent );
 
     wxString              m_monogram;
+    BITMAPS               m_icon;       ///< The icon of the tool (the monogram if none)
     wxString              m_title;
     wxString              m_description;
     std::function<void()> m_onClick;

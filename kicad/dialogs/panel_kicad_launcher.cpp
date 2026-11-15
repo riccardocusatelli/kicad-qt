@@ -132,7 +132,7 @@ void PANEL_KICAD_LAUNCHER::CreateLaunchers()
                 const TOOL_ACTION* action = &aAction;
                 LAUNCHER_CARD*     card = new LAUNCHER_CARD( aParent, aMonogram, aAction.GetFriendlyName(),
                                                              aHelp, [runAction, action]() { runAction( action ); },
-                                                             aCompact );
+                                                             aCompact, aAction.GetIcon() );
                 card->Enable( aEnabled );
                 return card;
             };
