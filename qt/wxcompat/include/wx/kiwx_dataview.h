@@ -34,6 +34,8 @@
 
 #include <kiqt.h>
 
+#include <memory>
+#include <optional>
 #include <vector>
 
 #include <QTreeView>
@@ -41,6 +43,13 @@
 #include <wx/variant.h>
 #include <wx/vector.h>
 #include <wx/kiwx_gui.h>
+#include <wx/kiwx_clipboard.h>
+#include <wx/dnd.h>
+
+#ifndef wxUSE_DRAG_AND_DROP
+/// The items of a data view are dragged and dropped (wxDataViewCtrl::EnableDragSource()...)
+#define wxUSE_DRAG_AND_DROP 1
+#endif
 
 class KIWX_DATAVIEW_MODEL;
 class wxDataViewCtrl;
@@ -644,14 +653,18 @@ public:
     int GetCacheFrom() const { return 0; }
     int GetCacheTo() const { return 0; }
 
-    // Drag and drop: not done by the data views of the layer
-    void SetDataObject( class wxDataObject* aObject ) { m_dataObject = aObject; }
-    class wxDataObject* GetDataObject() const { return m_dataObject; }
-    void SetDataFormat( const class wxDataFormat& aFormat ) {}
-    void SetDragFlags( int aFlags ) {}
-    void SetDropEffect( int aEffect ) {}
-    int GetDropEffect() const { return 0; }
-    int GetProposedDropIndex() const { return -1; }
+    // Drag and drop: the data of the item dragged (given by the handler of
+    // wxEVT_DATAVIEW_ITEM_BEGIN_DRAG, the control owns them), the ones dropped
+    void SetDataObject( wxDataObject* aObject ) { m_dataObject = aObject; }
+    wxDataObject* GetDataObject() const { return m_dataObject; }
+    void SetDataFormat( const wxDataFormat& aFormat ) { m_dataFormat = aFormat; }
+    wxDataFormat GetDataFormat() const { return m_dataFormat; }
+    void SetDragFlags( int aFlags ) { m_dragFlags = aFlags; }
+    int GetDragFlags() const { return m_dragFlags; }
+    void SetDropEffect( int aEffect ) { m_dropEffect = aEffect; }
+    int GetDropEffect() const { return m_dropEffect; }
+    void SetProposedDropIndex( int aIndex ) { m_proposedDropIndex = aIndex; }
+    int GetProposedDropIndex() const { return m_proposedDropIndex; }
 
 private:
     wxDataViewItem      m_item;
@@ -661,7 +674,11 @@ private:
     wxVariant           m_value;
     bool                m_editCancelled = false;
     wxPoint             m_position = wxPoint( -1, -1 );
-    class wxDataObject* m_dataObject = nullptr;
+    wxDataObject*       m_dataObject = nullptr;
+    wxDataFormat        m_dataFormat;
+    int                 m_dragFlags = wxDrag_CopyOnly;
+    int                 m_dropEffect = wxDragNone;
+    int                 m_proposedDropIndex = -1;
 };
 
 #define wxDataViewEventHandler( func ) ( &func )
@@ -718,9 +735,11 @@ public:
     void SetIndent( int aIndent ) { setIndentation( aIndent ); }
     int GetIndent() const { return indentation(); }
     bool SetRowHeight( int aHeight );
-    bool EnableDragSource( const class wxDataFormat& aFormat ) { return false; }
-    bool EnableDropTarget( const class wxDataFormat& aFormat ) { return false; }
-    bool EnableDropTargets( const std::vector<class wxDataFormat>& aFormats ) { return false; }
+    /// The items dragged (wxEVT_DATAVIEW_ITEM_BEGIN_DRAG gives their data) and the data of a
+    /// format dropped on the items (wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE, wxEVT_DATAVIEW_ITEM_DROP).
+    bool EnableDragSource( const wxDataFormat& aFormat );
+    bool EnableDropTarget( const wxDataFormat& aFormat );
+    bool EnableDropTargets( const std::vector<wxDataFormat>& aFormats );
     bool SetHeaderAttr( const class wxItemAttr& aAttr ) { return false; }
     bool SetAlternateRowColour( const wxColour& aColour ) { setAlternatingRowColors( true ); return true; }
 
@@ -765,9 +784,24 @@ public:
     bool SendEventCompat( wxEventType aType, const wxDataViewItem& aItem, int aColumn = -1,
                           const wxVariant* aValue = nullptr );
 
+protected:
+    void startDrag( Qt::DropActions aActions ) override;
+    void dragEnterEvent( QDragEnterEvent* aEvent ) override;
+    void dragMoveEvent( QDragMoveEvent* aEvent ) override;
+    void dragLeaveEvent( QDragLeaveEvent* aEvent ) override;
+    void dropEvent( QDropEvent* aEvent ) override;
+
 private:
     void insertColumn( unsigned int aPos, wxDataViewColumn* aColumn );
     void applyColumn( unsigned int aPos );
+
+    /// The format of the data of a drag on the control that it accepts (invalid: none).
+    std::optional<wxDataFormat> dropFormatCompat( const QMimeData* aData ) const;
+
+    /// wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE or wxEVT_DATAVIEW_ITEM_DROP for a drag at a position:
+    /// the drop action of Qt, or Qt::IgnoreAction if the handler refused it.
+    Qt::DropAction sendDropEventCompat( wxEventType aType, const QPoint& aPos,
+                                        const QMimeData* aData, Qt::DropAction aProposed );
 
     friend class wxDataViewColumn;
     friend class KIWX_DATAVIEW_MODEL;
@@ -776,6 +810,8 @@ private:
     KIWX_DATAVIEW_MODEL*           m_qtModel;
     wxDataViewModelNotifier*       m_notifierCompat = nullptr;
     std::vector<wxDataViewColumn*> m_columns;
+    bool                           m_dragSourceCompat = false;
+    std::vector<wxDataFormat>      m_dropFormatsCompat;
 };
 
 

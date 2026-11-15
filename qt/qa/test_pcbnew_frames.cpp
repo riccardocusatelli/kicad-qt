@@ -30,6 +30,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -44,10 +45,14 @@
 #include <QDialog>
 #include <QDockWidget>
 #include <QMainWindow>
+#include <QMimeData>
+#include <QDropEvent>
+#include <QTreeView>
 #include <QPointer>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <wx/init.h>
+#include <wx/dataview.h>
 
 #include <kiqt_app.h>
 
@@ -112,6 +117,97 @@ using namespace QA_QT_FRAMES;
  * The layout of the docks of a frame is kept with its settings: the properties of the footprint
  * editor moved to the other side of the frame are there when the editor is opened again.
  */
+/**
+ * A zone of the zone manager dragged on another one: their priorities are swapped (the drop of
+ * the data view, the handlers of the dialog).  The drag is the event that starts it, the drop the
+ * events of Qt on the view (QDrag::exec() would wait for the mouse).
+ */
+void testZonePriorityDrop( QDialog* aDialog )
+{
+    std::printf( "ZONE PRIORITY DRAG AND DROP\n" );
+
+    wxDataViewCtrl* view = nullptr;
+
+    for( QTreeView* tree : aDialog->findChildren<QTreeView*>() )
+    {
+        wxDataViewCtrl* candidate = dynamic_cast<wxDataViewCtrl*>( tree );
+
+        if( candidate && candidate->model() && candidate->model()->rowCount() >= 2
+            && candidate->dragDropMode() == QAbstractItemView::DragDrop )
+        {
+            view = candidate;
+            break;
+        }
+    }
+
+    check( view != nullptr, "the zones of the zone manager can be dragged and dropped" );
+
+    if( !view )
+    {
+        for( QTreeView* tree : aDialog->findChildren<QTreeView*>() )
+        {
+            std::printf( "      view %s: data view %d, rows %d, drag and drop mode %d\n",
+                         tree->metaObject()->className(),
+                         dynamic_cast<wxDataViewCtrl*>( tree ) != nullptr,
+                         tree->model() ? tree->model()->rowCount() : -1,
+                         int( tree->dragDropMode() ) );
+        }
+    }
+
+    wxWindow* dialog = dynamic_cast<wxWindow*>( aDialog );
+
+    if( !view || !dialog )
+        return;
+
+    QAbstractItemModel* model = view->model();
+
+    auto rowText = [&]( int aRow )
+    {
+        QStringList texts;
+
+        for( int col = 0; col < model->columnCount(); ++col )
+            texts << model->index( aRow, col ).data().toString();
+
+        return texts.join( QLatin1Char( '|' ) );
+    };
+
+    QString first = rowText( 0 );
+    QString second = rowText( 1 );
+
+    // The drag of the first zone
+    wxDataViewEvent begin( wxEVT_DATAVIEW_ITEM_BEGIN_DRAG, view,
+                           view->ItemCompat( model->index( 0, 0 ) ) );
+    dialog->ProcessEvent( begin );
+    std::unique_ptr<wxDataObject> data( begin.GetDataObject() );
+    check( data != nullptr, "the zone manager gives the data of the zone dragged" );
+
+    // Over the second one, then dropped
+    QMimeData mime;
+    mime.setText( QStringLiteral( "42" ) );
+
+    QPoint          pos = view->visualRect( model->index( 1, 0 ) ).center();
+    Qt::DropActions actions = Qt::CopyAction | Qt::MoveAction;
+
+    QDragEnterEvent enter( pos, actions, &mime, Qt::LeftButton, Qt::NoModifier );
+    QApplication::sendEvent( view->viewport(), &enter );
+
+    QDragMoveEvent move( pos, actions, &mime, Qt::LeftButton, Qt::NoModifier );
+    QApplication::sendEvent( view->viewport(), &move );
+    check( enter.isAccepted() && move.isAccepted() && move.dropAction() == Qt::MoveAction,
+           "the zone manager takes a zone dragged on another one (a move)" );
+
+    QDropEvent drop( QPointF( pos ), actions, &mime, Qt::LeftButton, Qt::NoModifier );
+    QApplication::sendEvent( view->viewport(), &drop );
+    settle( 200 );
+
+    std::printf( "      rows: '%s' '%s' -> '%s' '%s'\n", first.toStdString().c_str(),
+                 second.toStdString().c_str(), rowText( 0 ).toStdString().c_str(),
+                 rowText( 1 ).toStdString().c_str() );
+    check( drop.isAccepted() && rowText( 0 ) == second && rowText( 1 ) == first,
+           "a zone dropped on another one swaps their priorities" );
+}
+
+
 void testDockLayout( KIWAY& aKiway )
 {
     std::printf( "DOCK LAYOUT\n" );
@@ -1048,7 +1144,40 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
                     "Cancel" );
         testDialog( toolMgr, PCB_ACTIONS::cleanupTracksAndVias, "cleanup tracks and vias",
                     aScreenshot, "Cancel" );
-        testDialog( toolMgr, PCB_ACTIONS::zonesManager, "zone manager", aScreenshot, "Cancel" );
+        // A second copper zone (the board has one), whose priority is swapped by a drag
+        ZONE* qaZone = nullptr;
+        unsigned maxPriority = 0;
+
+        for( ZONE* zone : frame->GetBoard()->Zones() )
+        {
+            if( zone->GetIsRuleArea() )
+                continue;
+
+            maxPriority = std::max( maxPriority, zone->GetAssignedPriority() );
+
+            if( !qaZone )
+                qaZone = static_cast<ZONE*>( zone->Clone() );
+        }
+
+        if( qaZone )
+        {
+            qaZone->ResetUuidDirect();
+            qaZone->SetAssignedPriority( maxPriority + 1 );
+            qaZone->SetZoneName( wxS( "QA zone" ) );
+            frame->GetBoard()->Add( qaZone );
+        }
+
+        testDialog( toolMgr, PCB_ACTIONS::zonesManager, "zone manager", aScreenshot, "Cancel",
+                    []( QDialog* aDialog )
+                    {
+                        testZonePriorityDrop( aDialog );
+                    } );
+
+        if( qaZone )
+        {
+            frame->GetBoard()->Remove( qaZone );
+            delete qaZone;
+        }
 
         testDialog( toolMgr, PCB_ACTIONS::boardStatistics, "board statistics", aScreenshot,
                     "Close" );

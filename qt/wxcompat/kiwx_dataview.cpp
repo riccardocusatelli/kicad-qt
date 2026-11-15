@@ -29,7 +29,10 @@
 
 #include <QAbstractItemModel>
 #include <QApplication>
+#include <QDrag>
+#include <QDropEvent>
 #include <QHeaderView>
+#include <QMimeData>
 #include <QPainter>
 #include <QPointer>
 #include <QSignalBlocker>
@@ -668,6 +671,12 @@ public:
 
         if( isList() || !model()->IsContainer( item ) )
             result |= Qt::ItemNeverHasChildren;
+
+        if( m_ctrl->m_dragSourceCompat )
+            result |= Qt::ItemIsDragEnabled;
+
+        if( !m_ctrl->m_dropFormatsCompat.empty() )
+            result |= Qt::ItemIsDropEnabled;
 
         return result;
     }
@@ -2140,4 +2149,232 @@ bool wxDataViewListCtrl::GetToggleValue( unsigned int aRow, unsigned int aCol ) 
     wxVariant value;
     m_store->GetValueByRow( value, aRow, aCol );
     return !value.IsNull() && value.GetBool();
+}
+
+
+// Drag and drop ----------------------------------------------------------------------------
+
+namespace
+{
+
+/// An event of the drag and drop of a data view, given to its parents up to its top level window
+/// until one handles it (as wxWidgets propagates the command events: the dialogs bind them).
+void processUpCompat( wxDataViewCtrl* aCtrl, wxDataViewEvent& aEvent )
+{
+    for( wxWindow* window = aCtrl; window; window = window->GetParent() )
+    {
+        if( window->ProcessEvent( aEvent ) )
+            return;
+
+        if( window->IsTopLevel() )
+            return;
+    }
+}
+
+} // namespace
+
+
+bool wxDataViewCtrl::EnableDragSource( const wxDataFormat& aFormat )
+{
+    m_dragSourceCompat = true;
+    setDragDropMode( m_dropFormatsCompat.empty() ? QAbstractItemView::DragOnly
+                                                 : QAbstractItemView::DragDrop );
+    return true;
+}
+
+
+bool wxDataViewCtrl::EnableDropTarget( const wxDataFormat& aFormat )
+{
+    return EnableDropTargets( { aFormat } );
+}
+
+
+bool wxDataViewCtrl::EnableDropTargets( const std::vector<wxDataFormat>& aFormats )
+{
+    m_dropFormatsCompat = aFormats;
+
+    if( m_dropFormatsCompat.empty() )
+    {
+        setDragDropMode( m_dragSourceCompat ? QAbstractItemView::DragOnly
+                                            : QAbstractItemView::NoDragDrop );
+    }
+    else
+    {
+        setDragDropMode( m_dragSourceCompat ? QAbstractItemView::DragDrop
+                                            : QAbstractItemView::DropOnly );
+    }
+
+    setDropIndicatorShown( !m_dropFormatsCompat.empty() );
+    return true;
+}
+
+
+void wxDataViewCtrl::startDrag( Qt::DropActions aActions )
+{
+    QModelIndex index = currentIndex();
+
+    if( !m_dragSourceCompat || !index.isValid() )
+        return;
+
+    // The handler gives the data of the item (the control owns them), or vetoes the drag
+    wxDataViewEvent event( wxEVT_DATAVIEW_ITEM_BEGIN_DRAG, this, ItemCompat( index ) );
+    processUpCompat( this, event );
+
+    std::unique_ptr<wxDataObject> data( event.GetDataObject() );
+
+    if( !event.IsAllowed() || !data )
+        return;
+
+    QMimeData* mime = new QMimeData;
+    data->ToMimeDataCompat( *mime );
+
+    Qt::DropActions actions = Qt::CopyAction;
+    Qt::DropAction  defaultAction = Qt::CopyAction;
+
+    if( event.GetDragFlags() & wxDrag_AllowMove )
+    {
+        actions |= Qt::MoveAction;
+
+        if( ( event.GetDragFlags() & wxDrag_DefaultMove ) == wxDrag_DefaultMove )
+            defaultAction = Qt::MoveAction;
+    }
+
+    QDrag* drag = new QDrag( this );
+    drag->setMimeData( mime );
+    drag->exec( actions, defaultAction );
+}
+
+
+std::optional<wxDataFormat> wxDataViewCtrl::dropFormatCompat( const QMimeData* aData ) const
+{
+    if( !aData )
+        return std::nullopt;
+
+    for( const wxDataFormat& format : m_dropFormatsCompat )
+    {
+        if( aData->hasFormat( ToQString( format.GetMimeTypeCompat() ) ) )
+            return format;
+    }
+
+    return std::nullopt;
+}
+
+
+Qt::DropAction wxDataViewCtrl::sendDropEventCompat( wxEventType aType, const QPoint& aPos,
+                                                    const QMimeData* aData,
+                                                    Qt::DropAction aProposed )
+{
+    std::optional<wxDataFormat> format = dropFormatCompat( aData );
+
+    if( !format )
+        return Qt::IgnoreAction;
+
+    QModelIndex     index = indexAt( aPos );
+    wxDataViewEvent event( aType, this, ItemCompat( index ) );
+
+    event.SetDataFormat( *format );
+    event.SetPosition( aPos.x(), aPos.y() );
+    event.SetProposedDropIndex( index.isValid() ? index.row() : -1 );
+    event.SetDropEffect( aProposed == Qt::MoveAction ? wxDragMove
+                         : aProposed == Qt::LinkAction ? wxDragLink
+                                                       : wxDragCopy );
+
+    // The data dropped, in an object of their format
+    std::unique_ptr<wxDataObject> data;
+
+    if( aType == wxEVT_DATAVIEW_ITEM_DROP )
+    {
+        switch( format->GetType() )
+        {
+        case wxDF_TEXT:
+        case wxDF_UNICODETEXT:
+        case wxDF_OEMTEXT:  data = std::make_unique<wxTextDataObject>(); break;
+        case wxDF_FILENAME: data = std::make_unique<wxFileDataObject>(); break;
+        default:            break;
+        }
+
+        if( data && data->FromMimeDataCompat( *aData ) )
+            event.SetDataObject( data.get() );
+    }
+
+    processUpCompat( this, event );
+
+    if( !event.IsAllowed() )
+        return Qt::IgnoreAction;
+
+    switch( event.GetDropEffect() )
+    {
+    case wxDragMove: return Qt::MoveAction;
+    case wxDragCopy: return Qt::CopyAction;
+    case wxDragLink: return Qt::LinkAction;
+    default:         return Qt::IgnoreAction;
+    }
+}
+
+
+void wxDataViewCtrl::dragEnterEvent( QDragEnterEvent* aEvent )
+{
+    if( m_dropFormatsCompat.empty() )
+    {
+        QTreeView::dragEnterEvent( aEvent );
+        return;
+    }
+
+    if( dropFormatCompat( aEvent->mimeData() ) )
+        aEvent->acceptProposedAction();
+    else
+        aEvent->ignore();
+}
+
+
+void wxDataViewCtrl::dragMoveEvent( QDragMoveEvent* aEvent )
+{
+    if( m_dropFormatsCompat.empty() )
+    {
+        QTreeView::dragMoveEvent( aEvent );
+        return;
+    }
+
+    Qt::DropAction action = sendDropEventCompat( wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE,
+                                                 aEvent->position().toPoint(),
+                                                 aEvent->mimeData(), aEvent->proposedAction() );
+
+    if( action == Qt::IgnoreAction || !( aEvent->possibleActions() & action ) )
+    {
+        aEvent->ignore();
+        return;
+    }
+
+    aEvent->setDropAction( action );
+    aEvent->accept();
+    viewport()->update();
+}
+
+
+void wxDataViewCtrl::dragLeaveEvent( QDragLeaveEvent* aEvent )
+{
+    QTreeView::dragLeaveEvent( aEvent );
+}
+
+
+void wxDataViewCtrl::dropEvent( QDropEvent* aEvent )
+{
+    if( m_dropFormatsCompat.empty() )
+    {
+        QTreeView::dropEvent( aEvent );
+        return;
+    }
+
+    Qt::DropAction action = sendDropEventCompat( wxEVT_DATAVIEW_ITEM_DROP,
+                                                 aEvent->position().toPoint(),
+                                                 aEvent->mimeData(), aEvent->proposedAction() );
+
+    if( action == Qt::IgnoreAction || !( aEvent->possibleActions() & action ) )
+    {
+        aEvent->ignore();
+        return;
+    }
+
+    aEvent->setDropAction( action );
+    aEvent->accept();
 }
