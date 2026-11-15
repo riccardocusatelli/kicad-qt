@@ -1,5 +1,11 @@
 # KiCad README
 
+## Qt port
+
+This repository builds KiCad without wxWidgets, with a Qt 6 user interface (`kicad-qt`).
+See [The wxWidgets → Qt migration](docs/qt-migration.md) for the architecture, what is ported,
+the known gaps, how to build it on Linux, macOS and Windows, and how CI tests it.
+
 For specific documentation about [building KiCad](https://dev-docs.kicad.org/en/build/), policies
 and guidelines, and source code documentation see the
 [Developer Documentation](https://dev-docs.kicad.org) website.
