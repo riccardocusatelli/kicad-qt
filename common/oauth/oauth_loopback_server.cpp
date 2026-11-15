@@ -53,6 +53,10 @@ wxString queryValue( const wxString& aQuery, const wxString& aKey )
 } // namespace
 
 
+#ifndef KICAD_WX_FREE
+
+// The Qt build has its own server: qt/common/oauth_loopback_server_qt.cpp
+
 OAUTH_LOOPBACK_SERVER::OAUTH_LOOPBACK_SERVER( wxEvtHandler* aOwner, const wxString& aCallbackPath,
                                               const wxString& aExpectedState ) :
         m_owner( aOwner ),
@@ -102,6 +106,9 @@ bool OAUTH_LOOPBACK_SERVER::Start()
     m_timeout.StartOnce( 120000 );
     return m_port != 0;
 }
+
+
+#endif // KICAD_WX_FREE
 
 
 wxString OAUTH_LOOPBACK_SERVER::GetRedirectUri() const
@@ -175,6 +182,8 @@ bool OAUTH_LOOPBACK_SERVER::ParseAuthorizationResponse( const wxString& aRequest
     return true;
 }
 
+
+#ifndef KICAD_WX_FREE
 
 void OAUTH_LOOPBACK_SERVER::OnSocketEvent( wxSocketEvent& aEvent )
 {
@@ -296,3 +305,5 @@ void OAUTH_LOOPBACK_SERVER::Shutdown()
         m_server.reset();
     }
 }
+
+#endif // KICAD_WX_FREE

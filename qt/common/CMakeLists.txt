@@ -52,6 +52,7 @@ add_library( kiqt SHARED
     widgets/wx_progress_reporters.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/printing.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
+    ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/webview.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_aui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gui.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_gdi.cpp
@@ -106,6 +107,28 @@ set_target_properties( kiqt PROPERTIES
     AUTOMOC ON
     OUTPUT_NAME kiqt
     )
+
+# The web engine of the web views (wxWebView), as the one of wxWidgets on the system: Qt WebEngine
+# on Linux (the WebKitGTK of wxWidgets would bring GTK); without it, a QTextBrowser shows the
+# HTML pages of KiCad (no scripts, no remote pages: no remote symbols)
+if( UNIX AND NOT APPLE )
+    option( KICAD_QT_WEBENGINE "The web views of the Qt build on Qt WebEngine" ON )
+
+    if( KICAD_QT_WEBENGINE )
+        find_package( Qt6 COMPONENTS WebEngineWidgets WebChannel )
+
+        if( Qt6WebEngineWidgets_FOUND AND Qt6WebChannel_FOUND )
+            message( STATUS "The web views of the Qt build: Qt WebEngine" )
+            target_sources( kiqt PRIVATE
+                ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_webview_qtwebengine.cpp )
+            target_compile_definitions( kiqt PRIVATE KIWX_WEBVIEW_QTWEBENGINE )
+            target_link_libraries( kiqt PRIVATE Qt6::WebEngineWidgets Qt6::WebChannel )
+        else()
+            message( WARNING "Qt WebEngine not found: the web views run no scripts "
+                             "(-DKICAD_QT_WEBENGINE=OFF to build without it)" )
+        endif()
+    endif()
+endif()
 
 # The OpenGL GAL and the Cairo GAL of the printouts are part of the GAL library (GAL_API)
 set_source_files_properties( ${KIQT_OPENGL_GAL_SRCS}
@@ -396,6 +419,8 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/kiface_gui.cpp
     ${CMAKE_SOURCE_DIR}/common/kiway_holder.cpp
     ${CMAKE_SOURCE_DIR}/common/launch_ext.cpp
+    ${CMAKE_SOURCE_DIR}/common/oauth/oauth_loopback_server.cpp
+    oauth_loopback_server_qt.cpp
     ${CMAKE_SOURCE_DIR}/common/origin_viewitem.cpp
     ${CMAKE_SOURCE_DIR}/common/preview_items/anchor_debug.cpp
     ${CMAKE_SOURCE_DIR}/common/preview_items/angle_item.cpp

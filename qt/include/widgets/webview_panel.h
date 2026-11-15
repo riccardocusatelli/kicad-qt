@@ -24,8 +24,8 @@
 /**
  * @file webview_panel.h
  * The panel of a web view (WEBVIEW_PANEL) of the Qt build: a wxPanel holding the wxWebView of
- * the compatibility layer (a QTextBrowser: rich text HTML, no scripts).  The API is the one of
- * include/widgets/webview_panel.h.
+ * the compatibility layer (the web engine of the system, see wx/webview.h).  The API is the one
+ * of include/widgets/webview_panel.h.
  */
 
 #pragma once
@@ -66,12 +66,36 @@ public:
                   bool external = aEvent.GetURL().StartsWith( wxS( "http://" ) )
                                   || aEvent.GetURL().StartsWith( wxS( "https://" ) );
 
-                  // The external links open in the browser of the system
-                  if( external && !m_handleExternalLinks )
+                  // The external links clicked open in the browser of the system (the pages
+                  // loaded by the code are shown)
+                  if( external && !m_handleExternalLinks
+                      && aEvent.GetNavigationAction() == wxWEBVIEW_NAV_ACTION_USER )
                   {
                       wxLaunchDefaultBrowser( aEvent.GetURL() );
                       aEvent.Veto();
                   }
+              },
+              m_browser->GetId() );
+
+        // The links to a new window: in the browser of the system, or in the view
+        Bind( wxEVT_WEBVIEW_NEWWINDOW,
+              [this]( wxWebViewEvent& aEvent )
+              {
+                  if( m_handleExternalLinks )
+                      m_browser->LoadURL( aEvent.GetURL() );
+                  else
+                      wxLaunchDefaultBrowser( aEvent.GetURL() );
+              },
+              m_browser->GetId() );
+
+        // The messages of the pages to their handlers (window.<name>.postMessage())
+        Bind( wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED,
+              [this]( wxWebViewEvent& aEvent )
+              {
+                  auto it = m_msgHandlers.find( aEvent.GetMessageHandler() );
+
+                  if( it != m_msgHandlers.end() && it->second )
+                      it->second( aEvent.GetString() );
               },
               m_browser->GetId() );
 
@@ -102,14 +126,21 @@ public:
         m_browser->SetPage( aHtml, wxS( "file://" ) );
     }
 
-    /// No scripts in the pages: the message handlers are never called.
+    /// A handler of the messages of the pages: window.<aName>.postMessage( message ).  False if
+    /// the pages run no scripts (no web engine).
     bool AddMessageHandler( const wxString& aName, MESSAGE_HANDLER aHandler )
     {
         m_msgHandlers[aName] = std::move( aHandler );
-        return false;
+        return m_browser->AddScriptMessageHandler( aName );
     }
 
-    void ClearMessageHandlers() { m_msgHandlers.clear(); }
+    void ClearMessageHandlers()
+    {
+        for( const auto& [name, handler] : m_msgHandlers )
+            m_browser->RemoveScriptMessageHandler( name );
+
+        m_msgHandlers.clear();
+    }
 
     void SetHandleExternalLinks( bool aHandle ) { m_handleExternalLinks = aHandle; }
     bool GetHandleExternalLinks() const { return m_handleExternalLinks; }

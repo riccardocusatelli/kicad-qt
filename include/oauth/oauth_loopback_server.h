@@ -20,20 +20,30 @@
 #pragma once
 
 #include <wx/event.h>
-#include <wx/socket.h>
 #include <wx/string.h>
+
+#ifndef KICAD_WX_FREE
+#include <wx/socket.h>
 #include <wx/timer.h>
+#endif
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <kicommon.h>
 
+#ifdef KICAD_WX_FREE
+class QTcpServer;
+class QTcpSocket;
+class QTimer;
+#endif
 
-wxDECLARE_EXPORTED_EVENT( KICOMMON_API, EVT_OAUTH_LOOPBACK_RESULT, wxCommandEvent );
+
+wxDECLARE_EXPORTED_EVENT( KIQT_COMMON_API, EVT_OAUTH_LOOPBACK_RESULT, wxCommandEvent );
 
 
-struct KICOMMON_API OAUTH_AUTHORIZATION_RESPONSE
+struct KIQT_COMMON_API OAUTH_AUTHORIZATION_RESPONSE
 {
     wxString code;
     wxString state;
@@ -42,7 +52,7 @@ struct KICOMMON_API OAUTH_AUTHORIZATION_RESPONSE
 };
 
 
-class KICOMMON_API OAUTH_LOOPBACK_SERVER : public wxEvtHandler
+class KIQT_COMMON_API OAUTH_LOOPBACK_SERVER : public wxEvtHandler
 {
 public:
     OAUTH_LOOPBACK_SERVER( wxEvtHandler* aOwner, const wxString& aCallbackPath,
@@ -60,18 +70,29 @@ public:
                                             wxString& aError );
 
 private:
+#ifdef KICAD_WX_FREE
+    // The Qt build: a QTcpServer; the request of a client is read as it arrives
+    void HandleRequest( QTcpSocket* aClient, const std::string& aRequest );
+    void SendHttpResponse( QTcpSocket* aClient, bool aSuccess );
+#else
     void OnSocketEvent( wxSocketEvent& aEvent );
     void OnTimeout( wxTimerEvent& aEvent );
     void HandleClient( wxSocketBase* aClient );
     void SendHttpResponse( wxSocketBase* aClient, bool aSuccess );
+#endif
     void Finish( bool aSuccess );
     void Shutdown();
 
     wxEvtHandler*                             m_owner;
     wxString                                  m_callbackPath;
     wxString                                  m_expectedState;
+#ifdef KICAD_WX_FREE
+    QTcpServer*                               m_server;
+    QTimer*                                   m_timeout;
+#else
     std::unique_ptr<wxSocketServer>           m_server;
     wxTimer                                   m_timeout;
+#endif
     unsigned short                            m_port;
     bool                                      m_done;
     std::optional<OAUTH_AUTHORIZATION_RESPONSE> m_response;

@@ -44,6 +44,7 @@
 #include <QTreeWidgetItemIterator>
 #include <QHeaderView>
 #include <QTableView>
+#include <QElapsedTimer>
 #include <wx/init.h>
 #include <wx/grid.h>
 
@@ -75,6 +76,8 @@
 #include <tools/sch_selection_tool.h>
 #include "qa_qt_canvas.h"
 #include <widgets/lib_tree.h>
+#include <widgets/webview_panel.h>
+#include <wx/webview.h>
 #include <wx/popupwin.h>
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
@@ -730,6 +733,89 @@ void testFieldsTableColumnMove( TOOL_MANAGER* aToolMgr )
 }
 
 
+/**
+ * The web view of the Remote Symbols panel (WEBVIEW_PANEL): a page that posts a message to the
+ * "kicad" handler, and a script run by RunScriptAsync() whose result comes back.  Without a web
+ * engine (a build without one) the view has no scripts: nothing to test.
+ */
+void testWebView( SCH_EDIT_FRAME* aFrame )
+{
+    std::printf( "WEB VIEW\n" );
+
+    if( !wxWebView::HasWebEngineCompat() )
+    {
+        std::printf( "  no web engine in this build: skipped\n" );
+        return;
+    }
+
+    auto waitFor = []( const std::function<bool()>& aDone, int aMilliseconds )
+    {
+        QElapsedTimer timer;
+        timer.start();
+
+        while( !aDone() && timer.elapsed() < aMilliseconds )
+            settle( 20 );
+
+        return aDone();
+    };
+
+    WEBVIEW_PANEL* panel = new WEBVIEW_PANEL( aFrame );
+    panel->resize( 400, 300 );
+    panel->show();
+
+    wxString message;
+    bool     added = panel->AddMessageHandler( wxS( "kicad" ),
+                                               [&]( const wxString& aMsg ) { message = aMsg; } );
+    check( added, "the web view takes a message handler" );
+
+    bool loaded = false;
+    panel->GetWebView()->Bind( wxEVT_WEBVIEW_LOADED, [&]( wxWebViewEvent& aEvent )
+                                                     {
+                                                         loaded = true;
+                                                         aEvent.Skip();
+                                                     } );
+
+    panel->SetPage( wxS( "<html><body><p id='p'>QA</p><script>"
+                         "window.kicad.postMessage('hello from ' + document.getElementById('p').textContent);"
+                         "</script></body></html>" ) );
+
+    check( waitFor( [&]() { return loaded; }, 30000 ), "the web view loads the page" );
+    check( waitFor( [&]() { return !message.IsEmpty(); }, 15000 ),
+           "the page posts a message to the handler" );
+    std::printf( "  message '%s'\n", message.ToStdString().c_str() );
+    check( message == wxS( "hello from QA" ), "the handler receives the message of the page" );
+
+    wxString result;
+    bool     resultError = true;
+    bool     haveResult = false;
+    int      clientData = 0;
+    void*    resultClientData = nullptr;
+
+    panel->Bind( wxEVT_WEBVIEW_SCRIPT_RESULT, [&]( wxWebViewEvent& aEvent )
+                                              {
+                                                  haveResult = true;
+                                                  result = aEvent.GetString();
+                                                  resultError = aEvent.IsError();
+                                                  resultClientData = aEvent.GetClientData();
+                                              } );
+
+    panel->RunScriptAsync( wxS( "document.getElementById('p').textContent + (1 + 2)" ),
+                           &clientData );
+
+    check( waitFor( [&]() { return haveResult; }, 15000 ), "RunScriptAsync() sends its result" );
+    std::printf( "  script result '%s' error %d\n", result.ToStdString().c_str(), resultError );
+    check( !resultError && result == wxS( "QA3" ), "the result of the script is right" );
+    check( resultClientData == &clientData, "the result carries the client data" );
+
+    wxString output;
+    check( panel->GetWebView()->RunScript( wxS( "6 * 7" ), &output ) && output == wxS( "42" ),
+           "RunScript() gives the result of the script" );
+
+    panel->Destroy();
+    settle( 200 );
+}
+
+
 void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxString& aSimSchematic,
                     const QString& aScreenshot )
 {
@@ -846,6 +932,7 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxStrin
         check( frame->grab().save( aScreenshot ), "screenshot of the schematic editor" );
 
     testFieldsTableColumnMove( toolMgr );
+    testWebView( frame );
 
     testSimulator( aKiway, toolMgr, aScreenshot );
     testSymbolEditor( aKiway, symbol, aScreenshot );

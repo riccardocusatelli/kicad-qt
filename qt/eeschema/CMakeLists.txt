@@ -276,7 +276,7 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
 add_library( eeschema_gui_qt STATIC
     ${KIQT_EESCHEMA_GUI_SRCS}
     ${KIQT_EESCHEMA_COMPAT_FBP_SRCS}
-    widgets/panel_remote_symbol_qt.cpp
+    ${CMAKE_SOURCE_DIR}/eeschema/widgets/panel_remote_symbol.cpp
     widgets/symbol_tree_pane_qt.cpp
     sch_edit_frame_qt.cpp
     symbol_edit_frame_qt.cpp
