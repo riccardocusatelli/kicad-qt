@@ -298,8 +298,12 @@ void testLibTreePreview( SYMBOL_EDIT_FRAME* aFrame, const QString& aScreenshot )
         return;
     }
 
+    // The tree is hidden while a symbol of the schematic is edited
+    aFrame->ShowPane( wxS( "LibraryTree" ), true );
+    aFrame->UpdatePanes();
     aFrame->activateWindow();
     aFrame->raise();
+    settle( 200 );
     view->scrollTo( symbol );
     view->clearSelection();
     settle( 300 );
