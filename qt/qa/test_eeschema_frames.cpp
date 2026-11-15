@@ -826,6 +826,26 @@ int main( int argc, char** argv )
     }
 
     testStartWizard( argc > 2 ? QString::fromUtf8( argv[2] ) : QString() );
+
+    // A library of symbols of the QA data of eeschema in the global table (the libraries of
+    // KiCad are not installed for the test): the library tree of the symbol editor has symbols
+    QFileInfo qaLibrary( source.dir().filePath( QStringLiteral( "libs/4xxx.kicad_sym" ) ) );
+
+    if( qaLibrary.exists() )
+    {
+        QFile table( QDir( QString::fromUtf8( SETTINGS_MANAGER::GetUserSettingsPath().utf8_str().data() ) )
+                             .filePath( QStringLiteral( "sym-lib-table" ) ) );
+
+        if( table.open( QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text ) )
+        {
+            table.write( QStringLiteral( "(sym_lib_table\n  (version 7)\n"
+                                         "  (lib (name \"QA_4xxx\")(type \"KiCad\")(uri \"%1\")"
+                                         "(options \"\")(descr \"\"))\n)\n" )
+                                 .arg( qaLibrary.absoluteFilePath() ).toUtf8() );
+            table.close();
+        }
+    }
+
     program.GetLibraryManager().LoadGlobalTables();
 
     testSchEditor( kiway, wxString::FromUTF8( copy.toUtf8().constData() ),
