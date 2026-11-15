@@ -815,8 +815,11 @@ int main( int argc, char** argv )
             std::printf( "  frame margins %d %d %d %d, window at %d,%d, canvas at %d,%d\n",
                          margins.left(), margins.top(), margins.right(), margins.bottom(),
                          glOrigin.x(), glOrigin.y(), canvasOrigin.x(), canvasOrigin.y() );
-            check( margins.isNull() && glOrigin == canvasOrigin,
-                   "the OpenGL window is over the canvas, without a frame" );
+            check( glOrigin == canvasOrigin, "the OpenGL window is over the canvas" );
+#ifdef _WIN32
+            // (xcb reports for a child window the margins of the frame of its top level window)
+            check( margins.isNull(), "the OpenGL window has no frame" );
+#endif
             QPoint   at = center + QPoint( 20, 10 );
 
             QMouseEvent move( QEvent::MouseMove, at, glWindow->mapToGlobal( at ), Qt::NoButton,
