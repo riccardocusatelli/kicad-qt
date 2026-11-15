@@ -322,9 +322,12 @@ void testLibTreePreview( SYMBOL_EDIT_FRAME* aFrame, const QString& aScreenshot )
     {
         settle( 100 );
 
-        for( wxPopupWindow* candidate : aFrame->findChildren<wxPopupWindow*>() )
+        // wxPopupWindow has no Q_OBJECT: no findChildren<wxPopupWindow*>()
+        for( QWidget* child : aFrame->findChildren<QWidget*>() )
         {
-            if( candidate->isVisible()
+            wxPopupWindow* candidate = dynamic_cast<wxPopupWindow*>( child );
+
+            if( candidate && candidate->isVisible()
                 && candidate->findChild<QWidget*>( QStringLiteral( "symHoverPreview" ) ) )
             {
                 popup = candidate;
