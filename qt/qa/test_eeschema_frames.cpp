@@ -338,7 +338,31 @@ void testLibTreePreview( SYMBOL_EDIT_FRAME* aFrame, const QString& aScreenshot )
     check( popup != nullptr, "the library tree shows the preview of the hovered symbol" );
 
     if( !popup )
+    {
+        // What the preview needs: the tree shown, in the active window
+        QWidget* active = QApplication::activeWindow();
+        std::printf( "  tree visible %d, tree window %s, active window %s, symbol %s\n",
+                     view->isVisible(), libTree->window()->metaObject()->className(),
+                     active ? active->metaObject()->className() : "none",
+                     model->data( symbol ).toString().toUtf8().constData() );
+
+        for( QWidget* child : aFrame->findChildren<QWidget*>() )
+        {
+            if( wxPopupWindow* candidate = dynamic_cast<wxPopupWindow*>( child ) )
+            {
+                std::printf( "  popup visible %d, %d widgets\n", candidate->isVisible(),
+                             int( candidate->findChildren<QWidget*>().size() ) );
+
+                for( QWidget* widget : candidate->findChildren<QWidget*>() )
+                {
+                    if( !widget->objectName().isEmpty() )
+                        std::printf( "    %s\n", widget->objectName().toUtf8().constData() );
+                }
+            }
+        }
+
         return;
+    }
 
     QRect treeRect( view->mapToGlobal( QPoint( 0, 0 ) ), view->size() );
     check( !treeRect.intersects( popup->geometry() ), "the preview is next to the library tree" );
