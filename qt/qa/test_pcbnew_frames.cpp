@@ -28,6 +28,7 @@
 #include <kicad_gl/kiglad.h> // Must be included first (OpenGL GAL)
 #include <Python.h>          // Before Qt (its slots macro)
 #include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <optional>
 #include <string>
@@ -39,6 +40,7 @@
 #include <QFileInfo>
 #include <QScreen>
 #include <QTimer>
+#include <QWindow>
 #include <QDialog>
 #include <QPointer>
 #include <QPushButton>
@@ -435,6 +437,294 @@ void testFootprintWizard( KIWAY& aKiway )
 }
 
 
+/// The pixels of the screen where @a aWidget is: what the user sees there, the native OpenGL
+/// windows included (the grab of the widgets has none).
+QImage grabScreenArea( QWidget* aWidget )
+{
+    QScreen* screen = aWidget->screen();
+
+    if( !screen )
+        return QImage();
+
+    QPoint origin = aWidget->mapToGlobal( QPoint( 0, 0 ) ) - screen->geometry().topLeft();
+
+    return screen->grabWindow( 0, origin.x(), origin.y(), aWidget->width(), aWidget->height() )
+            .toImage();
+}
+
+
+/// The part of the image that is black (a native window that draws nothing).
+double blackFraction( const QImage& aImage )
+{
+    int samples = 0;
+    int black = 0;
+
+    for( int y = 0; y < aImage.height(); y += 4 )
+    {
+        for( int x = 0; x < aImage.width(); x += 4 )
+        {
+            QRgb pixel = aImage.pixel( x, y );
+            samples++;
+
+            if( qRed( pixel ) < 8 && qGreen( pixel ) < 8 && qBlue( pixel ) < 8 )
+                black++;
+        }
+    }
+
+    return samples ? double( black ) / samples : 1.0;
+}
+
+
+/// The part of two images of the same size that differs.
+double differentFraction( const QImage& aA, const QImage& aB )
+{
+    if( aA.size() != aB.size() )
+        return 1.0;
+
+    int samples = 0;
+    int different = 0;
+
+    for( int y = 0; y < aA.height(); y += 4 )
+    {
+        for( int x = 0; x < aA.width(); x += 4 )
+        {
+            QRgb a = aA.pixel( x, y );
+            QRgb b = aB.pixel( x, y );
+            samples++;
+
+            if( std::abs( qRed( a ) - qRed( b ) ) > 48 || std::abs( qGreen( a ) - qGreen( b ) ) > 48
+                    || std::abs( qBlue( a ) - qBlue( b ) ) > 48 )
+            {
+                different++;
+            }
+        }
+    }
+
+    return samples ? double( different ) / samples : 1.0;
+}
+
+
+/// The image has more than one color.
+bool isVaried( const QImage& aImage )
+{
+    for( int y = 0; y < aImage.height(); y += 7 )
+    {
+        for( int x = 0; x < aImage.width(); x += 7 )
+        {
+            if( aImage.pixel( x, y ) != aImage.pixel( 0, 0 ) )
+                return true;
+        }
+    }
+
+    return false;
+}
+
+
+/// The visible OpenGL windows of the program (the canvases), listed.  @return their number.
+int listGlWindows( const char* aWhen )
+{
+    int count = 0;
+
+    std::printf( "    OpenGL windows %s:\n", aWhen );
+
+    for( QWindow* window : QGuiApplication::allWindows() )
+    {
+        if( !window->isVisible() || window->surfaceType() != QSurface::OpenGLSurface )
+            continue;
+
+        QPoint pos = window->mapToGlobal( QPoint( 0, 0 ) );
+        std::printf( "      %p %d,%d %dx%d exposed %d parent %p\n", static_cast<void*>( window ),
+                     pos.x(), pos.y(), window->width(), window->height(),
+                     window->isExposed() ? 1 : 0, static_cast<void*>( window->parent() ) );
+        count++;
+    }
+
+#ifdef _WIN32
+    // The native windows of the program, as Windows sees them (one left by Qt is not listed above)
+    std::printf( "    native windows %s:\n", aWhen );
+
+    EnumWindows(
+            []( HWND aWindow, LPARAM ) -> BOOL
+            {
+                DWORD pid = 0;
+                GetWindowThreadProcessId( aWindow, &pid );
+
+                if( pid != GetCurrentProcessId() || !IsWindowVisible( aWindow ) )
+                    return TRUE;
+
+                auto listOne =
+                        []( HWND aChild, LPARAM aDepth ) -> BOOL
+                        {
+                            if( !IsWindowVisible( aChild ) )
+                                return TRUE;
+
+                            char className[128] = {};
+                            RECT rect = {};
+                            GetClassNameA( aChild, className, sizeof( className ) );
+                            GetWindowRect( aChild, &rect );
+                            std::printf( "        %p %s %ld,%ld %ldx%ld\n",
+                                         static_cast<void*>( aChild ), className, rect.left,
+                                         rect.top, rect.right - rect.left,
+                                         rect.bottom - rect.top );
+                            return TRUE;
+                        };
+
+                char className[128] = {};
+                RECT rect = {};
+                GetClassNameA( aWindow, className, sizeof( className ) );
+                GetWindowRect( aWindow, &rect );
+                std::printf( "      %p %s %ld,%ld %ldx%ld\n", static_cast<void*>( aWindow ),
+                             className, rect.left, rect.top, rect.right - rect.left,
+                             rect.bottom - rect.top );
+                EnumChildWindows( aWindow, listOne, 0 );
+                return TRUE;
+            },
+            0 );
+#endif
+
+    return count;
+}
+
+
+/**
+ * The canvas of the PCB editor after the 3D viewer: the viewer is opened on the editor, then
+ * closed, and the canvas shows the board again as before (a native window of the 3D viewer, or
+ * a context of OpenGL, must not be left over it).
+ */
+void test3DViewerRoundTrip( PCB_EDIT_FRAME* aFrame, const QString& aScreenshot )
+{
+    std::printf( "3D VIEWER AND BACK\n" );
+
+    EDA_DRAW_PANEL_GAL* canvas = aFrame->GetCanvas();
+    TOOL_MANAGER*       toolMgr = aFrame->GetToolManager();
+
+    auto saveShot =
+            [&]( const QImage& aImage, const char* aSuffix )
+            {
+                if( aScreenshot.isEmpty() || aImage.isNull() )
+                    return;
+
+                QString path = aScreenshot;
+                path.replace( QStringLiteral( ".png" ),
+                              QStringLiteral( "-3d-%1.png" ).arg( QString::fromUtf8( aSuffix ) ) );
+                aImage.save( path );
+            };
+
+    auto screenShot =
+            [&]( const char* aSuffix )
+            {
+                if( !aScreenshot.isEmpty() )
+                {
+                    if( QScreen* screen = aFrame->screen() )
+                        saveShot( screen->grabWindow( 0 ).toImage(), aSuffix );
+                }
+            };
+
+    aFrame->raise();
+    aFrame->activateWindow();
+    canvas->ForceRefresh();
+    settle( 300 );
+
+    QImage before = grabScreenArea( canvas );
+    bool   screenGrabs = !before.isNull() && isVaried( before );
+    int    glWindowsBefore = listGlWindows( "before the 3D viewer" );
+
+    std::printf( "    canvas %d,%d %dx%d, black before %.3f\n", canvas->mapToGlobal( QPoint() ).x(),
+                 canvas->mapToGlobal( QPoint() ).y(), canvas->width(), canvas->height(),
+                 screenGrabs ? blackFraction( before ) : -1.0 );
+    saveShot( before, "canvas-before" );
+    screenShot( "screen-before" );
+
+    // The viewer, as by its button, over the editor
+    toolMgr->RunAction( ACTIONS::show3DViewer );
+    settle( 300 );
+
+    QPointer<KIWAY_PLAYER> viewer;
+
+    for( QWidget* widget : QApplication::topLevelWidgets() )
+    {
+        auto* player = dynamic_cast<KIWAY_PLAYER*>( widget );
+
+        if( player && player->isVisible() && player->GetFrameType() == FRAME_PCB_DISPLAY3D )
+            viewer = player;
+    }
+
+    check( !viewer.isNull(), "the 3D viewer is shown" );
+
+    if( !viewer )
+        return;
+
+    viewer->setGeometry( aFrame->geometry() );
+    settle( 3000 );
+    listGlWindows( "with the 3D viewer" );
+    screenShot( "screen-viewer" );
+
+    // Closed as by its close button
+    viewer->close();
+    settle( 300 );
+    QCoreApplication::sendPostedEvents( nullptr, QEvent::DeferredDelete );
+    settle( 300 );
+    check( viewer.isNull(), "the 3D viewer is closed and deleted" );
+
+    aFrame->raise();
+    aFrame->activateWindow();
+    settle( 300 );
+    canvas->ForceRefresh();
+    settle( 500 );
+
+    int glWindowsAfter = listGlWindows( "after the 3D viewer" );
+    check( glWindowsAfter == glWindowsBefore, "no OpenGL window of the 3D viewer is left" );
+
+    // The OpenGL window of the canvas still covers it
+    bool covered = false;
+
+    for( QWindow* window : QGuiApplication::allWindows() )
+    {
+        if( window->isVisible() && window->surfaceType() == QSurface::OpenGLSurface
+                && window->mapToGlobal( QPoint( 0, 0 ) ) == canvas->mapToGlobal( QPoint( 0, 0 ) )
+                && window->size() == canvas->size() )
+        {
+            covered = true;
+        }
+    }
+
+    check( covered, "the OpenGL window of the canvas covers it" );
+
+    // The canvas draws the board (in its buffers)
+    QImage galImage;
+    bool   galVaried = false;
+
+    for( int attempt = 0; attempt < 10 && !galVaried; ++attempt )
+    {
+        canvas->ForceRefresh();
+        settle( 100 );
+        galVaried = canvas->GetScreenshot( galImage ) && isVaried( galImage );
+    }
+
+    check( galVaried, "the canvas draws the board after the 3D viewer" );
+    saveShot( galImage, "gal-after" );
+
+    // And the screen shows it, as before the viewer
+    QImage after = grabScreenArea( canvas );
+    saveShot( after, "canvas-after" );
+    screenShot( "screen-after" );
+
+    if( screenGrabs )
+    {
+        double black = blackFraction( after );
+        double different = differentFraction( before, after );
+
+        std::printf( "    black after %.3f, different %.3f\n", black, different );
+        check( black < blackFraction( before ) + 0.1, "the canvas is not black after the 3D viewer" );
+        check( different < 0.25, "the canvas shows the board as before the 3D viewer" );
+    }
+    else
+    {
+        std::printf( "    (no grab of the screen: the screen is not compared)\n" );
+    }
+}
+
+
 void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aScreenshot )
 {
     std::printf( "PCB_EDIT_FRAME\n" );
@@ -488,6 +778,8 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
 
         check( varied, "the canvas draws the board" );
         checkCanvasGeometry( frame->GetCanvas(), "PCB editor" );
+
+        test3DViewerRoundTrip( frame, aScreenshot );
 
         if( !aScreenshot.isEmpty() )
         {

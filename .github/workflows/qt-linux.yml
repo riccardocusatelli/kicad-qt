@@ -93,7 +93,7 @@ jobs:
             timeout 900 xvfb-run -a -s "-screen 0 1920x1200x24" \
               gdb -q -batch -return-child-result -ex "handle SIGPIPE nostop noprint pass" -ex run -ex "thread apply all bt 40" --args "$@"
           }
-          ( cd build/qt/qa && run ./qa_qt_pcbnew_frames $BOARD )
+          ( cd build/qt/qa && run ./qa_qt_pcbnew_frames $BOARD $OUT/pcbnew.png )
           ( cd build/qt/qa && run ./qa_qt_tool_framework $BOARD )
           ( cd build/qt/qa && run ./qa_qt_3d_viewer $BOARD )
           ( cd build/qt/qa && run ./qa_qt_eeschema_frames $SCH )

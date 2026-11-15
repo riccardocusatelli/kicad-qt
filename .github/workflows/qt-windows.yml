@@ -275,7 +275,7 @@ jobs:
             if( $code -ne 0 ) { $script:failed += "$aExe ($code)" }
           }
 
-          Run-Test 'build\qt\qa' 'qa_qt_pcbnew_frames' @( $board )
+          Run-Test 'build\qt\qa' 'qa_qt_pcbnew_frames' @( $board, "$out\pcbnew.png" )
           Run-Test 'build\qt\qa' 'qa_qt_tool_framework' @( $board )
           # The OpenGL canvas (Mesa) on a screen scaled to 125%: the cursor under the mouse, the
           # OpenGL window over the canvas, without a frame, and drawn whole
