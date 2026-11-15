@@ -26,20 +26,26 @@
  * @file lib_tree.cpp
  * LIB_TREE of the Qt build (common/widgets/lib_tree.cpp with wxWidgets): a QLineEdit to search,
  * a menu to sort, the QTreeView of the LIB_TREE_MODEL_ADAPTER and an HTML_WINDOW for the details.
- * The previews of the items when hovering them are not shown yet.
+ * The items hovered by the mouse show their preview (the adapter draws it) in a popup next to the
+ * tree, as with wxWidgets.
  */
 
 #include <widgets/lib_tree.h>
 
 #include <QAction>
+#include <QApplication>
 #include <QCursor>
 #include <QDesktopServices>
 #include <QFrame>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMouseEvent>
+#include <QScreen>
+#include <QScrollBar>
 #include <QTimer>
 #include <QTreeView>
 #include <QUrl>
@@ -56,6 +62,7 @@
 #include <tool/tool_interactive.h>
 #include <tool/tool_manager.h>
 #include <widgets/bitmap_button.h>
+#include <wx/popupwin.h>
 
 #include <qt_strings.h>
 #include <ui_hooks.h>
@@ -64,6 +71,11 @@
 
 
 constexpr int RECENT_SEARCHES_MAX = 10;
+
+/// The size of the preview of the hovered items, and the time the mouse stays on an item before
+/// its preview is shown (as with wxWidgets)
+static const QSize PREVIEW_SIZE( 240, 200 );
+constexpr int      HOVER_TIMER_MILLIS = 400;
 
 static std::map<wxString, std::vector<wxString>> g_recentSearches;
 
@@ -107,7 +119,8 @@ LIB_TREE::LIB_TREE( QWidget* aParent, const wxString& aRecentSearchesKey,
         m_inTimerEvent( false ),
         m_recentSearchesKey( aRecentSearchesKey ),
         m_filtersSizer( nullptr ),
-        m_previewDisabled( false )
+        m_previewDisabled( false ),
+        m_hoverTimer( nullptr )
 {
     QVBoxLayout* sizer = new QVBoxLayout( this );
     sizer->setContentsMargins( 0, 0, 0, 0 );
@@ -248,6 +261,62 @@ LIB_TREE::LIB_TREE( QWidget* aParent, const wxString& aRecentSearchesKey,
     QObject::connect( m_tree_ctrl->header(), &QWidget::customContextMenuRequested, this,
                       [this]( const QPoint& aPos ) { onHeaderContextMenu( aPos ); } );
 
+    // The preview of the hovered items: the moves of the mouse over the items of the tree
+    m_hoverTimer = new QTimer( this );
+    m_hoverTimer->setSingleShot( true );
+    QObject::connect( m_hoverTimer, &QTimer::timeout, this, [this]() { onHoverTimer(); } );
+
+    m_tree_ctrl->setMouseTracking( true );
+    m_tree_ctrl->viewport()->setMouseTracking( true );
+
+    KIQT::FilterEvents( m_tree_ctrl->viewport(),
+            [this]( QEvent* aEvent )
+            {
+                switch( aEvent->type() )
+                {
+                case QEvent::MouseMove:
+                    onTreeMouseMove( static_cast<QMouseEvent*>( aEvent )->position().toPoint() );
+                    break;
+
+                case QEvent::MouseButtonPress:
+                case QEvent::MouseButtonDblClick:
+                case QEvent::Wheel:
+                case QEvent::Leave:
+                case QEvent::Hide:
+                    m_hoverTimer->stop();
+                    hidePreview();
+                    break;
+
+                default:
+                    break;
+                }
+
+                return false;
+            } );
+
+    // The view scrolled, or the window of the tree is no longer the active one (another
+    // window, a menu or a dialog): no preview
+    for( QScrollBar* scrollBar : { m_tree_ctrl->verticalScrollBar(),
+                                   m_tree_ctrl->horizontalScrollBar() } )
+    {
+        QObject::connect( scrollBar, &QScrollBar::valueChanged, this,
+                          [this]()
+                          {
+                              m_hoverTimer->stop();
+                              hidePreview();
+                          } );
+    }
+
+    QObject::connect( qApp, &QApplication::focusChanged, this,
+                      [this]()
+                      {
+                          if( m_previewWindow && !canShowPreview() )
+                          {
+                              m_hoverTimer->stop();
+                              hidePreview();
+                          }
+                      } );
+
     // Process hotkeys when the tree control has focus:
     KIQT::FilterEvents( m_tree_ctrl,
             [this]( QEvent* aEvent )
@@ -282,6 +351,9 @@ LIB_TREE::~LIB_TREE()
     if( m_debounceTimer )
         m_debounceTimer->stop();
 
+    // The preview (a window of the top level window of the tree) goes with the tree
+    ShutdownPreviews();
+
     // The model lives as long as its references: the view must not use it any more
     m_tree_ctrl->setModel( nullptr );
 }
@@ -289,7 +361,150 @@ LIB_TREE::~LIB_TREE()
 
 void LIB_TREE::ShutdownPreviews()
 {
+    if( m_hoverTimer )
+        m_hoverTimer->stop();
+
     m_previewDisabled = true;
+    m_previewItem = QPersistentModelIndex();
+
+    if( m_previewWindow )
+    {
+        // Shutdown the preview window's canvas
+        m_adapter->ShutdownPreview( m_previewWindow );
+
+        m_previewWindow->hide();
+        delete m_previewWindow.data();
+    }
+}
+
+
+bool LIB_TREE::canShowPreview() const
+{
+    if( m_previewDisabled || !m_tree_ctrl->isVisible() )
+        return false;
+
+    // The window of the tree is the active one (not while a menu, a dialog or another window
+    // is used)
+    QWidget* active = QApplication::activeWindow();
+    return active && active == window() && !QApplication::activePopupWidget()
+           && !QApplication::activeModalWidget();
+}
+
+
+void LIB_TREE::onTreeMouseMove( const QPoint& aPos )
+{
+    if( !canShowPreview() )
+    {
+        m_hoverTimer->stop();
+        hidePreview();
+        return;
+    }
+
+    QModelIndex item = m_tree_ctrl->indexAt( aPos );
+
+    if( item.isValid() )
+        item = item.siblingAtColumn( 0 );
+
+    // A preview is shown: it follows the mouse from an item to the next one
+    if( m_previewItem.isValid() )
+    {
+        if( item != QModelIndex( m_previewItem ) )
+            showPreview( item );
+
+        return;
+    }
+
+    // Else the mouse has to stay on an item for a while
+    if( m_hoverPos != aPos )
+    {
+        m_hoverPos = aPos;
+        m_hoverItem = item;
+        m_hoverItemRect = item.isValid() ? m_tree_ctrl->visualRect( item ) : QRect();
+        m_hoverTimer->start( HOVER_TIMER_MILLIS );
+    }
+}
+
+
+void LIB_TREE::onHoverTimer()
+{
+    hidePreview();
+
+    // The mouse is still over the tree (it would have stopped the timer when leaving it)
+    if( !canShowPreview() )
+        return;
+
+    QModelIndex item = m_tree_ctrl->indexAt( m_hoverPos );
+
+    if( item.isValid() )
+        item = item.siblingAtColumn( 0 );
+
+    // The same item at the same place (the view was not scrolled), and not the selected item
+    // (it is shown by the editor)
+    if( item.isValid() && item == QModelIndex( m_hoverItem )
+            && m_tree_ctrl->visualRect( item ) == m_hoverItemRect
+            && !m_tree_ctrl->selectionModel()->isRowSelected( item.row(), item.parent() ) )
+    {
+        showPreview( item );
+    }
+}
+
+
+void LIB_TREE::showPreview( const QModelIndex& aIndex )
+{
+    wxDataViewItem item = LIB_TREE_MODEL_ADAPTER::ToItem( LIB_TREE_MODEL_ADAPTER::ToNode( aIndex ) );
+
+    if( !aIndex.isValid() || !item.IsOk() || !m_adapter->HasPreview( item ) )
+    {
+        hidePreview();
+        return;
+    }
+
+    m_previewItem = QPersistentModelIndex( aIndex );
+
+    if( !m_previewWindow )
+    {
+        m_previewWindow = new wxPopupWindow( window() );
+
+        // The mouse goes through the preview (to the tree under it)
+        m_previewWindow->setWindowFlag( Qt::WindowTransparentForInput, true );
+    }
+
+    m_previewWindow->resize( PREVIEW_SIZE );
+
+    m_adapter->ShowPreview( m_previewWindow, item );
+
+    // Next to the tree, at the height of the mouse: on its right side, or on its left side when
+    // the screen has no room there (a tree docked on the right side of the frame)
+    QPoint  treeTopLeft = m_tree_ctrl->mapToGlobal( QPoint( 0, 0 ) );
+    QPoint  pos( treeTopLeft.x() + m_tree_ctrl->width() + 2,
+                 QCursor::pos().y() - PREVIEW_SIZE.height() / 2 );
+    QScreen* scr = m_tree_ctrl->screen() ? m_tree_ctrl->screen() : QGuiApplication::primaryScreen();
+
+    if( scr )
+    {
+        QRect area = scr->availableGeometry();
+
+        if( pos.x() + PREVIEW_SIZE.width() > area.right() )
+            pos.setX( treeTopLeft.x() - PREVIEW_SIZE.width() - 2 );
+
+        pos.setX( std::clamp( pos.x(), area.left(),
+                              std::max( area.left(), area.right() - PREVIEW_SIZE.width() ) ) );
+        pos.setY( std::clamp( pos.y(), area.top(),
+                              std::max( area.top(), area.bottom() - PREVIEW_SIZE.height() ) ) );
+    }
+
+    m_previewWindow->move( pos );
+    m_previewWindow->show();
+    m_previewWindow->raise();
+}
+
+
+void LIB_TREE::hidePreview()
+{
+    m_previewItem = QPersistentModelIndex();
+
+    if( m_previewWindow )
+        m_previewWindow->hide();
 }
 
 

@@ -38,6 +38,8 @@
 #include <QTimer>
 #include <QComboBox>
 #include <QRadioButton>
+#include <QMouseEvent>
+#include <QTreeView>
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
 #include <wx/init.h>
@@ -69,6 +71,8 @@
 #include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
 #include "qa_qt_canvas.h"
+#include <widgets/lib_tree.h>
+#include <wx/popupwin.h>
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
 
@@ -260,6 +264,92 @@ void testSimModelDialog( QDialog* aParent, const QString& aButton, const QString
 }
 
 
+/// The preview of a symbol of the library tree of the symbol editor: shown in a popup next to
+/// the tree when the mouse stays on the symbol, hidden when the mouse leaves the tree.
+void testLibTreePreview( SYMBOL_EDIT_FRAME* aFrame, const QString& aScreenshot )
+{
+    LIB_TREE*  libTree = aFrame->GetLibTree();
+    QTreeView* view = libTree ? libTree->GetTreeView() : nullptr;
+
+    if( !view || !view->model() )
+    {
+        std::printf( "  no library tree: preview not tested\n" );
+        return;
+    }
+
+    // The first symbol of the first library that has some
+    QAbstractItemModel* model = view->model();
+    QModelIndex         symbol;
+
+    for( int row = 0; row < model->rowCount() && !symbol.isValid(); ++row )
+    {
+        QModelIndex library = model->index( row, 0 );
+
+        if( model->rowCount( library ) > 0 )
+        {
+            view->expand( library );
+            symbol = model->index( 0, 0, library );
+        }
+    }
+
+    if( !symbol.isValid() )
+    {
+        std::printf( "  no symbol in the library tree: preview not tested\n" );
+        return;
+    }
+
+    aFrame->activateWindow();
+    aFrame->raise();
+    view->scrollTo( symbol );
+    view->clearSelection();
+    settle( 300 );
+
+    if( !aFrame->isActiveWindow() )
+    {
+        std::printf( "  the symbol editor is not the active window: preview not tested\n" );
+        return;
+    }
+
+    QPoint pos = view->visualRect( symbol ).center();
+    QMouseEvent move( QEvent::MouseMove, QPointF( pos ), QPointF( view->viewport()->mapToGlobal( pos ) ),
+                      Qt::NoButton, Qt::NoButton, Qt::NoModifier );
+    QApplication::sendEvent( view->viewport(), &move );
+
+    // The hover delay (400 ms), then the preview draws
+    QWidget* popup = nullptr;
+
+    for( int attempt = 0; attempt < 20 && !popup; ++attempt )
+    {
+        settle( 100 );
+
+        for( wxPopupWindow* candidate : aFrame->findChildren<wxPopupWindow*>() )
+        {
+            if( candidate->isVisible()
+                && candidate->findChild<QWidget*>( QStringLiteral( "symHoverPreview" ) ) )
+            {
+                popup = candidate;
+            }
+        }
+    }
+
+    check( popup != nullptr, "the library tree shows the preview of the hovered symbol" );
+
+    if( !popup )
+        return;
+
+    QRect treeRect( view->mapToGlobal( QPoint( 0, 0 ) ), view->size() );
+    check( !treeRect.intersects( popup->geometry() ), "the preview is next to the library tree" );
+
+    if( !aScreenshot.isEmpty() )
+        popup->grab().save( screenshotPath( aScreenshot, "symbol-preview" ) );
+
+    QEvent leave( QEvent::Leave );
+    QApplication::sendEvent( view->viewport(), &leave );
+    settle( 100 );
+    check( !popup->isVisible(), "the preview is hidden when the mouse leaves the tree" );
+}
+
+
 /// The symbol editor, with a symbol of the schematic: its dialogs, then closed.
 void testSymbolEditor( KIWAY& aKiway, SCH_SYMBOL* aSymbol, const QString& aScreenshot )
 {
@@ -292,6 +382,8 @@ void testSymbolEditor( KIWAY& aKiway, SCH_SYMBOL* aSymbol, const QString& aScree
         if( frame->GetScreen() )
             frame->GetScreen()->SetContentModified( false );
     }
+
+    testLibTreePreview( frame, aScreenshot );
 
     closeFrame( frame, "the symbol editor" );
 }

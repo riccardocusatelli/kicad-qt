@@ -36,6 +36,10 @@
 
 #include <kiqt.h>     // Qt, without its METHOD macro
 #include <QModelIndex>
+#include <QPersistentModelIndex>
+#include <QPoint>
+#include <QPointer>
+#include <QRect>
 #include <QWidget>
 
 #include <functional>
@@ -55,6 +59,7 @@ class QTimer;
 class QTreeView;
 class LIB_TREE_VIEW;
 class QVBoxLayout;
+class wxPopupWindow;
 
 
 /**
@@ -185,6 +190,9 @@ public:
     void BlockPreview( bool aBlock )
     {
         m_previewDisabled = aBlock;
+
+        if( aBlock )
+            hidePreview();
     }
 
     void ShutdownPreviews();
@@ -270,6 +278,18 @@ protected:
     /// The selected index of the view (invalid if none).
     QModelIndex currentSelection() const;
 
+    /// The preview of the items hovered by the mouse (the symbols or the footprints of the
+    /// libraries of the editors): the mouse moved over the tree, or left it.
+    void onTreeMouseMove( const QPoint& aPos );
+    void onHoverTimer();
+
+    /// Show the preview of an item of the tree (if it has one) next to the tree, or hide it.
+    void showPreview( const QModelIndex& aIndex );
+    void hidePreview();
+
+    /// The previews are shown while the window of the tree is the active window.
+    bool canShowPreview() const;
+
 protected:
     wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER> m_adapter;
 
@@ -285,6 +305,13 @@ protected:
     wxBoxSizer*      m_filtersSizer;
 
     bool             m_previewDisabled;
+
+    QTimer*                 m_hoverTimer;
+    QPoint                  m_hoverPos;         ///< In the viewport of the tree
+    QPersistentModelIndex   m_hoverItem;
+    QRect                   m_hoverItemRect;
+    QPersistentModelIndex   m_previewItem;
+    QPointer<wxPopupWindow> m_previewWindow;
 
     std::function<void()> m_selectedHandler;
     std::function<void()> m_chosenHandler;
