@@ -42,6 +42,8 @@
 #include <QTimer>
 #include <QWindow>
 #include <QDialog>
+#include <QDockWidget>
+#include <QMainWindow>
 #include <QPointer>
 #include <QPushButton>
 #include <QTemporaryDir>
@@ -105,6 +107,70 @@ namespace
 {
 
 using namespace QA_QT_FRAMES;
+
+/**
+ * The layout of the docks of a frame is kept with its settings: the properties of the footprint
+ * editor moved to the other side of the frame are there when the editor is opened again.
+ */
+void testDockLayout( KIWAY& aKiway )
+{
+    std::printf( "DOCK LAYOUT\n" );
+
+    const QString name = QStringLiteral( "PropertiesManager" );
+    auto          propertiesOf = [&]( QMainWindow* aFrame )
+                                 {
+                                     return aFrame->findChild<QDockWidget*>(
+                                             name, Qt::FindDirectChildrenOnly );
+                                 };
+
+    auto* frame = createFrame<FOOTPRINT_EDIT_FRAME>( aKiway, FRAME_FOOTPRINT_EDITOR );
+
+    if( !frame )
+        return;
+
+    frame->show();
+    settle( 300 );
+
+    QDockWidget* dock = propertiesOf( frame );
+    check( dock != nullptr, "the footprint editor has its properties pane" );
+
+    if( !dock )
+    {
+        closeFrame( frame, "the footprint editor" );
+        return;
+    }
+
+    Qt::DockWidgetArea original = frame->dockWidgetArea( dock );
+    Qt::DockWidgetArea moved = original == Qt::RightDockWidgetArea ? Qt::LeftDockWidgetArea
+                                                                    : Qt::RightDockWidgetArea;
+    frame->addDockWidget( moved, dock );
+    settle( 100 );
+    check( frame->dockWidgetArea( dock ) == moved, "the properties pane is moved" );
+
+    frame->GetScreen()->SetContentModified( false );
+    closeFrame( frame, "the footprint editor" );
+
+    // Opened again: the properties are where they were left, then put back
+    frame = createFrame<FOOTPRINT_EDIT_FRAME>( aKiway, FRAME_FOOTPRINT_EDITOR );
+
+    if( !frame )
+        return;
+
+    frame->show();
+    settle( 300 );
+    dock = propertiesOf( frame );
+
+    check( dock && frame->dockWidgetArea( dock ) == moved,
+           "the footprint editor opens with the properties pane where it was left" );
+
+    if( dock )
+        frame->addDockWidget( original, dock );
+
+    settle( 100 );
+    frame->GetScreen()->SetContentModified( false );
+    closeFrame( frame, "the footprint editor" );
+}
+
 
 /**
  * The footprint editor: a footprint of the board is edited, with the dialogs of the editor (the
@@ -1042,6 +1108,7 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
     // The footprint editor, with a footprint of the board
     testFootprintEditor( aKiway, board->Footprints().empty() ? nullptr : board->Footprints().front(),
                          aScreenshot );
+    testDockLayout( aKiway );
 
     // The changes of the test are not saved (the editor would ask)
     frame->GetScreen()->SetContentModified( false );

@@ -42,6 +42,7 @@
 
 #include <kiqt.h>
 #include <QMainWindow>
+#include <QByteArray>
 #include <QPointer>
 
 #include <wx/kiwx_window.h>     // the wxWidgets API of the windows (wxcompat)
@@ -414,7 +415,8 @@ public:
     /// widgets of Qt are laid out when they are added, the panes of m_auimgr here.
     void FinishAUIInitialization();
 
-    /// The layout of the panes of m_auimgr: kept by Qt (QMainWindow::saveState()).
+    /// The layout of the panes of m_auimgr (the frames made by the code of wxWidgets): the docks
+    /// of the frame are restored when it is shown (restoreDockState()).
     void RestoreAuiLayout() {}
 
     /**
@@ -1009,6 +1011,15 @@ protected:
 
     /// The panels of panes deleted with the frame (see keepPaneUntilDeleted()).
     std::vector<QPointer<QWidget>> m_panesKeptUntilDeleted;
+
+    /// The layout of the docks and toolbars of the frame (QMainWindow::saveState()) read from its
+    /// settings, restored once the frame is shown (all its panes exist then).
+    QByteArray m_savedDockState;
+    bool       m_dockStateRestored = false;
+
+    /// Restore the places, sizes, sides and tabs of the docks saved with the settings of the
+    /// frame; their visibility stays the one given by the settings of KiCad.
+    void restoreDockState();
     bool            m_closeInProgress;
     bool            m_isNonUserClose;
 

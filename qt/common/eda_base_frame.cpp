@@ -49,6 +49,7 @@
 #include <QMenuBar>
 #include <QScreen>
 #include <QStatusBar>
+#include <QToolBar>
 #include <QTimer>
 
 #include <bitmaps.h>
@@ -702,8 +703,47 @@ bool EDA_BASE_FRAME::Close( bool aForce )
 }
 
 
+/// The layout of the docks in the settings of a frame (WINDOW_SETTINGS::perspective): a prefix
+/// that the wxWidgets build does not read as a perspective of wxAUI, then QMainWindow::saveState()
+/// in base64
+static const char DOCK_STATE_PREFIX[] = "qt1|";
+constexpr int     DOCK_STATE_VERSION = 1;
+
+
+void EDA_BASE_FRAME::restoreDockState()
+{
+    m_dockStateRestored = true;
+
+    if( m_savedDockState.isEmpty() )
+        return;
+
+    // The visibility of the panes is the one of the settings of KiCad (the frames show and hide
+    // them from their own settings, and the toolbars are always shown)
+    std::vector<std::pair<QPointer<QWidget>, bool>> shown;
+
+    for( QDockWidget* dock : findChildren<QDockWidget*>( QString(), Qt::FindDirectChildrenOnly ) )
+        shown.emplace_back( dock, !dock->isHidden() );
+
+    for( QToolBar* toolbar : findChildren<QToolBar*>( QString(), Qt::FindDirectChildrenOnly ) )
+        shown.emplace_back( toolbar, !toolbar->isHidden() );
+
+    if( !restoreState( m_savedDockState, DOCK_STATE_VERSION ) )
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "The saved layout of the docks is not valid" ) );
+
+    for( const auto& [widget, visible] : shown )
+    {
+        if( widget && widget->isHidden() == visible )
+            widget->setVisible( visible );
+    }
+}
+
+
 bool EDA_BASE_FRAME::event( QEvent* aEvent )
 {
+    // Shown for the first time: all the panes of the frame exist, their layout is restored
+    if( aEvent->type() == QEvent::Show && !m_dockStateRestored )
+        restoreDockState();
+
     if( aEvent->type() == QEvent::DeferredDelete )
     {
         // The panels kept until the frame is deleted leave their docks, hidden
@@ -1381,6 +1421,15 @@ void EDA_BASE_FRAME::LoadWindowSettings( const WINDOW_SETTINGS* aCfg )
 
     m_mruPath = aCfg->mru_path;
 
+    // The layout of the docks saved by the Qt build (restored when the frame is shown)
+    std::string perspective = aCfg->perspective.ToStdString();
+
+    if( perspective.rfind( DOCK_STATE_PREFIX, 0 ) == 0 )
+    {
+        m_savedDockState = QByteArray::fromBase64(
+                QByteArray::fromStdString( perspective.substr( sizeof( DOCK_STATE_PREFIX ) - 1 ) ) );
+    }
+
     TOOLS_HOLDER::CommonSettingsChanged();
 }
 
@@ -1404,6 +1453,14 @@ void EDA_BASE_FRAME::SaveWindowSettings( WINDOW_SETTINGS* aCfg )
                   frame.x(), frame.y(), frame.width(), frame.height() );
 
     aCfg->mru_path = m_mruPath;
+
+    // The layout of the docks, once restored (a frame never shown keeps the saved one)
+    if( m_dockStateRestored )
+    {
+        QByteArray state = saveState( DOCK_STATE_VERSION ).toBase64();
+        aCfg->perspective = wxString( DOCK_STATE_PREFIX )
+                            + wxString::FromUTF8( state.constData(), state.size() );
+    }
 }
 
 
