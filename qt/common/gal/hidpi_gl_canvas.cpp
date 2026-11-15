@@ -79,12 +79,20 @@ void HIDPI_GL_CANVAS::createSurface( const QSurfaceFormat& aFormat )
     // a native child window taking the focus activates its frame, and two editors open took
     // the activation from each other without end
     m_window->setFlag( Qt::WindowDoesNotAcceptFocus );
-    m_window->create();
-    m_window->installEventFilter( this );
+
+    // Without a frame, and embedded before it is created: created as a top level window, on
+    // Windows it kept the margins of the frame of a top level window (8 pixels at 125%) once
+    // embedded, and its native window was 8 pixels up and left of the canvas, 16 wider and
+    // higher.  The drawing, from the bottom left corner, left a black band at the top and at
+    // the right
+    m_window->setFlag( Qt::FramelessWindowHint );
 
     m_container = QWidget::createWindowContainer( m_window, this );
     m_container->setFocusPolicy( Qt::NoFocus );
     m_container->setMouseTracking( true );
+
+    m_window->create();
+    m_window->installEventFilter( this );
 
     setAttribute( Qt::WA_NativeWindow, false );
 }

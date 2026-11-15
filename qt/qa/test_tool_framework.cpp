@@ -806,6 +806,17 @@ int main( int argc, char** argv )
                          native.width(), native.height(), image.width(), image.height() );
             check( image.size() == native || image.size() == native * 2,
                    "the drawing covers the window of the canvas" );
+
+            // The native window is where the canvas is, without the frame of a top level
+            // window (on Windows it was 8 pixels up and left, with a black band at 125%)
+            const QMargins margins = glWindow->frameMargins();
+            const QPoint   glOrigin = glWindow->mapToGlobal( QPoint( 0, 0 ) );
+            const QPoint   canvasOrigin = canvas->mapToGlobal( QPoint( 0, 0 ) );
+            std::printf( "  frame margins %d %d %d %d, window at %d,%d, canvas at %d,%d\n",
+                         margins.left(), margins.top(), margins.right(), margins.bottom(),
+                         glOrigin.x(), glOrigin.y(), canvasOrigin.x(), canvasOrigin.y() );
+            check( margins.isNull() && glOrigin == canvasOrigin,
+                   "the OpenGL window is over the canvas, without a frame" );
             QPoint   at = center + QPoint( 20, 10 );
 
             QMouseEvent move( QEvent::MouseMove, at, glWindow->mapToGlobal( at ), Qt::NoButton,
