@@ -866,9 +866,13 @@ public:
     int GetColPos( int aCol ) const { return horizontalHeader()->visualIndex( aCol ); }
     int GetColAt( int aPos ) const { return horizontalHeader()->logicalIndex( aPos ); }
 
+    /// Move a column (no wxEVT_GRID_COL_MOVE: as in wxWidgets, only the moves of the user send it)
     void SetColPos( int aCol, int aPos )
     {
+        bool wasMoving = m_movingColsCompat;
+        m_movingColsCompat = true;
         horizontalHeader()->moveSection( horizontalHeader()->visualIndex( aCol ), aPos );
+        m_movingColsCompat = wasMoving;
     }
 
     void ResetColPos()
@@ -901,7 +905,10 @@ public:
     void EnableDragColSize( bool = true ) {}
     void EnableDragGridSize( bool = true ) {}
     void DisableDragGridSize() {}
-    void EnableDragColMove( bool = true ) {}
+    /// The columns moved by dragging their labels (wxEVT_GRID_COL_MOVE once dropped)
+    void EnableDragColMove( bool aEnable = true ) { horizontalHeader()->setSectionsMovable( aEnable ); }
+    void DisableDragColMove() { EnableDragColMove( false ); }
+    bool CanDragColMove() const { return horizontalHeader()->sectionsMovable(); }
     void EnableDragRowMove( bool = true ) {}
     bool CanDragRowMove() const { return false; }
     void EnableDragCell( bool = true ) {}
@@ -1087,6 +1094,7 @@ private:
     wxGridCellAttr*      m_defaultAttr;
     wxGridSelectionModes m_selectionMode;
     bool                 m_editable;
+    bool                 m_movingColsCompat = false;  ///< Columns moved by the code, not the user
     int                  m_batchCount;
     int                  m_sortCol = wxNOT_FOUND;
     bool                 m_sortAscending = true;

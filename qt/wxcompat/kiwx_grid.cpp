@@ -1709,6 +1709,22 @@ wxGrid::wxGrid( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, const w
                                          horizontalHeader()->logicalIndexAt( aPos ) );
                       } );
 
+    // A column dropped by the user at another place: wxEVT_GRID_COL_MOVE (Qt has already moved
+    // it, so a veto moves it back)
+    QObject::connect( horizontalHeader(), &QHeaderView::sectionMoved, this,
+                      [this]( int aCol, int aOldPos, int aNewPos )
+                      {
+                          if( m_movingColsCompat )
+                              return;
+
+                          if( SendEvent( wxEVT_GRID_COL_MOVE, -1, aCol ) == -1 )
+                          {
+                              m_movingColsCompat = true;
+                              horizontalHeader()->moveSection( aNewPos, aOldPos );
+                              m_movingColsCompat = false;
+                          }
+                      } );
+
     QObject::connect( horizontalHeader(), &QHeaderView::sectionResized, this,
                       [this]( int aCol, int, int )
                       {

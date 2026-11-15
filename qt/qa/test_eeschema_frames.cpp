@@ -42,7 +42,10 @@
 #include <QTreeView>
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
+#include <QHeaderView>
+#include <QTableView>
 #include <wx/init.h>
+#include <wx/grid.h>
 
 #include <kiqt_app.h>
 
@@ -354,7 +357,8 @@ void testLibTreePreview( SYMBOL_EDIT_FRAME* aFrame, const QString& aScreenshot )
         {
             if( wxPopupWindow* candidate = dynamic_cast<wxPopupWindow*>( child ) )
             {
-                std::printf( "  popup visible %d, %d widgets\n", candidate->isVisible(),
+                std::printf( "  popup visible %d, active %d, %d widgets\n", candidate->isVisible(),
+                             candidate == active,
                              int( candidate->findChildren<QWidget*>().size() ) );
 
                 for( QWidget* widget : candidate->findChildren<QWidget*>() )
@@ -643,6 +647,89 @@ void testEmbeddedImages( SCH_EDIT_FRAME* aFrame )
 }
 
 
+/**
+ * The columns of the fields table dragged to another place by their labels: the field of the
+ * column dragged is there (KiCad moves the field in its model and the columns of the grid are back
+ * in their order).
+ */
+void testFieldsTableColumnMove( TOOL_MANAGER* aToolMgr )
+{
+    std::printf( "FIELDS TABLE COLUMNS\n" );
+
+    aToolMgr->RunAction( SCH_ACTIONS::editSymbolFields );
+    settle( 500 );
+
+    QDialog* dialog = nullptr;
+    wxGrid*  grid = nullptr;
+
+    for( QWidget* widget : QApplication::topLevelWidgets() )
+    {
+        QDialog* candidate = qobject_cast<QDialog*>( widget );
+
+        if( !candidate || !candidate->isVisible() )
+            continue;
+
+        for( QTableView* view : candidate->findChildren<QTableView*>() )
+        {
+            wxGrid* candidateGrid = dynamic_cast<wxGrid*>( view );
+
+            if( candidateGrid && candidateGrid->CanDragColMove() )
+            {
+                dialog = candidate;
+                grid = candidateGrid;
+                break;
+            }
+        }
+
+        if( grid )
+            break;
+    }
+
+    check( grid != nullptr, "the fields table has a grid whose columns can be dragged" );
+
+    if( !grid || grid->GetNumberCols() < 2 )
+    {
+        if( dialog )
+            dialog->close();
+
+        return;
+    }
+
+    wxString first = grid->GetColLabelValue( 0 );
+    wxString second = grid->GetColLabelValue( 1 );
+
+    // The drop of the user: the header moves the section, then the grid tells KiCad
+    grid->horizontalHeader()->moveSection( 0, 1 );
+    settle( 300 );
+
+    bool ordered = true;
+
+    for( int col = 0; col < grid->GetNumberCols(); ++col )
+        ordered &= grid->GetColPos( col ) == col;
+
+    std::printf( "      columns: '%s' '%s' -> '%s' '%s'\n", first.ToStdString().c_str(),
+                 second.ToStdString().c_str(), grid->GetColLabelValue( 0 ).ToStdString().c_str(),
+                 grid->GetColLabelValue( 1 ).ToStdString().c_str() );
+    check( grid->GetColLabelValue( 1 ) == first && grid->GetColLabelValue( 0 ) == second,
+           "a column of the fields table dragged to another place moves its field" );
+    check( ordered, "the columns of the grid are in the order of the fields" );
+
+    // The move by the code (wxGrid::SetColPos) is not a move of the user
+    grid->SetColPos( 0, 1 );
+    settle( 300 );
+    check( grid->GetColLabelValue( 1 ) == first && grid->GetColPos( 0 ) == 1,
+           "a column moved by the code is not taken as a move of the user" );
+    grid->ResetColPos();
+
+    // The field back in its place
+    grid->horizontalHeader()->moveSection( 0, 1 );
+    settle( 300 );
+
+    dialog->close();
+    settle( 200 );
+}
+
+
 void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxString& aSimSchematic,
                     const QString& aScreenshot )
 {
@@ -757,6 +844,8 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxStrin
 
     if( !aScreenshot.isEmpty() )
         check( frame->grab().save( aScreenshot ), "screenshot of the schematic editor" );
+
+    testFieldsTableColumnMove( toolMgr );
 
     testSimulator( aKiway, toolMgr, aScreenshot );
     testSymbolEditor( aKiway, symbol, aScreenshot );
