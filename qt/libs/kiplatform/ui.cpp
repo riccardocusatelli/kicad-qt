@@ -201,11 +201,29 @@ void KIPLATFORM::UI::CancelPendingScroll( QTreeView* aCtrl )
 }
 
 
+#ifdef _WIN32
+/**
+ * The native window of the frame of @a aWindow, if it has one, never created here: winId() on a
+ * widget without a native window makes it native (Qt::WA_NativeWindow), and with it every
+ * widget of its parent.  The 3D viewer, a child of the PCB editor, asked for its handle while it
+ * was deleted: the toolbars, the docks and the central widget of the editor became native
+ * windows over the OpenGL window of its canvas, which turned black.
+ */
+static HWND existingHandle( QWidget* aWindow )
+{
+    QWidget* frame = aWindow ? aWindow->window() : nullptr;
+
+    return frame ? reinterpret_cast<HWND>( frame->internalWinId() ) : nullptr;
+}
+#endif
+
+
 void KIPLATFORM::UI::RemoveShutdownBlockReason( QWidget* aWindow )
 {
 #ifdef _WIN32
-    // Destroys any block reason that may have existed
-    ShutdownBlockReasonDestroy( reinterpret_cast<HWND>( aWindow->winId() ) );
+    // Destroys any block reason that may have existed (a window without a handle has none)
+    if( HWND hwnd = existingHandle( aWindow ) )
+        ShutdownBlockReasonDestroy( hwnd );
 #endif
 }
 
@@ -216,7 +234,11 @@ void KIPLATFORM::UI::SetShutdownBlockReason( QWidget* aWindow, const wxString& a
     // The message on the shutdown page on why it's being "blocked" (with the handling of
     // WM_QUERYENDSESSION, the closing of the frame); ShutdownBlockReasonCreate doesn't block by
     // itself
-    HWND hwnd = reinterpret_cast<HWND>( aWindow->winId() );
+    // (only on a frame shown once: a frame not shown yet has no native window to give it to)
+    HWND hwnd = existingHandle( aWindow );
+
+    if( !hwnd )
+        return;
 
     ShutdownBlockReasonDestroy( hwnd );
     ShutdownBlockReasonCreate( hwnd, aReason.wc_str() );

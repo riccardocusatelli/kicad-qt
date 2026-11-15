@@ -586,6 +586,21 @@ int listGlWindows( const char* aWhen )
 }
 
 
+/// The widgets of @a aFrame (not its windows) with a native window of their own.
+int nativeWidgets( QWidget* aFrame )
+{
+    int count = 0;
+
+    for( QWidget* widget : aFrame->findChildren<QWidget*>() )
+    {
+        if( !widget->isWindow() && widget->internalWinId() )
+            count++;
+    }
+
+    return count;
+}
+
+
 /**
  * The canvas of the PCB editor after the 3D viewer: the viewer is opened on the editor, then
  * closed, and the canvas shows the board again as before (a native window of the 3D viewer, or
@@ -628,6 +643,7 @@ void test3DViewerRoundTrip( PCB_EDIT_FRAME* aFrame, const QString& aScreenshot )
     QImage before = grabScreenArea( canvas );
     bool   screenGrabs = !before.isNull() && isVaried( before );
     int    glWindowsBefore = listGlWindows( "before the 3D viewer" );
+    int    nativeBefore = nativeWidgets( aFrame );
 
     std::printf( "    canvas %d,%d %dx%d, black before %.3f\n", canvas->mapToGlobal( QPoint() ).x(),
                  canvas->mapToGlobal( QPoint() ).y(), canvas->width(), canvas->height(),
@@ -674,6 +690,13 @@ void test3DViewerRoundTrip( PCB_EDIT_FRAME* aFrame, const QString& aScreenshot )
 
     int glWindowsAfter = listGlWindows( "after the 3D viewer" );
     check( glWindowsAfter == glWindowsBefore, "no OpenGL window of the 3D viewer is left" );
+
+    // The widgets of the editor stay without a native window: native ones (made by a winId() of
+    // the deleted viewer, on Windows) cover the OpenGL window of the canvas
+    int nativeAfter = nativeWidgets( aFrame );
+    std::printf( "    native widgets of the editor: %d before, %d after\n", nativeBefore,
+                 nativeAfter );
+    check( nativeAfter == nativeBefore, "the widgets of the editor do not become native windows" );
 
     // The OpenGL window of the canvas still covers it
     bool covered = false;
