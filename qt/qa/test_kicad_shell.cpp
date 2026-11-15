@@ -51,6 +51,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QLineEdit>
+#include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScreen>
@@ -242,6 +243,60 @@ void runAction( KICAD_MANAGER_FRAME* aFrame, const char* aAction )
 }
 
 
+/// A double click on a file of the project tree of the project manager: KiCad opens the file
+/// in its editor (the project tree activates its item).
+bool doubleClickFile( KICAD_MANAGER_FRAME* aFrame, const QString& aFile )
+{
+    const QString name = QFileInfo( aFile ).fileName();
+    std::printf( "    double click on %s\n", qPrintable( name ) );
+
+    for( QAbstractItemView* view : aFrame->findChildren<QAbstractItemView*>() )
+    {
+        QAbstractItemModel* model = view->model();
+
+        if( !view->isVisible() || !model || model->rowCount() == 0 )
+            continue;
+
+        const QModelIndexList found = model->match( model->index( 0, 0 ), Qt::DisplayRole, name, 1,
+                                                    Qt::MatchFixedString | Qt::MatchRecursive );
+
+        if( found.isEmpty() )
+            continue;
+
+        // The item shown (its folders expanded), then the clicks of the mouse on it
+        view->scrollTo( found.first() );
+        settle( 100 );
+
+        const QRect rect = view->visualRect( found.first() );
+
+        if( rect.isEmpty() )
+            return false;
+
+        QWidget*      viewport = view->viewport();
+        const QPointF pos( rect.center() );
+        const QPointF global( viewport->mapToGlobal( rect.center() ) );
+
+        ACTIVATIONS activations;
+        qApp->installEventFilter( &activations );
+
+        for( QEvent::Type type : { QEvent::MouseButtonPress, QEvent::MouseButtonRelease,
+                                   QEvent::MouseButtonDblClick, QEvent::MouseButtonRelease } )
+        {
+            Qt::MouseButtons buttons = type == QEvent::MouseButtonRelease ? Qt::NoButton
+                                                                          : Qt::LeftButton;
+            QMouseEvent event( type, pos, global, Qt::LeftButton, buttons, Qt::NoModifier );
+            QApplication::sendEvent( viewport, &event );
+        }
+
+        settle( 1000 );
+        qApp->removeEventFilter( &activations );
+        return true;
+    }
+
+    return false;
+}
+
+
 /// The shell: a board in the PCB editor, a schematic in the schematic editor, the library
 /// editors, then the shell closes them.
 void runScenario( KICAD_MANAGER_FRAME* aWindow )
@@ -299,7 +354,8 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
         check( aWindow->grab().save( path ), "screenshot of the project manager" );
     }
 
-    runAction( aWindow, "kicad.Control.editPCB" );
+    // The board opened from the project tree, as the user does: a double click on its file
+    check( doubleClickFile( aWindow, s_board ), "the project tree shows the board" );
 
     KIWAY_PLAYER* pcb = Kiway.Player( FRAME_PCB_EDITOR, false );
     check( pcb != nullptr, "the KIFACE of pcbnew with the GUI makes the PCB editor" );
@@ -375,7 +431,7 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
     {
         check( openProject( aWindow, s_schematic ),
                "the project manager loads the project of the schematic" );
-        runAction( aWindow, "kicad.Control.editSchematic" );
+        check( doubleClickFile( aWindow, s_schematic ), "the project tree shows the schematic" );
 
         check( !Kiway.Player( FRAME_PCB_EDITOR, false ),
                "the PCB editor of the previous project is closed" );

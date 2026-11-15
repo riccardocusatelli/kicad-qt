@@ -145,7 +145,18 @@ void wxTreeCtrl::sendEvent( wxEventType aType, QTreeWidgetItem* aItem, QTreeWidg
     event.SetOldItem( ToItemCompat( aOld ) );
     event.SetPoint( wxPoint( aPos.x(), aPos.y() ) );
     event.SetEventObject( this );
-    ProcessEvent( event );
+
+    if( ProcessEvent( event ) )
+        return;
+
+    // The events of a tree are command events: wxWidgets gives the ones that the tree doesn't
+    // process to its parents, up to its top level window (the project tree of the project
+    // manager, the hierarchy of the schematic editor handle the events of their trees)
+    for( wxWindow* parent = GetParent(); parent; parent = parent->GetParent() )
+    {
+        if( parent->ProcessEvent( event ) || parent->IsTopLevel() )
+            break;
+    }
 }
 
 
