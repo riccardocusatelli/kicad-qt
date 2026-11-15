@@ -385,7 +385,12 @@ bool LIB_TREE::canShowPreview() const
 
     // The window of the tree is the active one (not while a menu, a dialog or another window
     // is used)
+    // The frame of the tree is the active window (or the preview, if the system activated it)
     QWidget* active = QApplication::activeWindow();
+
+    if( active && m_previewWindow && active == m_previewWindow.data() )
+        active = window();
+
     return active && active == window() && !QApplication::activePopupWidget()
            && !QApplication::activeModalWidget();
 }
@@ -465,8 +470,12 @@ void LIB_TREE::showPreview( const QModelIndex& aIndex )
     {
         m_previewWindow = new wxPopupWindow( window() );
 
-        // The mouse goes through the preview (to the tree under it)
+        // The mouse goes through the preview (to the tree under it), and the preview does not
+        // take the activation of the frame (Windows activates a window shown, the preview would
+        // then be hidden as the frame is no longer the active one)
         m_previewWindow->setWindowFlag( Qt::WindowTransparentForInput, true );
+        m_previewWindow->setWindowFlag( Qt::WindowDoesNotAcceptFocus, true );
+        m_previewWindow->setAttribute( Qt::WA_ShowWithoutActivating, true );
     }
 
     m_previewWindow->resize( PREVIEW_SIZE );
