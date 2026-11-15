@@ -68,7 +68,11 @@
       "dependencies": [
         "qtbase",
         "libpng",
-        "libjpeg-turbo"
+        "libjpeg-turbo",
+        {
+          "name": "webview2",
+          "platform": "windows"
+        }
       ]
     }
   },

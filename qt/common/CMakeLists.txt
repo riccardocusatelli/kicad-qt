@@ -130,6 +130,30 @@ if( UNIX AND NOT APPLE )
     endif()
 endif()
 
+# macOS: WKWebView, the web engine of the system (as wxWidgets)
+if( APPLE )
+    target_sources( kiqt PRIVATE ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_webview_wkwebview.mm )
+    set_source_files_properties( ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_webview_wkwebview.mm
+                                 PROPERTIES COMPILE_OPTIONS "-fobjc-arc" )
+    target_compile_definitions( kiqt PRIVATE KIWX_WEBVIEW_WKWEBVIEW )
+    target_link_libraries( kiqt PRIVATE "-framework WebKit" "-framework AppKit" )
+endif()
+
+# Windows: WebView2, the web engine of the system (Edge, as wxWidgets), from vcpkg (its loader,
+# static); without it, the QTextBrowser
+if( WIN32 )
+    find_package( unofficial-webview2 CONFIG )
+
+    if( unofficial-webview2_FOUND )
+        message( STATUS "The web views of the Qt build: WebView2" )
+        target_sources( kiqt PRIVATE ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_webview_webview2.cpp )
+        target_compile_definitions( kiqt PRIVATE KIWX_WEBVIEW_WEBVIEW2 )
+        target_link_libraries( kiqt PRIVATE unofficial::webview2::webview2 )
+    else()
+        message( WARNING "WebView2 not found (vcpkg port webview2): the web views run no scripts" )
+    endif()
+endif()
+
 # The OpenGL GAL and the Cairo GAL of the printouts are part of the GAL library (GAL_API)
 set_source_files_properties( ${KIQT_OPENGL_GAL_SRCS}
                              gal/hidpi_gl_canvas.cpp gal/opengl_gal_qt.cpp
