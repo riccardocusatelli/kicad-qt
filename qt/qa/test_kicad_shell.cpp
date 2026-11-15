@@ -105,6 +105,16 @@ void settle( int aMilliseconds = 50 )
 }
 
 
+/// The windows closed by the scenario are deleted now, as when the program is back in its event
+/// loop: the scenario runs in a handler of the loop, where Qt keeps the deleteLater() of the
+/// closed editors until the end (their boards would then be deleted after their projects).
+void deleteClosedWindows()
+{
+    QCoreApplication::sendPostedEvents( nullptr, QEvent::DeferredDelete );
+    settle( 50 );
+}
+
+
 /// Every item of the menus of a frame, chosen (QA_QT_MENUS).
 void testMenus( EDA_BASE_FRAME* aFrame, const char* aName )
 {
@@ -181,6 +191,7 @@ bool openProject( KICAD_MANAGER_FRAME* aFrame, const QString& aFile )
 
     bool loaded = aFrame->LoadProject( wxFileName( ToWxString( project ) ) );
     settle( 500 );
+    deleteClosedWindows();
     return loaded;
 }
 
@@ -765,6 +776,7 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
     check( Kiway.PlayersClose( true ), "the shell closes the editors" );
     discard.stop();
     settle( 200 );
+    deleteClosedWindows();
     check( !Kiway.Player( FRAME_PCB_EDITOR, false ) && !Kiway.Player( FRAME_SCH, false )
                    && !Kiway.Player( FRAME_SCH_SYMBOL_EDITOR, false )
                    && !Kiway.Player( FRAME_FOOTPRINT_EDITOR, false )
