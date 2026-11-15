@@ -84,6 +84,7 @@
 #include <QAction>
 #include <QDir>
 #include <tool/tool_manager.h>
+#include "qa_qt_canvas.h"
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
 
@@ -486,6 +487,7 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
         }
 
         check( varied, "the canvas draws the board" );
+        checkCanvasGeometry( frame->GetCanvas(), "PCB editor" );
 
         if( !aScreenshot.isEmpty() )
         {

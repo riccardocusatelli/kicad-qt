@@ -447,8 +447,10 @@ bool RASTER_IMAGE::Load( const void* aData, size_t aSize )
 
     static const unsigned char pngSignature[8] = { 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
 
-    if( aSize >= 8 && memcmp( data, pngSignature, 8 ) == 0 )
-        return loadPng( data, aSize );
+    // A PNG or a JPEG that libpng or libjpeg do not read (a CMYK JPEG...) goes to the fallback
+    // decoder, as the other formats
+    if( aSize >= 8 && memcmp( data, pngSignature, 8 ) == 0 && loadPng( data, aSize ) )
+        return true;
 
     if( data[0] == 0xFF && data[1] == 0xD8 && loadJpeg( data, aSize ) )
         return true;

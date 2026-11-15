@@ -39,3 +39,13 @@ KIQT_API QImage ToQImage( const RASTER_IMAGE& aImage );
 
 /// The RASTER_IMAGE of @a aImage (pixels, alpha, resolution).
 KIQT_API RASTER_IMAGE FromQImage( const QImage& aImage );
+
+/**
+ * The decoder of the images that KiCad does not read itself (BMP, GIF, CMYK JPEG..., as wxImage
+ * in the wxWidgets build): the image formats of Qt, with the resolution the image has in its
+ * file, as wxImage reads it (RASTER_IMAGE::SetFallbackDecoder()).
+ */
+KIQT_API void RegisterQtImageDecoder();
+
+/// @a aData decoded with the image formats of Qt (the decoder of RegisterQtImageDecoder()).
+KIQT_API bool DecodeQtImage( const void* aData, size_t aSize, RASTER_IMAGE& aImage );

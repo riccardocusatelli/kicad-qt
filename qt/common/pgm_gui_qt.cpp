@@ -39,12 +39,15 @@
 #include <wx/filename.h>
 
 #include <qt_strings.h>
+#include <raster_image_qt.h>
 
 
 void PGM_GUI::initGuiToolkit()
 {
-    // The image formats and the fonts are the ones of Qt (the theme of the application sets
-    // the fonts)
+    // The images that KiCad does not read itself (BMP, GIF, CMYK JPEG... in the schematics, the
+    // boards and the drawing sheets) with the image formats of Qt, as with wxImage in the
+    // wxWidgets build. The fonts are the ones of Qt (the theme of the application sets them).
+    RegisterQtImageDecoder();
 }
 
 

@@ -49,7 +49,11 @@
 #include <class_draw_panel_gal.h>
 #include <kiface_base.h>
 #include <lib_symbol.h>
+#include <richio.h>
+#include <sch_bitmap.h>
 #include <sch_edit_frame.h>
+#include <sch_io/kicad_sexpr/sch_io_kicad_sexpr.h>
+#include <sch_sheet.h>
 #include <sch_screen.h>
 #include <sch_symbol.h>
 #include <schematic.h>
@@ -63,6 +67,7 @@
 #include <tool/actions.h>
 #include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
+#include "qa_qt_canvas.h"
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
 
@@ -430,6 +435,90 @@ void testSymbolViewer( KIWAY& aKiway )
 }
 
 
+/// The images of a schematic in the formats KiCad does not read itself: decoded by the image
+/// formats of Qt, as by wxImage in the wxWidgets build (without them the schematic does not
+/// open: "Failed to read image data").
+void testEmbeddedImages( SCH_EDIT_FRAME* aFrame )
+{
+    struct EMBEDDED
+    {
+        const char* format;
+        const char* base64;   ///< an image of 6 x 4 pixels
+        int         ppi;      ///< 0: not checked
+    };
+
+    static const EMBEDDED images[] = {
+        // 3780 pixels per meter (96 dpi): 37 dots per cm, as wxImage reads them
+        { "BMP",
+          "Qk2GAAAAAAAAADYAAAAoAAAABgAAAAQAAAABABgAAAAAAFAAAADEDgAAxA4AAAAAAAAAAAAAPKAUPKAUPKAUKB7I"
+          "KB7IKB7IAAA8oBQ8oBQ8oBQoHsgoHsgoHsgAADygFDygFDygFCgeyCgeyCgeyAAAPKAUPKAUPKAUKB7IKB7IKB7I"
+          "AAA=",
+          94 },
+        // No resolution: the 300 dpi of KiCad
+        { "GIF",
+          "R0lGODdhBgAEAIIAAMwAAMwAM8wzMwCZMzOZMzOZZgAAAAAAACwAAAAABgAEAAAIFwAHEBggIICAAQIFFBxI0OCA"
+          "AgQBCAgIADs=",
+          300 },
+        // A JPEG of a printer (CMYK, Adobe): not read by the JPEG decoder of KiCad
+        { "CMYK JPEG",
+          "/9j/7gAOQWRvYmUAZAAAAAAA/9sAQwACAQEBAQECAQEBAgICAgIEAwICAgIFBAQDBAYFBgYGBQYGBgcJCAYHCQcG"
+          "BggLCAkKCgoKCgYICwwLCgwJCgoK/8AAFAgABAAGBEMRAE0RAFkRAEsRAP/EAB8AAAEFAQEBAQEBAAAAAAAAAAAB"
+          "AgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNi"
+          "coIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SV"
+          "lpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/aAA4E"
+          "QwBNAFkASwAAPwDS/wCDaT/kxTxZ/wBlav8A/wBNel18df8ABbP/AJOq8P8A/ZPrT/0uvq/L34h/8hqL/r1X/wBC"
+          "av38r//Z",
+          0 },
+    };
+
+    for( const EMBEDDED& embedded : images )
+    {
+        // As in a file: the image item with its data in base64
+        const std::string content = std::string( "(image (at 50.8 50.8) (data \"" )
+                                    + embedded.base64 + "\"))";
+
+        STRING_LINE_READER reader( content, wxS( "embedded image" ) );
+        SCH_IO_KICAD_SEXPR plugin;
+        SCH_SHEET          sheet;
+        SCH_BITMAP*        bitmap = nullptr;
+        std::string        error;
+
+        sheet.SetScreen( new SCH_SCREEN( &aFrame->Schematic() ) );
+
+        try
+        {
+            plugin.LoadContent( reader, &sheet );
+        }
+        catch( const IO_ERROR& e )
+        {
+            error = e.What().ToStdString();
+        }
+
+        for( SCH_ITEM* item : sheet.GetScreen()->Items() )
+        {
+            if( item->Type() == SCH_BITMAP_T )
+                bitmap = static_cast<SCH_BITMAP*>( item );
+        }
+
+        const BITMAP_BASE* image = bitmap ? &bitmap->GetReferenceImage().GetImage() : nullptr;
+        const VECTOR2I     size = image ? image->GetSizePixels() : VECTOR2I();
+
+        std::printf( "  %s: %s, %d x %d pixels, %d ppi\n", embedded.format,
+                     error.empty() ? "read" : error.c_str(), size.x, size.y,
+                     image ? image->GetPPI() : 0 );
+
+        const std::string what = std::string( "the schematic reads an image " ) + embedded.format;
+        check( error.empty() && size == VECTOR2I( 6, 4 ), what.c_str() );
+
+        if( embedded.ppi && image )
+        {
+            const std::string ppi = std::string( "the resolution of the image " ) + embedded.format;
+            check( image->GetPPI() == embedded.ppi, ppi.c_str() );
+        }
+    }
+}
+
+
 void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxString& aSimSchematic,
                     const QString& aScreenshot )
 {
@@ -468,12 +557,15 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxStrin
     check( items > 0, "the schematic has its items" );
     check( symbol != nullptr, "the schematic has its symbols" );
 
+    testEmbeddedImages( frame );
+
     TOOL_MANAGER* toolMgr = frame->GetToolManager();
 
     toolMgr->RunAction( ACTIONS::zoomFitScreen );
     settle( 100 );
     check( canvasDraws( frame->GetCanvas(), screenshotPath( aScreenshot, "canvas" ) ),
            "the canvas draws the schematic" );
+    checkCanvasGeometry( frame->GetCanvas(), "schematic editor" );
 
     // The tools of the editor on the schematic
     toolMgr->RunAction( ACTIONS::selectAll );

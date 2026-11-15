@@ -277,6 +277,11 @@ jobs:
 
           Run-Test 'build\qt\qa' 'qa_qt_pcbnew_frames' @( $board )
           Run-Test 'build\qt\qa' 'qa_qt_tool_framework' @( $board )
+          # The OpenGL canvas (Mesa) on a screen scaled to 125%: the cursor under the mouse, the
+          # OpenGL window over the canvas, without a frame, and drawn whole
+          $env:QT_SCALE_FACTOR = '1.25'
+          Run-Test 'build\qt\qa' 'qa_qt_tool_framework' @( '--opengl', $board )
+          Remove-Item Env:QT_SCALE_FACTOR
           Run-Test 'build\qt\qa' 'qa_qt_3d_viewer' @( $board )
           Run-Test 'build\qt\qa' 'qa_qt_eeschema_frames' @( $sch )
           Run-Test 'build\kicad' 'qa_qt_kicad_shell' @( $board, $sch, "$out\shell.png" )

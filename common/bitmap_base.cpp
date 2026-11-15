@@ -118,7 +118,11 @@ bool BITMAP_BASE::ReadImageFile( wxMemoryBuffer& aBuf )
 
     RASTER_IMAGE image;
 
-    if( !image.Load( m_imageData.GetData(), m_imageData.GetBufSize() ) )
+    // The decoded bytes (the buffer can be larger)
+    const size_t size = m_imageData.GetDataLen() ? m_imageData.GetDataLen()
+                                                 : m_imageData.GetBufSize();
+
+    if( !image.Load( m_imageData.GetData(), size ) )
         return false;
 
     return setImage( image );

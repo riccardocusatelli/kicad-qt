@@ -22,6 +22,10 @@
 
 #include <raster_image_qt.h>
 
+#include <QBuffer>
+#include <QByteArray>
+#include <QImageReader>
+
 #include <cmath>
 
 
@@ -123,4 +127,88 @@ RASTER_IMAGE FromQImage( const QImage& aImage )
         image.SetResolution( source.dotsPerMeterX() * 0.0254, source.dotsPerMeterY() * 0.0254 );
 
     return image;
+}
+
+
+bool DecodeQtImage( const void* aData, size_t aSize, RASTER_IMAGE& aImage )
+{
+    if( !aData || aSize == 0 )
+        return false;
+
+    QByteArray bytes = QByteArray::fromRawData( static_cast<const char*>( aData ),
+                                                static_cast<qsizetype>( aSize ) );
+    QBuffer    buffer( &bytes );
+
+    if( !buffer.open( QIODevice::ReadOnly ) )
+        return false;
+
+    QImageReader reader( &buffer );
+    reader.setAutoTransform( false );   // as wxImage: the pixels of the file
+
+    const QByteArray format = reader.format().toLower();
+    const QImage     image = reader.read();
+
+    if( image.isNull() )
+        return false;
+
+    aImage = FromQImage( image );
+
+    if( !aImage.IsOk() )
+        return false;
+
+    // The resolution of the file, in whole dots per centimetre as wxImage reads it (the size of
+    // the image is the one of the wxWidgets build). An image without one has none (300 dots per
+    // inch for KiCad), but QImage gives it the one of the screen: for a BMP the resolution is
+    // read in its header, for the other formats the one of the screen means none.
+    int dpmX = image.dotsPerMeterX();
+    int dpmY = image.dotsPerMeterY();
+
+    if( format == "bmp" )
+    {
+        const unsigned char* bmp = static_cast<const unsigned char*>( aData );
+        auto                 le32 = [&]( size_t aAt )
+                                    {
+                                        return int( bmp[aAt] | ( bmp[aAt + 1] << 8 )
+                                                    | ( bmp[aAt + 2] << 16 )
+                                                    | ( unsigned( bmp[aAt + 3] ) << 24 ) );
+                                    };
+
+        // BITMAPFILEHEADER (14 bytes), then BITMAPINFOHEADER: its size, then the pixels per
+        // meter at 24 and 28 (not in the old BITMAPCOREHEADER of 12 bytes)
+        if( aSize >= 46 && le32( 14 ) >= 40 )
+        {
+            dpmX = le32( 38 );
+            dpmY = le32( 42 );
+        }
+        else
+        {
+            dpmX = dpmY = 0;
+        }
+    }
+    else
+    {
+        const QImage screen( 1, 1, QImage::Format_RGB32 );
+
+        if( dpmX == screen.dotsPerMeterX() && dpmY == screen.dotsPerMeterY() )
+            dpmX = dpmY = 0;
+    }
+
+    if( dpmX > 0 )
+    {
+        const double dpiX = ( dpmX / 100 ) * 2.54;
+        const double dpiY = dpmY > 0 ? ( dpmY / 100 ) * 2.54 : dpiX;
+        aImage.SetResolution( dpiX, dpiY );
+    }
+    else
+    {
+        aImage.SetResolution( 0.0, 0.0 );
+    }
+
+    return true;
+}
+
+
+void RegisterQtImageDecoder()
+{
+    RASTER_IMAGE::SetFallbackDecoder( &DecodeQtImage );
 }
