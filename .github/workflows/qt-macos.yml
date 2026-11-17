@@ -149,7 +149,10 @@ jobs:
           cp build/kicad/kicad-qt $C/MacOS/
           cp $(find build -type f -name kicad-cli -perm -u+x | head -1) $C/MacOS/
           find build -type f -name '*.kiface' -not -path '*/CMakeFiles/*' -exec cp {} $C/MacOS/ \;
-          find build/plugins/3d -type f -name 'libs3d_plugin_*' -exec cp {} $C/PlugIns/3d/ \;
+          # (built in the bundle of the build tree: build/kicad/KiCad.app/Contents/PlugIns/3d)
+          find build -type f -name 'libs3d_plugin_*.so' -not -path '*/CMakeFiles/*' \
+            -exec cp {} $C/PlugIns/3d/ \;
+          ls $C/PlugIns/3d/libs3d_plugin_oce.so $C/PlugIns/3d/libs3d_plugin_vrml.so
           cp kicad/kicad.icns kicad/kicad_doc.icns $C/Resources/
           ls -l $C/MacOS $C/PlugIns/3d
 
@@ -195,7 +198,6 @@ jobs:
           # The libraries: of the programs (with the test of the shell, taken out of the bundle
           # after), the KIFACEs, the 3D plugins and the modules of Python
           cp build/kicad/qa_qt_kicad_shell $C/MacOS/
-          # (no 3D plugins in the wx-free build)
           shopt -s nullglob
           extra=()
           for f in $C/MacOS/kicad-cli $C/MacOS/qa_qt_kicad_shell $C/MacOS/*.kiface $C/PlugIns/3d/* $PYLIB/lib-dynload/*.so; do
@@ -331,6 +333,9 @@ jobs:
             $C/MacOS/kicad-cli sym export svg --symbol R --output $OUT/symbol $LIBS/symbols/Device.kicad_sym
           ) 2>&1 | tee $OUT/kicad-cli.txt
           ls $OUT/board.svg $OUT/footprint/*.svg $OUT/symbol/*.svg
+          # The 3D models read by the 3D plugins of the bundle, the image formats of qtimageformats
+          ( cd $TEST && bash $GITHUB_WORKSPACE/qt/tools/ci/check_3d_models.sh $OUT/3d-models $C/MacOS/kicad-cli )
+          ls $C/PlugIns/imageformats/libqtiff.dylib $C/PlugIns/imageformats/libqwebp.dylib
           ( cd $C/MacOS && gtimeout 2700 ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png 2>&1 | tee $OUT/shell.txt; exit ${PIPESTATUS[0]} )
           if grep -E 'Fontconfig (error|warning)' $OUT/*.txt; then exit 1; fi
 

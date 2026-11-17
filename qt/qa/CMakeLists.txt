@@ -44,6 +44,19 @@ target_include_directories( qa_qt_3d_viewer_objects BEFORE PRIVATE
     ${KIQT_FBP_DIR}/3d-viewer
     )
 
+# The plugins of the 3D models where the test looks for them in the build tree (the directory
+# of the program, ../plugins/3d: build/qt/plugins/3d with KICAD_RUN_FROM_BUILD_DIR)
+foreach( _plugin s3d_plugin_oce s3d_plugin_vrml s3d_plugin_idf )
+    if( TARGET ${_plugin} )
+        add_dependencies( qa_qt_3d_viewer ${_plugin} )
+        add_custom_command( TARGET qa_qt_3d_viewer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/qt/plugins/3d
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${_plugin}>
+                    ${CMAKE_BINARY_DIR}/qt/plugins/3d/
+            VERBATIM )
+    endif()
+endforeach()
+
 # The test of the frames of pcbnew on Qt: the KIFACE with the GUI makes the original frames
 # (the PCB editor, the footprint editor), which open a board.
 add_headless_executable( qa_qt_pcbnew_frames

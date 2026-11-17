@@ -59,8 +59,10 @@
 #include <3d_canvas/board_adapter.h>
 #include <3d_canvas/eda_3d_canvas.h>
 #include <3d_rendering/track_ball.h>
+#include <3d_cache/3d_cache.h>
 #include <3d_viewer/eda_3d_viewer_settings.h>
 #include <bitmaps.h>
+#include <plugins/3dapi/c3dmodel.h>
 #include <board.h>
 #include <dialog_shim.h>
 #include <dialogs/dialog_color_picker.h>
@@ -168,6 +170,54 @@ void wheel( QWidget* aCanvas, QPoint aPoint, int aDelta )
     QApplication::sendEvent( aCanvas, &event );
 }
 
+/**
+ * The 3D models of the components, read by the plugins of KiCad (plugins/3d: STEP with
+ * OpenCASCADE, VRML) found as the 3D viewer finds them, and made into the meshes it draws.
+ * The models are the ones of qa/data/pcbnew/qt_3d_models, next to the board of the test.
+ */
+void testModels( S3D_CACHE* aCache, const wxString& aBoardFile )
+{
+    std::printf( "3D MODELS\n" );
+
+    wxFileName dir( aBoardFile );
+    dir.AppendDir( wxT( "qt_3d_models" ) );
+
+    const std::list<wxString>* filters = aCache->GetFileFilters();
+
+    if( filters )
+    {
+        for( const wxString& filter : *filters )
+            std::printf( "    filter %s\n", filter.BeforeFirst( '|' ).utf8_str().data() );
+    }
+
+    // "All Files" and one filter for each format at least
+    check( filters && filters->size() >= 3, "the plugins of the 3D models are loaded" );
+
+    struct MODEL
+    {
+        const char* file;
+        const char* format;
+    };
+
+    static const MODEL models[] = { { "TO-252-2.step", "STEP" }, { "cube.wrl", "VRML" } };
+
+    for( const MODEL& model : models )
+    {
+        wxString        path = dir.GetPathWithSep() + wxString::FromUTF8( model.file );
+        const S3DMODEL* mesh = aCache->GetModel( path, dir.GetPath(), {} );
+        unsigned int    vertices = 0;
+
+        for( unsigned int ii = 0; mesh && ii < mesh->m_MeshesSize; ++ii )
+            vertices += mesh->m_Meshes[ii].m_VertexSize;
+
+        std::printf( "    %s: %u meshes, %u vertices\n", model.file,
+                     mesh ? mesh->m_MeshesSize : 0, vertices );
+
+        const std::string what = std::string( "a model " ) + model.format + " is read";
+        check( mesh && mesh->m_MeshesSize > 0 && vertices >= 8, what.c_str() );
+    }
+}
+
 } // namespace
 
 
@@ -227,6 +277,9 @@ int main( int argc, char** argv )
 
     {
         S3D_CACHE*    cache = PROJECT_PCB::Get3DCacheManager( &program.GetSettingsManager().Prj() );
+
+        testModels( cache, wxString::FromUTF8( argv[1] ) );
+
         BOARD_ADAPTER adapter;
         TRACK_BALL    camera( 2 * RANGE_SCALE_3D );
 
