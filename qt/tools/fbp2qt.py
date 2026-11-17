@@ -2366,9 +2366,12 @@ def main():
     for ext, text in ( ( '.h', h ), ( '.cpp', cpp ) ):
         path = os.path.join( sys.argv[2], gen.file + ext )
 
-        # Unchanged files keep their date (no rebuild)
-        if os.path.exists( path ) and open( path, encoding = 'utf-8' ).read() == text:
-            continue
+        # Unchanged files keep their date (no rebuild). An old file in another encoding (written
+        # in cp1252 by earlier versions on Windows) is just rewritten
+        if os.path.exists( path ):
+            with open( path, encoding = 'utf-8', errors = 'replace', newline = '' ) as f:
+                if f.read() == text:
+                    continue
 
         with open( path, 'w', encoding = 'utf-8', newline = '\n' ) as f:
             f.write( text )
