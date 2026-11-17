@@ -18,6 +18,9 @@ jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 350
+    # The nightly release (the last step)
+    permissions:
+      contents: write
 
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -364,3 +367,13 @@ jobs:
           name: macos-qa-screenshots
           path: qa-screenshots
           if-no-files-found: ignore
+
+      # The packages on the home page of the repository: the nightly pre-release, after a green run
+      # of the main branch
+      - name: Nightly release
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/wx-free-core-upstream'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash qt/tools/ci/nightly_release.sh '\.dmg$' dmg/*.dmg

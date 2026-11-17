@@ -362,6 +362,15 @@ Three workflows build and test the Qt build:
 The packages are uploaded with `actions/upload-artifact@v7` and `archive: false`: the artifact
 is the file itself, named as the file, not a zip around it (the other artifacts stay zipped).
 
+**Nightly release.** After a green run of a push to `wx-free-core-upstream`, the Windows and
+macOS workflows publish their packages on the `nightly` pre-release of GitHub (Releases, on the
+home page of the repository) with `qt/tools/ci/nightly_release.sh`: the tag moves to the commit
+and the assets of the platform are replaced. Linux has no package yet.
+
+**Qt versions.** macOS takes the Qt of Homebrew, Windows the `qtbase` of vcpkg (pinned with an
+override in `vcpkg.json`, 6.11.3, the other libraries stay at the baseline), Linux the Qt of the
+distribution (6.4 on Ubuntu 24.04).
+
 **Triggers.** They run on push to `wx-free-core-upstream` and on manual dispatch
 (`workflow_dispatch`); other branches only get CI when dispatched. Pushes that change only
 `**.md`, `demos/**` or `translation/**` are ignored. A run for the same ref cancels the previous

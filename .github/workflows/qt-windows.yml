@@ -93,6 +93,9 @@ jobs:
     needs: vcpkg
     runs-on: windows-2022
     timeout-minutes: 350
+    # The nightly release (the last step)
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -630,3 +633,13 @@ jobs:
           name: package-test-windows
           path: pkg-logs
           if-no-files-found: ignore
+
+      # The packages on the home page of the repository: the nightly pre-release, after a green run
+      # of the main branch
+      - name: Nightly release
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/wx-free-core-upstream'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash qt/tools/ci/nightly_release.sh '\.exe$|portable\.zip$' installer/*.exe portable/*.zip
