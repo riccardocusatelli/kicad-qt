@@ -28,11 +28,251 @@
 #include <QFile>
 #include <QKeyEvent>
 #include <QListWidget>
+#include <QPaintEvent>
+#include <QPainter>
+#include <QResizeEvent>
+#include <QRegularExpression>
 #include <QScrollBar>
+#include <QSyntaxHighlighter>
 #include <QTextBlock>
 #include <QTextStream>
 
 #include <qt_strings.h>
+
+
+namespace
+{
+
+/// The margins on the left of the text of a styled text control, drawn by the control.
+class STC_MARGINS : public QWidget
+{
+public:
+    explicit STC_MARGINS( wxStyledTextCtrl* aControl ) :
+            QWidget( aControl ),
+            m_control( aControl )
+    {
+        setObjectName( QStringLiteral( "kiwx_stc_margins" ) );
+    }
+
+protected:
+    void paintEvent( QPaintEvent* aEvent ) override { m_control->PaintMargins( aEvent ); }
+
+private:
+    wxStyledTextCtrl* m_control;
+};
+
+
+/**
+ * The colours of the syntax of a lexer of Scintilla, in the text of the control: the rules of
+ * KiCad (s-expressions, wxSTC_LEX_LISP) or a SPICE netlist (wxSTC_LEX_SPICE).
+ */
+class STC_HIGHLIGHTER : public QSyntaxHighlighter
+{
+public:
+    STC_HIGHLIGHTER( QTextDocument* aDocument, int aLexer, bool aDark ) :
+            QSyntaxHighlighter( aDocument ),
+            m_lexer( aLexer )
+    {
+        // Colours readable on the background of the text, light or dark
+        m_comment.setForeground( aDark ? QColor( 0x8a, 0x99, 0x8a ) : QColor( 0x6a, 0x73, 0x6a ) );
+        m_comment.setFontItalic( true );
+        m_keyword.setForeground( aDark ? QColor( 0x6c, 0xb6, 0xff ) : QColor( 0x00, 0x33, 0xb3 ) );
+        m_keyword.setFontWeight( QFont::Bold );
+        m_string.setForeground( aDark ? QColor( 0xce, 0x91, 0x78 ) : QColor( 0x06, 0x7d, 0x17 ) );
+        m_number.setForeground( aDark ? QColor( 0xb5, 0xce, 0xa8 ) : QColor( 0x17, 0x50, 0xeb ) );
+        m_operator.setForeground( aDark ? QColor( 0xc5, 0x86, 0xc0 ) : QColor( 0x87, 0x10, 0x94 ) );
+        m_element.setForeground( aDark ? QColor( 0x4e, 0xc9, 0xb0 ) : QColor( 0x00, 0x7f, 0x8c ) );
+    }
+
+protected:
+    void highlightBlock( const QString& aText ) override
+    {
+        if( m_lexer == wxSTC_LEX_SPICE )
+            highlightSpice( aText );
+        else
+            highlightLisp( aText );
+    }
+
+private:
+    /// A number with its unit or scale ("0.2mm", "10k", "1e-9", "-3").
+    static int numberLength( const QString& aText, int aStart )
+    {
+        static const QRegularExpression s_number(
+                QStringLiteral( "[-+]?(\\d+\\.?\\d*|\\.\\d+)([eE][-+]?\\d+)?[a-zA-Z]*" ) );
+
+        QRegularExpressionMatch match = s_number.match( aText, aStart,
+                                                         QRegularExpression::NormalMatch,
+                                                         QRegularExpression::AnchorAtOffsetMatchOption );
+        return match.hasMatch() ? int( match.capturedLength() ) : 0;
+    }
+
+    /// Words, with the characters of the names of KiCad.
+    static bool isWordChar( QChar aChar )
+    {
+        return aChar.isLetterOrNumber() || aChar == '_' || aChar == '.' || aChar == '-'
+               || aChar == '+';
+    }
+
+    /// The end of a string starting at @a aStart (its quote), escapes included.
+    static int stringEnd( const QString& aText, int aStart )
+    {
+        QChar quote = aText[aStart];
+        int   i = aStart + 1;
+
+        while( i < aText.size() && aText[i] != quote )
+            i += aText[i] == '\\' ? 2 : 1;
+
+        return std::min( i + 1, int( aText.size() ) );
+    }
+
+    void highlightLisp( const QString& aText )
+    {
+        bool afterParen = false;
+
+        for( int i = 0; i < aText.size(); )
+        {
+            QChar c = aText[i];
+
+            if( c == '#' || c == ';' )
+            {
+                setFormat( i, aText.size() - i, m_comment );
+                return;
+            }
+
+            if( c == '"' || c == '\'' )
+            {
+                int end = stringEnd( aText, i );
+                setFormat( i, end - i, m_string );
+                i = end;
+                afterParen = false;
+                continue;
+            }
+
+            if( c == '(' || c == ')' )
+            {
+                setFormat( i, 1, m_operator );
+                afterParen = c == '(';
+                ++i;
+                continue;
+            }
+
+            if( c.isSpace() )
+            {
+                ++i;
+                continue;
+            }
+
+            int start = i;
+
+            while( i < aText.size() && isWordChar( aText[i] ) )
+                ++i;
+
+            if( i == start )
+            {
+                ++i;
+                afterParen = false;
+                continue;
+            }
+
+            // The first word of a list is its keyword: (rule, (constraint, (min...
+            if( afterParen )
+                setFormat( start, i - start, m_keyword );
+            else if( numberLength( aText, start ) == i - start )
+                setFormat( start, i - start, m_number );
+
+            afterParen = false;
+        }
+    }
+
+    void highlightSpice( const QString& aText )
+    {
+        int first = 0;
+
+        while( first < aText.size() && aText[first].isSpace() )
+            ++first;
+
+        if( first >= aText.size() )
+            return;
+
+        // A comment line, or a continuation of the previous line
+        if( aText[first] == '*' )
+        {
+            setFormat( first, aText.size() - first, m_comment );
+            return;
+        }
+
+        bool firstWord = aText[first] != '+';
+
+        for( int i = first; i < aText.size(); )
+        {
+            QChar c = aText[i];
+
+            // The comments at the end of a line
+            if( c == ';' || ( c == '$' && ( i == 0 || aText[i - 1].isSpace() ) ) )
+            {
+                setFormat( i, aText.size() - i, m_comment );
+                return;
+            }
+
+            if( c == '"' || c == '\'' )
+            {
+                int end = stringEnd( aText, i );
+                setFormat( i, end - i, m_string );
+                i = end;
+                firstWord = false;
+                continue;
+            }
+
+            if( c == '=' || c == '(' || c == ')' || c == '{' || c == '}' || c == '+' )
+            {
+                setFormat( i, 1, m_operator );
+                ++i;
+                continue;
+            }
+
+            if( c.isSpace() || c == ',' )
+            {
+                ++i;
+                continue;
+            }
+
+            int start = i;
+
+            while( i < aText.size() && ( isWordChar( aText[i] ) || aText[i] == ':' )
+                   && aText[i] != '+' )
+            {
+                ++i;
+            }
+
+            if( i == start )
+            {
+                ++i;
+                continue;
+            }
+
+            if( firstWord )
+            {
+                // The dot commands (.subckt, .model, .tran...), the names of the elements (R1, Q2)
+                setFormat( start, i - start, aText[start] == '.' ? m_keyword : m_element );
+                firstWord = false;
+            }
+            else if( numberLength( aText, start ) == i - start )
+            {
+                setFormat( start, i - start, m_number );
+            }
+        }
+    }
+
+    int             m_lexer;
+    QTextCharFormat m_comment;
+    QTextCharFormat m_keyword;
+    QTextCharFormat m_string;
+    QTextCharFormat m_number;
+    QTextCharFormat m_operator;
+    QTextCharFormat m_element;
+};
+
+} // namespace
 
 
 wxStyledTextCtrl::wxStyledTextCtrl( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
@@ -42,6 +282,11 @@ wxStyledTextCtrl::wxStyledTextCtrl( wxWidgetArgCompat aParent, int aId, const wx
         m_tabWidth( 8 ),
         m_zoom( 0 ),
         m_searchAnchor( 0 ),
+        m_marginLeft( 0 ),
+        m_marginRight( 0 ),
+        m_margins( nullptr ),
+        m_lexer( wxSTC_LEX_CONTAINER ),
+        m_highlighter( nullptr ),
         m_undoDepth( 0 ),
         m_braceLight1( -1 ),
         m_braceLight2( -1 ),
@@ -80,6 +325,26 @@ wxStyledTextCtrl::wxStyledTextCtrl( wxWidgetArgCompat aParent, int aId, const wx
 
     QObject::connect( this, &QPlainTextEdit::selectionChanged, this,
                       [this]() { sendEvent( wxEVT_STC_UPDATEUI ); } );
+
+    // The margins follow the text: its scroll, the lines added or removed
+    QObject::connect( this, &QPlainTextEdit::updateRequest, this,
+                      [this]( const QRect& aRect, int aScrollY )
+                      {
+                          if( !m_margins || !m_margins->isVisible() )
+                              return;
+
+                          if( aScrollY )
+                              m_margins->scroll( 0, aScrollY );
+                          else
+                              m_margins->update( 0, aRect.y(), m_margins->width(), aRect.height() );
+                      } );
+
+    QObject::connect( this, &QPlainTextEdit::blockCountChanged, this,
+                      [this]( int )
+                      {
+                          if( m_margins )
+                              m_margins->update();
+                      } );
 }
 
 
@@ -855,6 +1120,13 @@ void wxStyledTextCtrl::StyleSetForeground( int aStyle, const wxColour& aColour )
         pal.setColor( QPalette::Text, aColour );
         setPalette( pal );
     }
+    else if( aStyle == wxSTC_STYLE_LINENUMBER )
+    {
+        m_lineNumberForeground = aColour;
+
+        if( m_margins )
+            m_margins->update();
+    }
     else if( aStyle == wxSTC_STYLE_BRACELIGHT )
     {
         m_braceLightForeground = aColour;
@@ -873,6 +1145,13 @@ void wxStyledTextCtrl::StyleSetBackground( int aStyle, const wxColour& aColour )
         QPalette pal = palette();
         pal.setColor( QPalette::Base, aColour );
         setPalette( pal );
+    }
+    else if( aStyle == wxSTC_STYLE_LINENUMBER )
+    {
+        m_lineNumberBackground = aColour;
+
+        if( m_margins )
+            m_margins->update();
     }
     else if( aStyle == wxSTC_STYLE_BRACELIGHT )
     {
@@ -949,6 +1228,61 @@ void wxStyledTextCtrl::SetUseVerticalScrollBar( bool aShow )
 }
 
 
+void wxStyledTextCtrl::StyleClearAll()
+{
+    // The line numbers in the colours of the text, as the other styles
+    m_lineNumberForeground = wxColour();
+    m_lineNumberBackground = wxColour();
+
+    if( m_margins )
+        m_margins->update();
+}
+
+
+void wxStyledTextCtrl::SetLexer( int aLexer )
+{
+    if( aLexer == m_lexer )
+        return;
+
+    m_lexer = aLexer;
+    delete m_highlighter;
+    m_highlighter = nullptr;
+
+    if( aLexer == wxSTC_LEX_LISP || aLexer == wxSTC_LEX_SPICE )
+    {
+        // The colours for the background of the text: dark or light
+        const bool dark = palette().color( QPalette::Base ).lightnessF() < 0.5;
+        m_highlighter = new STC_HIGHLIGHTER( document(), aLexer, dark );
+    }
+}
+
+
+void wxStyledTextCtrl::SetMarginType( int aMargin, int aType )
+{
+    m_marginTypes[aMargin] = aType;
+    updateMargins();
+}
+
+
+int wxStyledTextCtrl::GetMarginType( int aMargin ) const
+{
+    auto it = m_marginTypes.find( aMargin );
+
+    // As in Scintilla: margin 0 shows the numbers of the lines, the others symbols
+    if( it == m_marginTypes.end() )
+        return aMargin == 0 ? wxSTC_MARGIN_NUMBER : wxSTC_MARGIN_SYMBOL;
+
+    return it->second;
+}
+
+
+void wxStyledTextCtrl::SetMarginWidth( int aMargin, int aWidth )
+{
+    m_marginWidths[aMargin] = std::max( aWidth, 0 );
+    updateMargins();
+}
+
+
 int wxStyledTextCtrl::GetMarginWidth( int aMargin ) const
 {
     auto it = m_marginWidths.find( aMargin );
@@ -956,31 +1290,130 @@ int wxStyledTextCtrl::GetMarginWidth( int aMargin ) const
 }
 
 
+int wxStyledTextCtrl::GetMarginsWidth() const
+{
+    int width = 0;
+
+    for( const auto& [margin, marginWidth] : m_marginWidths )
+        width += marginWidth;
+
+    return width;
+}
+
+
+void wxStyledTextCtrl::updateMargins()
+{
+    const int width = GetMarginsWidth();
+
+    if( width > 0 && !m_margins )
+        m_margins = new STC_MARGINS( this );
+
+    setViewportMargins( width + m_marginLeft, 0, m_marginRight, 0 );
+
+    if( m_margins )
+    {
+        const QRect contents = contentsRect();
+        m_margins->setGeometry( contents.left(), contents.top(), width, contents.height() );
+        m_margins->setVisible( width > 0 );
+        m_margins->update();
+    }
+}
+
+
+void wxStyledTextCtrl::resizeEvent( QResizeEvent* aEvent )
+{
+    wxTextCtrlMultiLine::resizeEvent( aEvent );
+    updateMargins();
+}
+
+
+void wxStyledTextCtrl::PaintMargins( QPaintEvent* aEvent )
+{
+    if( !m_margins )
+        return;
+
+    QPainter painter( m_margins );
+
+    // The colours of the numbers of the lines: their style, or the ones of the text (the style of
+    // the line numbers after StyleClearAll()) with the background of the margins of Qt
+    const QColor text = palette().color( QPalette::Text );
+    const QColor base = palette().color( QPalette::Base );
+    const QColor background = m_lineNumberBackground.IsOk()
+                                      ? QColor( m_lineNumberBackground )
+                                      : palette().color( QPalette::Window );
+    QColor       foreground = m_lineNumberForeground.IsOk() ? QColor( m_lineNumberForeground )
+                                                            : text;
+
+    if( !m_lineNumberForeground.IsOk() )
+    {
+        // Between the text and its background: the numbers are not the text
+        foreground.setRedF( ( text.redF() * 2 + base.redF() ) / 3 );
+        foreground.setGreenF( ( text.greenF() * 2 + base.greenF() ) / 3 );
+        foreground.setBlueF( ( text.blueF() * 2 + base.blueF() ) / 3 );
+    }
+
+    painter.fillRect( aEvent->rect(), background );
+    painter.setFont( font() );
+    painter.setPen( foreground );
+
+    const int    lineHeight = fontMetrics().height();
+    const QPoint offset = contentOffset().toPoint();
+    int          x = 0;
+
+    for( const auto& [margin, width] : m_marginWidths )
+    {
+        if( width <= 0 )
+            continue;
+
+        if( GetMarginType( margin ) == wxSTC_MARGIN_NUMBER )
+        {
+            QTextBlock block = firstVisibleBlock();
+            int        top = int( blockBoundingGeometry( block ).translated( offset ).top() );
+            int        bottom = top + int( blockBoundingRect( block ).height() );
+
+            while( block.isValid() && top <= aEvent->rect().bottom() )
+            {
+                if( block.isVisible() && bottom >= aEvent->rect().top() )
+                {
+                    // On the right of the margin, with a small space as Scintilla
+                    painter.drawText( x, top, width - 3, lineHeight, Qt::AlignRight,
+                                      QString::number( block.blockNumber() + 1 ) );
+                }
+
+                block = block.next();
+                top = bottom;
+                bottom = top + int( blockBoundingRect( block ).height() );
+            }
+        }
+
+        x += width;
+    }
+}
+
+
 void wxStyledTextCtrl::SetMarginLeft( int aWidth )
 {
-    QMargins margins = viewportMargins();
-    margins.setLeft( aWidth );
-    setViewportMargins( margins );
+    m_marginLeft = std::max( aWidth, 0 );
+    updateMargins();
 }
 
 
 void wxStyledTextCtrl::SetMarginRight( int aWidth )
 {
-    QMargins margins = viewportMargins();
-    margins.setRight( aWidth );
-    setViewportMargins( margins );
+    m_marginRight = std::max( aWidth, 0 );
+    updateMargins();
 }
 
 
 int wxStyledTextCtrl::GetMarginLeft() const
 {
-    return viewportMargins().left();
+    return m_marginLeft;
 }
 
 
 int wxStyledTextCtrl::GetMarginRight() const
 {
-    return viewportMargins().right();
+    return m_marginRight;
 }
 
 

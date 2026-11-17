@@ -32,6 +32,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include <kiqt.h>     // Qt, without its METHOD macro
@@ -48,11 +49,15 @@
 #include <QMimeData>
 #include <QDropEvent>
 #include <QTreeView>
+#include <QPlainTextEdit>
+#include <QTextBlock>
+#include <QTextLayout>
 #include <QPointer>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <wx/init.h>
 #include <wx/dataview.h>
+#include <wx/stc/stc.h>
 
 #include <kiqt_app.h>
 
@@ -926,6 +931,108 @@ void test3DViewerRoundTrip( PCB_EDIT_FRAME* aFrame, const QString& aScreenshot )
 }
 
 
+/**
+ * The editor of the custom rules (board setup): a styled text control with the numbers of its
+ * lines in its margin (margin 0 of Scintilla, of the type wxSTC_MARGIN_NUMBER).
+ */
+void testRulesEditor( QDialog* aDialog, const QString& aScreenshot )
+{
+    PAGED_DIALOG* dialog = dynamic_cast<PAGED_DIALOG*>( aDialog );
+
+    if( !dialog )
+        return;
+
+    WX_TREEBOOK*      book = dialog->GetTreebook();
+    wxStyledTextCtrl* editor = nullptr;
+
+    // The page of the rules (the pages are made when shown)
+    for( size_t i = 0; i < book->GetPageCount() && !editor; ++i )
+    {
+        book->ResolvePage( i );
+        book->SetSelection( i );
+        settle( 50 );
+
+        for( QPlainTextEdit* text : aDialog->findChildren<QPlainTextEdit*>() )
+        {
+            wxStyledTextCtrl* stc = dynamic_cast<wxStyledTextCtrl*>( text );
+
+            if( stc && stc->isVisible() && stc->GetMarginType( 0 ) == wxSTC_MARGIN_NUMBER
+                && stc->GetMarginWidth( 0 ) > 0 )
+            {
+                editor = stc;
+            }
+        }
+    }
+
+    if( !editor )
+    {
+        for( QPlainTextEdit* text : aDialog->findChildren<QPlainTextEdit*>() )
+        {
+            wxStyledTextCtrl* stc = dynamic_cast<wxStyledTextCtrl*>( text );
+            std::printf( "    text editor %s: styled %d, visible %d, margin 0 type %d width %d\n",
+                         text->objectName().toUtf8().constData(), stc != nullptr,
+                         text->isVisible(), stc ? stc->GetMarginType( 0 ) : -1,
+                         stc ? stc->GetMarginWidth( 0 ) : -1 );
+        }
+    }
+
+    check( editor != nullptr, "the custom rules editor has a margin of line numbers" );
+
+    if( !editor )
+        return;
+
+    editor->SetText( wxS( "(version 1)\n(rule \"QA\"\n    (constraint clearance (min 1mm))\n"
+                          "    (condition \"A.NetClass == 'Default'\"))\n" ) );
+    settle( 100 );
+
+    QWidget* margins = editor->GetMarginsWidget();
+    QImage   image = margins ? margins->grab().toImage() : QImage();
+    int      inked = 0;
+
+    for( int y = 0; y < image.height(); ++y )
+    {
+        for( int x = 0; x < image.width(); ++x )
+            inked += image.pixel( x, y ) != image.pixel( 0, 0 );
+    }
+
+    std::printf( "    margins %d px (margin 0: %d px), viewport at %d, %d pixels of numbers\n",
+                 editor->GetMarginsWidth(), editor->GetMarginWidth( 0 ),
+                 editor->viewport()->geometry().left(), inked );
+
+    check( margins && margins->isVisible() && margins->width() == editor->GetMarginsWidth(),
+           "the margin of the line numbers is shown" );
+    check( editor->viewport()->geometry().left() >= editor->GetMarginsWidth(),
+           "the text is on the right of the margin" );
+    check( inked > 20, "the margin shows the numbers of the lines" );
+
+    // The colours of the syntax: the keywords, the strings, the numbers, the parentheses
+    std::set<QRgb> colours;
+
+    for( QTextBlock block = editor->document()->begin(); block.isValid(); block = block.next() )
+    {
+        for( const QTextLayout::FormatRange& range : block.layout()->formats() )
+        {
+            if( range.format.hasProperty( QTextFormat::ForegroundBrush ) )
+                colours.insert( range.format.foreground().color().rgb() );
+        }
+    }
+
+    std::printf( "    lexer %d, %zu colours of the syntax\n", editor->GetLexer(), colours.size() );
+    check( editor->GetLexer() == wxSTC_LEX_LISP && colours.size() >= 4,
+           "the rules editor colours the syntax" );
+
+    if( !aScreenshot.isEmpty() )
+    {
+        QString path = aScreenshot;
+        path.replace( QStringLiteral( ".png" ), QStringLiteral( "-custom-rules.png" ) );
+        aDialog->grab().save( path );
+    }
+
+    book->SetSelection( 0 );
+    settle( 30 );
+}
+
+
 void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aScreenshot )
 {
     std::printf( "PCB_EDIT_FRAME\n" );
@@ -1059,7 +1166,11 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
             check( shown, "the footprint chooser is shown and closed" );
         }
 
-        testDialog( toolMgr, PCB_ACTIONS::boardSetup, "board setup", aScreenshot, "Cancel" );
+        testDialog( toolMgr, PCB_ACTIONS::boardSetup, "board setup", aScreenshot, "Cancel",
+                    [&]( QDialog* aDialog )
+                    {
+                        testRulesEditor( aDialog, aScreenshot );
+                    } );
 
         // The properties of an item: selected, then its dialog
         auto testProperties =

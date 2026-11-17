@@ -123,6 +123,11 @@ DRC_RE_CONDITION_ROW_PANEL::DRC_RE_CONDITION_ROW_PANEL( wxWindow* aParent, BOARD
         {
         } );
 
+#ifdef KICAD_WX_FREE
+    // The colours of the syntax of the rules (the Qt build: s-expressions)
+    m_customQueryCtrl->SetLexer( wxSTC_LEX_LISP );
+#endif
+
     m_contentSizer->Add( m_customQueryCtrl, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5 );
     m_customQueryCtrl->Hide();
 

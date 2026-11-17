@@ -72,6 +72,11 @@ PANEL_SETUP_RULES::PANEL_SETUP_RULES( wxWindow* aParentWindow, PCB_EDIT_FRAME* a
 
     m_textEditor->AutoCompSetSeparator( '|' );
 
+#ifdef KICAD_WX_FREE
+    // The colours of the syntax of the rules (the Qt build: s-expressions)
+    m_textEditor->SetLexer( wxSTC_LEX_LISP );
+#endif
+
     m_netClassRegex.Compile( "^NetClass\\s*[!=]=\\s*$", wxRE_ADVANCED );
     m_netNameRegex.Compile( "^NetName\\s*[!=]=\\s*$", wxRE_ADVANCED );
     m_typeRegex.Compile( "^Type\\s*[!=]=\\s*$", wxRE_ADVANCED );

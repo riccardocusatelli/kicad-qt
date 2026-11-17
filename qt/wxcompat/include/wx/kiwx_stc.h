@@ -26,7 +26,10 @@
  * The styled text control of the wxWidgets compatibility layer of the Qt build (wxcompat):
  * wxStyledTextCtrl, the API of Scintilla that KiCad uses on a QPlainTextEdit.  The positions are
  * the indices of the characters of the text; the lines are the blocks of the document.  The
- * styles of the lexers are not drawn: the default style gives the font and the colours.
+ * default style gives the font and the colours; the margins on the left are drawn (the numbers
+ * of the lines in the margins of numbers, the style wxSTC_STYLE_LINENUMBER).  Two lexers colour
+ * the syntax with the colours of the Qt build (Scintilla has none without the styles of the
+ * lexer): wxSTC_LEX_LISP for the rules of KiCad (s-expressions) and wxSTC_LEX_SPICE.
  */
 
 #ifndef KIWX_STC_H
@@ -41,6 +44,8 @@
 #include <wx/kiwx_gui.h>
 
 class QListWidget;
+class QPaintEvent;
+class QSyntaxHighlighter;
 
 
 #define wxSTC_INVALID_POSITION -1
@@ -96,6 +101,7 @@ class QListWidget;
 
 #define wxSTC_LEX_CONTAINER 0
 #define wxSTC_LEX_NULL 1
+#define wxSTC_LEX_LISP 21
 #define wxSTC_LEX_SPICE 78
 
 #define wxSTC_TECHNOLOGY_DEFAULT 0
@@ -302,7 +308,9 @@ public:
     void StyleSetItalic( int aStyle, bool aItalic ) {}
     void StyleSetSize( int aStyle, int aSize ) {}
     void StyleSetFaceName( int aStyle, const wxString& aName ) {}
-    void StyleClearAll() {}
+
+    /// All the styles as the default one (the colours of the numbers of the lines too).
+    void StyleClearAll();
     void StyleResetDefault() {}
     void SetSelForeground( bool aUse, const wxColour& aColour );
     void SetSelBackground( bool aUse, const wxColour& aColour );
@@ -333,8 +341,11 @@ public:
     void SetUseHorizontalScrollBar( bool aShow );
     void SetUseVerticalScrollBar( bool aShow );
 
-    void SetMarginType( int aMargin, int aType ) {}
-    void SetMarginWidth( int aMargin, int aWidth ) { m_marginWidths[aMargin] = aWidth; }
+    /// The margins on the left of the text, from margin 0: the numbers of the lines in a margin
+    /// of numbers (by default margin 0, of no width as in Scintilla), the others empty.
+    void SetMarginType( int aMargin, int aType );
+    int GetMarginType( int aMargin ) const;
+    void SetMarginWidth( int aMargin, int aWidth );
     int GetMarginWidth( int aMargin ) const;
     void SetMarginMask( int aMargin, int aMask ) {}
     void SetMarginSensitive( int aMargin, bool aSensitive ) {}
@@ -353,7 +364,10 @@ public:
     void MarkerSetBackground( int aMarker, const wxColour& aColour ) {}
     void SetFoldFlags( int aFlags ) {}
     void SetProperty( const wxString& aKey, const wxString& aValue ) {}
-    void SetLexer( int aLexer ) {}
+    /// The colours of the syntax of a lexer (wxSTC_LEX_LISP, wxSTC_LEX_SPICE), none for the
+    /// others.
+    void SetLexer( int aLexer );
+    int GetLexer() const { return m_lexer; }
     void SetKeyWords( int aSet, const wxString& aWords ) {}
     void SetTechnology( int aTechnology ) {}
     void UsePopUp( int aPopUpMode );
@@ -370,9 +384,19 @@ public:
     bool SaveFile( const wxString& aFileName );
     bool LoadFile( const wxString& aFileName );
 
+    /// The widget of the margins on the left of the text (nullptr without margins).
+    QWidget* GetMarginsWidget() const { return m_margins; }
+
+    /// The width of all the margins on the left of the text.
+    int GetMarginsWidth() const;
+
+    /// Draw the margins (the paint event of their widget).
+    void PaintMargins( QPaintEvent* aEvent );
+
 protected:
     void keyPressEvent( QKeyEvent* aEvent ) override;
     void focusOutEvent( QFocusEvent* aEvent ) override;
+    void resizeEvent( QResizeEvent* aEvent ) override;
 
 private:
     void moveCaret( QTextCursor::MoveOperation aOperation, bool aExtend );
@@ -384,12 +408,21 @@ private:
     void sendEvent( wxEventType aType, int aKey = 0, int aPosition = 0 );
     void updateExtraSelections();
     void updateAutoCompSize();
+    void updateMargins();
 
     int                   m_eolMode;
     int                   m_tabWidth;
     int                   m_zoom;
     int                   m_searchAnchor;
     std::map<int, int>    m_marginWidths;
+    std::map<int, int>    m_marginTypes;
+    int                   m_marginLeft;      ///< the space between the margins and the text
+    int                   m_marginRight;
+    QWidget*              m_margins;
+    int                   m_lexer;
+    QSyntaxHighlighter*   m_highlighter;
+    wxColour              m_lineNumberForeground;
+    wxColour              m_lineNumberBackground;
 
     QTextCursor           m_undoCursor;
     int                   m_undoDepth;

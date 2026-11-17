@@ -1470,6 +1470,28 @@ class FormClass:
             var, t = make( qt )
             self.code.append( '    %s->setLineWrapMode( QPlainTextEdit::NoWrap );' % var )
 
+            # The properties of wxFormBuilder for Scintilla, as its code: the tabs, the margin of
+            # the line numbers (margin 0).  No margin of folding (margin 1): the text of Qt does
+            # not fold.
+            if t == 'wxStyledTextCtrl':
+                tabWidth = parse_int( p.get( 'tab_width' ), 0 )
+
+                if tabWidth > 0:
+                    self.code.append( '    %s->SetTabWidth( %d );' % ( var, tabWidth ) )
+
+                if p.get( 'view_whitespace', '0' ) == '1':
+                    self.code.append( '    %s->SetViewWhiteSpace( wxSTC_WS_VISIBLEALWAYS );' % var )
+
+                if p.get( 'read_only', '0' ) == '1':
+                    self.code.append( '    %s->SetReadOnly( true );' % var )
+
+                if p.get( 'line_numbers', '0' ) == '1':
+                    self.code.append( '    %s->SetMarginType( 0, wxSTC_MARGIN_NUMBER );' % var )
+                    self.code.append( '    %s->SetMarginWidth( 0, %s->TextWidth( '
+                                      'wxSTC_STYLE_LINENUMBER, wxS( "_99999" ) ) );' % ( var, var ) )
+                else:
+                    self.code.append( '    %s->SetMarginWidth( 0, 0 );' % var )
+
         elif cls == 'wxDatePickerCtrl':
             qt = 'QDateEdit'
             var, t = make( qt )

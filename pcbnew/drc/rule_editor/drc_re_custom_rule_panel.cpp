@@ -77,6 +77,11 @@ DRC_RE_CUSTOM_RULE_PANEL::DRC_RE_CUSTOM_RULE_PANEL(
 
     m_textCtrl->AutoCompSetSeparator( '|' );
 
+#ifdef KICAD_WX_FREE
+    // The colours of the syntax of the rules (the Qt build: s-expressions)
+    m_textCtrl->SetLexer( wxSTC_LEX_LISP );
+#endif
+
     m_checkSyntaxBtn->Bind( wxEVT_BUTTON, &DRC_RE_CUSTOM_RULE_PANEL::onCheckSyntax, this );
 }
 
