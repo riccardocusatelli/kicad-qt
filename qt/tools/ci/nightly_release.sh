@@ -4,7 +4,7 @@
 #
 #   nightly_release.sh <pattern of the assets of this platform> <file>...
 #
-# Each package workflow (Windows, macOS) calls it at the end of a green run on a push: the tag
+# Each package workflow (Linux, Windows, macOS) calls it at the end of a green run on a push: the tag
 # moves to the commit, the assets of the platform are replaced. Needs GH_TOKEN (contents: write),
 # GH_REPO and GITHUB_SHA.
 set -euo pipefail
@@ -17,7 +17,8 @@ notes="Packages of the Qt build of KiCad (no wxWidgets), built by the CI from th
 \`wx-free-core-upstream\` with green tests on its platform: \`${GITHUB_SHA}\`.
 
 - Windows: \`*-portable.zip\` (extract it and run \`KiCad.cmd\`) or the installer \`*.exe\`.
-- macOS (Apple Silicon): \`*.dmg\`. Not signed: the first time, right click on KiCad and Open."
+- macOS (Apple Silicon): \`*.dmg\`. Not signed: the first time, right click on KiCad and Open.
+- Linux (x86_64): \`*.AppImage\` (\`chmod +x\` and run it; \`<image> kicad-cli ...\` for the command line)."
 
 # The release (the other platform may create it at the same time)
 if ! gh release view "$tag" > /dev/null 2>&1; then

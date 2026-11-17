@@ -355,17 +355,20 @@ Three workflows build and test the Qt build:
 
 | Workflow | Runner | Toolchain | Artifacts |
 | --- | --- | --- | --- |
-| `qt-linux.yml` — *Qt build (Linux)* | `ubuntu-24.04` | GCC, distribution Qt | QA screenshots |
+| `qt-linux.yml` — *Qt build (Linux)* | `ubuntu-24.04` | GCC, distribution Qt | the AppImage (`kicad-qt-*-x86_64.AppImage`), QA screenshots |
 | `qt-macos.yml` — *Qt build (macOS)* | `macos-15` (arm64) | Apple Clang, Homebrew Qt | the disk image (`kicad-qt-*.dmg`), screenshots, crash reports |
 | `qt-windows.yml` — *Qt build (Windows)* | `windows-2022` | MSVC, vcpkg Qt | the installer (`kicad-qt-*.exe`) and the portable zip (`kicad-qt-*-portable.zip`) |
 
 The packages are uploaded with `actions/upload-artifact@v7` and `archive: false`: the artifact
 is the file itself, named as the file, not a zip around it (the other artifacts stay zipped).
 
-**Nightly release.** After a green run of a push to `wx-free-core-upstream`, the Windows and
-macOS workflows publish their packages on the `nightly` pre-release of GitHub (Releases, on the
+**Nightly release.** After a green run of a push to `wx-free-core-upstream`, the Linux, Windows
+and macOS workflows publish their packages on the `nightly` pre-release of GitHub (Releases, on the
 home page of the repository) with `qt/tools/ci/nightly_release.sh`: the tag moves to the commit
-and the assets of the platform are replaced. Linux has no package yet.
+and the assets of the platform are replaced. Linux publishes an AppImage, made by
+`qt/tools/ci/appimage.sh` with linuxdeploy and its Qt plugin from the staged install and the KiCad
+libraries (symbols, footprints, template); its `AppRun` sets `KICAD_STOCK_DATA_HOME` and runs
+`kicad-qt` (or `kicad-cli`, as `<image> kicad-cli ...`).
 
 **Qt versions.** macOS takes the Qt of Homebrew, Windows the `qtbase` of vcpkg (pinned with an
 override in `vcpkg.json`, 6.11.3, the other libraries stay at the baseline), Linux the Qt of the

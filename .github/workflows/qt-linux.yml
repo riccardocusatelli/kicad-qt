@@ -17,6 +17,9 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 350
+    # The nightly release (the last step)
+    permissions:
+      contents: write
 
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -152,6 +155,54 @@ jobs:
               LD_LIBRARY_PATH=$LIBDIR ldd $f | grep "not found"
             done | grep .
 
+      # The AppImage: the staged install, the libraries of KiCad (symbols, footprints, template)
+      # and every library it needs but the base of the system (linuxdeploy, with Qt and its plugins)
+      - name: AppImage
+        id: appimage
+        run: |
+          set -e
+          VERSION=$(sed -n 's/.*KICAD_SEMANTIC_VERSION "\([^"]*\)".*/\1/p' cmake/KiCadVersion.cmake)
+          SERIES=$(echo $VERSION | cut -d. -f1-2)
+          mkdir -p libs tools
+          for repo in kicad-symbols kicad-footprints kicad-templates; do
+            echo "::group::$repo"
+            git clone -q --depth 1 --branch $VERSION https://gitlab.com/kicad/libraries/$repo.git libs/$repo \
+              || git clone -q --depth 1 --branch $SERIES https://gitlab.com/kicad/libraries/$repo.git libs/$repo
+            cmake -S libs/$repo -B libs/build-$repo -G Ninja -DCMAKE_INSTALL_PREFIX=$PWD/libs/inst
+            cmake --build libs/build-$repo
+            cmake --install libs/build-$repo | tail -3
+            echo "::endgroup::"
+          done
+          for tool in linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+                      linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage; do
+            curl -fsSL --retry 3 -o tools/$(basename $tool) https://github.com/$tool
+          done
+          chmod +x tools/*.AppImage
+          ln -sf linuxdeploy-plugin-qt-x86_64.AppImage tools/linuxdeploy-plugin-qt
+          export PATH=$PWD/tools:$PATH APPIMAGE_EXTRACT_AND_RUN=1 QMAKE=/usr/lib/qt6/bin/qmake
+          export LINUXDEPLOY=$PWD/tools/linuxdeploy-x86_64.AppImage
+          bash qt/tools/ci/appimage.sh stage appimage $VERSION libs/inst
+
+          # The AppImage works alone: kicad-cli, and kicad-qt starts (and is still running when
+          # stopped)
+          IMAGE=$(ls $PWD/appimage/*.AppImage)
+          cd $RUNNER_TEMP
+          env -i HOME=$HOME PATH=/usr/bin:/bin APPIMAGE_EXTRACT_AND_RUN=1 $IMAGE kicad-cli version
+          rc=0
+          env -i HOME=$HOME PATH=/usr/bin:/bin APPIMAGE_EXTRACT_AND_RUN=1 \
+            timeout 90 xvfb-run -a $IMAGE || rc=$?
+          echo "kicad-qt: $rc"
+          test $rc -eq 124
+
+      - name: The AppImage
+        if: always() && steps.appimage.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        # Not zipped again: the download is the file itself (named as the file)
+        with:
+          path: appimage/*.AppImage
+          archive: false
+          if-no-files-found: error
+
       - name: Screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -159,3 +210,13 @@ jobs:
           name: qa-screenshots
           path: qa-screenshots
           if-no-files-found: ignore
+
+      # The packages on the home page of the repository: the nightly pre-release, after a green run
+      # of the main branch
+      - name: Nightly release
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/wx-free-core-upstream'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash qt/tools/ci/nightly_release.sh '\.AppImage$' appimage/*.AppImage
