@@ -131,7 +131,9 @@ in this build. See [Quirks and pitfalls](#quirks-and-pitfalls).
 Implemented families include: basic controls, books/notebooks, `wxGrid` (`kiwx_grid.cpp`),
 `wxDataViewCtrl` and models (`kiwx_dataview.cpp`), `wxTreeCtrl`/`wxTreeListCtrl`,
 `wxListCtrl`, `wxPropertyGrid`, AUI managers and notebooks on `QMainWindow` docks
-(`kiwx_aui.cpp`), `wxStyledTextCtrl` (`kiwx_stc.cpp`), menus, status bar, pickers (colour, file,
+(`kiwx_aui.cpp`), `wxStyledTextCtrl` (`kiwx_stc.cpp`, a `QPlainTextEdit` with the line-number
+margin and, beyond upstream, syntax colours for `wxSTC_LEX_LISP`, used by the DRC rule editors,
+and `wxSTC_LEX_SPICE`, the simulator netlist), menus, status bar, pickers (colour, file,
 dir, font), file/message dialogs, clipboard, DC/GDI drawing on `QPainter` (`kiwx_gdi.cpp`),
 printing, validators, wizards and `wxWebView` (`kiwx_webview.cpp`).
 
@@ -183,7 +185,14 @@ compile them first).
     focus (keys go to the canvas widget, so two open editors do not fight over activation).
     HiDPI and fractional scales (e.g. 125%) are handled by rounding as Qt sizes native windows.
 - The 3D viewer (`qt/3d-viewer`) runs the upstream OpenGL renderer and ray tracer in a Qt
-  OpenGL window.
+  OpenGL window. Component models are read by the upstream loader plugins (`plugins/3d`:
+  `s3d_plugin_oce` for STEP/IGES, `s3d_plugin_vrml`, `s3d_plugin_idf`), found where each package
+  puts them (`bin\plugins\3d` on Windows, `KiCad.app/Contents/PlugIns/3d` on macOS,
+  `lib/<multiarch>/kicad/plugins/3d` on Linux and in the AppImage).
+- Images: besides the PNG/JPEG decoders of KiCad, the other formats (BMP, GIF, CMYK JPEG, TIFF,
+  WebP) are decoded by Qt (`qt/common/raster_image_qt.cpp`); TIFF and WebP come from the
+  `qtimageformats` module (vcpkg port on Windows, `qt6-image-formats-plugins` on Linux, part of
+  the Homebrew `qt` on macOS).
 - Library trees (`qt/common/lib_tree_model_adapter_qt.cpp`) back the symbol/footprint choosers
   and the editor panes with a Qt item model.
 - The property panel (`qt/common/property_panel.cpp`, `qt/common/properties`) is Qt native and
@@ -246,9 +255,7 @@ These are known differences from the wxWidgets build on `wx-free-core-upstream`:
 
 | Area | Status |
 | --- | --- |
-| **Image formats** | TIFF and WebP images cannot be decoded: Qt reads them only through the `qtimageformats` module, which is not in the Windows vcpkg `qt` feature (`vcpkg.json`: `qtbase`, `libpng`, `libjpeg-turbo`, `webview2`) and not installed by the Linux/macOS CI. |
-| **Styled text** | `wxStyledTextCtrl` is a plain Qt text editor: lexer-based syntax highlighting (e.g. in the custom rules editor) is not applied. |
-| **3D models** | The 3D model loader plugins (`plugins/3d`) are not part of the wx-free target set, so component 3D models are not loaded in the 3D viewer. |
+| **3D model library** | The 3D loader plugins (STEP/IGES with OpenCASCADE, VRML/X3D, IDF) are built and shipped by every package, but the packages do not include the KiCad 3D model library (several GB): footprints that point to `${KICAD10_3DMODEL_DIR}` show their models only once that variable points to a copy of [kicad-packages3D](https://gitlab.com/kicad/libraries/kicad-packages3D) (Preferences > Configure Paths). |
 | **wxPython** | Not available (`KICAD_SCRIPTING_WXPYTHON` is forced off). Action plugins that use wxPython dialogs do not work; the `pcbnew` module itself is available. |
 | **Update check** | Disabled (`KICAD_UPDATE_CHECK` is forced off). |
 
@@ -273,7 +280,7 @@ Tested on Ubuntu 24.04 (its Qt is 6.4).
 ```sh
 sudo apt-get install -y --no-install-recommends \
   build-essential cmake ninja-build ccache gettext swig \
-  qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qt6-wayland \
+  qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qt6-wayland qt6-image-formats-plugins \
   qt6-webengine-dev qt6-webchannel-dev \
   libboost-all-dev libglm-dev libglew-dev libgl-dev libglu1-mesa-dev libegl-dev \
   libcairo2-dev libpixman-1-dev libharfbuzz-dev libfontconfig-dev libfreetype-dev \
@@ -456,7 +463,10 @@ one.
    - Linux: staged `cmake --install` and an `ldd` check that no library is missing; then the
      AppImage (staged install plus the symbol, footprint and template libraries), run with an
      empty environment: `kicad-cli version`, and `kicad-qt` must still be running after 90
-     seconds under Xvfb.
+     seconds under Xvfb. Every package (AppImage, `KiCad.app`, Windows package) and the Linux
+     build tree also run `qt/tools/ci/check_3d_models.sh` (or its PowerShell twin): `kicad-cli
+     pcb export vrml` of `qa/data/pcbnew/qt_3d_models`, which needs the STEP and VRML plugins,
+     and check that the TIFF and WebP image plugins are shipped.
    - macOS: build `KiCad.app` with the symbol, footprint and template libraries (cloned from
      GitLab at the matching tag), make a `.dmg`, copy `KiCad.app` out of it and run `kicad-cli` exports and the shell test from
      the copy (failing on any Fontconfig error).
