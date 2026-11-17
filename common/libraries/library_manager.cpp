@@ -613,7 +613,10 @@ void LIBRARY_MANAGER::LoadGlobalTables( std::initializer_list<LIBRARY_TABLE_TYPE
             [&]( LIBRARY_TABLE_TYPE aType )
             {
                 LIBRARY_TABLE* table = Table( aType, LIBRARY_TABLE_SCOPE::GLOBAL ).value_or( nullptr );
-                KI_CHECK( table, /* void */ );
+
+                // No global table (a fresh configuration, kicad-cli on a server): nothing to clean
+                if( !table )
+                    return;
 
                 auto toErase = std::ranges::remove_if( table->Rows(),
                         [&]( const LIBRARY_TABLE_ROW& aRow )

@@ -23,6 +23,11 @@ target_link_libraries( idf3
     Boost::headers
     )
 
+# The tessellator of the VRML export without libGLU (see thirdparty/libtess)
+if( KICAD_HEADLESS_ONLY )
+    target_link_libraries( idf3 kitess )
+endif()
+
 add_executable( idfcyl idf_cylinder.cpp )
 add_executable( idfrect idf_rect.cpp )
 add_executable( dxf2idf dxf2idfmain.cpp dxf2idf.cpp )

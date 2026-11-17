@@ -85,9 +85,15 @@ elseif( UNIX )
         os/unix/environment.cpp
         os/unix/io.cpp
         os/unix/policy.cpp
-        os/unix/secrets.cpp
         os/unix/sysinfo.cpp
         )
+
+    # Without a desktop (KICAD_HEADLESS_ONLY) there is no keyring: no secret is stored
+    if( KICAD_HEADLESS_ONLY )
+        list( APPEND PLATFORM_SRCS os/unix/secrets_none.cpp )
+    else()
+        list( APPEND PLATFORM_SRCS os/unix/secrets.cpp )
+    endif()
 
     list( APPEND PLATFORM_GUI_SRCS
         os/unix/printing.cpp
@@ -100,15 +106,17 @@ elseif( UNIX )
     set( PLATFORM_INCLUDE_DIRS ${GIO_INCLUDE_DIRS} )
     set( PLATFORM_LIBS ${GIO_LIBRARIES} )
 
-    # Detect the secret library and configure it
-    pkg_check_modules(secret REQUIRED libsecret-1)
-    list( APPEND PLATFORM_INCLUDE_DIRS ${secret_INCLUDE_DIRS} )
-    list( APPEND PLATFORM_LIBS ${secret_LIBRARIES} )
+    if( NOT KICAD_HEADLESS_ONLY )
+        # Detect the secret library and configure it
+        pkg_check_modules(secret REQUIRED libsecret-1)
+        list( APPEND PLATFORM_INCLUDE_DIRS ${secret_INCLUDE_DIRS} )
+        list( APPEND PLATFORM_LIBS ${secret_LIBRARIES} )
 
-    # Detect Poppler library for printing and configure it
-    find_package( Poppler REQUIRED )
-    set( PLATFORM_GUI_INCLUDE_DIRS ${POPPLER_INCLUDE_DIRS} )
-    list( APPEND PLATFORM_GUI_LIBS ${Poppler_LIBRARIES} )
+        # Detect Poppler library for printing and configure it
+        find_package( Poppler REQUIRED )
+        set( PLATFORM_GUI_INCLUDE_DIRS ${POPPLER_INCLUDE_DIRS} )
+        list( APPEND PLATFORM_GUI_LIBS ${Poppler_LIBRARIES} )
+    endif()
 
     if( KICAD_WAYLAND )
         find_package(Wayland 1.20 COMPONENTS Client REQUIRED)

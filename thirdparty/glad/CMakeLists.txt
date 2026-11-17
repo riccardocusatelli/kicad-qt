@@ -6,7 +6,8 @@ set(GLAD_SOURCES
 
 if(WIN32)
 	list(APPEND GLAD_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/wgl.c)
-elseif(UNIX AND NOT APPLE)
+elseif(UNIX AND NOT APPLE AND NOT KICAD_HEADLESS_ONLY)
+	# (Without OpenGL, KICAD_HEADLESS_ONLY: the GL types and the loader only, no GLX or EGL)
 	if(wxWidgets_HAS_GLX EQUAL 1 OR wxWidgets_HAS_EGL EQUAL 1)
 		# wx 3.3.2+ macros
 		if(wxWidgets_HAS_EGL EQUAL 1)

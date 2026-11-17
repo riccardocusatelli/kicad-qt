@@ -25,6 +25,7 @@ branch.
   - [macOS](#macos)
   - [Windows](#windows)
   - [Running from the build tree](#running-from-the-build-tree)
+  - [Headless core: kicad-cli only](#headless-core-kicad-cli-only)
 - [Continuous integration](#continuous-integration)
 - [Quirks and pitfalls](#quirks-and-pitfalls)
 
@@ -65,12 +66,13 @@ Two layers do the work:
 
 ### Build options
 
-Two CMake options in the top-level `CMakeLists.txt` select the build:
+Three CMake options in the top-level `CMakeLists.txt` select the build:
 
 | Option | Default | Effect |
 | --- | --- | --- |
 | `KICAD_WX_FREE` | `OFF` | Build the core and `kicad-cli` on kiwx instead of wxWidgets (`cmake/WxFree.cmake`). Defines the `KICAD_WX_FREE` macro and forces `KICAD_SCRIPTING_WXPYTHON=OFF` and `KICAD_UPDATE_CHECK=OFF`. |
 | `KICAD_QT_SHELL` | `OFF` | With `KICAD_WX_FREE`, also build the Qt GUI (`add_subdirectory( qt )`): `kicad-qt` and the Qt KIFACEs. |
+| `KICAD_HEADLESS_ONLY` | `OFF` | With `KICAD_WX_FREE` and without `KICAD_QT_SHELL`: `kicad-cli` with no OpenGL, GLU, Wayland, Poppler, spnav or libsecret. See [Headless core](#headless-core-kicad-cli-only). |
 
 With both options off the tree is ordinary upstream KiCad and builds against wxWidgets as usual.
 
@@ -349,6 +351,64 @@ produced by the "Package" step of `qt-windows.yml`; the installer is built with 
 Set `KICAD_RUN_FROM_BUILD_DIR=1` and start `build/kicad/kicad-qt`: KIWAY then finds the KIFACEs
 and the resources (images archive, schemas) in the build tree, as with the upstream build.
 
+### Headless core: kicad-cli only
+
+The core (data model, file I/O, DRC/ERC, plotters, exporters) does not depend on the GUI:
+`kicad-cli`, `_pcbnew_cli.kiface` and `_eeschema_cli.kiface` link kiwx and the model libraries
+(`kicommon_model`, `gal_model`, `pcbcommon`...), never Qt, wxWidgets or wxcompat, and they run
+with no display. They are what a server or a CI pipeline needs for batch DRC/ERC and the
+fabrication exports.
+
+`-DKICAD_WX_FREE=ON` alone (without `KICAD_QT_SHELL`) builds only them. Add
+`-DKICAD_HEADLESS_ONLY=ON` to also leave out what the desktop needs:
+
+| Dependency | Without `KICAD_HEADLESS_ONLY` | With it |
+| --- | --- | --- |
+| OpenGL, GLU | `find_package( OpenGL REQUIRED )`; `libGLU` linked by `_pcbnew_cli.kiface` (the GLU tessellator of the VRML export, `utils/idftools/vrml_layer.cpp`) | Not searched. The tessellator is built from `thirdparty/libtess` (the libtess of Mesa GLU 9.0.2, SGI Free B 2.0) as the static `kitess`; `include/kicad_gl/kiglu.h` includes `<kitess/glu.h>`. glad gives only the GL types (no GLX/EGL sources). |
+| Wayland | `KICAD_WAYLAND=ON` on Linux | Forced `OFF` |
+| spnav (3D mouse) | Required on Linux | Not searched |
+| Poppler (printing) | Required on Linux by `libs/kiplatform` | Not searched |
+| libsecret (keyring) | Linked by `kiplatform_core` | `os/unix/secrets_none.cpp`: no secret is stored or found (git credentials and OAuth tokens are not remembered) |
+
+Build and run on Linux (Ubuntu 24.04 packages):
+
+```sh
+sudo apt-get install build-essential cmake ninja-build gettext swig \
+  libboost-all-dev libglm-dev \
+  libcairo2-dev libpixman-1-dev libharfbuzz-dev libfontconfig-dev libfreetype-dev \
+  libcurl4-openssl-dev libgit2-dev libnng-dev unixodbc-dev \
+  libngspice0-dev libprotobuf-dev protobuf-compiler libzstd-dev zlib1g-dev \
+  libocct-data-exchange-dev libocct-foundation-dev libocct-modeling-algorithms-dev \
+  libocct-modeling-data-dev libocct-ocaf-dev \
+  libpython3-dev python3-dev pybind11-dev libzint-dev \
+  libsqlite3-dev libeigen3-dev pkg-config libglib2.0-dev libpcre2-dev \
+  libexpat1-dev libpng-dev libjpeg-dev libssl-dev
+
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DKICAD_WX_FREE=ON -DKICAD_HEADLESS_ONLY=ON -DKICAD_USE_PCH=OFF
+cmake --build build          # about 1050 steps, 20-30 minutes on four cores
+
+# No DISPLAY needed
+KICAD_RUN_FROM_BUILD_DIR=1 build/kicad/kicad-cli pcb drc --format json -o drc.json board.kicad_pcb
+```
+
+What is left, none of it needing a display:
+
+- The distribution libraries can still pull in X11 or GL **indirectly**: Ubuntu's Cairo links
+  `libX11`/`libxcb` (its Xlib surface is never used, Cairo draws into memory), and the OCCT
+  `-dev` packages depend on the GL headers. The programs load these libraries but open no
+  connection. A static or custom Cairo/OCCT removes them.
+- GLib/GIO (`kiplatform_core`) and Fontconfig/FreeType/HarfBuzz (the outline fonts) are used by
+  the core; they are not GUI libraries.
+- Python (`PythonLibs`) and ngspice are still required at configure time, as in upstream.
+- A fresh home has no global library tables. `kicad-cli` works without them (the boards and
+  schematics carry their footprints and symbols) and no longer prints an assert about them
+  (`LIBRARY_MANAGER::LoadGlobalTables`).
+- `KICAD_HEADLESS_ONLY` is built and tested on Linux only. On macOS, `kiplatform_core` links
+  the system frameworks (Cocoa/AppKit) as upstream does.
+
+CI checks it on every Linux run (job `headless` of `qt-linux.yml`, see below).
+
 ## Continuous integration
 
 Three workflows build and test the Qt build:
@@ -403,6 +463,19 @@ one.
      finally zip the package as the **portable** version
      (`kicad-qt-<version>-x86_64-portable.zip`, with a `KiCad.cmd` launcher) and check that the
      extracted zip runs `kicad-cli` without the build `PATH`.
+
+**Headless job (Linux).** `qt-linux.yml` also has the `headless` job: it installs no Qt, GLEW,
+GLU, GTK, Wayland, Poppler, spnav or libsecret package, configures with
+`KICAD_HEADLESS_ONLY=ON` and the finds of OpenGL, Poppler, Wayland and spnav disabled (so the
+configuration fails if one of them becomes required again), and builds. Then
+`qt/tools/ci/check_headless.py` checks that no program or library of the build links a GUI,
+GL, X11/xcb, Wayland, GTK, Poppler, spnav, libsecret, Qt or wx library and that no object
+includes their headers (`ninja -t deps`), and `qt/tools/ci/headless_cli_test.sh` runs
+`kicad-cli` with no `DISPLAY`/`WAYLAND_DISPLAY` and an empty home: version, DRC and ERC (JSON
+reports, non-empty), Gerbers, drill, positions, SVG, STEP, VRML (the `kitess` tessellator),
+3D render, schematic PDF, netlist and BOM on the `video` and `pic_programmer` demos, failing on
+any non-zero exit code, missing output or assert. The outputs are uploaded as
+`headless-cli-outputs`.
 
 **Duration.** Linux and macOS take about 80 minutes with a warm cache. Windows has two jobs (the
 vcpkg libraries, cached by the hash of `vcpkg.json`, `vcpkg-configuration.json` and the triplets;

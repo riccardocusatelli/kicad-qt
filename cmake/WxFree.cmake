@@ -199,6 +199,7 @@ function( kicad_wx_free_restrict_targets )
         sexpr
         nlohmann_json_schema_validator
         glad                # GL types for the GLU tessellator of the VRML export (idf3)
+        kitess              # the GLU tessellator itself, without OpenGL (KICAD_HEADLESS_ONLY)
         idf3                # also linked whole by the IDF 3D plugin
         kicad-cli
         kicommon_model

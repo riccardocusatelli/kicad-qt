@@ -51,6 +51,11 @@ add_subdirectory( fast_float )
 set( FMT_INSTALL OFF )
 add_subdirectory( fmt )
 add_subdirectory( glad )
+
+# The tessellator of GLU, instead of libGLU in the build without OpenGL
+if( KICAD_HEADLESS_ONLY )
+    add_subdirectory( libtess )
+endif()
 add_subdirectory( gzip-hpp )
 add_subdirectory( lemon )
 add_subdirectory( libcontext )

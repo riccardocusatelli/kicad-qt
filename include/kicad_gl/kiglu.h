@@ -30,8 +30,12 @@
 
 #include <kicad_gl/kiglad.h>
 
+#ifdef KICAD_GLU_TESS
+// The build without OpenGL (KICAD_HEADLESS_ONLY): the tessellator of GLU only, from
+// thirdparty/libtess, with the GL types of glad
+#include <kitess/glu.h>
+#elif defined( __APPLE__ )
 // System GL headers (assumed to be loaded via wxGLCanvas or other dependencies)
-#ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 #else

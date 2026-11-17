@@ -158,6 +158,19 @@ cmake_dependent_option( KICAD_WAYLAND
     ON "UNIX_NOT_APPLE"
     OFF )
 
+# Only kicad-cli and its libraries, with nothing of a desktop: no OpenGL or GLU (the tessellator
+# of the VRML export is built from thirdparty/libtess), no Wayland, no 3D mouse, no printing
+# (Poppler), no keyring (libsecret).  For servers and CI (batch DRC/ERC, exports).
+cmake_dependent_option( KICAD_HEADLESS_ONLY
+    "Build only kicad-cli, without OpenGL, Wayland, Poppler, spnav or libsecret (with KICAD_WX_FREE, without KICAD_QT_SHELL; default OFF)"
+    OFF "KICAD_WX_FREE;NOT KICAD_QT_SHELL"
+    OFF )
+
+if( KICAD_HEADLESS_ONLY )
+    message( STATUS "KICAD_HEADLESS_ONLY: kicad-cli without OpenGL and desktop libraries" )
+    set( KICAD_WAYLAND OFF CACHE BOOL "" FORCE )
+endif()
+
 # Options to build with flatpak platform defaults (only on Linux)
 cmake_dependent_option( KICAD_BUILD_FLATPAK
     "Build KiCad with metadata, launchers, icons, and MIME info following flatpak conventions"
@@ -853,7 +866,7 @@ find_package(ZSTD REQUIRED)
 #
 find_package( CURL REQUIRED )
 
-if( UNIX AND NOT APPLE )
+if( UNIX AND NOT APPLE AND NOT KICAD_HEADLESS_ONLY )
     find_package( SPNAV REQUIRED )
     include_directories( SYSTEM ${SPNAV_INCLUDE_DIR} )
 endif()
@@ -1175,7 +1188,16 @@ else()
 endif()
 
 # Find OpenGL with GLU
-find_package( OpenGL REQUIRED )
+if( KICAD_HEADLESS_ONLY )
+    # No OpenGL: the users of GLU (its tessellator) get the one of thirdparty/libtess
+    set( OPENGL_FOUND FALSE )
+    set( OPENGL_INCLUDE_DIR "" )
+    set( OPENGL_LIBRARIES kitess )
+    set( OPENGL_glu_LIBRARY kitess )
+    set( OPENGL_gl_LIBRARY "" )
+else()
+    find_package( OpenGL REQUIRED )
+endif()
 
 if( KICAD_WAYLAND )
     message( STATUS "Configuring KiCad to support Wayland features" )
