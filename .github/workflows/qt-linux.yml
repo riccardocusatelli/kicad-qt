@@ -34,7 +34,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build ccache gettext swig xvfb gdb \
-            qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qt6-wayland \
+            qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qt6-wayland qt6-image-formats-plugins \
             qt6-webengine-dev qt6-webchannel-dev \
             libboost-all-dev libglm-dev libglew-dev libgl-dev libglu1-mesa-dev libegl-dev \
             libcairo2-dev libpixman-1-dev libharfbuzz-dev libfontconfig-dev libfreetype-dev \
@@ -105,6 +105,8 @@ jobs:
           ( cd build/qt/qa && run ./qa_qt_3d_viewer $BOARD )
           ( cd build/qt/qa && run ./qa_qt_eeschema_frames $SCH )
           ( cd build/kicad && run ./qa_qt_kicad_shell $BOARD $SCH $OUT/shell.png )
+          # The 3D models read by the 3D plugins (kicad-cli, as the 3D viewer finds them)
+          bash qt/tools/ci/check_3d_models.sh $RUNNER_TEMP/3d-models build/kicad/kicad-cli
 
       # The shell again as on a computer in Italian with the screen scaled to 125% (the decimal
       # comma, the translated texts, the fractional scale of the icons and of the painted widgets)
@@ -182,12 +184,17 @@ jobs:
           export PATH=$PWD/tools:$PATH APPIMAGE_EXTRACT_AND_RUN=1 QMAKE=/usr/lib/qt6/bin/qmake
           export LINUXDEPLOY=$PWD/tools/linuxdeploy-x86_64.AppImage
           bash qt/tools/ci/appimage.sh stage appimage $VERSION libs/inst/share/kicad
+          # The image formats of qtimageformats (TIFF, WebP) and the 3D plugins in the AppImage
+          ls stage/usr/plugins/imageformats/libqtiff.so stage/usr/plugins/imageformats/libqwebp.so
+          ls stage/usr/lib/*/kicad/plugins/3d/libs3d_plugin_oce.so stage/usr/lib/*/kicad/plugins/3d/libs3d_plugin_vrml.so
 
           # The AppImage works alone: kicad-cli, and kicad-qt starts (and is still running when
           # stopped)
           IMAGE=$(ls $PWD/appimage/*.AppImage)
           cd $RUNNER_TEMP
           env -i HOME=$HOME PATH=/usr/bin:/bin APPIMAGE_EXTRACT_AND_RUN=1 $IMAGE kicad-cli version
+          bash $GITHUB_WORKSPACE/qt/tools/ci/check_3d_models.sh $RUNNER_TEMP/3d-models-appimage \
+            env -i HOME=$HOME PATH=/usr/bin:/bin APPIMAGE_EXTRACT_AND_RUN=1 $IMAGE kicad-cli
           rc=0
           env -i HOME=$HOME PATH=/usr/bin:/bin APPIMAGE_EXTRACT_AND_RUN=1 \
             timeout 90 xvfb-run -a $IMAGE || rc=$?

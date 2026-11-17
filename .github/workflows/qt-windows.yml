@@ -489,6 +489,20 @@ jobs:
                       '--output', "$out\symbol", "$libs\symbols\Device.kicad_sym" )
           if( -not ( Get-ChildItem "$out\symbol\*.svg" -ErrorAction SilentlyContinue ) ) { $failed += 'kicad-cli-symbol (no SVG)' }
 
+          # The 3D models read by the 3D plugins of the package (bin\plugins\3d): the STEP model
+          # converted to VRML (OpenCASCADE), the VRML model in the board (its colour)
+          $models = "$root\qa\data\pcbnew\qt_3d_models\qt_3d_models.kicad_pcb"
+          Run-Package 'kicad-cli-3d-models' 'kicad-cli.exe' @( 'pcb', 'export', 'vrml', '--models-dir',
+                      "$out\3d-models", '--output', "$out\3d-models.wrl", $models )
+          if( -not ( Test-Path "$out\3d-models\TO-252-2.wrl" ) ) { $failed += '3D model STEP (plugin of OpenCASCADE)' }
+          Run-Package 'kicad-cli-3d-board' 'kicad-cli.exe' @( 'pcb', 'export', 'vrml', '--output', "$out\3d-board.wrl", $models )
+          if( -not ( Select-String -Path "$out\3d-board.wrl" -Pattern 'diffuseColor 0\.8(0*1)? 0\.2 0\.1' -Quiet -ErrorAction SilentlyContinue ) ) { $failed += '3D model VRML (plugin of VRML)' }
+
+          # The image formats of qtimageformats (TIFF, WebP)
+          foreach( $format in 'qtiff.dll', 'qwebp.dll' ) {
+            if( -not ( Test-Path "$test\bin\qtplugins\imageformats\$format" ) ) { $failed += "image format $format" }
+          }
+
           Run-Package 'shell' 'qa_qt_kicad_shell.exe' @( $board, $sch, "$out\shell.png" )
           Rename-Item "$root\pkg-hidden" pkg
 

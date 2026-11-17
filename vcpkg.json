@@ -67,6 +67,11 @@
       "description": "The Qt build of KiCad (KICAD_WX_FREE and KICAD_QT_SHELL; VCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON, VCPKG_MANIFEST_FEATURES=qt)",
       "dependencies": [
         "qtbase",
+        {
+          "name": "qtimageformats",
+          "default-features": false,
+          "features": [ "tiff", "webp" ]
+        },
         "libpng",
         "libjpeg-turbo",
         {
@@ -82,6 +87,11 @@
       "version": "6.11.3",
       "port-version": 1,
       "$comment": "The Qt build: the Qt of vcpkg after the baseline (6.10.0), without moving the other libraries"
+    },
+    {
+      "name": "qtimageformats",
+      "version": "6.11.3",
+      "$comment": "The image formats of the Qt build (TIFF, WebP): the version of qtbase"
     },
     {
       "name": "glm",

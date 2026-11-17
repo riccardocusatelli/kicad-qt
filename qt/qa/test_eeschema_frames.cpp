@@ -79,6 +79,10 @@
 #include <widgets/webview_panel.h>
 #include <wx/webview.h>
 #include <wx/popupwin.h>
+#include <wx/stc/stc.h>
+#include <QTextBlock>
+#include <QTextLayout>
+#include <set>
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
 
@@ -569,6 +573,31 @@ void testSymbolViewer( KIWAY& aKiway )
 /// The images of a schematic in the formats KiCad does not read itself: decoded by the image
 /// formats of Qt, as by wxImage in the wxWidgets build (without them the schematic does not
 /// open: "Failed to read image data").
+/// The colours of the syntax of a SPICE netlist (the netlist of the simulator: wxSTC_LEX_SPICE).
+void testSpiceSyntax( QWidget* aParent )
+{
+    wxStyledTextCtrl editor( aParent );
+    editor.SetLexer( wxSTC_LEX_SPICE );
+    editor.SetText( wxS( "* A netlist\n.title QA\nR1 in out 10k ; the load\n"
+                         "C1 out 0 100n\nV1 in 0 DC 5\n.tran 1u 10m\n.end\n" ) );
+
+    std::set<QRgb> colours;
+
+    for( QTextBlock block = editor.document()->begin(); block.isValid(); block = block.next() )
+    {
+        for( const QTextLayout::FormatRange& range : block.layout()->formats() )
+        {
+            if( range.format.hasProperty( QTextFormat::ForegroundBrush ) )
+                colours.insert( range.format.foreground().color().rgb() );
+        }
+    }
+
+    std::printf( "  SPICE netlist: %zu colours of the syntax\n", colours.size() );
+    check( colours.size() >= 4, "the SPICE netlist is coloured (comments, commands, elements, "
+                                "numbers)" );
+}
+
+
 void testEmbeddedImages( SCH_EDIT_FRAME* aFrame )
 {
     struct EMBEDDED
@@ -599,6 +628,16 @@ void testEmbeddedImages( SCH_EDIT_FRAME* aFrame )
           "lpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/aAA4E"
           "QwBNAFkASwAAPwDS/wCDaT/kxTxZ/wBlav8A/wBNel18df8ABbP/AJOq8P8A/ZPrT/0uvq/L34h/8hqL/r1X/wBC"
           "av38r//Z",
+          0 },
+        // The formats of the qtimageformats module of Qt (its plugins qtiff and qwebp)
+        { "TIFF",
+          "SUkqAAgAAAANAAABBAABAAAABgAAAAEBBAABAAAABAAAAAIBAwADAAAAqgAAAAMBAwABAAAAAQAAAAYBAwABAAAA"
+          "AgAAABEBBAABAAAAwAAAABUBAwABAAAAAwAAABYBBAABAAAABAAAABcBBAABAAAASAAAABoBBQABAAAAsAAAABsB"
+          "BQABAAAAuAAAABwBAwABAAAAAQAAACgBAwABAAAAAgAAAAAAAAAIAAgACACWAAAAAQAAAJYAAAABAAAAFKA8FKA8"
+          "FKA8yB4oyB4oyB4oFKA8FKA8FKA8yB4oyB4oyB4oFKA8FKA8FKA8yB4oyB4oyB4oFKA8FKA8FKA8yB4oyB4oyB4o",
+          0 },
+        { "WebP",
+          "UklGRiIAAABXRUJQVlA4TBYAAAAvBcAAAA9wD8EzIZ8CZf7DAz2I6H8A",
           0 },
     };
 
@@ -855,6 +894,7 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxStrin
     check( symbol != nullptr, "the schematic has its symbols" );
 
     testEmbeddedImages( frame );
+    testSpiceSyntax( frame );
 
     TOOL_MANAGER* toolMgr = frame->GetToolManager();
 
