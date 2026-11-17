@@ -62,9 +62,16 @@ for kiface in "$appdir"/usr/bin/*.kiface; do
     deps+=( --deploy-deps-only "$kiface" )
 done
 
-for lib in "$appdir"/usr/lib*/libki*.so* "$appdir"/usr/lib*/*/libki*.so*; do
+# The KiCad libraries and the 3D plugins ($APPDIR/usr/lib/x86_64-linux-gnu/kicad/plugins/3d, see
+# PATHS::GetStockPluginsPath)
+for lib in "$appdir"/usr/lib*/libki*.so* "$appdir"/usr/lib*/*/libki*.so* \
+           "$appdir"/usr/lib/*/kicad/plugins/3d/*.so*; do
     [ -e "$lib" ] && deps+=( --deploy-deps-only "$lib" )
 done
+
+# The shared libraries of KiCad (lib/<multiarch> of the prefix): found by linuxdeploy
+libdirs=$(find "$appdir/usr" -name 'lib*.so*' ! -name '*.kiface' -printf '%h\n' | sort -u | paste -sd: -)
+export LD_LIBRARY_PATH=$libdirs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
 export LDAI_OUTPUT="$out/kicad-qt-$version-x86_64.AppImage"
 export LINUXDEPLOY_OUTPUT_VERSION=$version
