@@ -237,7 +237,8 @@ All the main applications start and work from the Qt project manager:
 - The preview popup of the hovered symbol or footprint in the library trees.
 - Web views with a real engine per platform and the **Remote Symbols** panel (see
   [wxcompat](#wxcompat-the-wx-gui-api-on-qt-widgets)).
-- Packaging: Windows installer and portable zip, macOS `.dmg` (see [CI](#continuous-integration)).
+- Packaging: Linux AppImage, Windows installer and portable zip, macOS `.dmg`, published on the
+  `nightly` pre-release (see [CI](#continuous-integration)).
 
 ## Known gaps
 
@@ -250,7 +251,6 @@ These are known differences from the wxWidgets build on `wx-free-core-upstream`:
 | **3D models** | The 3D model loader plugins (`plugins/3d`) are not part of the wx-free target set, so component 3D models are not loaded in the 3D viewer. |
 | **wxPython** | Not available (`KICAD_SCRIPTING_WXPYTHON` is forced off). Action plugins that use wxPython dialogs do not work; the `pcbnew` module itself is available. |
 | **Update check** | Disabled (`KICAD_UPDATE_CHECK` is forced off). |
-| **Linux package** | CI checks a staged install but does not publish a Linux package. |
 
 ## Building
 
@@ -453,7 +453,10 @@ one.
    `opengl32.dll` of mesa-dist-win next to the programs (the runner has no GPU), including the
    OpenGL canvas at 125%.
 4. Package and test the package **in isolation**:
-   - Linux: staged `cmake --install` and an `ldd` check that no library is missing.
+   - Linux: staged `cmake --install` and an `ldd` check that no library is missing; then the
+     AppImage (staged install plus the symbol, footprint and template libraries), run with an
+     empty environment: `kicad-cli version`, and `kicad-qt` must still be running after 90
+     seconds under Xvfb.
    - macOS: build `KiCad.app` with the symbol, footprint and template libraries (cloned from
      GitLab at the matching tag), make a `.dmg`, copy `KiCad.app` out of it and run `kicad-cli` exports and the shell test from
      the copy (failing on any Fontconfig error).
@@ -503,6 +506,9 @@ is fast-forwarded to it (rebased and re-tested first if a fast-forward is not po
   of regression is caught.
 - **macOS data.** On macOS the stock data is found in the bundle (`Contents/SharedSupport`, via
   `PATHS::GetQtBundleContentsPath()`).
+- **AppImage data.** The Linux AppImage is the one package that still uses
+  `KICAD_STOCK_DATA_HOME`: its `AppRun` sets it to the `share/kicad` inside the image, because
+  the compile-time `KICAD_DATA` (`/usr/share/kicad`) does not point into the mounted image.
 - **Native windows.** Do not call `QWidget::winId()` on a widget that might not have a native
   window yet: it sets `Qt::WA_NativeWindow` and Qt then makes the widget's siblings and ancestors
   native too. On Windows this has turned the toolbars, docks and central widget of the PCB editor
