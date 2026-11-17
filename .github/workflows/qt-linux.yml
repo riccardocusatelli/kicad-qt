@@ -181,7 +181,7 @@ jobs:
           ln -sf linuxdeploy-plugin-qt-x86_64.AppImage tools/linuxdeploy-plugin-qt
           export PATH=$PWD/tools:$PATH APPIMAGE_EXTRACT_AND_RUN=1 QMAKE=/usr/lib/qt6/bin/qmake
           export LINUXDEPLOY=$PWD/tools/linuxdeploy-x86_64.AppImage
-          bash qt/tools/ci/appimage.sh stage appimage $VERSION libs/inst
+          bash qt/tools/ci/appimage.sh stage appimage $VERSION libs/inst/share/kicad
 
           # The AppImage works alone: kicad-cli, and kicad-qt starts (and is still running when
           # stopped)

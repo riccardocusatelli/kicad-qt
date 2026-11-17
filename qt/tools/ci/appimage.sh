@@ -4,10 +4,12 @@
 #   appimage.sh <AppDir> <output directory> <version> [<directory of the libraries>]
 #
 # The libraries (symbols, footprints, template with the tables) are optional: their install
-# (cmake --install of kicad-symbols, kicad-footprints, kicad-templates) goes to share/kicad.
+# (cmake --install of kicad-symbols, kicad-footprints, kicad-templates: their share/kicad) goes
+# to share/kicad.
 # Needs linuxdeploy and linuxdeploy-plugin-qt (LINUXDEPLOY, the plugin next to it or on the PATH)
 # and QMAKE (the qmake of the Qt the build used).
 set -euo pipefail
+trap 'echo "appimage.sh: failed at line $LINENO" >&2' ERR
 
 appdir=$(realpath "$1")
 out=$(realpath -m "$2")
@@ -21,7 +23,7 @@ mkdir -p "$out"
 # The libraries, with the data
 if [ -n "$libs" ]; then
     for dir in symbols footprints template; do
-        test -d "$libs/$dir"
+        [ -d "$libs/$dir" ] || { echo "No $dir in $libs" >&2; exit 1; }
         mkdir -p "$appdir/usr/share/kicad/$dir"
         cp -R "$libs/$dir/." "$appdir/usr/share/kicad/$dir/"
     done
