@@ -356,8 +356,11 @@ Three workflows build and test the Qt build:
 | Workflow | Runner | Toolchain | Artifacts |
 | --- | --- | --- | --- |
 | `qt-linux.yml` — *Qt build (Linux)* | `ubuntu-24.04` | GCC, distribution Qt | QA screenshots |
-| `qt-macos.yml` — *Qt build (macOS)* | `macos-15` (arm64) | Apple Clang, Homebrew Qt | `kicad-qt-macos-arm64-dmg`, screenshots, crash reports |
-| `qt-windows.yml` — *Qt build (Windows)* | `windows-2022` | MSVC, vcpkg Qt | `kicad-qt-windows-x64-installer`, `kicad-qt-windows-x64-portable` |
+| `qt-macos.yml` — *Qt build (macOS)* | `macos-15` (arm64) | Apple Clang, Homebrew Qt | the disk image (`kicad-qt-*.dmg`), screenshots, crash reports |
+| `qt-windows.yml` — *Qt build (Windows)* | `windows-2022` | MSVC, vcpkg Qt | the installer (`kicad-qt-*.exe`) and the portable zip (`kicad-qt-*-portable.zip`) |
+
+The packages are uploaded with `actions/upload-artifact@v7` and `archive: false`: the artifact
+is the file itself, named as the file, not a zip around it (the other artifacts stay zipped).
 
 **Triggers.** They run on push to `wx-free-core-upstream` and on manual dispatch
 (`workflow_dispatch`); other branches only get CI when dispatched. Pushes that change only

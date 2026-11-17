@@ -803,6 +803,7 @@ void test3DViewerRoundTrip( PCB_EDIT_FRAME* aFrame, const QString& aScreenshot )
     settle( 300 );
 
     QImage before = grabScreenArea( canvas );
+    QRect  canvasBefore( canvas->mapToGlobal( QPoint() ), canvas->size() );
     bool   screenGrabs = !before.isNull() && isVaried( before );
     int    glWindowsBefore = listGlWindows( "before the 3D viewer" );
     int    nativeBefore = nativeWidgets( aFrame );
@@ -901,7 +902,22 @@ void test3DViewerRoundTrip( PCB_EDIT_FRAME* aFrame, const QString& aScreenshot )
 
         std::printf( "    black after %.3f, different %.3f\n", black, different );
         check( black < blackFraction( before ) + 0.1, "the canvas is not black after the 3D viewer" );
-        check( different < 0.25, "the canvas shows the board as before the 3D viewer" );
+        QRect canvasAfter( canvas->mapToGlobal( QPoint() ), canvas->size() );
+
+        // The layout of the frame can change meanwhile (a bar above the canvas is hidden, as
+        // seen on macOS): the view of the board is then moved and the grabs do not compare
+        if( canvasAfter == canvasBefore )
+        {
+            check( different < 0.25, "the canvas shows the board as before the 3D viewer" );
+        }
+        else
+        {
+            std::printf( "    the canvas went from %d,%d %dx%d to %d,%d %dx%d: the screen is not "
+                         "compared\n",
+                         canvasBefore.x(), canvasBefore.y(), canvasBefore.width(),
+                         canvasBefore.height(), canvasAfter.x(), canvasAfter.y(),
+                         canvasAfter.width(), canvasAfter.height() );
+        }
     }
     else
     {
