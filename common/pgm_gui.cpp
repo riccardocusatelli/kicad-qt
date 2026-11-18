@@ -31,6 +31,8 @@
 #include <notifications_manager.h>
 #include <paths.h>
 #include <pgm_gui.h>
+
+#include <future>
 #include <project.h>
 #include <python_scripting.h>
 #include <settings/common_settings.h>
@@ -262,9 +264,19 @@ void PGM_GUI::PreloadDesignBlockLibraries( KIWAY* aKiway )
             aKiway->ExpressMail( FRAME_PCB_EDITOR, MAIL_RELOAD_LIB, payload, nullptr, true );
         };
 
-    thread_pool& tp = GetKiCadThreadPool();
+    // The coordinator blocks on futures that AsyncLoad() submits to the shared pool, so
+    // running it in that pool deadlocks whenever no worker is left free to start them.
     m_libraryPreloadInProgress.store( true );
-    m_libraryPreloadReturn = tp.submit_task( preload );
+    m_libraryPreloadReturn = std::async( std::launch::async, preload );
+}
+
+
+void PGM_GUI::CancelDesignBlockPreload()
+{
+    m_libraryPreloadAbort.store( true );
+
+    if( m_libraryPreloadReturn.valid() )
+        m_libraryPreloadReturn.wait();
 }
 
 

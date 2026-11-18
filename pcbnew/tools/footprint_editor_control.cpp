@@ -205,8 +205,11 @@ void FOOTPRINT_EDITOR_CONTROL::tryToSaveFootprintInLibrary( FOOTPRINT&    aFootp
             LIB_ID fpid = aFootprint.GetFPID();
             fpid.SetLibNickname( aTargetLib.GetLibNickname() );
             aFootprint.SetFPID( fpid );
-            m_frame->SaveFootprint( &aFootprint );
-            m_frame->ClearModify();
+
+            // Clear the modified flag only on a successful save, else the edits are silently
+            // lost (issue #23850).
+            if( m_frame->SaveFootprint( &aFootprint ) )
+                m_frame->ClearModify();
         }
     }
 }
@@ -527,9 +530,10 @@ int FOOTPRINT_EDITOR_CONTROL::RenameFootprint( const TOOL_EVENT& aEvent )
                 if( footprint->GetValue() == oldName )
                     footprint->SetValue( newName );
 
-                m_frame->SaveFootprintInLibrary( footprint, libraryName );
-
+                // Both names are one file on a case-insensitive filesystem.
                 adapter->DeleteFootprint( libraryName, oldName );
+
+                m_frame->SaveFootprintInLibrary( footprint, libraryName );
             }
             catch( const IO_ERROR& ioe )
             {

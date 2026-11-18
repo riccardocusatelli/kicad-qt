@@ -214,26 +214,13 @@ EDA_SHAPE& EDA_SHAPE::operator=( const EDA_SHAPE& aOther )
 }
 
 
-void EDA_SHAPE::Serialize( google::protobuf::Any &aContainer ) const
+void EDA_SHAPE::Serialize( kiapi::common::types::GraphicShape& shape ) const
 {
     using namespace kiapi::common;
-    types::GraphicShape shape;
 
-    types::StrokeAttributes* stroke = shape.mutable_attributes()->mutable_stroke();
     types::GraphicFillAttributes* fill = shape.mutable_attributes()->mutable_fill();
 
-    stroke->mutable_width()->set_value_nm( GetWidth() );
-
-    switch( GetLineStyle() )
-    {
-    case LINE_STYLE::DEFAULT:    stroke->set_style( types::SLS_DEFAULT );    break;
-    case LINE_STYLE::SOLID:      stroke->set_style( types::SLS_SOLID );      break;
-    case LINE_STYLE::DASH:       stroke->set_style( types::SLS_DASH );       break;
-    case LINE_STYLE::DOT:        stroke->set_style( types::SLS_DOT );        break;
-    case LINE_STYLE::DASHDOT:    stroke->set_style( types::SLS_DASHDOT );    break;
-    case LINE_STYLE::DASHDOTDOT: stroke->set_style( types::SLS_DASHDOTDOT ); break;
-    default: break;
-    }
+    PackStroke( *shape.mutable_attributes()->mutable_stroke(), m_stroke );
 
     switch( GetFillMode() )
     {
@@ -299,18 +286,21 @@ void EDA_SHAPE::Serialize( google::protobuf::Any &aContainer ) const
 
     // TODO m_hasSolderMask and m_solderMaskMargin
 
+}
+
+void EDA_SHAPE::Serialize( google::protobuf::Any &aContainer ) const
+{
+    kiapi::common::types::GraphicShape shape;
+    Serialize( shape );
     aContainer.PackFrom( shape );
 }
 
 
-bool EDA_SHAPE::Deserialize( const google::protobuf::Any &aContainer )
+bool EDA_SHAPE::Deserialize( const kiapi::common::types::GraphicShape& shape )
 {
     using namespace kiapi::common;
 
-    types::GraphicShape shape;
 
-    if( !aContainer.UnpackTo( &shape ) )
-        return false;
 
     // Initialize everything to a known state that doesn't get touched by every
     // codepath below, to make sure the equality operator is consistent
@@ -325,18 +315,7 @@ bool EDA_SHAPE::Deserialize( const google::protobuf::Any &aContainer )
     m_endsSwapped = false;
 
     SetFilled( shape.attributes().fill().fill_type() == types::GFT_FILLED );
-    SetWidth( shape.attributes().stroke().width().value_nm() );
-
-    switch( shape.attributes().stroke().style() )
-    {
-    case types::SLS_DEFAULT:    SetLineStyle( LINE_STYLE::DEFAULT );    break;
-    case types::SLS_SOLID:      SetLineStyle( LINE_STYLE::SOLID );      break;
-    case types::SLS_DASH:       SetLineStyle( LINE_STYLE::DASH );       break;
-    case types::SLS_DOT:        SetLineStyle( LINE_STYLE::DOT );        break;
-    case types::SLS_DASHDOT:    SetLineStyle( LINE_STYLE::DASHDOT );    break;
-    case types::SLS_DASHDOTDOT: SetLineStyle( LINE_STYLE::DASHDOTDOT ); break;
-    default: break;
-    }
+    UnpackStroke( m_stroke, shape.attributes().stroke() );
 
     if( shape.has_segment() )
     {
@@ -380,6 +359,16 @@ bool EDA_SHAPE::Deserialize( const google::protobuf::Any &aContainer )
     }
 
     return true;
+}
+
+bool EDA_SHAPE::Deserialize( const google::protobuf::Any &aContainer )
+{
+    kiapi::common::types::GraphicShape shape;
+
+    if( !aContainer.UnpackTo( &shape ) )
+        return false;
+
+    return Deserialize( shape );
 }
 
 
@@ -1267,7 +1256,7 @@ void EDA_SHAPE::SetArcAngleAndEnd( const EDA_ANGLE& aAngle, bool aCheckNegativeA
 }
 
 
-wxString EDA_SHAPE::getFriendlyName() const
+wxString EDA_SHAPE::getFriendlyName( FRAME_T aFrameType ) const
 {
     if( IsProxyItem() )
     {
@@ -1277,6 +1266,10 @@ wxString EDA_SHAPE::getFriendlyName() const
         case SHAPE_T::SEGMENT:   return _( "Thermal Spoke Template" );
         default:                 return _( "Unrecognized" );
         }
+    }
+    else if( aFrameType == FRAME_SCH_SYMBOL_EDITOR && m_shape == SHAPE_T::POLY )
+    {
+        return _( "Connected Lines" );
     }
     else
     {
@@ -1299,7 +1292,7 @@ void EDA_SHAPE::ShapeGetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<M
     wxString msg;
 
     wxString shape = _( "Shape" );
-    aList.emplace_back( shape, getFriendlyName() );
+    aList.emplace_back( shape, getFriendlyName( aContext->GetFrameType() ) );
 
     switch( m_shape )
     {
@@ -3003,18 +2996,30 @@ static struct EDA_SHAPE_DESC
                     shapeProps )
                 .SetIsHiddenFromRulesEditor();
 
-        auto angle = new PROPERTY<EDA_SHAPE, EDA_ANGLE>( _HKI( "Angle" ),
-                    NO_SETTER( EDA_SHAPE, EDA_ANGLE ), &EDA_SHAPE::GetArcAngle,
-                    PROPERTY_DISPLAY::PT_DECIDEGREE );
-        angle->SetAvailableFunc(
-                [=]( INSPECTABLE* aItem ) -> bool
-                {
-                    if( EDA_SHAPE* curr_shape = dynamic_cast<EDA_SHAPE*>( aItem ) )
-                        return curr_shape->GetShape() == SHAPE_T::ARC;
+        propMgr.AddProperty( new PROPERTY<EDA_SHAPE, EDA_ANGLE>( _HKI( "Angle" ), &EDA_SHAPE::SetArcAngle,
+                                                                 &EDA_SHAPE::GetArcAngle,
+                                                                 PROPERTY_DISPLAY::PT_DECIDEGREE ),
+                             shapeProps )
+                .SetAvailableFunc(
+                        [=]( INSPECTABLE* aItem ) -> bool
+                        {
+                            if( EDA_SHAPE* curr_shape = dynamic_cast<EDA_SHAPE*>( aItem ) )
+                                return curr_shape->GetShape() == SHAPE_T::ARC;
 
-                    return false;
-                } );
-        propMgr.AddProperty( angle, shapeProps );
+                            return false;
+                        } )
+                .SetValidator(
+                        []( const wxAny&& aValue, EDA_ITEM* aItem ) -> VALIDATOR_RESULT
+                        {
+                            double degrees = 0.0;
+
+                            if( aValue.GetAs( &degrees ) && degrees == 0.0 )
+                            {
+                                return std::make_unique<VALIDATION_ERROR_MSG>( _( "Arc angle must not be zero." ) );
+                            }
+
+                            return std::nullopt;
+                        } );
 
         auto fillAvailable =
                 [=]( INSPECTABLE* aItem ) -> bool

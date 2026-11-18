@@ -48,7 +48,17 @@ public:
     void ReloadPlugins( std::optional<wxString> aDirectoryToScan = std::nullopt,
                         std::shared_ptr<REPORTER> aReporter = nullptr );
 
-    void RecreatePluginEnvironment( const wxString& aIdentifier );
+    /**
+     * Removes the given plugin's virtual environment (if any) and schedules a new one to be
+     * created with the currently-configured interpreter.
+     * @return true if the environment was removed and recreation was scheduled
+     */
+    bool RecreatePluginEnvironment( const wxString& aIdentifier );
+
+    /// Start processing the queued setup jobs, e.g. after RecreatePluginEnvironment().
+    void ProcessJobs() { queueNextJob(); }
+
+    void HandlePythonInterpreterChanged();
 
     void InvokeAction( const wxString& aIdentifier,
                        std::shared_ptr<REPORTER> aReporter = nullptr );
@@ -85,6 +95,10 @@ private:
     /// Call the availability listeners once the current event is handled.
     void notifyAvailabilityChanged();
 
+    bool cancelPluginJobs( const wxString& aIdentifier );
+
+    void recreateCancelledPlugin( const wxString& aIdentifier );
+
     std::set<std::unique_ptr<API_PLUGIN>, CompareApiPluginIdentifiers> m_plugins;
 
     std::map<wxString, const API_PLUGIN*> m_pluginsCache;
@@ -110,6 +124,12 @@ private:
         SETUP_ENV,
         INSTALL_REQUIREMENTS
     };
+
+    /// Map of plugin identifier to the pid of its currently-running setup process, if any
+    std::map<wxString, long> m_runningPids;
+
+    /// Plugins whose setup jobs were cancelled and need their environment recreated
+    std::set<wxString> m_cancelledPlugins;
 
     struct JOB
     {

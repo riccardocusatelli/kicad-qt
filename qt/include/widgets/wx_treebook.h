@@ -52,6 +52,9 @@ public:
 
     /// The window of a page (made now if it is a lazy page).
     wxWindow* ResolvePage( size_t aPage );
+
+    /// The page, or the contents of a lazy page (nullptr when not made yet).
+    wxWindow* GetResolvedPage( size_t aPage );
 };
 
 #endif // WX_TREEBOOK_H

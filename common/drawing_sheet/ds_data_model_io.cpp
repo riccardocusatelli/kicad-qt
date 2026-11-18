@@ -24,6 +24,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#include <memory>
+
 #include <build_version.h>
 #include <string_utils.h>
 #include <locale_io.h>
@@ -90,20 +92,17 @@ class DS_DATA_MODEL_FILEIO : public DS_DATA_MODEL_IO
 public:
     DS_DATA_MODEL_FILEIO( const wxString& aFilename ) :
             DS_DATA_MODEL_IO(),
-            m_fileout( nullptr )
+            m_fileout( std::make_unique<PRETTIFIED_FILE_OUTPUTFORMATTER>( aFilename ) )
     {
-        // Throws IO_ERROR if the file cannot be created: the caller reports it.
-        m_fileout = new PRETTIFIED_FILE_OUTPUTFORMATTER( aFilename );
-        m_out = m_fileout;
+        m_out = m_fileout.get();
     }
 
-    ~DS_DATA_MODEL_FILEIO()
-    {
-        delete m_fileout;
-    }
+    ~DS_DATA_MODEL_FILEIO() = default;
+
+    void Finish() { m_fileout->Finish(); }
 
 private:
-    PRETTIFIED_FILE_OUTPUTFORMATTER* m_fileout;
+    std::unique_ptr<PRETTIFIED_FILE_OUTPUTFORMATTER> m_fileout;
 };
 
 
@@ -137,6 +136,7 @@ void DS_DATA_MODEL::Save( const wxString& aFullFileName )
 {
     DS_DATA_MODEL_FILEIO writer( aFullFileName );
     writer.Format( this );
+    writer.Finish();
 }
 
 

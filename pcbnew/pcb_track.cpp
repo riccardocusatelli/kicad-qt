@@ -421,7 +421,14 @@ void PCB_TRACK::Serialize( google::protobuf::Any &aContainer ) const
     if( const BOARD* board = GetBoard() )
         track.mutable_parent()->set_value( board->m_Uuid.AsStdString() );
 
-    // TODO m_hasSolderMask and m_solderMaskMargin
+    if( HasSolderMask() )
+    {
+        kiapi::board::types::SolderMaskOverrides* sm = track.mutable_solder_mask();
+        sm->set_expose_copper( true );
+
+        if( GetLocalSolderMaskMargin().has_value() )
+            sm->mutable_solder_mask_margin()->set_value_nm( GetLocalSolderMaskMargin().value() );
+    }
 
     aContainer.PackFrom( track );
 }
@@ -441,7 +448,21 @@ bool PCB_TRACK::Deserialize( const google::protobuf::Any &aContainer )
     SetLayer( FromProtoEnum<PCB_LAYER_ID, kiapi::board::types::BoardLayer>( track.layer() ) );
     UnpackNet( track.net() );
     SetLocked( track.locked() == kiapi::common::types::LockedState::LS_LOCKED );
-    // TODO m_hasSolderMask and m_solderMaskMargin
+
+    if( track.has_solder_mask() )
+    {
+        SetHasSolderMask( track.solder_mask().expose_copper() );
+
+        if( track.solder_mask().has_solder_mask_margin() )
+            SetLocalSolderMaskMargin( track.solder_mask().solder_mask_margin().value_nm() );
+        else
+            SetLocalSolderMaskMargin( {} );
+    }
+    else
+    {
+        SetHasSolderMask( false );
+        SetLocalSolderMaskMargin( {} );
+    }
 
     return true;
 }
@@ -467,7 +488,14 @@ void PCB_ARC::Serialize( google::protobuf::Any &aContainer ) const
     if( const BOARD* board = GetBoard() )
         arc.mutable_parent()->set_value( board->m_Uuid.AsStdString() );
 
-    // TODO m_hasSolderMask and m_solderMaskMargin
+    if( HasSolderMask() )
+    {
+        kiapi::board::types::SolderMaskOverrides* sm = arc.mutable_solder_mask();
+        sm->set_expose_copper( true );
+
+        if( GetLocalSolderMaskMargin().has_value() )
+            sm->mutable_solder_mask_margin()->set_value_nm( GetLocalSolderMaskMargin().value() );
+    }
 
     aContainer.PackFrom( arc );
 }
@@ -488,7 +516,21 @@ bool PCB_ARC::Deserialize( const google::protobuf::Any &aContainer )
     SetLayer( FromProtoEnum<PCB_LAYER_ID, kiapi::board::types::BoardLayer>( arc.layer() ) );
     UnpackNet( arc.net() );
     SetLocked( arc.locked() == kiapi::common::types::LockedState::LS_LOCKED );
-    // TODO m_hasSolderMask and m_solderMaskMargin
+
+    if( arc.has_solder_mask() )
+    {
+        SetHasSolderMask( arc.solder_mask().expose_copper() );
+
+        if( arc.solder_mask().has_solder_mask_margin() )
+            SetLocalSolderMaskMargin( arc.solder_mask().solder_mask_margin().value_nm() );
+        else
+            SetLocalSolderMaskMargin( {} );
+    }
+    else
+    {
+        SetHasSolderMask( false );
+        SetLocalSolderMaskMargin( {} );
+    }
 
     return true;
 }
@@ -504,9 +546,7 @@ void PCB_VIA::Serialize( google::protobuf::Any &aContainer ) const
 
     PADSTACK padstack = Padstack();
 
-    google::protobuf::Any padStackWrapper;
-    padstack.Serialize( padStackWrapper );
-    padStackWrapper.UnpackTo( via.mutable_pad_stack() );
+    padstack.Serialize( *via.mutable_pad_stack() );
 
     // PADSTACK::m_layerSet is not used by vias
     via.mutable_pad_stack()->clear_layers();
@@ -519,6 +559,15 @@ void PCB_VIA::Serialize( google::protobuf::Any &aContainer ) const
 
     if( const BOARD* board = GetBoard() )
         via.mutable_parent()->set_value( board->m_Uuid.AsStdString() );
+
+    kiapi::board::PackTeardropSettings( *via.mutable_teardrop(), GetTeardropParams() );
+
+    via.set_is_free( GetIsFree() );
+
+    {
+        std::unique_lock lock( m_zoneLayerOverridesMutex );
+        kiapi::board::PackZoneLayerOverrides( via.mutable_zone_layer_overrides(), m_zoneLayerOverrides );
+    }
 
     aContainer.PackFrom( via );
 }
@@ -547,6 +596,20 @@ bool PCB_VIA::Deserialize( const google::protobuf::Any &aContainer )
     SetViaType( FromProtoEnum<VIATYPE>( via.type() ) );
     UnpackNet( via.net() );
     SetLocked( via.locked() == kiapi::common::types::LockedState::LS_LOCKED );
+
+    if( via.has_teardrop() )
+        kiapi::board::UnpackTeardropSettings( GetTeardropParams(), via.teardrop() );
+    else
+        SetTeardropsEnabled( false );
+
+    SetIsFree( via.is_free() );
+
+    ClearZoneLayerOverrides();
+
+    {
+        std::unique_lock lock( m_zoneLayerOverridesMutex );
+        kiapi::board::UnpackZoneLayerOverrides( m_zoneLayerOverrides, via.zone_layer_overrides() );
+    }
 
     return true;
 }
@@ -2926,6 +2989,28 @@ static struct TRACK_VIA_DESC
 
         // clang-format on: the suggestion is less readable
 
+        // Pad and via registration can run in either order across translation units
+        ENUM_MAP<PAD_DRILL_POST_MACHINING_MODE>& pmMap = ENUM_MAP<PAD_DRILL_POST_MACHINING_MODE>::Instance();
+
+        if( pmMap.Choices().GetCount() == 0 )
+        {
+            pmMap.Undefined( PAD_DRILL_POST_MACHINING_MODE::UNKNOWN )
+                .Map( PAD_DRILL_POST_MACHINING_MODE::NOT_POST_MACHINED, _HKI( "Not post-machined" ) )
+                .Map( PAD_DRILL_POST_MACHINING_MODE::COUNTERBORE,       _HKI( "Counterbore" ) )
+                .Map( PAD_DRILL_POST_MACHINING_MODE::COUNTERSINK,       _HKI( "Countersink" ) );
+        }
+
+        ENUM_MAP<BACKDRILL_MODE>& bdMap = ENUM_MAP<BACKDRILL_MODE>::Instance();
+
+        if( bdMap.Choices().GetCount() == 0 )
+        {
+            bdMap.Undefined( BACKDRILL_MODE::NO_BACKDRILL )
+                .Map( BACKDRILL_MODE::NO_BACKDRILL,     _HKI( "No backdrill" ) )
+                .Map( BACKDRILL_MODE::BACKDRILL_BOTTOM, _HKI( "Backdrill bottom" ) )
+                .Map( BACKDRILL_MODE::BACKDRILL_TOP,    _HKI( "Backdrill top" ) )
+                .Map( BACKDRILL_MODE::BACKDRILL_BOTH,   _HKI( "Backdrill both" ) );
+        }
+
         ENUM_MAP<PCB_LAYER_ID>& layerEnum = ENUM_MAP<PCB_LAYER_ID>::Instance();
 
         if( layerEnum.Choices().GetCount() == 0 )
@@ -3194,6 +3279,9 @@ static struct TRACK_VIA_DESC
         const wxString groupPostMachining = _HKI( "Post-machining" );
 
         propMgr.Mask( TYPE_HASH( PCB_VIA ), TYPE_HASH( BOARD_CONNECTED_ITEM ), _HKI( "Layer" ) );
+
+        propMgr.AddProperty( new PROPERTY<PCB_VIA, bool>( _HKI( "Automatically Update Net" ),
+                    &PCB_VIA::SetIsNotFree, &PCB_VIA::GetIsNotFree ) );
 
         // clang-format off: the suggestion is less readable
         propMgr.AddProperty( new PROPERTY<PCB_VIA, int>( _HKI( "Diameter" ),

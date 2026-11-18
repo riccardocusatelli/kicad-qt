@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KiCad\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-28 10:54-0700\n"
+"POT-Creation-Date: 2026-10-28 12:00-0700\n"
 "PO-Revision-Date: 2018-07-15 17:07+0200\n"
 "Last-Translator: Simon Richter <Simon.Richter@hogyros.de>\n"
 "Language-Team: Simon Richter <Simon.Richter@hogyros.de>\n"
@@ -1405,6 +1405,10 @@ msgid "Board file '%s' could not be saved as design block at '%s'."
 msgstr "Board file '%s' could not be saved as design block at '%s'."
 
 #, c-format
+msgid "Cannot save design block metadata '%s': %s"
+msgstr "Cannot save design block metadata '%s': %s"
+
+#, c-format
 msgid "Design block metadata file '%s' could not be saved."
 msgstr "Design block metadata file '%s' could not be saved."
 
@@ -2800,6 +2804,9 @@ msgstr "Design Block Library Tables"
 #, c-format
 msgid " (%s)|%s"
 msgstr " (%s)|%s"
+
+msgid "Unable to load library table."
+msgstr "Unable to load library table."
 
 msgid "Global Libraries"
 msgstr "Global Libraries"
@@ -4253,6 +4260,9 @@ msgstr "Thermal Spoke Template"
 msgid "Unrecognized"
 msgstr "Unrecognized"
 
+msgid "Connected Lines"
+msgstr "Connected Lines"
+
 msgid "Curve"
 msgstr "Curve"
 
@@ -4321,6 +4331,9 @@ msgstr "Line Width"
 
 msgid "Line Color"
 msgstr "Line Color"
+
+msgid "Arc angle must not be zero."
+msgstr "Arc angle must not be zero."
 
 msgid "Fill"
 msgstr "Fill"
@@ -4864,24 +4877,35 @@ msgstr "Merge remote-tracking branch into %s"
 msgid "Could not create merge commit: %s"
 msgstr "Could not create merge commit: %s"
 
-msgid ""
-"Cannot pull with rebase: you have unstaged changes. Please commit or stash "
-"them before pulling."
-msgstr ""
-"Cannot pull with rebase: you have unstaged changes. Please commit or stash "
-"them before pulling."
-
 #, c-format
 msgid "Rebase failed to start: %s"
 msgstr "Rebase failed to start: %s"
+
+msgid ""
+"The rebase ran into conflicts.  This is best resolved from a git command "
+"line."
+msgstr ""
+"The rebase ran into conflicts.  This is best resolved from a git command "
+"line."
 
 #, c-format
 msgid "Rebase commit failed: %s"
 msgstr "Rebase commit failed: %s"
 
 #, c-format
+msgid "Rebase failed: %s"
+msgstr "Rebase failed: %s"
+
+#, c-format
 msgid "Rebase finish failed: %s"
 msgstr "Rebase finish failed: %s"
+
+msgid ""
+"Cannot pull with rebase: you have unstaged changes. Please commit or stash "
+"them before pulling."
+msgstr ""
+"Cannot pull with rebase: you have unstaged changes. Please commit or stash "
+"them before pulling."
 
 msgid "Another git operation is in progress."
 msgstr "Another git operation is in progress."
@@ -4900,13 +4924,6 @@ msgid ""
 "Cannot rebase: you have unstaged changes.  Please commit or stash them first."
 msgstr ""
 "Cannot rebase: you have unstaged changes.  Please commit or stash them first."
-
-msgid ""
-"The rebase ran into conflicts.  This is best resolved from a git command "
-"line."
-msgstr ""
-"The rebase ran into conflicts.  This is best resolved from a git command "
-"line."
 
 msgid "Cut"
 msgstr "Cut"
@@ -4964,6 +4981,9 @@ msgstr "Cannot acquire index lock: repository not open"
 #, c-format
 msgid "Failed to acquire git index lock (another operation in progress?): %s"
 msgstr "Failed to acquire git index lock (another operation in progress?): %s"
+
+msgid "Cannot re-open history repository without the file lock"
+msgstr "Cannot re-open history repository without the file lock"
 
 msgid "Accept Autocomplete"
 msgstr "Accept Autocomplete"
@@ -5028,6 +5048,18 @@ msgstr "API responded with error code: %s"
 
 msgid "Memory was exhausted trying to load the DXF, it may be too large."
 msgstr "Memory was exhausted trying to load the DXF, it may be too large."
+
+msgid "Feet"
+msgstr "Feet"
+
+msgid "Millimeters"
+msgstr "Millimeters"
+
+msgid "Centimeter"
+msgstr "Centimeter"
+
+msgid "Mils"
+msgstr "Mils"
 
 msgid "Invalid spline definition encountered"
 msgstr "Invalid spline definition encountered"
@@ -6043,6 +6075,14 @@ msgstr "Invalid archive file format."
 msgid "Extracting file '%s'."
 msgstr "Extracting file '%s'."
 
+#, c-format
+msgid ""
+"Refusing to extract file '%s': the archive entry points outside of the "
+"destination directory."
+msgstr ""
+"Refusing to extract file '%s': the archive entry points outside of the "
+"destination directory."
+
 msgid "Error extracting file!"
 msgstr "Error extracting file!"
 
@@ -6201,6 +6241,18 @@ msgstr "Maximum line length exceeded"
 
 msgid "Line length exceeded"
 msgstr "Line length exceeded"
+
+#, c-format
+msgid "Cannot flush '%s' to disk: %s"
+msgstr "Cannot flush '%s' to disk: %s"
+
+#, c-format
+msgid "Cannot close '%s': %s"
+msgstr "Cannot close '%s': %s"
+
+#, c-format
+msgid "Write failed to '%s': %s"
+msgstr "Write failed to '%s': %s"
 
 msgid "Default Editing"
 msgstr "Default Editing"
@@ -6906,12 +6958,6 @@ msgstr "Grid Origin..."
 
 msgid "Set the grid origin point"
 msgstr "Set the grid origin point"
-
-msgid "Mils"
-msgstr "Mils"
-
-msgid "Millimeters"
-msgstr "Millimeters"
 
 msgid "Select Columns..."
 msgstr "Select Columns..."
@@ -10002,6 +10048,13 @@ msgstr "Plot All Pages"
 msgid "Plot Current Page"
 msgstr "Plot Current Page"
 
+msgid ""
+"Target file for the plot. Can be absolute or relative to the schematic main "
+"file location."
+msgstr ""
+"Target file for the plot. Can be absolute or relative to the schematic main "
+"file location."
+
 msgid "Select Output Directory"
 msgstr "Select Output Directory"
 
@@ -10487,6 +10540,9 @@ msgstr "Private to Symbol Editor"
 #, c-format
 msgid "%s Properties"
 msgstr "%s Properties"
+
+msgid "Sheet pin name can not be empty."
+msgstr "Sheet pin name can not be empty."
 
 msgid "Edit Sheet Pin Properties"
 msgstr "Edit Sheet Pin Properties"
@@ -12136,9 +12192,6 @@ msgstr "Keep pins attached when dragging edges"
 msgid "Symbol Library Tables"
 msgstr "Symbol Library Tables"
 
-msgid "Unable to load library table."
-msgstr "Unable to load library table."
-
 msgid "folder with .kicad_sym files"
 msgstr "folder with .kicad_sym files"
 
@@ -12227,6 +12280,10 @@ msgid ""
 "Cannot copy file '%s' as it will be overwritten by the new root sheet file."
 msgstr ""
 "Cannot copy file '%s' as it will be overwritten by the new root sheet file."
+
+#, c-format
+msgid "Failed to save drawing sheet '%s': %s"
+msgstr "Failed to save drawing sheet '%s': %s"
 
 msgid "Root"
 msgstr "Root"
@@ -12592,6 +12649,9 @@ msgstr "Global label only appears once in the schematic"
 msgid "Local and global labels have same name"
 msgstr "Local and global labels have same name"
 
+msgid "Local and global power symbols have same name"
+msgstr "Local and global power symbols have same name"
+
 msgid "Different footprint assigned in another unit of the symbol"
 msgstr "Different footprint assigned in another unit of the symbol"
 
@@ -12895,12 +12955,6 @@ msgstr "Derived from"
 #, c-format
 msgid "Error loading symbol %s from library '%s'."
 msgstr "Error loading symbol %s from library '%s'."
-
-msgid "Centimeter"
-msgstr "Centimeter"
-
-msgid "Feet"
-msgstr "Feet"
 
 msgid "Import Graphics"
 msgstr "Import Graphics"
@@ -13413,8 +13467,8 @@ msgstr "Downloaded symbol payload did not include expected symbol '%s'."
 msgid "Unable to load schematic settings."
 msgstr "Unable to load schematic settings."
 
-msgid "Unable to save the downloaded symbol."
-msgstr "Unable to save the downloaded symbol."
+msgid "Unable to access the symbol library manager."
+msgstr "Unable to access the symbol library manager."
 
 msgid "Unable to access the KiCad symbol plugin."
 msgstr "Unable to access the KiCad symbol plugin."
@@ -13459,6 +13513,9 @@ msgstr "Remote download"
 
 msgid "Failed to save the library table."
 msgstr "Failed to save the library table."
+
+msgid "Unable to save the downloaded symbol."
+msgstr "Unable to save the downloaded symbol."
 
 msgid "No schematic editor is available for placement."
 msgstr "No schematic editor is available for placement."
@@ -13567,6 +13624,13 @@ msgstr "Please select some items to save as a design block."
 
 msgid "Set Group Design Block Link"
 msgstr "Set Group Design Block Link"
+
+msgid "The selection contains more than one group linked to this design block."
+msgstr ""
+"The selection contains more than one group linked to this design block."
+
+msgid "Update Design Block Group"
+msgstr "Update Design Block Group"
 
 msgid "KiCad Schematic Editor"
 msgstr "KiCad Schematic Editor"
@@ -14144,6 +14208,14 @@ msgid "gEDA / Lepton EDA schematic files"
 msgstr "gEDA / Lepton EDA schematic files"
 
 #, c-format
+msgid "Error retrieving data from HTTP library %s: %s"
+msgstr "Error retrieving data from HTTP library %s: %s"
+
+#, c-format
+msgid "Error retrieving part %s from HTTP library: %s"
+msgstr "Error retrieving part %s from HTTP library: %s"
+
+#, c-format
 msgid "HTTP library settings file %s missing or invalid."
 msgstr "HTTP library settings file %s missing or invalid."
 
@@ -14170,10 +14242,6 @@ msgstr "HTTP library settings file %s has invalid library type."
 #, c-format
 msgid "Could not connect to %s. Errors: %s"
 msgstr "Could not connect to %s. Errors: %s"
-
-#, c-format
-msgid "Error retrieving data from HTTP library %s: %s"
-msgstr "Error retrieving data from HTTP library %s: %s"
 
 msgid "KiCad HTTP library files"
 msgstr "KiCad HTTP library files"
@@ -14401,9 +14469,6 @@ msgstr "Invalid title block comment number"
 msgid "Invalid sheet pin name"
 msgstr "Invalid sheet pin name"
 
-msgid "Empty sheet pin name"
-msgstr "Empty sheet pin name"
-
 msgid "Schematic polyline has too few points"
 msgstr "Schematic polyline has too few points"
 
@@ -14431,6 +14496,10 @@ msgstr "Group library link %s contains invalid character '%c'"
 
 msgid "Invalid library ID"
 msgstr "Invalid library ID"
+
+#, c-format
+msgid "Missing '%s' schematic file"
+msgstr "Missing '%s' schematic file"
 
 #, c-format
 msgid "File at '%s' was ignored. Using previously found file at '%s' instead."
@@ -14478,8 +14547,12 @@ msgid "Expecting CELL or BLOCK"
 msgstr "Expecting CELL or BLOCK"
 
 #, c-format
-msgid "Symbol '%s.asy' not found"
-msgstr "Symbol '%s.asy' not found"
+msgid "Missing symbol file '%s.asy', referenced from '%s' at line %d"
+msgstr "Missing symbol file '%s.asy', referenced from '%s' at line %d"
+
+#, c-format
+msgid "Unable to read '%s'"
+msgstr "Unable to read '%s'"
 
 #, c-format
 msgid ""
@@ -19412,9 +19485,6 @@ msgstr "Unsupported symbol payload type."
 msgid "No schematic editor is available to store symbols."
 msgstr "No schematic editor is available to store symbols."
 
-msgid "Unable to access the symbol library manager."
-msgstr "Unable to access the symbol library manager."
-
 #, c-format
 msgid "Failed to parse component list: %s"
 msgstr "Failed to parse component list: %s"
@@ -19968,12 +20038,20 @@ msgid "Zip file '%s' cannot be opened."
 msgstr "Zip file '%s' cannot be opened."
 
 #, c-format
+msgid "Unable to create a temporary file to unzip '%s'."
+msgstr "Unable to create a temporary file to unzip '%s'."
+
+#, c-format
 msgid "Skipped file '%s' (gerber job file)."
 msgstr "Skipped file '%s' (gerber job file)."
 
 #, c-format
 msgid "<b>Unable to create temporary file '%s'.</b>"
 msgstr "<b>Unable to create temporary file '%s'.</b>"
+
+#, c-format
+msgid "<b>Unable to write temporary file '%s'.</b>"
+msgstr "<b>Unable to write temporary file '%s'.</b>"
 
 #, c-format
 msgid "Skipped file '%s' (unknown type)."
@@ -20472,6 +20550,9 @@ msgstr "Add new library to global library table"
 
 msgid "Add new library to project library table"
 msgstr "Add new library to project library table"
+
+msgid "Use relative path"
+msgstr "Use relative path"
 
 msgid "Show import issues"
 msgstr "Show import issues"
@@ -21442,6 +21523,12 @@ msgstr "Template duplicated successfully to '%s'."
 msgid "Project Template Selector"
 msgstr "Project Template Selector"
 
+msgid "Select Templates Directory"
+msgstr "Select Templates Directory"
+
+msgid "(no other directory)"
+msgstr "(no other directory)"
+
 msgid "Recent project templates"
 msgstr "Recent project templates"
 
@@ -21453,6 +21540,15 @@ msgstr "User Templates"
 
 msgid "System Templates"
 msgstr "System Templates"
+
+msgid "Other Templates"
+msgstr "Other Templates"
+
+msgid "Browse for templates in another directory"
+msgstr "Browse for templates in another directory"
+
+msgid "Stop showing templates from the browsed directory"
+msgstr "Stop showing templates from the browsed directory"
 
 msgid "Go Back"
 msgstr "Go Back"
@@ -21549,6 +21645,10 @@ msgstr "Delete selected jobs"
 
 msgid "Select all jobs"
 msgstr "Select all jobs"
+
+#, c-format
+msgid "This version of KiCad does not support the '%s' job type."
+msgstr "This version of KiCad does not support the '%s' job type."
 
 msgid "Job Types"
 msgstr "Job Types"
@@ -22318,6 +22418,14 @@ msgstr "Removing previous version of package '%s'."
 #, c-format
 msgid "Installing package '%s'."
 msgstr "Installing package '%s'."
+
+#, c-format
+msgid ""
+"Package archive entry '%s' would be extracted outside of the package "
+"directory."
+msgstr ""
+"Package archive entry '%s' would be extracted outside of the package "
+"directory."
 
 msgid "Aborting package installation."
 msgstr "Aborting package installation."
@@ -26155,6 +26263,12 @@ msgstr "Board Data"
 msgid "Project is missing or read-only. Some settings will not be editable."
 msgstr "Project is missing or read-only. Some settings will not be editable."
 
+msgid "Discard changes to custom rules?"
+msgstr "Discard changes to custom rules?"
+
+msgid "Discard Changes"
+msgstr "Discard Changes"
+
 #, c-format
 msgid ""
 "Error importing settings from board:\n"
@@ -26769,6 +26883,9 @@ msgstr "Thickness:"
 
 msgid "Text thickness"
 msgstr "Text thickness"
+
+msgid "Adjust the text thickness"
+msgstr "Adjust the text thickness"
 
 msgid "Text orientation"
 msgstr "Text orientation"
@@ -28540,9 +28657,6 @@ msgstr "Visible  (fields only)"
 msgid "Keep upright"
 msgstr "Keep upright"
 
-msgid "Adjust the text thickness"
-msgstr "Adjust the text thickness"
-
 msgid "Center on footprint"
 msgstr "Center on footprint"
 
@@ -29480,6 +29594,13 @@ msgstr "Move current selection down"
 
 msgid "Generate Drill Files..."
 msgstr "Generate Drill Files…"
+
+msgid ""
+"Target file for the plot. Can be absolute or relative to the board file "
+"location."
+msgstr ""
+"Target file for the plot. Can be absolute or relative to the board file "
+"location."
 
 msgid "Select Fab Layers"
 msgstr "Select Fab Layers"
@@ -31452,9 +31573,6 @@ msgstr ""
 "Final clearance value is the sum of this value and the absolute clearance "
 "value."
 
-msgid "Cancel Changes?"
-msgstr "Cancel Changes?"
-
 msgid "Show Matching Items"
 msgstr "Show Matching Items"
 
@@ -31502,6 +31620,10 @@ msgstr "Rule '%s' references undefined layer(s): %s."
 
 msgid "Design rules cannot be added without a project"
 msgstr "Design rules cannot be added without a project"
+
+#, c-format
+msgid "Cannot save design rules to '%s': %s"
+msgstr "Cannot save design rules to '%s': %s"
 
 msgid "DRC Rules"
 msgstr "DRC Rules"
@@ -32997,6 +33119,9 @@ msgstr "Could not compute track propagation delay"
 msgid "Tuning profile must have a name"
 msgstr "Tuning profile must have a name"
 
+msgid "Tuning profile name already in use"
+msgstr "Tuning profile name already in use"
+
 msgid "Duplicated signal layer configuration in tuning profile"
 msgstr "Duplicated signal layer configuration in tuning profile"
 
@@ -33863,6 +33988,10 @@ msgid "(%s min annular width %s; actual %s)"
 msgstr "(%s min annular width %s; actual %s)"
 
 #, c-format
+msgid "(%s min annular width %s; actual %s on %s)"
+msgstr "(%s min annular width %s; actual %s on %s)"
+
+#, c-format
 msgid "(%s max annular width %s; actual %s)"
 msgstr "(%s max annular width %s; actual %s)"
 
@@ -34492,8 +34621,16 @@ msgid "(%s min diameter %s; actual %s)"
 msgstr "(%s min diameter %s; actual %s)"
 
 #, c-format
+msgid "(%s min diameter %s; actual %s on %s)"
+msgstr "(%s min diameter %s; actual %s on %s)"
+
+#, c-format
 msgid "(%s max diameter %s; actual %s)"
 msgstr "(%s max diameter %s; actual %s)"
+
+#, c-format
+msgid "(%s max diameter %s; actual %s on %s)"
+msgstr "(%s max diameter %s; actual %s on %s)"
 
 #, c-format
 msgid "(layer %s; %d spokes connected to isolated island)"
@@ -34557,8 +34694,8 @@ msgstr "Optimum Length must be greater than 0"
 msgid "Tolerance must be greater than or equal to 0"
 msgstr "Tolerance must be greater than or equal to 0"
 
-msgid "Tolerance is too large: resulting minimum length is not positive"
-msgstr "Tolerance is too large: resulting minimum length is not positive"
+msgid "Tolerance is too large: resulting minimum length is negative"
+msgstr "Tolerance is too large: resulting minimum length is negative"
 
 msgid "Within diff pairs"
 msgstr "Within diff pairs"
@@ -34568,6 +34705,9 @@ msgstr "At least one constraint must be defined"
 
 msgid "Maximum Skew must be greater than or equal to 0"
 msgstr "Maximum Skew must be greater than or equal to 0"
+
+msgid "Time domain (ps)"
+msgstr "Time domain (ps)"
 
 msgid "Allow 0°"
 msgstr "Allow 0°"
@@ -34680,6 +34820,12 @@ msgstr "Width Tolerance must be greater than or equal to 0"
 
 msgid "Width Tolerance must be less than Optimum Width"
 msgstr "Width Tolerance must be less than Optimum Width"
+
+msgid "Optimum Width must be greater than or equal to 0"
+msgstr "Optimum Width must be greater than or equal to 0"
+
+msgid "Optimum Gap must be greater than or equal to 0"
+msgstr "Optimum Gap must be greater than or equal to 0"
 
 msgid "Gap Tolerance must be greater than or equal to 0"
 msgstr "Gap Tolerance must be greater than or equal to 0"
@@ -35009,6 +35155,14 @@ msgstr "Failed to create countersink cone shape"
 #, c-format
 msgid "OCC exception creating countersink: %s"
 msgstr "OCC exception creating countersink: %s"
+
+#, c-format
+msgid ""
+"Board stackup does not define a board thickness; exporting a %.3f mm board "
+"body."
+msgstr ""
+"Board stackup does not define a board thickness; exporting a %.3f mm board "
+"body."
 
 #, c-format
 msgid "Could not add shape (%d points) to copper layer %s."
@@ -35521,6 +35675,10 @@ msgstr "Export footprints to library:"
 
 msgid "Update board footprints to link to exported footprints"
 msgstr "Update board footprints to link to exported footprints"
+
+#, c-format
+msgid "Footprint '%s' could not be saved to library '%s'."
+msgstr "Footprint '%s' could not be saved to library '%s'."
 
 msgid "No board currently open."
 msgstr "No board currently open."
@@ -36837,6 +36995,15 @@ msgstr "Suppress Trailing Zeroes"
 msgid "Arrow Direction"
 msgstr "Arrow Direction"
 
+msgid "Arrow Length"
+msgstr "Arrow Length"
+
+msgid "Extension Line Offset"
+msgstr "Extension Line Offset"
+
+msgid "Text Position"
+msgstr "Text Position"
+
 msgid "Keep Aligned with Dimension"
 msgstr "Keep Aligned with Dimension"
 
@@ -37046,6 +37213,14 @@ msgid "Loading board data..."
 msgstr "Loading board data..."
 
 #, c-format
+msgid ""
+"Board outline has %d vertices outside the coordinate range; they were "
+"dropped."
+msgstr ""
+"Board outline has %d vertices outside the coordinate range; they were "
+"dropped."
+
+#, c-format
 msgid "Layer '%s' could not be mapped and will be skipped."
 msgstr "Layer '%s' could not be mapped and will be skipped."
 
@@ -37103,8 +37278,20 @@ msgstr "File not found: '%s'. 3D-model not imported."
 msgid "Loading nets..."
 msgstr "Loading nets..."
 
+#, c-format
+msgid "Altium net %zu has no name; imported as '%s'."
+msgstr "Altium net %zu has no name; imported as '%s'."
+
 msgid "Loading polygons..."
 msgstr "Loading polygons..."
+
+#, c-format
+msgid ""
+"Polygon on layer '%s' has %d vertices outside the coordinate range; they "
+"were dropped."
+msgstr ""
+"Polygon on layer '%s' has %d vertices outside the coordinate range; they "
+"were dropped."
 
 #, c-format
 msgid "Polygon outline count is %d, expected 1."
@@ -37112,6 +37299,14 @@ msgstr "Polygon outline count is %d, expected 1."
 
 msgid "Loading rules..."
 msgstr "Loading rules..."
+
+#, c-format
+msgid ""
+"Altium rule '%s' applies to netclass '%s', which this board does not define. "
+"Its constraint is not imported."
+msgstr ""
+"Altium rule '%s' applies to netclass '%s', which this board does not define. "
+"Its constraint is not imported."
 
 msgid "Loading board regions..."
 msgstr "Loading board regions..."
@@ -37303,6 +37498,9 @@ msgstr "Unknown textbox justification %d, aText %s"
 
 msgid "Loading rectangles..."
 msgstr "Loading rectangles..."
+
+msgid "Ignored a keep-out area with no restrictions."
+msgstr "Ignored a keep-out area with no restrictions."
 
 msgid "Altium Circuit Maker PCB files"
 msgstr "Altium Circuit Maker PCB files"
@@ -39238,6 +39436,9 @@ msgstr "Via Properties"
 msgid "Post-machining"
 msgstr "Post-machining"
 
+msgid "Automatically Update Net"
+msgstr "Automatically Update Net"
+
 msgid "Layer Top"
 msgstr "Layer Top"
 
@@ -39555,6 +39756,14 @@ msgstr "Exception on python footprint wizard code"
 #, c-format
 msgid "Error loading drawing sheet '%s': %s"
 msgstr "Error loading drawing sheet '%s': %s"
+
+#, c-format
+msgid "Cannot save board '%s': %s"
+msgstr "Cannot save board '%s': %s"
+
+#, c-format
+msgid "Unexpected error saving board '%s': %s"
+msgstr "Unexpected error saving board '%s': %s"
 
 msgid ""
 "Unable to find complementary differential pair nets. Make sure the names of "
@@ -40014,6 +40223,10 @@ msgstr "Export Board Netlist"
 
 msgid "KiCad board netlist files"
 msgstr "KiCad board netlist files"
+
+#, c-format
+msgid "Failed to export netlist to '%s': %s"
+msgstr "Failed to export netlist to '%s': %s"
 
 #, c-format
 msgid "%d duplicate IDs replaced.\n"
@@ -42529,6 +42742,10 @@ msgstr "Design block %s does not have a board file."
 msgid "Error loading board."
 msgstr "Error loading board."
 
+#, c-format
+msgid "Board changed from %d to %d copper layers, stackup updated."
+msgstr "Board changed from %d to %d copper layers, stackup updated."
+
 msgid "Append Board"
 msgstr "Append Board"
 
@@ -43823,6 +44040,19 @@ msgstr "Process could not be created"
 #, c-format
 msgid "Could not create user scripting path %s."
 msgstr "Could not create user scripting path %s."
+
+#, c-format
+#~ msgid "Symbol '%s.asy' not found"
+#~ msgstr "Symbol '%s.asy' not found"
+
+#~ msgid "Cancel Changes?"
+#~ msgstr "Cancel Changes?"
+
+#~ msgid "Empty sheet pin name"
+#~ msgstr "Empty sheet pin name"
+
+#~ msgid "Tolerance is too large: resulting minimum length is not positive"
+#~ msgstr "Tolerance is too large: resulting minimum length is not positive"
 
 #~ msgid "Library not found in library table"
 #~ msgstr "Library not found in library table"
@@ -46452,9 +46682,6 @@ msgstr "Could not create user scripting path %s."
 
 #~ msgid "Component list was empty."
 #~ msgstr "Component list was empty."
-
-#~ msgid "Select Templates Directory"
-#~ msgstr "Select Templates Directory"
 
 #~ msgid "Folder:"
 #~ msgstr "Folder:"
@@ -49228,9 +49455,6 @@ msgstr "Could not create user scripting path %s."
 
 #~ msgid "No delay profiles to override"
 #~ msgstr "No delay profiles to override"
-
-#~ msgid "Tuning profile name already in use"
-#~ msgstr "Tuning profile name already in use"
 
 #~ msgid "Via override configuration is duplicated"
 #~ msgstr "Via override configuration is duplicated"
@@ -58527,9 +58751,6 @@ msgstr "Could not create user scripting path %s."
 
 #~ msgid "Open Anyway"
 #~ msgstr "Open Anyway"
-
-#~ msgid "Discard Changes"
-#~ msgstr "Discard Changes"
 
 #~ msgid "Apply to all"
 #~ msgstr "Apply to all"

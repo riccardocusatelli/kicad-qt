@@ -625,7 +625,7 @@ void DRC_ENGINE::loadImplicitRules()
                 rule->m_ImplicitItemId = zone->m_Uuid;
                 rule->m_ImplicitItem = zone;
 
-                rule->m_Condition = new DRC_RULE_CONDITION( wxString::Format( wxT( "A.intersectsArea('%s')" ),
+                rule->m_Condition = new DRC_RULE_CONDITION( wxString::Format( wxT( "A.intersectsKeepout('%s')" ),
                                                                               zone->m_Uuid.AsString() ) );
 
                 rule->m_LayerCondition = zone->GetLayerSet();
@@ -2401,25 +2401,27 @@ bool DRC_ENGINE::QueryWorstConstraint( DRC_CONSTRAINT_T aConstraintId, DRC_CONST
 }
 
 
-bool DRC_ENGINE::HasUserDefinedPhysicalConstraint()
+bool DRC_ENGINE::HasConditionalConstraint( DRC_CONSTRAINT_T aConstraintId )
 {
-    for( DRC_CONSTRAINT_T type : { PHYSICAL_CLEARANCE_CONSTRAINT, PHYSICAL_HOLE_CLEARANCE_CONSTRAINT } )
-    {
-        auto it = m_constraintMap.find( type );
+    auto it = m_constraintMap.find( aConstraintId );
 
-        if( it != m_constraintMap.end() )
+    if( it != m_constraintMap.end() )
+    {
+        for( DRC_ENGINE_CONSTRAINT* c : *it->second )
         {
-            for( DRC_ENGINE_CONSTRAINT* c : *it->second )
-            {
-                if( c->condition && c->parentRule && !c->parentRule->IsImplicit() )
-                {
-                    return true;
-                }
-            }
+            if( c->condition && c->parentRule && !c->parentRule->IsImplicit() )
+                return true;
         }
     }
 
     return false;
+}
+
+
+bool DRC_ENGINE::HasUserDefinedPhysicalConstraint()
+{
+    return HasConditionalConstraint( PHYSICAL_CLEARANCE_CONSTRAINT )
+           || HasConditionalConstraint( PHYSICAL_HOLE_CLEARANCE_CONSTRAINT );
 }
 
 

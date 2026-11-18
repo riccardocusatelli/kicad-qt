@@ -983,6 +983,7 @@ int SCH_EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
     SCH_SCREEN* screen = m_frame->GetScreen();
 
     std::map<SCH_SHEET_PIN*, SCH_NO_CONNECT*> noConnects;
+    std::vector<SCH_SYMBOL*>                  autoplaceSymbols;
 
     if( !commit )
         commit = &localCommit;
@@ -998,6 +999,21 @@ int SCH_EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
 
         if( !head )
             head = item;
+
+        if( item->Type() == SCH_SYMBOL_T )
+        {
+            autoplaceSymbols.push_back( static_cast<SCH_SYMBOL*>( item ) );
+        }
+        else if( item->Type() == SCH_GROUP_T )
+        {
+            item->RunOnChildren(
+                    [&]( SCH_ITEM* aChild )
+                    {
+                        if( aChild->Type() == SCH_SYMBOL_T )
+                            autoplaceSymbols.push_back( static_cast<SCH_SYMBOL*>( aChild ) );
+                    },
+                    RECURSE_MODE::RECURSE );
+        }
     }
 
     if( head && head->IsMoving() )
@@ -1022,15 +1038,6 @@ int SCH_EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
             SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( head );
 
             symbol->Rotate( rotPoint, !clockwise );
-
-            if( m_frame->eeconfig()->m_AutoplaceFields.enable )
-            {
-                AUTOPLACE_ALGO fieldsAutoplaced = symbol->GetFieldsAutoplaced();
-
-                if( fieldsAutoplaced == AUTOPLACE_AUTO || fieldsAutoplaced == AUTOPLACE_MANUAL )
-                    symbol->AutoplaceFields( screen, fieldsAutoplaced );
-            }
-
             break;
         }
 
@@ -1254,6 +1261,21 @@ int SCH_EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
 
         m_frame->UpdateItem( item, false, true );
         updateItem( item, true );
+    }
+
+    // Autoplace only after everything has rotated so collision checks see final positions
+    if( m_frame->eeconfig()->m_AutoplaceFields.enable )
+    {
+        for( SCH_SYMBOL* symbol : autoplaceSymbols )
+        {
+            AUTOPLACE_ALGO fieldsAutoplaced = symbol->GetFieldsAutoplaced();
+
+            if( fieldsAutoplaced == AUTOPLACE_AUTO || fieldsAutoplaced == AUTOPLACE_MANUAL )
+            {
+                symbol->AutoplaceFields( screen, fieldsAutoplaced );
+                m_frame->UpdateItem( symbol, false, true );
+            }
+        }
     }
 
     KI_LOG_TRACE( "KICAD_SCH_MOVE", "SCH_EDIT_TOOL::Rotate: complete, moving=%d", moving );

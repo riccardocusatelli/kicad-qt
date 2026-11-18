@@ -139,16 +139,16 @@ EMBEDDED_FILES::EMBEDDED_FILE* EMBEDDED_FILES::AddFile( const wxFileName& aName,
 }
 
 
-void EMBEDDED_FILES::AddFile( EMBEDDED_FILE* aFile )
+EMBEDDED_FILES::EMBEDDED_FILE* EMBEDDED_FILES::AddFile( EMBEDDED_FILE* aFile )
 {
-    AddFile( std::shared_ptr<EMBEDDED_FILE>( aFile ) );
+    return AddFile( std::shared_ptr<EMBEDDED_FILE>( aFile ) );
 }
 
 
-void EMBEDDED_FILES::AddFile( std::shared_ptr<EMBEDDED_FILE> aFile )
+EMBEDDED_FILES::EMBEDDED_FILE* EMBEDDED_FILES::AddFile( std::shared_ptr<EMBEDDED_FILE> aFile )
 {
     if( !aFile )
-        return;
+        return nullptr;
 
     wxString name = aFile->name;
     auto [it, inserted] = m_files.emplace( std::move( name ), std::move( aFile ) );
@@ -158,6 +158,8 @@ void EMBEDDED_FILES::AddFile( std::shared_ptr<EMBEDDED_FILE> aFile )
     // the collection holds.
     if( inserted && m_fileAddedCallback )
         m_fileAddedCallback( it->second.get() );
+
+    return it->second.get();
 }
 
 
@@ -302,7 +304,7 @@ EMBEDDED_FILES::RETURN_CODE EMBEDDED_FILES::CompressAndEncode( EMBEDDED_FILE& aF
 
 
 // Decompress and Base64 decode data
-EMBEDDED_FILES::RETURN_CODE EMBEDDED_FILES::DecompressAndDecode( EMBEDDED_FILE& aFile )
+EMBEDDED_FILES::RETURN_CODE EMBEDDED_FILES::DecompressAndDecode( EMBEDDED_FILE& aFile, bool aAllowEmptyHash )
 {
     std::vector<char> compressedData;
     size_t            compressedSize = wxBase64DecodedSize( aFile.compressedEncodedData.size() );
@@ -357,7 +359,9 @@ EMBEDDED_FILES::RETURN_CODE EMBEDDED_FILES::DecompressAndDecode( EMBEDDED_FILE& 
     hash.add( aFile.decompressedData );
     new_hash = hash.digest().ToString();
 
-    if( aFile.data_hash.length() == 64 )
+    if( aAllowEmptyHash && aFile.data_hash.empty() )
+        KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Generated new hash for '%s'"), aFile.name );
+    else if( aFile.data_hash.length() == 64 )
         picosha2::hash256_hex_string( aFile.decompressedData, test_hash );
     else
         test_hash = new_hash;

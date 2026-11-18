@@ -104,6 +104,8 @@ bool PANEL_REGULATOR::WriteDataFile()
 
         while( nestlevel-- )
             formatter.Print( nestlevel, ")\n" );
+
+        formatter.Finish();
     }
     catch( const IO_ERROR& )
     {

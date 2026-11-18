@@ -41,6 +41,7 @@
 #include <wx/stattext.h>
 #include <symbol_editor_settings.h>
 #include <symbol_library_common.h>         // For SYMBOL_LIBRARY_FILTER
+#include <trace_helpers.h>
 #include <algorithm>
 #include <wx/button.h>
 #include <wx/clipbrd.h>
@@ -51,6 +52,7 @@
 #include <wx/timer.h>
 #include <wx/wxhtml.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 wxString PANEL_SYMBOL_CHOOSER::g_symbolSearchString;
@@ -513,6 +515,9 @@ LIB_ID PANEL_SYMBOL_CHOOSER::GetSelectedLibId( int* aUnit ) const
 
 void PANEL_SYMBOL_CHOOSER::ShutdownCanvases()
 {
+    KI_LOG_TRACE( traceGalContext, wxS( "Symbol chooser shutting down preview canvas %p" ),
+                m_symbol_preview->GetCanvas() );
+
     m_symbol_preview->GetCanvas()->SetEvtHandlerEnabled( false );
     m_symbol_preview->GetCanvas()->StopDrawing();
 
@@ -573,11 +578,8 @@ void PANEL_SYMBOL_CHOOSER::showFootprintFor( LIB_ID const& aLibId )
     if( !symbol )
         return;
 
-    SCH_FIELD* fp_field = symbol->GetField( FIELD_T::FOOTPRINT );
-    wxString   fp_name = fp_field ? fp_field->GetFullText() : wxString( "" );
-
     m_fp_override.Empty();
-    showFootprint( fp_name );
+    showFootprint( symbol->GetFootprint() );
 }
 
 
@@ -633,9 +635,8 @@ void PANEL_SYMBOL_CHOOSER::populateFootprintSelector( LIB_ID const& aLibId )
 
     if( symbol != nullptr )
     {
-        int        pinCount = symbol->GetGraphicalPins( 0 /* all units */, 1 /* single bodyStyle */ ).size();
-        SCH_FIELD* fp_field = symbol->GetField( FIELD_T::FOOTPRINT );
-        wxString   fp_name = fp_field ? fp_field->GetFullText() : wxString( "" );
+        int      pinCount = symbol->GetGraphicalPins( 0 /* all units */, 1 /* single bodyStyle */ ).size();
+        wxString fp_name = symbol->GetFootprint();
 
         if( !m_fp_override.IsEmpty() )
             fp_name = m_fp_override;
@@ -673,6 +674,8 @@ void PANEL_SYMBOL_CHOOSER::onFootprintSelected( wxCommandEvent& aEvent )
 void PANEL_SYMBOL_CHOOSER::onSymbolSelected( wxCommandEvent& aEvent )
 {
     LIB_TREE_NODE* node = m_tree->GetCurrentTreeNode();
+
+    m_field_edits.clear();
 
     if( node && node->m_LibId.IsValid() )
     {

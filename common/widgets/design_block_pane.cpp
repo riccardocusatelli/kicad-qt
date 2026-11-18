@@ -34,6 +34,7 @@
 #include <paths.h>
 #include <env_paths.h>
 #include <pgm_base.h>
+#include <pgm_gui.h>
 #include <common.h>
 #include <widgets/design_block_pane.h>
 #include <widgets/panel_design_block_chooser.h>
@@ -231,6 +232,7 @@ bool DESIGN_BLOCK_PANE::AddDesignBlockLibrary( const wxString& aDialogTitle, con
     {
         manager.ReloadTables( aScope, { LIBRARY_TABLE_TYPE::DESIGN_BLOCK } );
         adapter->LoadOne( libName );
+        PgmGui().PreloadDesignBlockLibraries( &m_frame->Kiway() );
 
         LIB_ID libID( libName, wxEmptyString );
         RefreshLibs();

@@ -53,6 +53,7 @@
 
 #include <core/ki_assert.h>
 #include <qt_strings.h>
+#include <string_utils.h>
 #include <qt_ui.h>
 
 
@@ -152,10 +153,18 @@ protected:
             if( int res = m_parent.compareItems( *left, *right, col, true, timeDomain ) )
                 return res < 0;
 
+            // Equal values: by net name, so that the order is stable across rebuilds
+            if( int res = ValueStringCompare( left->GetNetName(), right->GetNetName() ) )
+                return res < 0;
+
             return left < right;
         }
 
         if( int res = m_parent.compareItems( *right, *left, col, false, timeDomain ) )
+            return res < 0;
+
+        // Equal values: by net name (Qt reverses the result for the descending order)
+        if( int res = ValueStringCompare( left->GetNetName(), right->GetNetName() ) )
             return res < 0;
 
         return right < left;

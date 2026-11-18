@@ -333,6 +333,8 @@ DIALOG_SYMBOL_FIELDS_TABLE::DIALOG_SYMBOL_FIELDS_TABLE( SCH_EDIT_FRAME* parent, 
                    m_splitter_left->SetSashPosition( cfg.variant_sash_pos );
                } );
 
+    OptOut( m_outputFileName );
+
     if( m_job )
         m_outputFileName->SetValue( m_job->GetConfiguredOutputPath() );
     else
@@ -1443,8 +1445,7 @@ void DIALOG_SYMBOL_FIELDS_TABLE::ShowExportTab()
 void DIALOG_SYMBOL_FIELDS_TABLE::OnOutputFileBrowseClicked( wxCommandEvent& event )
 {
     // Build the absolute path of current output directory to preselect it in the file browser.
-    wxString path = ExpandEnvVarSubstitutions( m_outputFileName->GetValue(), &Prj() );
-    path = Prj().AbsolutePath( path );
+    wxString path = ResolveProjectPath( m_outputFileName->GetValue(), &Prj() );
 
 
     // Calculate the export filename

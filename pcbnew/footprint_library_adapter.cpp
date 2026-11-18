@@ -53,6 +53,13 @@ FOOTPRINT_LIBRARY_ADAPTER::FOOTPRINT_LIBRARY_ADAPTER( LIBRARY_MANAGER& aManager 
 }
 
 
+FOOTPRINT_LIBRARY_ADAPTER::~FOOTPRINT_LIBRARY_ADAPTER()
+{
+    resetProjectCache();
+    evictOwnedGlobalEntries();
+}
+
+
 wxString FOOTPRINT_LIBRARY_ADAPTER::GlobalPathEnvVariableName()
 {
     return ENV_VAR::GetVersionedEnvVarName( wxS( "FOOTPRINT_DIR" ) );
@@ -425,9 +432,11 @@ FOOTPRINT_LIBRARY_ADAPTER::SAVE_T FOOTPRINT_LIBRARY_ADAPTER::SaveFootprint( cons
         }
         catch( IO_ERROR& e )
         {
+            // Re-throw rather than returning SAVE_SKIPPED; swallowing a write failure (read-only
+            // file, full disk) would report a successful save while the file is unchanged.
             KI_LOG_TRACE( traceLibraries, "SaveFootprint: error saving %s: %s",
                         aFootprint->GetFPIDAsString(), e.What() );
-            return SAVE_SKIPPED;
+            throw;
         }
 
         {

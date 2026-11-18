@@ -168,6 +168,7 @@ public:
 
     /// The dialog that blocks the frames (a DIALOG_SHIM), shown when the user activates them.
     wxWindow* GetBlockingDialog();
+    bool HasBlockingDialog() const { return !m_blockingDialog.isNull(); }
     void SetBlockingDialog( wxWindow* aWin );
 
 private:

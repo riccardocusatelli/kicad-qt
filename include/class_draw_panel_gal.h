@@ -310,6 +310,13 @@ public:
 
 protected:
 
+    /// Trace why DoRePaint drew or skipped, only when the reason changes so a stuck canvas stands out
+    void tracePaintState( int aState );
+
+    /// Canvas pointer and owning window title, to tell canvases apart in traces
+    wxString traceName() const;
+
+
     wxWindow*                m_parent;           ///< Pointer to the parent window
     EDA_DRAW_FRAME*          m_edaFrame;         ///< Parent EDA_DRAW_FRAME (if available)
 
@@ -356,6 +363,19 @@ protected:
 
     /// Set after an OpenGL recovery attempt to prevent infinite retry loops
     bool                     m_glRecoveryAttempted;
+
+    /// Consecutive frames dropped because the GL context could not be made current
+    int                      m_contextBindFailures;
+
+    /// Set when a size change could not be applied because the GL context was unavailable
+    bool                     m_pendingResize;
+
+    /// Last paint state reported by tracePaintState() and how many times it has repeated
+    int                      m_tracedPaintState;
+    int                      m_tracedPaintRepeats;
+
+    /// Refresh timer retries while the GAL is not yet initialized
+    int                      m_enableRetries;
 
     /// Flag to indicate whether the panel should take focus at certain times (when moused over,
     /// and on various mouse/key events)

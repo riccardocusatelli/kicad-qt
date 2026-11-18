@@ -363,6 +363,32 @@ std::optional<TOOL_EVENT> TOOL_DISPATCHER::GetToolEvent( QKeyEvent* aKeyEvent, b
 }
 
 
+std::optional<TOOL_EVENT> TOOL_DISPATCHER::GetToolEvent( wxKeyEvent* aKeyEvent, bool* keyIsSpecial )
+{
+    std::optional<TOOL_EVENT> evt;
+    int                       key = aKeyEvent->GetKeyCode();
+
+    if( key == 0 || key == WXK_SHIFT || key == WXK_CONTROL || key == WXK_ALT )
+        return evt;
+
+    // The hotkeys of KiCad use the upper case letters
+    if( key >= 'a' && key <= 'z' )
+        key += 'A' - 'a';
+
+    *keyIsSpecial = isKeySpecialCode( key );
+
+    int mods = ( aKeyEvent->ControlDown() ? MD_CTRL : 0 ) | ( aKeyEvent->ShiftDown() ? MD_SHIFT : 0 )
+               | ( aKeyEvent->AltDown() ? MD_ALT : 0 );
+
+    if( key == WXK_ESCAPE )
+        evt = TOOL_EVENT( TC_COMMAND, TA_CANCEL_TOOL, WXK_ESCAPE );
+    else
+        evt = TOOL_EVENT( TC_KEYBOARD, TA_KEY_PRESSED, key | mods );
+
+    return evt;
+}
+
+
 void TOOL_DISPATCHER::flushPendingClicks()
 {
     // When an escape key event arrives, keyboard events can be processed before mouse button

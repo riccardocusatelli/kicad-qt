@@ -91,6 +91,13 @@ class QSyntaxHighlighter;
 #define wxSTC_WRAP_NONE 0
 #define wxSTC_WRAP_WORD 1
 #define wxSTC_WRAP_CHAR 2
+#define wxSTC_WRAPVISUALFLAG_NONE 0
+#define wxSTC_WRAPVISUALFLAG_END 1
+#define wxSTC_WRAPVISUALFLAG_START 2
+#define wxSTC_WRAPVISUALFLAG_MARGIN 4
+#define wxSTC_WRAPINDENT_FIXED 0
+#define wxSTC_WRAPINDENT_SAME 1
+#define wxSTC_WRAPINDENT_INDENT 2
 
 #define wxSTC_WS_INVISIBLE 0
 #define wxSTC_WS_VISIBLEALWAYS 1
@@ -330,6 +337,10 @@ public:
     int GetEOLMode() const { return m_eolMode; }
     void ConvertEOLs( int aMode ) {}
     void SetWrapMode( int aMode );
+
+    /// The wrap markers and the indent of the wrapped lines: QPlainTextEdit has none (no-ops).
+    void SetWrapVisualFlags( int aFlags ) {}
+    void SetWrapIndentMode( int aMode ) {}
 
     void SetScrollWidth( int aWidth ) {}
 

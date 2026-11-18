@@ -57,12 +57,16 @@ public:
 public:
     SYMBOL_LIBRARY_ADAPTER( LIBRARY_MANAGER& aManager );
 
+    ~SYMBOL_LIBRARY_ADAPTER() override;
+
     LIBRARY_TABLE_TYPE Type() const override { return LIBRARY_TABLE_TYPE::SYMBOL; }
 
     static wxString GlobalPathEnvVariableName();
 
     /// Loads or reloads the given library, if it exists
     std::optional<LIB_STATUS> LoadOne( LIB_DATA* aLib ) override;
+
+    std::optional<LIB_STATUS> CheckLibrary( LIB_DATA* aLib ) override;
 
     /// Loads or reloads the given library, if it exists
     std::optional<LIB_STATUS> LoadOne( const wxString& aNickname );
@@ -76,7 +80,7 @@ public:
 
     bool SupportsConfigurationDialog( const wxString& aNickname ) const override;
 
-    void ShowConfigurationDialog( const wxString& aNickname, wxWindow* aParent ) const override;
+    int ShowConfigurationDialog( const wxString& aNickname, wxWindow* aParent ) const override;
 
     enum class SYMBOL_TYPE
     {

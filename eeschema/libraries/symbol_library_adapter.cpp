@@ -55,6 +55,13 @@ SYMBOL_LIBRARY_ADAPTER::SYMBOL_LIBRARY_ADAPTER( LIBRARY_MANAGER& aManager ) :
 }
 
 
+SYMBOL_LIBRARY_ADAPTER::~SYMBOL_LIBRARY_ADAPTER()
+{
+    resetProjectCache();
+    evictOwnedGlobalEntries();
+}
+
+
 wxString SYMBOL_LIBRARY_ADAPTER::GlobalPathEnvVariableName()
 {
     return ENV_VAR::GetVersionedEnvVarName( wxS( "SYMBOL_DIR" ) );
@@ -72,6 +79,9 @@ SCH_IO* SYMBOL_LIBRARY_ADAPTER::schplugin( const LIB_DATA* aRow )
 void SYMBOL_LIBRARY_ADAPTER::enumerateLibrary( LIB_DATA* aLib, const wxString& aUri )
 {
     wxArrayString dummyList;
+
+    std::lock_guard pluginGuard( pluginMutex( aLib->row->Nickname() ) );
+
     std::map<std::string, UTF8> options = aLib->row->GetOptionsMap();
     schplugin( aLib )->EnumerateSymbolLib( dummyList, aUri, &options );
 }
@@ -80,6 +90,8 @@ void SYMBOL_LIBRARY_ADAPTER::enumerateLibrary( LIB_DATA* aLib, const wxString& a
 std::optional<LIB_STATUS> SYMBOL_LIBRARY_ADAPTER::LoadOne( LIB_DATA* aLib )
 {
     aLib->status.load_status = LOAD_STATUS::LOADING;
+
+    std::lock_guard pluginGuard( pluginMutex( aLib->row->Nickname() ) );
 
     std::map<std::string, UTF8> options = aLib->row->GetOptionsMap();
 
@@ -95,6 +107,30 @@ std::optional<LIB_STATUS> SYMBOL_LIBRARY_ADAPTER::LoadOne( LIB_DATA* aLib )
         aLib->status.load_status = LOAD_STATUS::LOAD_ERROR;
         aLib->status.error = LIBRARY_ERROR( { e.What() } );
         KI_LOG_TRACE( traceLibraries, "Sym: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
+    }
+
+    return aLib->status;
+}
+
+
+std::optional<LIB_STATUS> SYMBOL_LIBRARY_ADAPTER::CheckLibrary( LIB_DATA* aLib )
+{
+    aLib->status.load_status = LOAD_STATUS::LOADING;
+
+    std::lock_guard pluginGuard( pluginMutex( aLib->row->Nickname() ) );
+
+    std::map<std::string, UTF8> options = aLib->row->GetOptionsMap();
+
+    try
+    {
+        schplugin( aLib )->CheckLibrary( getUri( aLib->row ), &options );
+        aLib->status.load_status = LOAD_STATUS::LOADED;
+    }
+    catch( IO_ERROR& e )
+    {
+        aLib->status.load_status = LOAD_STATUS::LOAD_ERROR;
+        aLib->status.error = LIBRARY_ERROR( e.What() );
+        KI_LOG_TRACE( traceLibraries, "Sym: %s: library check failed: %s", aLib->row->Nickname(), e.What() );
     }
 
     return aLib->status;
@@ -158,6 +194,9 @@ std::vector<LIB_SYMBOL*> SYMBOL_LIBRARY_ADAPTER::GetSymbols( const wxString& aNi
         return symbols;
 
     const LIB_DATA* lib = *maybeLib;
+
+    std::lock_guard pluginGuard( pluginMutex( aNickname ) );
+
     std::map<std::string, UTF8> options = lib->row->GetOptionsMap();
 
     if( aType == SYMBOL_TYPE::POWER_ONLY )
@@ -191,6 +230,9 @@ std::vector<wxString> SYMBOL_LIBRARY_ADAPTER::GetSymbolNames( const wxString& aN
     if( std::optional<const LIB_DATA*> maybeLib = fetchIfLoaded( aNickname ) )
     {
         const LIB_DATA* lib = *maybeLib;
+
+        std::lock_guard pluginGuard( pluginMutex( aNickname ) );
+
         std::map<std::string, UTF8> options = lib->row->GetOptionsMap();
 
         if( aType == SYMBOL_TYPE::POWER_ONLY )
@@ -218,6 +260,8 @@ LIB_SYMBOL* SYMBOL_LIBRARY_ADAPTER::LoadSymbol( const wxString& aNickname, const
 {
     if( std::optional<const LIB_DATA*> lib = fetchIfLoaded( aNickname ) )
     {
+        std::lock_guard pluginGuard( pluginMutex( aNickname ) );
+
         if( LIB_SYMBOL* symbol = schplugin( *lib )->LoadSymbol( getUri( ( *lib )->row ), aName ) )
         {
             LIB_ID id = symbol->GetLibId();
@@ -386,17 +430,20 @@ bool SYMBOL_LIBRARY_ADAPTER::SupportsConfigurationDialog( const wxString& aNickn
 }
 
 
-void SYMBOL_LIBRARY_ADAPTER::ShowConfigurationDialog( const wxString& aNickname, wxWindow* aParent ) const
+int SYMBOL_LIBRARY_ADAPTER::ShowConfigurationDialog( const wxString& aNickname, wxWindow* aParent ) const
 {
     std::optional<const LIB_DATA*> optRow = fetchIfLoaded( aNickname );
 
     if( !optRow )
-        return;
+        return wxID_CANCEL;
 
     if( !( *optRow )->plugin->SupportsConfigurationDialog() )
-        return;
+        return wxID_CANCEL;
 
     ( *optRow )->plugin->ShowConfigurationDialog( aParent );
+
+    // The dialog result is not known here: let the caller reload the library
+    return wxID_OK;
 }
 
 

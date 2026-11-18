@@ -22,6 +22,7 @@
  */
 
 #include <widgets/report_severity.h>
+#include <magic_enum.hpp>
 #include <pcb_dimension.h>
 #include <pcb_track.h>
 #include <layer_ids.h>
@@ -597,6 +598,7 @@ BOARD_DESIGN_SETTINGS::BOARD_DESIGN_SETTINGS( JSON_SETTINGS* aParent, const std:
                     TEARDROP_PARAMETERS* td_prm = m_TeardropParamsList.GetParameters( (TARGET_TD)ii );
 
                     entry["td_target_name"]  = GetTeardropTargetCanonicalName( (TARGET_TD)ii );
+                    entry["td_enabled"]  = td_prm->m_Enabled;
                     entry["td_maxlen"]  = pcbIUScale.IUTomm( td_prm->m_TdMaxLen );
                     entry["td_maxheight"]  = pcbIUScale.IUTomm( td_prm->m_TdMaxWidth );
                     entry["td_length_ratio"]  = td_prm->m_BestLengthRatio;
@@ -629,6 +631,11 @@ BOARD_DESIGN_SETTINGS::BOARD_DESIGN_SETTINGS( JSON_SETTINGS* aParent, const std:
                     if( idx >= 0 && idx < 3 )
                     {
                         TEARDROP_PARAMETERS* td_prm = m_TeardropParamsList.GetParameters( (TARGET_TD)idx );
+
+                        // Pads and vias carry their enable in the board file; this one has
+                        // nowhere else to live.
+                        if( entry.contains( "td_enabled" ) )
+                            td_prm->m_Enabled = entry["td_enabled"].get<bool>();
 
                         if( entry.contains( "td_maxlen" ) )
                             td_prm->m_TdMaxLen = pcbIUScale.mmToIU( entry["td_maxlen"].get<double>() );
@@ -948,13 +955,15 @@ BOARD_DESIGN_SETTINGS::BOARD_DESIGN_SETTINGS( JSON_SETTINGS* aParent, const std:
             "defaults.zones.corner_smoothing",
             [&]() -> int
             {
-                return m_defaultZoneSettings.GetCornerSmoothingType();
+                return static_cast<int>( m_defaultZoneSettings.GetCornerSmoothingType() );
             },
             [&]( int aVal )
             {
-                m_defaultZoneSettings.SetCornerSmoothingType( aVal );
+                m_defaultZoneSettings.SetCornerSmoothingType(
+                        magic_enum::enum_cast<ZONE_SETTINGS::CORNER_SMOOTHING>( aVal ).value_or(
+                                ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING ) );
             },
-            ZONE_SETTINGS::SMOOTHING_NONE ) );
+            static_cast<int>( ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING ) ) );
 
     m_params.emplace_back( new PARAM_LAMBDA<double>(
             "defaults.zones.corner_radius",

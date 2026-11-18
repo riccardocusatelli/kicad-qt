@@ -289,9 +289,7 @@ void PCB_DIMENSION_BASE::Serialize( google::protobuf::Any &aContainer ) const
     dimension.set_locked( IsLocked() ? types::LockedState::LS_LOCKED
                                      : types::LockedState::LS_UNLOCKED );
 
-    google::protobuf::Any any;
-    EDA_TEXT::Serialize( any );
-    any.UnpackTo( dimension.mutable_text() );
+    EDA_TEXT::Serialize( *dimension.mutable_text() );
 
     types::Text* text = dimension.mutable_text();
     text->set_text( GetValueText() );
@@ -337,9 +335,7 @@ bool PCB_DIMENSION_BASE::Deserialize( const google::protobuf::Any &aContainer )
     SetUuidDirect( KIID( dimension.id().value() ) );
     SetLocked( dimension.locked() == types::LockedState::LS_LOCKED );
 
-    google::protobuf::Any any;
-    any.PackFrom( dimension.text() );
-    EDA_TEXT::Deserialize( any );
+    EDA_TEXT::Deserialize( dimension.text() );
 
     SetOverrideTextEnabled( dimension.override_text_enabled() );
     SetOverrideText( wxString::FromUTF8( dimension.override_text() ) );
@@ -1893,6 +1889,11 @@ static struct DIMENSION_DESC
                     .Map( DIM_ARROW_DIRECTION::INWARD,  _HKI( "Inward" ) )
                     .Map( DIM_ARROW_DIRECTION::OUTWARD, _HKI( "Outward" ) );
 
+        ENUM_MAP<DIM_TEXT_POSITION>::Instance()
+                    .Map( DIM_TEXT_POSITION::OUTSIDE, _HKI( "Outside" ) )
+                    .Map( DIM_TEXT_POSITION::INLINE,  _HKI( "Inline" ) )
+                    .Map( DIM_TEXT_POSITION::MANUAL,  _HKI( "Manual" ) );
+
         PROPERTY_MANAGER& propMgr = PROPERTY_MANAGER::Instance();
         REGISTER_TYPE( PCB_DIMENSION_BASE );
         propMgr.AddTypeCast( new TYPE_CAST<PCB_DIMENSION_BASE, PCB_TEXT> );
@@ -1916,6 +1917,12 @@ static struct DIMENSION_DESC
                 []( INSPECTABLE* aItem ) -> bool
                 {
                     return dynamic_cast<PCB_DIM_LEADER*>( aItem ) == nullptr;
+                };
+
+        auto isNotCenter =
+                []( INSPECTABLE* aItem ) -> bool
+                {
+                    return dynamic_cast<PCB_DIM_CENTER*>( aItem ) == nullptr;
                 };
 
         auto isMultiArrowDirection =
@@ -1964,7 +1971,29 @@ static struct DIMENSION_DESC
                 groupDimension )
                 .SetAvailableFunc( isMultiArrowDirection );
 
+        propMgr.AddProperty( new PROPERTY<PCB_DIMENSION_BASE, int>( _HKI( "Line Thickness" ),
+                    &PCB_DIMENSION_BASE::ChangeLineThickness, &PCB_DIMENSION_BASE::GetLineThickness,
+                    PROPERTY_DISPLAY::PT_SIZE ),
+                    groupDimension );
+
+        propMgr.AddProperty( new PROPERTY<PCB_DIMENSION_BASE, int>( _HKI( "Arrow Length" ),
+                    &PCB_DIMENSION_BASE::ChangeArrowLength, &PCB_DIMENSION_BASE::GetArrowLength,
+                    PROPERTY_DISPLAY::PT_SIZE ),
+                    groupDimension )
+                .SetAvailableFunc( isNotCenter );
+
+        propMgr.AddProperty( new PROPERTY<PCB_DIMENSION_BASE, int>( _HKI( "Extension Line Offset" ),
+                    &PCB_DIMENSION_BASE::ChangeExtensionOffset, &PCB_DIMENSION_BASE::GetExtensionOffset,
+                    PROPERTY_DISPLAY::PT_SIZE ),
+                    groupDimension )
+                .SetAvailableFunc( isNotCenter );
+
         const wxString groupText = _HKI( "Text Properties" );
+
+        propMgr.AddProperty( new PROPERTY_ENUM<PCB_DIMENSION_BASE, DIM_TEXT_POSITION>( _HKI( "Text Position" ),
+                    &PCB_DIMENSION_BASE::ChangeTextPositionMode, &PCB_DIMENSION_BASE::GetTextPositionMode ),
+                    groupText )
+                .SetAvailableFunc( isNotLeader );
 
         const auto isTextOrientationWriteable =
                 []( INSPECTABLE* aItem ) -> bool
@@ -1990,6 +2019,7 @@ ENUM_TO_WXANY( DIM_PRECISION )
 ENUM_TO_WXANY( DIM_UNITS_FORMAT )
 ENUM_TO_WXANY( DIM_UNITS_MODE )
 ENUM_TO_WXANY( DIM_ARROW_DIRECTION )
+ENUM_TO_WXANY( DIM_TEXT_POSITION )
 
 
 static struct ALIGNED_DIMENSION_DESC

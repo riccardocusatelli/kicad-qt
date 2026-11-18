@@ -66,6 +66,9 @@ public:
         return m_contents;
     }
 
+    /// The contents of the page, nullptr when it was not made yet.
+    wxWindow* Contents() const { return m_contents; }
+
     // The transfers of the page are the ones of its contents, once made
     bool TransferDataToWindow() override
     {
@@ -126,6 +129,17 @@ bool WX_TREEBOOK::AddLazySubPage( std::function<wxWindow*( wxWindow* aParent )> 
                                   const wxString& text, bool bSelect, int imageId )
 {
     return AddSubPage( new LAZY_PAGE( this, std::move( aLazyCtor ) ), text, bSelect, imageId );
+}
+
+
+wxWindow* WX_TREEBOOK::GetResolvedPage( size_t aPage )
+{
+    wxWindow* page = GetPage( aPage );
+
+    if( LAZY_PAGE* lazyPage = dynamic_cast<LAZY_PAGE*>( page ) )
+        return lazyPage->Contents();
+
+    return page;
 }
 
 

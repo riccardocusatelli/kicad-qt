@@ -44,6 +44,7 @@
 class QEvent;
 class wxEvent;
 class QKeyEvent;
+class wxKeyEvent;
 class TOOL_MANAGER;
 class ACTIONS;
 class ACTION_MENU;
@@ -112,6 +113,9 @@ public:
      * Map a key event of Qt to a TOOL_EVENT.
      */
     std::optional<TOOL_EVENT> GetToolEvent( QKeyEvent* aKeyEvent, bool* aSpecialKeyFlag );
+
+    /// The tool event of a key event of the compatibility layer (e.g. a char hook of a dialog).
+    std::optional<TOOL_EVENT> GetToolEvent( wxKeyEvent* aKeyEvent, bool* aSpecialKeyFlag );
 
     /// The maximum gap (ms) between two events of the same key for them to count as one OS
     /// auto-repeat burst rather than two deliberate key presses.

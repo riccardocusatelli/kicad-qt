@@ -37,6 +37,7 @@
 #include <widgets/msgpanel_item.h>
 #include <i18n_utility.h>
 #include <footprint.h>
+#include <lset.h>
 #include <view/view.h>
 #include <pcb_painter.h>
 #include <plotters/plotter.h>
@@ -268,6 +269,13 @@ void PCB_REFERENCE_IMAGE::Rotate( const VECTOR2I& aCenter, const EDA_ANGLE& aAng
 }
 
 
+void PCB_REFERENCE_IMAGE::Mirror( const VECTOR2I& aMirrorRef, FLIP_DIRECTION aFlipDirection )
+{
+    // Mirror the content about the axis through aMirrorRef without changing layers.
+    m_referenceImage.Flip( aMirrorRef, aFlipDirection );
+}
+
+
 #if defined( DEBUG )
 void PCB_REFERENCE_IMAGE::Show( int nestLevel, std::ostream& os ) const
 {
@@ -437,6 +445,16 @@ static struct PCB_REFERENCE_IMAGE_DESC
 {
     PCB_REFERENCE_IMAGE_DESC()
     {
+        ENUM_MAP<PCB_LAYER_ID>& layerEnum = ENUM_MAP<PCB_LAYER_ID>::Instance();
+
+        if( layerEnum.Choices().GetCount() == 0 )
+        {
+            layerEnum.Undefined( UNDEFINED_LAYER );
+
+            for( PCB_LAYER_ID layer : LSET::AllLayersMask() )
+                layerEnum.Map( layer, LSET::Name( layer ) );
+        }
+
         PROPERTY_MANAGER& propMgr = PROPERTY_MANAGER::Instance();
         REGISTER_TYPE( PCB_REFERENCE_IMAGE );
         propMgr.InheritsAfter( TYPE_HASH( PCB_REFERENCE_IMAGE ), TYPE_HASH( BOARD_ITEM ) );

@@ -125,9 +125,15 @@ set( QA_EESCHEMA_SRCS
     test_issue24858_variant_persistence.cpp
     test_issue24915_job_variant_fields.cpp
     test_variant_field_text_vars.cpp
+    test_issue25198_multi_top_level_plot.cpp
     test_issue24663_sheet_dnp_fields.cpp
     test_issue25112_shared_sheet_field_scope.cpp
+    test_issue25209_derived_body_styles.cpp
     test_issue25280_pin_sync_units.cpp
+    test_issue25469_empty_sheet_pin_name.cpp
+    test_issue25406_bus_hier_earth.cpp
+    test_issue25223_rule_area_netclass_stale.cpp
+    test_issue25508_intersheet_refs_recursion.cpp
     test_issue24360_root_sheetname.cpp
     test_issue24217_cli_variant_export.cpp
     test_unique_sheet_name.cpp
@@ -136,9 +142,13 @@ set( QA_EESCHEMA_SRCS
     test_issue24220_hierarchical_bus_netclass.cpp
     test_issue24477_http_network_loss.cpp
     test_issue23023_http_fields.cpp
+    test_http_lib_connection.cpp
+    test_http_lib_plugin.cpp
+    http_lib_fake_server.cpp
     test_issue24403_directive_label_i18n.cpp
     test_issue24297_http_migrate.cpp
     test_issue24606_derived_symbol_fields.cpp
+    test_issue25606_derived_symbol_footprint.cpp
     test_issue23687_sim_value_field.cpp
     test_nc_pin_connectivity.cpp
     test_crossing_label.cpp

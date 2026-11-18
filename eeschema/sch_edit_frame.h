@@ -36,7 +36,6 @@
 #include <wx/treectrl.h>
 #include <wx/utils.h>
 #include <wx/filename.h>
-#include <wx/generic/treectlg.h>
 
 #include <core/typeinfo.h>
 #include <eda_base_frame.h>
@@ -44,6 +43,7 @@
 #include <math/box2.h>
 #include <sch_base_frame.h>
 #include <template_fieldnames.h>
+#include <widgets/net_navigator_tree.h>
 
 class SCH_ITEM;
 class EDA_ITEM;
@@ -325,8 +325,8 @@ public:
         return m_highlightedConn;
     }
 
-    void SetHighlightedConnection( const wxString& aConnection,
-                                   const NET_NAVIGATOR_ITEM_DATA* aSelection = nullptr );
+    void SetHighlightedConnection( const wxString& aConnection, const NET_NAVIGATOR_ITEM_DATA* aSelection = nullptr,
+                                   bool aForceNetNavigatorRefresh = false );
 
     void DirtyHighlightedConnection() { m_highlightedConnChanged = true; }
 
@@ -1020,9 +1020,11 @@ private:
      *
      * @param aSheet is the #SCH_SHEET object to save.
      * @param aSavePath is the full path of the destination file
+     * @param isSaveAs indicates this is a save-as or save-copy-as operation, and that the dirty
+     *                 bit should NOT be cleared on the sheet
      * @return True if the file has been saved.
      */
-    bool saveSchematicFile( SCH_SHEET* aSheet, const wxString& aSavePath );
+    bool saveSchematicFile( SCH_SHEET* aSheet, const wxString& aSavePath, bool isSaveAs );
 
     /**
      * Fill a map of uuid -> reference from the currently loaded schematic.
@@ -1045,6 +1047,7 @@ private:
 
     wxWindow* createHighlightedNetNavigator();
 
+    void onNetNavigatorDPIChanged( wxDPIChangedEvent& aEvent );
     void onNetNavigatorFilterChanged( wxCommandEvent& aEvent );
     void onNetNavigatorKey( wxKeyEvent& aEvent );
     void onNetNavigatorItemMenu( wxTreeEvent& aEvent );
@@ -1093,7 +1096,7 @@ private:
     DIALOG_SCHEMATIC_SETUP*     m_schematicSetupDialog;
 
 
-    wxGenericTreeCtrl*          m_netNavigator;
+    NET_NAVIGATOR_TREE*         m_netNavigator;
     wxSearchCtrl*               m_netNavigatorFilter;
     BITMAP_BUTTON*              m_netNavigatorMenuButton;
     wxString                    m_netNavigatorFilterValue;

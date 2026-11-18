@@ -33,6 +33,7 @@
 #include <geometry/rtree.h>
 #include <geometry/shape.h>
 #include <math/box2.h>
+#include <core/ki_assert.h>
 
 /**
  * Used by #SHAPE_INDEX to get a SHAPE* from another type.
@@ -46,6 +47,7 @@
 template <class T>
 static const SHAPE* shapeFunctor( T aItem, int aLayer )
 {
+    KI_CHECK( aItem, nullptr );
     return aItem->Shape( aLayer );
 }
 
@@ -61,16 +63,20 @@ static const SHAPE* shapeFunctor( T aItem, int aLayer )
 template <class T>
 BOX2I boundingBox( T aObject, int aLayer )
 {
-    BOX2I bbox = shapeFunctor( aObject, aLayer )->BBox();
+    const SHAPE* shape = shapeFunctor( aObject, aLayer );
 
-    return bbox;
+    BOX2I bBox;
+    KI_CHECK( shape, bBox );
+
+    bBox = shape->BBox();
+    return bBox;
 }
 
 /**
  * Used by #SHAPE_INDEX to implement Accept().
  *
  * By default relies on V::operation() redefinition, should be specialized if V class
- * doesn't have its () operation defined to accept T objects.
+ * doesn't have its () operation defined to accept T objects.;
  *
  * @param aObject is a generic T object.
  * @param aVisitor is a visitor object.
@@ -96,7 +102,11 @@ void acceptVisitor( T aObject, V aVisitor )
 template <class T, class U>
 bool collide( T aObject, U aAnotherObject, int aLayer, int aMinDistance )
 {
-    return shapeFunctor( aObject, aLayer )->Collide( aAnotherObject, aMinDistance );
+    const SHAPE* shape = shapeFunctor( aObject, aLayer );
+
+    KI_CHECK( shape, false );
+
+    return shape->Collide( aAnotherObject, aMinDistance );
 }
 
 template <class T, class V>

@@ -43,6 +43,7 @@
 #include <trigo.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 /// Factor to convert the maker unit shape to internal units:
@@ -223,6 +224,21 @@ PCB_MARKER* PCB_MARKER::DeserializeFromString( const wxString& data )
     }
 
     return new PCB_MARKER( drcItem, markerPos, markerLayer );
+}
+
+
+void PCB_MARKER::swapData( BOARD_ITEM* aImage )
+{
+    KI_ASSERT( aImage->Type() == PCB_MARKER_T );
+    PCB_MARKER* image = static_cast<PCB_MARKER*>( aImage );
+
+    std::swap( *this, *image );
+
+    if( m_rcItem )
+        m_rcItem->SetParent( this );
+
+    if( image->m_rcItem )
+        image->m_rcItem->SetParent( image );
 }
 
 

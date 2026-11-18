@@ -264,6 +264,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Save( const std::optional<bool>& aOpt )
             SaveSymbol( symbol, *formatter.get() );
 
         formatter->Print( ")" );
+        formatter->Finish();
         formatter.reset();
     }
     else
@@ -327,6 +328,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Save( const std::optional<bool>& aOpt )
                 SaveSymbol( symbol, *formatter.get() );
 
             formatter->Print( ")" );
+            formatter->Finish();
             formatter.reset();
 
             // Update source file tracking for new symbols

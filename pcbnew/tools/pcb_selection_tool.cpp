@@ -3610,6 +3610,71 @@ void PCB_SELECTION_TOOL::RebuildSelection()
 }
 
 
+LSET PCB_SELECTION_TOOL::resolveVisibleLayers( const LSET& aVisibleLayers,
+                                               const LSET& aEnabledLayers )
+{
+    return aVisibleLayers & aEnabledLayers;
+}
+
+
+bool PCB_SELECTION_TOOL::isPadVisible( const PAD& aPad, const LSET& aVisibleLayers )
+{
+    if( aPad.GetAttribute() == PAD_ATTRIB::PTH || aPad.GetAttribute() == PAD_ATTRIB::NPTH )
+    {
+        // A hole is drawn on every layer the pad itself is drawn on plus many it is not, so
+        // any visible physical layer shows it
+        return ( aVisibleLayers & LSET::PhysicalLayersMask() ).any();
+    }
+
+    return ( aPad.GetLayerSet() & aVisibleLayers ).any();
+}
+
+
+bool PCB_SELECTION_TOOL::isOnVisibleFootprintSide( const BOARD_ITEM& aItem, bool aFrontVisible,
+                                                   bool aBackVisible, bool aIsFootprintEditor )
+{
+    const FOOTPRINT* parentFP = aItem.GetParentFootprint();
+
+    if( aIsFootprintEditor || !parentFP )
+        return true;
+
+    // Only these types implement the switches in their ViewGetLOD; the rest stay drawn
+    switch( aItem.Type() )
+    {
+    case PCB_FIELD_T:
+    case PCB_TEXT_T:
+    case PCB_SHAPE_T:
+    case PCB_ZONE_T:
+    case PCB_PAD_T:
+    case PCB_DIM_ALIGNED_T:
+    case PCB_DIM_LEADER_T:
+    case PCB_DIM_CENTER_T:
+    case PCB_DIM_RADIAL_T:
+    case PCB_DIM_ORTHOGONAL_T:
+        break;
+
+    default:
+        return true;
+    }
+
+    LSET layers = aItem.GetLayerSet();
+    bool onFront = ( layers & LSET::FrontMask() ).any();
+    bool onBack = ( layers & LSET::BackMask() ).any();
+
+    if( !onFront && !onBack )
+    {
+        // A pad off both sides stays drawn; everything else takes the footprint's side
+        if( aItem.Type() == PCB_PAD_T )
+            return true;
+
+        onFront = parentFP->GetLayer() == F_Cu;
+        onBack = parentFP->GetLayer() == B_Cu;
+    }
+
+    return ( onFront && aFrontVisible ) || ( onBack && aBackVisible );
+}
+
+
 bool PCB_SELECTION_TOOL::Selectable( const BOARD_ITEM* aItem, bool checkVisibilityOnly ) const
 {
     const RENDER_SETTINGS* settings = getView()->GetPainter()->GetSettings();
@@ -3629,7 +3694,8 @@ bool PCB_SELECTION_TOOL::Selectable( const BOARD_ITEM* aItem, bool checkVisibili
                 }
                 else
                 {
-                    return board()->GetVisibleLayers();
+                    return resolveVisibleLayers( board()->GetVisibleLayers(),
+                                                 board()->GetEnabledLayers() );
                 }
             };
 
@@ -3641,6 +3707,15 @@ bool PCB_SELECTION_TOOL::Selectable( const BOARD_ITEM* aItem, bool checkVisibili
                 else
                     return board()->IsLayerVisible( aLayer );
             };
+
+    // Box-select never goes through the collectors guide, so the Render tab's footprint switches
+    // have to be applied here too
+    if( !isOnVisibleFootprintSide( *aItem, board()->IsElementVisible( LAYER_FOOTPRINTS_FR ),
+                                   board()->IsElementVisible( LAYER_FOOTPRINTS_BK ),
+                                   m_isFootprintEditor ) )
+    {
+        return false;
+    }
 
     if( settings->GetHighContrast() )
     {
@@ -3676,9 +3751,10 @@ bool PCB_SELECTION_TOOL::Selectable( const BOARD_ITEM* aItem, bool checkVisibili
         // footprint in the selections.
         if( footprint->GraphicalItems().empty()
                 && footprint->Pads().empty()
-                && footprint->Zones().empty() )
+                && footprint->Zones().empty()
+                && footprint->Points().empty() )
         {
-            return true;
+            return board()->IsFootprintLayerVisible( footprint->GetLayer() );
         }
 
         for( const BOARD_ITEM* item : footprint->GraphicalItems() )
@@ -3882,18 +3958,8 @@ bool PCB_SELECTION_TOOL::Selectable( const BOARD_ITEM* aItem, bool checkVisibili
 
         pad = static_cast<const PAD*>( aItem );
 
-        if( pad->GetAttribute() == PAD_ATTRIB::PTH || pad->GetAttribute() == PAD_ATTRIB::NPTH )
-        {
-            // A pad's hole is visible on every layer the pad is visible on plus many layers the
-            // pad is not visible on -- so we only need to check for any visible hole layers.
-            if( !( visibleLayers() & LSET::PhysicalLayersMask() ).any() )
-                return false;
-        }
-        else
-        {
-            if( !( pad->GetLayerSet() & visibleLayers() ).any() )
-                return false;
-        }
+        if( !isPadVisible( *pad, visibleLayers() ) )
+            return false;
 
         break;
 
@@ -4812,6 +4878,8 @@ void PCB_SELECTION_TOOL::FilterCollectorForFootprints( GENERAL_COLLECTOR& aColle
                 }
                 else
                 {
+                    // Unlike Selectable() this stays unmasked, since it only prunes candidates
+                    // and a pad hole is drawn whenever any physical layer shows
                     return board()->GetVisibleLayers();
                 }
             };

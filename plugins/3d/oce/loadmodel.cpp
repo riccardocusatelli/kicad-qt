@@ -30,6 +30,7 @@
 #include <sstream>
 #include <string>
 #include <cstring>
+#include <array>
 #include <map>
 #include <vector>
 #include <wx/filename.h>
@@ -91,7 +92,8 @@
 #define MASK_OCE wxT( "PLUGIN_OCE" )
 #define MASK_OCE_EXTRA wxT( "PLUGIN_OCE_EXTRA" )
 
-typedef std::map<std::size_t, SGNODE*>               COLORMAP;
+typedef std::array<double, 4>                        COLORKEY;
+typedef std::map<COLORKEY, SGNODE*>                  COLORMAP;
 typedef std::map<std::string, SGNODE*>               FACEMAP;
 typedef std::map<std::string, std::vector<SGNODE*>>  NODEMAP;
 typedef std::pair<std::string, std::vector<SGNODE*>> NODEITEM;
@@ -118,7 +120,6 @@ struct DATA
     Handle( XCAFDoc_ShapeTool ) m_assy;
     SGNODE* scene;
     SGNODE* defaultColor;
-    Quantity_Color refColor;
     NODEMAP  shapes;    // SGNODE lists representing a TopoDS_SOLID / COMPOUND
     COLORMAP colors;    // SGAPPEARANCE nodes
     FACEMAP  faces;     // SGSHAPE items representing a TopoDS_FACE
@@ -129,7 +130,6 @@ struct DATA
     {
         scene = nullptr;
         defaultColor = nullptr;
-        refColor.SetValues( Quantity_NOC_BLACK );
         renderBoth = false;
         hasSolid = false;
     }
@@ -247,16 +247,13 @@ struct DATA
             return defaultColor;
         }
 
-        Quantity_Color colorRgb = colorObj->GetRGB();
-
         double r, g, b;
         colorObj->GetRGB().Values( r, g, b, OCC_COLOR_SPACE );
 
-        std::size_t hash = std::hash<double>{}( colorRgb.Distance( refColor ) )
-                           ^ ( std::hash<float>{}( colorObj->Alpha() ) << 1 );
+        COLORKEY key = { r, g, b, colorObj->Alpha() };
 
-        std::map<std::size_t, SGNODE*>::iterator item;
-        item = colors.find( hash );
+        COLORMAP::iterator item;
+        item = colors.find( key );
 
         if( item != colors.end() )
             return item->second;
@@ -267,7 +264,7 @@ struct DATA
         app.SetAmbient( 0.1f, 0.1f, 0.1f );
         app.SetDiffuse( r, g, b );
         app.SetTransparency( 1.0f - colorObj->Alpha() );
-        colors.emplace( hash, app.GetRawPtr() );
+        colors.emplace( key, app.GetRawPtr() );
 
         return app.GetRawPtr();
     }

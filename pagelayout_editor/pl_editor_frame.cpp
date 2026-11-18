@@ -29,6 +29,7 @@
 #include <core/arraydim.h>
 #include <drawing_sheet/ds_data_item.h>
 #include <drawing_sheet/ds_data_model.h>
+#include <drawing_sheet/ds_draw_item.h>
 #include <panel_hotkeys_editor.h>
 #include <confirm.h>
 #include <kiplatform/app.h>
@@ -776,7 +777,7 @@ void PL_EDITOR_FRAME::HardRedraw()
 }
 
 
-DS_DATA_ITEM* PL_EDITOR_FRAME::AddDrawingSheetItem( int aType )
+DS_DATA_ITEM* PL_EDITOR_FRAME::CreateDrawingSheetItem( int aType )
 {
     DS_DATA_ITEM * item = nullptr;
 
@@ -836,10 +837,20 @@ DS_DATA_ITEM* PL_EDITOR_FRAME::AddDrawingSheetItem( int aType )
     if( item == nullptr )
         return nullptr;
 
-    DS_DATA_MODEL::GetTheInstance().Append( item );
-    item->SyncDrawItems( nullptr, GetCanvas()->GetView() );
+    SyncDataItem( item );
 
     return item;
+}
+
+
+void PL_EDITOR_FRAME::SyncDataItem( DS_DATA_ITEM* aItem )
+{
+    DS_DRAW_ITEM_LIST dummy( drawSheetIUScale );
+    dummy.SetPaperFormat( GetPageSettings().GetTypeAsString() );
+    dummy.SetTitleBlock( &GetTitleBlock() );
+    dummy.SetProject( &Prj() );
+
+    aItem->SyncDrawItems( &dummy, GetCanvas()->GetView() );
 }
 
 

@@ -189,9 +189,16 @@ protected:
         wxFileName fn( LIBRARY_MANAGER::ExpandURI( aRow.URI(), Pgm().GetSettingsManager().Prj() ) );
         std::shared_ptr<LIBRARY_TABLE> child = std::make_shared<LIBRARY_TABLE>( fn, LIBRARY_TABLE_SCOPE::GLOBAL, LIBRARY_TABLE_TYPE::FOOTPRINT );
 
-        Pgm().GetLibraryManager().ApplyLibOverrides( *child );
+        if( !child->IsOk() )
+        {
+            wxMessageBox( _( "Unable to load library table." ) );
+        }
+        else
+        {
+            Pgm().GetLibraryManager().ApplyLibOverrides( *child );
 
-        m_panel->OpenTable( child, aRow.Nickname() );
+            m_panel->OpenTable( child, aRow.Nickname() );
+        }
     }
 
     wxString getTablePreamble() override
@@ -830,6 +837,15 @@ void PANEL_FP_LIB_TABLE::onReset( wxCommandEvent& event )
     grid->SetTable( new FP_LIB_TABLE_GRID_DATA_MODEL( m_parent, grid, *newTable.value(), adapter, m_pluginChoices,
                                                       lastGlobalLibDir, wxEmptyString, m_supportedFpFiles ),
                     true /* take ownership */ );
+
+    LIB_TABLE_NOTEBOOK_PANEL* panel0 = static_cast<LIB_TABLE_NOTEBOOK_PANEL*>( m_notebook->GetPage( 0 ) );
+    panel0->ClearDirty();
+
+    static_cast<LIB_TABLE_GRID_DATA_MODEL*>( grid->GetTable() )->SetChangeCallback(
+            [panel0]()
+            {
+                panel0->MarkDirty();
+            } );
 
     m_parent->m_GlobalTableChanged = true;
 

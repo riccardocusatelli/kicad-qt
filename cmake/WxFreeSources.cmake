@@ -123,7 +123,7 @@ set( KICAD_WX_FREE_SOURCES_clipper2
     )
 
 set( KICAD_WX_FREE_SOURCES_common
-    common/api/api_enums.cpp
+    common/api/api_text_attributes.cpp
     common/base_screen.cpp
     common/bin_mod.cpp
     common/bitmap_base.cpp
@@ -478,6 +478,7 @@ set( KICAD_WX_FREE_SOURCES_kicommon_model
     BUILD/common/stroke_params_keywords.cpp
     BUILD/common/template_fieldnames_keywords.cpp
     common/advanced_config.cpp
+    common/api/api_enums.cpp
     common/api/api_utils.cpp
     common/api/serializable.cpp
     common/app_monitor.cpp
@@ -568,8 +569,10 @@ set( KICAD_WX_FREE_SOURCES_kicommon_model
     common/jobs/job_special_execute.cpp
     common/jobs/job_sym_export_svg.cpp
     common/jobs/job_sym_upgrade.cpp
+    common/jobs/jobs_output.cpp
     common/jobs/jobs_output_archive.cpp
     common/jobs/jobs_output_folder.cpp
+    common/jobs/job_unknown.cpp
     common/jobs/jobset.cpp
     common/json_conversions.cpp
     common/json_schema_validator.cpp

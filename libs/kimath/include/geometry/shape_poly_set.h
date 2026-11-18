@@ -561,7 +561,7 @@ public:
             m_triangulatedPolys = std::move( aOther.m_triangulatedPolys );
 
             m_hash = aOther.m_hash;
-            m_hashValid = aOther.m_hashValid;
+            m_hashValid.store( aOther.m_hashValid.load() );
             m_triangulationValid.store( aOther.m_triangulationValid );
         }
 
@@ -1605,7 +1605,10 @@ protected:
 
 private:
     HASH_128 m_hash;
-    bool     m_hashValid = false;
+    std::atomic<bool> m_hashValid = false;
+
+    HASH_128 m_failedHash;
+    std::atomic<bool> m_failedHashValid = false;
 };
 
 #endif // __SHAPE_POLY_SET_H

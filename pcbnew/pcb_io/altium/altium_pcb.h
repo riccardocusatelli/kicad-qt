@@ -25,8 +25,12 @@
 #ifndef ALTIUM_PCB_H
 #define ALTIUM_PCB_H
 
+#include <core/utf8.h>
+#include <embedded_files.h>
 #include <functional>
 #include <layer_ids.h>
+#include <map>
+#include <memory>
 #include <vector>
 #include <pcb_io/common/plugin_common_layer_mapping.h>
 
@@ -88,12 +92,14 @@ class BOARD;
 class BOARD_ITEM;
 class EDA_TEXT;
 class FP_SHAPE;
+class PAD;
 class PCB_SHAPE;
 class PCB_TEXTBOX;
 class FOOTPRINT;
 class ZONE;
 class PCB_DIM_RADIAL;
 class PROGRESS_REPORTER;
+class NET_SETTINGS;
 
 namespace CFB
 {
@@ -101,6 +107,7 @@ struct COMPOUND_FILE_ENTRY;
 } // namespace CFB
 
 class ALTIUM_PCB_COMPOUND_FILE;
+struct ALTIUM_PCB_IMPORT_FIXTURE;
 
 // Structure for storing embedded model data
 struct ALTIUM_EMBEDDED_MODEL_DATA
@@ -115,6 +122,32 @@ struct ALTIUM_EMBEDDED_MODEL_DATA
         : m_modelname(name), m_rotation(rotation), m_z_offset(z_offset), m_data(std::move(data)) {}
 };
 
+/**
+ * Invent a placeholder name for an Altium net that has none.
+ *
+ * NETINFO_LIST keys nets by name and the unconnected net owns the empty string, so a nameless
+ * net has to be given one or it is merged into another net.  @p aCounter is advanced past every
+ * candidate that is already taken on @p aBoard.
+ */
+wxString AltiumUnnamedNetName( const BOARD& aBoard, int& aCounter );
+
+
+/**
+ * Copy the values of Altium rules scoped to a single netclass onto that netclass.
+ *
+ * Only rules of the form InNetClass('<name>') against All are considered, and only for the
+ * clearance, width and routing-via kinds.  Each vector in @p aRulesByKind must be sorted by
+ * ARULE6::priority ascending; the first enabled match for a netclass wins, because Altium
+ * priority 1 is the most specific.  Disabled rules are skipped.
+ *
+ * @p aUnresolved, when given, collects the rules that name a netclass the board does not define.
+ * Those constraints are lost, and the pointers alias @p aRulesByKind.
+ */
+void ApplyAltiumNetclassRules( const std::map<ALTIUM_RULE_KIND, std::vector<ARULE6>>& aRulesByKind,
+                               NET_SETTINGS& aNetSettings,
+                               std::vector<const ARULE6*>* aUnresolved = nullptr );
+
+
 // type declaration required for a helper method
 class ALTIUM_PCB;
 typedef std::function<void( const ALTIUM_PCB_COMPOUND_FILE&, const CFB::COMPOUND_FILE_ENTRY* )>
@@ -122,6 +155,8 @@ typedef std::function<void( const ALTIUM_PCB_COMPOUND_FILE&, const CFB::COMPOUND
 
 class ALTIUM_PCB
 {
+    friend struct ALTIUM_PCB_IMPORT_FIXTURE;
+
 public:
     explicit ALTIUM_PCB( BOARD* aBoard, PROGRESS_REPORTER* aProgressReporter,
                          LAYER_MAPPING_HANDLER& aLayerMappingHandler,
@@ -130,8 +165,9 @@ public:
                          const wxString& aFootprintName = wxEmptyString);
     ~ALTIUM_PCB();
 
-    void Parse( const ALTIUM_PCB_COMPOUND_FILE&                  aAltiumPcbFile,
-                const std::map<ALTIUM_PCB_DIR, std::string>& aFileMapping );
+    void Parse( const ALTIUM_PCB_COMPOUND_FILE&              aAltiumPcbFile,
+                const std::map<ALTIUM_PCB_DIR, std::string>& aFileMapping,
+                const std::map<std::string, UTF8>*           aProperties = nullptr );
 
     FOOTPRINT* ParseFootprint( ALTIUM_PCB_COMPOUND_FILE& altiumLibFile,
                                const wxString&       aFootprintName );
@@ -192,7 +228,8 @@ private:
     void ConvertPads6ToFootprintItemOnNonCopper( FOOTPRINT* aFootprint, const APAD6& aElem );
     void ParseVias6Data( const ALTIUM_PCB_COMPOUND_FILE&     aAltiumPcbFile,
                          const CFB::COMPOUND_FILE_ENTRY* aEntry );
-    void ConvertVias6ToFootprintItem( FOOTPRINT* aFootprint, const AVIA6& aElem );
+    void ConvertVias6ToBoardItem( const AVIA6& aElem );
+    PAD* ConvertVias6ToFootprintItem( FOOTPRINT* aFootprint, const AVIA6& aElem );
     void ParseTracks6Data( const ALTIUM_PCB_COMPOUND_FILE&     aAltiumPcbFile,
                            const CFB::COMPOUND_FILE_ENTRY* aEntry );
     void ConvertTracks6ToBoardItem( const ATRACK6& aElem, const int aPrimitiveIndex );
@@ -203,7 +240,28 @@ private:
                                                PCB_LAYER_ID aLayer );
     void ParseSmartUnions6Data( const ALTIUM_PCB_COMPOUND_FILE&  aAltiumPcbFile,
                                 const CFB::COMPOUND_FILE_ENTRY* aEntry );
+    void ParseUnionNamesData( const ALTIUM_PCB_COMPOUND_FILE& aAltiumPcbFile, const CFB::COMPOUND_FILE_ENTRY* aEntry );
     void HelperCreateTuningPatterns();
+    void HelperSetFootprintMountingStyles();
+    void HelperSetFootprintStackups();
+
+    /**
+     * Hold netted copper a component draws until its pads exist.
+     *
+     * @param aFallback places the copper on the board when no pad of its net touches it.
+     */
+    void HelperDeferComponentCopper( FOOTPRINT* aFootprint, PCB_LAYER_ID aLayer, uint16_t aNet,
+                                     std::unique_ptr<PCB_SHAPE> aShape, std::function<void()> aFallback );
+
+    /// Join deferred component copper and vias to the same-net pads they touch.
+    void HelperFoldComponentCopperIntoPads();
+
+    /// Rebuild the composite netclasses and point every net at its effective netclass.
+    void HelperAssignNetclassesToNets();
+
+    void     MapSchematicNetNames( const std::map<std::string, UTF8>& aProperties );
+    wxString SchematicCasedNetName( const wxString& aNetName ) const;
+
     void ParseTexts6Data( const ALTIUM_PCB_COMPOUND_FILE&     aAltiumPcbFile,
                           const CFB::COMPOUND_FILE_ENTRY* aEntry );
     void ConvertTexts6ToBoardItem( const ATEXT6& aElem );
@@ -220,6 +278,7 @@ private:
     void ConvertFills6ToBoardItem( const AFILL6& aElem );
     void ConvertFills6ToFootprintItem( FOOTPRINT* aFootprint, const AFILL6& aElem,
                                        const bool aIsBoardImport );
+    void ConvertFills6ToPcbShape( const AFILL6& aElem, PCB_SHAPE* aShape );
     void ConvertFills6ToBoardItemOnLayer( const AFILL6& aElem, PCB_LAYER_ID aLayer );
     void ConvertFills6ToFootprintItemOnLayer( FOOTPRINT* aFootprint, const AFILL6& aElem,
                                               PCB_LAYER_ID aLayer );
@@ -227,10 +286,11 @@ private:
                                 const CFB::COMPOUND_FILE_ENTRY* aEntry );
     void ParseShapeBasedRegions6Data( const ALTIUM_PCB_COMPOUND_FILE&     aAltiumPcbFile,
                                       const CFB::COMPOUND_FILE_ENTRY* aEntry );
-    void ConvertShapeBasedRegions6ToBoardItem( const AREGION6& aElem );
+    void ConvertShapeBasedRegions6ToBoardItem( const AREGION6& aElem, const int aPrimitiveIndex );
     void ConvertShapeBasedRegions6ToFootprintItem( FOOTPRINT* aFootprint, const AREGION6& aElem,
                                                    const int aPrimitiveIndex );
-    void ConvertShapeBasedRegions6ToBoardItemOnLayer( const AREGION6& aElem, PCB_LAYER_ID aLayer );
+    void ConvertShapeBasedRegions6ToBoardItemOnLayer( const AREGION6& aElem, PCB_LAYER_ID aLayer,
+                                                      const int aPrimitiveIndex );
     void ConvertShapeBasedRegions6ToFootprintItemOnLayer( FOOTPRINT*      aFootprint,
                                                           const AREGION6& aElem,
                                                           PCB_LAYER_ID    aLayer,
@@ -257,6 +317,15 @@ private:
 
     void HelperSetZoneLayers( ZONE& aZone, const ALTIUM_LAYER aAltiumLayer );
     void HelperSetZoneKeepoutRestrictions( ZONE& aZone, const uint8_t aKeepoutRestrictions );
+
+    /**
+     * Resolve an Altium keepout restriction mask, substituting the restrictions implied by the
+     * layer when the mask is empty.
+     *
+     * @return the mask to apply, or zero if the keepout restricts nothing and should be dropped.
+     */
+    uint8_t HelperGetKeepoutRestrictions( const uint8_t aKeepoutRestrictions, const ALTIUM_LAYER aAltiumLayer );
+
     void HelperPcpShapeAsBoardKeepoutRegion( const PCB_SHAPE&   aShape,
                                              const ALTIUM_LAYER aAltiumLayer,
                                              const uint8_t      aKeepoutRestrictions );
@@ -273,6 +342,29 @@ private:
 
     FOOTPRINT* HelperGetFootprint( uint16_t aComponent ) const;
 
+    void HelperBuildPadstackLayerIndex();
+
+    /**
+     * Return the slot @p aLayer occupies in an Altium padstack's per-layer arrays.
+     *
+     * Those arrays are indexed by Altium layer id (top, mid 1 through 30, bottom), which only
+     * lines up with the KiCad stack position when the board stacks its mid layers in order.
+     *
+     * @return the slot, or -1 when the layer has none, as internal planes do.
+     */
+    int HelperGetPadstackLayerIndex( PCB_LAYER_ID aLayer ) const;
+
+    /**
+     * Return the 3D model @p aModelName embedded in @p aFootprint, inflating and embedding
+     * @p aCompressedData first if it is not there yet.
+     *
+     * @param aIsNew is set when the model was embedded by this call and so still owes a
+     *               CompressAndEncode(), which the caller may run inline or on the pool.
+     */
+    std::shared_ptr<EMBEDDED_FILES::EMBEDDED_FILE>
+    HelperEmbedModel( FOOTPRINT* aFootprint, const wxString& aModelName,
+                      const std::vector<char>& aCompressedData, bool& aIsNew );
+
     void remapUnsureLayers( std::vector<ABOARD6_LAYER_STACKUP>& aStackup );
 
     BOARD*                               m_board;
@@ -281,8 +373,10 @@ private:
     std::vector<PCB_DIM_RADIAL*>         m_radialDimensions;
     std::map<uint32_t, wxString>         m_unicodeStrings;
     std::vector<int>                     m_altiumToKicadNetcodes;
+    std::map<wxString, wxString>         m_schematicNetNames; // upper cased name to schematic casing
     std::map<ALTIUM_LAYER, PCB_LAYER_ID> m_layermap; // used to correctly map layers
     std::map<ALTIUM_LAYER, wxString>     m_layerNames;
+    std::map<PCB_LAYER_ID, int>          m_padstackLayerIndex;
 
     std::map<wxString, ALTIUM_EMBEDDED_MODEL_DATA>  m_EmbeddedModels;
     std::map<ALTIUM_RULE_KIND, std::vector<ARULE6>> m_rules;
@@ -290,7 +384,20 @@ private:
             m_extendedPrimitiveInformationMaps;
 
     std::vector<ASMARTUNION6>                  m_tuningUnions;
+    std::map<uint32_t, wxString>               m_unionNames;
     std::map<int, std::vector<BOARD_ITEM*>>    m_unionToBoardItems;
+
+    struct PENDING_COMPONENT_COPPER
+    {
+        FOOTPRINT*                 footprint;
+        PCB_LAYER_ID               layer;
+        int                        netcode;
+        std::unique_ptr<PCB_SHAPE> shape;        ///< Board coordinates, released once folded
+        std::function<void()>      fallback;
+    };
+
+    std::vector<PENDING_COMPONENT_COPPER>          m_pendingComponentCopper;
+    std::vector<std::pair<FOOTPRINT*, AVIA6>>      m_pendingComponentVias;
 
     std::map<ALTIUM_LAYER, ZONE*>        m_outer_plane;
 

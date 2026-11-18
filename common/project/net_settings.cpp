@@ -225,7 +225,7 @@ NET_SETTINGS::NET_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "net_colors",
             [&]() -> nlohmann::json
             {
-                nlohmann::json ret = {};
+                nlohmann::json ret = nlohmann::json::object();
 
                 for( const auto& [netname, color] : m_netColorAssignments )
                 {
@@ -256,7 +256,7 @@ NET_SETTINGS::NET_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "netclass_assignments",
             [&]() -> nlohmann::json
             {
-                nlohmann::json ret = {};
+                nlohmann::json ret = nlohmann::json::object();
 
                 for( const auto& [netname, netclassNames] : m_netClassLabelAssignments )
                 {
@@ -290,6 +290,9 @@ NET_SETTINGS::NET_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
                 }
             },
             {} ) );
+
+    // Let the save drop stale netclass assignments instead of merging them back in
+    m_params.back()->SetClearUnknownKeys();
 
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "netclass_patterns",
             [&]() -> nlohmann::json
@@ -869,10 +872,7 @@ std::shared_ptr<NETCLASS> NET_SETTINGS::GetEffectiveNetClass( const wxString& aN
     // Make and cache the effective netclass. Note that makeEffectiveNetclass will add the default
     // netclass to resolvedNetclasses if it is needed to complete the netclass paramters set. It
     // will also sort resolvedNetclasses by priority order.
-    std::vector<NETCLASS*> netclassPtrs;
-
-    for( const std::shared_ptr<NETCLASS>& nc : resolvedNetclasses )
-        netclassPtrs.push_back( nc.get() );
+    std::vector<std::shared_ptr<NETCLASS>> netclassPtrs( resolvedNetclasses.begin(), resolvedNetclasses.end() );
 
     wxString name;
     name.Printf( "Effective for net: %s", aNetName );
@@ -887,7 +887,7 @@ std::shared_ptr<NETCLASS> NET_SETTINGS::GetEffectiveNetClass( const wxString& aN
     }
     else
     {
-        effectiveNetclass->SetConstituentNetclasses( std::move( netclassPtrs ) );
+        effectiveNetclass->SetConstituentOwners( std::move( netclassPtrs ) );
 
         m_compositeNetClasses[effectiveNetclass->GetName()] = effectiveNetclass;
         m_effectiveNetclassCache[aNetName] = effectiveNetclass;
@@ -902,7 +902,7 @@ void NET_SETTINGS::RecomputeEffectiveNetclasses()
     for( auto& [ncName, nc] : m_compositeNetClasses )
     {
         // Note this needs to be a copy in case we now need to add the default netclass
-        std::vector<NETCLASS*> constituents = nc->GetConstituentNetclasses();
+        std::vector<std::shared_ptr<NETCLASS>> constituents = nc->GetConstituentOwners();
 
         KI_ASSERT( constituents.size() > 0 );
 
@@ -915,18 +915,18 @@ void NET_SETTINGS::RecomputeEffectiveNetclasses()
         // Remake the netclass from original constituents
         nc->ResetParameters();
         makeEffectiveNetclass( nc, constituents );
-        nc->SetConstituentNetclasses( std::move( constituents ) );
+        nc->SetConstituentOwners( std::move( constituents ) );
     }
 }
 
 
-void NET_SETTINGS::makeEffectiveNetclass( std::shared_ptr<NETCLASS>& effectiveNetclass,
-                                          std::vector<NETCLASS*>&    constituentNetclasses ) const
+void NET_SETTINGS::makeEffectiveNetclass( std::shared_ptr<NETCLASS>&               effectiveNetclass,
+                                          std::vector<std::shared_ptr<NETCLASS>>& constituentNetclasses ) const
 {
     // Sort the resolved netclasses by priority (highest first), with same-priority netclasses
     // ordered alphabetically
     std::sort( constituentNetclasses.begin(), constituentNetclasses.end(),
-               []( NETCLASS* nc1, NETCLASS* nc2 )
+               []( const std::shared_ptr<NETCLASS>& nc1, const std::shared_ptr<NETCLASS>& nc2 )
                {
                    int p1 = nc1->GetPriority();
                    int p2 = nc2->GetPriority();
@@ -943,7 +943,7 @@ void NET_SETTINGS::makeEffectiveNetclass( std::shared_ptr<NETCLASS>& effectiveNe
     // Iterate from lowest priority netclass and fill effective netclass parameters
     for( auto itr = constituentNetclasses.rbegin(); itr != constituentNetclasses.rend(); ++itr )
     {
-        NETCLASS* nc = *itr;
+        NETCLASS* nc = itr->get();
 
         if( nc->HasClearance() )
         {
@@ -1042,7 +1042,7 @@ void NET_SETTINGS::makeEffectiveNetclass( std::shared_ptr<NETCLASS>& effectiveNe
 
     // Fill in any required defaults
     if( addMissingDefaults( effectiveNetclass.get() ) )
-        constituentNetclasses.push_back( m_defaultNetClass.get() );
+        constituentNetclasses.push_back( m_defaultNetClass );
 }
 
 

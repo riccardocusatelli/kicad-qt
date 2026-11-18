@@ -78,6 +78,8 @@
 #include <connectivity/connectivity_data.h>
 #include <core/kicad_algo.h>
 #include <dialogs/hotkey_cycle_popup.h>
+#include <dialogs/dialog_map_layers.h>
+#include <pcb_io/common/plugin_common_layer_mapping.h>
 #include <kicad_clipboard.h>
 #include <origin_viewitem.h>
 #include <pcb_edit_frame.h>
@@ -2156,6 +2158,16 @@ int PCB_CONTROL::AppendBoard( PCB_IO& pi, const wxString& fileName, DESIGN_BLOCK
                     return dlg.ShowModal() == wxID_OK;
                 } );
 
+        // Let the user remap the appended board's layers onto this board when they do not match
+        if( LAYER_MAPPABLE_PLUGIN* mappable = dynamic_cast<LAYER_MAPPABLE_PLUGIN*>( &pi ) )
+        {
+            mappable->RegisterCallback(
+                    [editFrame]( const std::vector<INPUT_LAYER_DESC>& aLayerDescs )
+                    {
+                        return DIALOG_MAP_LAYERS::RunModal( editFrame, aLayerDescs );
+                    } );
+        }
+
         WX_PROGRESS_REPORTER progressReporter( editFrame, _( "Load PCB" ), 1, PR_CAN_ABORT );
 
         pi.SetProgressReporter( &progressReporter );
@@ -2166,7 +2178,7 @@ int PCB_CONTROL::AppendBoard( PCB_IO& pi, const wxString& fileName, DESIGN_BLOCK
         DisplayErrorMessage( editFrame, _( "Error loading board." ), ioe.What() );
         clearSkipStructOnExistingItems();
 
-        return 0;
+        return 1;
     }
 
     newProperties = brd->GetProperties();
@@ -2216,6 +2228,14 @@ int PCB_CONTROL::AppendBoard( PCB_IO& pi, const wxString& fileName, DESIGN_BLOCK
     brd->SetEnabledLayers( enabledLayers );
     brd->SetVisibleLayers( enabledLayers );
     brd->GetDesignSettings().GetStackupDescriptor().SynchronizeWithBoard( &brd->GetDesignSettings() );
+
+    if( brd->GetCopperLayerCount() != initialCopperLayerCount )
+    {
+        editFrame->GetInfoBar()->ShowMessageFor(
+                wxString::Format( _( "Board changed from %d to %d copper layers, stackup updated." ),
+                                  initialCopperLayerCount, brd->GetCopperLayerCount() ),
+                6000, wxICON_INFORMATION );
+    }
 
     int ret = 0;
 

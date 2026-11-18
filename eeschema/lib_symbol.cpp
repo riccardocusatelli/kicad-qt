@@ -282,7 +282,8 @@ LIB_SYMBOL::LIB_SYMBOL( const LIB_SYMBOL& aSymbol, LEGACY_SYMBOL_LIB* aLibrary, 
     m_duplicatePinNumbersAreJumpers = aSymbol.m_duplicatePinNumbersAreJumpers;
 
     m_unitDisplayNames = aSymbol.GetUnitDisplayNames();
-    m_bodyStyleNames = aSymbol.GetBodyStyleNames();
+    // Raw member, not the accessor, which would bake a root's body styles into a derived copy
+    m_bodyStyleNames = aSymbol.m_bodyStyleNames;
 
     ClearSelected();
 
@@ -335,7 +336,8 @@ const LIB_SYMBOL& LIB_SYMBOL::operator=( const LIB_SYMBOL& aSymbol )
     m_duplicatePinNumbersAreJumpers = aSymbol.m_duplicatePinNumbersAreJumpers;
 
     m_unitDisplayNames = aSymbol.GetUnitDisplayNames();
-    m_bodyStyleNames = aSymbol.GetBodyStyleNames();
+    // Raw member, not the accessor, which would bake a root's body styles into a derived copy
+    m_bodyStyleNames = aSymbol.m_bodyStyleNames;
 
     m_drawings.clear();
 
@@ -451,10 +453,33 @@ std::shared_ptr<LIB_SYMBOL> LIB_SYMBOL::GetRootSymbol() const
 }
 
 
+bool LIB_SYMBOL::UnitsLocked() const
+{
+    if( IsDerived() )
+    {
+        std::shared_ptr<LIB_SYMBOL> root = GetSafeRootSymbol( this, __FUNCTION__ );
+
+        if( root.get() != this )
+            return root->m_unitsLocked;
+    }
+
+    return m_unitsLocked;
+}
+
+
 wxString LIB_SYMBOL::GetUnitDisplayName( int aUnit, bool aLabel ) const
 {
-    if( m_unitDisplayNames.contains( aUnit ) )
-        return m_unitDisplayNames.at( aUnit );
+    const LIB_SYMBOL*           owner = this;
+    std::shared_ptr<LIB_SYMBOL> root;
+
+    if( IsDerived() )
+    {
+        root = GetSafeRootSymbol( this, __FUNCTION__ );
+        owner = root.get();
+    }
+
+    if( owner->m_unitDisplayNames.contains( aUnit ) )
+        return owner->m_unitDisplayNames.at( aUnit );
     else if( aLabel )
         return wxString::Format( _( "Unit %s" ), LIB_SYMBOL::LetterSubReference( aUnit, 'A' ) );
     else
@@ -473,8 +498,11 @@ wxString LIB_SYMBOL::GetBodyStyleDescription( int aBodyStyle, bool aLabel ) cons
     }
     else if( IsMultiBodyStyle() )
     {
-        if( aBodyStyle <= (int) m_bodyStyleNames.size() )
-            return m_bodyStyleNames[aBodyStyle - 1];
+        const std::vector<wxString>& names = GetBodyStyleNames();
+
+        // Draw items common to every body style carry a body style of 0
+        if( aBodyStyle >= BODY_STYLE::BASE && aBodyStyle <= (int) names.size() )
+            return names[aBodyStyle - 1];
     }
 
     return wxT( "?" );
@@ -543,10 +571,20 @@ void LIB_SYMBOL::SetParent( LIB_SYMBOL* aParent )
 
 wxString LIB_SYMBOL::GetFootprint()
 {
-    if( !GetField( FIELD_T::FOOTPRINT ) )
+    SCH_FIELD* field = GetField( FIELD_T::FOOTPRINT );
+
+    if( !field )
         return wxEmptyString;
 
-    return GetFootprintField().GetShownText( false );
+    // Placing a derived symbol inherits the parent's footprint the same way the description,
+    // keywords and filters do, so reporting none here disagrees with what lands on the schematic
+    if( field->GetText().IsEmpty() && IsDerived() )
+    {
+        if( std::shared_ptr<LIB_SYMBOL> parent = m_parent.lock() )
+            return parent->GetFootprint();
+    }
+
+    return field->GetShownText( false );
 }
 
 
@@ -2027,6 +2065,43 @@ int LIB_SYMBOL::GetUnitCount() const
 }
 
 
+int LIB_SYMBOL::GetBodyStyleCount() const
+{
+    if( HasDeMorganBodyStyles() )
+        return 2;
+
+    return std::max( 1, (int) GetBodyStyleNames().size() );
+}
+
+
+bool LIB_SYMBOL::HasDeMorganBodyStyles() const
+{
+    if( IsDerived() )
+    {
+        std::shared_ptr<LIB_SYMBOL> root = GetSafeRootSymbol( this, __FUNCTION__ );
+
+        if( root.get() != this )
+            return root->m_demorgan;
+    }
+
+    return m_demorgan;
+}
+
+
+const std::vector<wxString>& LIB_SYMBOL::GetBodyStyleNames() const
+{
+    if( IsDerived() )
+    {
+        std::shared_ptr<LIB_SYMBOL> root = GetSafeRootSymbol( this, __FUNCTION__ );
+
+        if( root.get() != this )
+            return root->m_bodyStyleNames;
+    }
+
+    return m_bodyStyleNames;
+}
+
+
 void LIB_SYMBOL::SetBodyStyleCount( int aCount, bool aDuplicateDrawItems, bool aDuplicatePins )
 {
     KI_CHECK_RET( aCount >= 1,
@@ -2641,6 +2716,13 @@ void LIB_SYMBOL::EmbedFonts()
     for( KIFONT::OUTLINE_FONT* font : fonts )
     {
         auto file = GetEmbeddedFiles()->AddFile( font->GetFileName(), false );
+
+        if( !file )
+        {
+            KI_LOG_TRACE( "EMBED", "Failed to add font file: %s", font->GetFileName() );
+            continue;
+        }
+
         file->type = EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE::FONT;
     }
 }

@@ -76,12 +76,13 @@ using namespace TSCHEMATIC_T;
 SCH_IO_KICAD_SEXPR_PARSER::SCH_IO_KICAD_SEXPR_PARSER( LINE_READER* aLineReader,
                                                       PROGRESS_REPORTER* aProgressReporter,
                                                       unsigned aLineCount, SCH_SHEET* aRootSheet,
-                                                      bool aIsAppending ) :
+                                                      bool aIsAppending, bool aIsSheetLoad ) :
         SCHEMATIC_LEXER( aLineReader ),
         m_requiredVersion( 0 ),
         m_unit( 1 ),
         m_bodyStyle( 1 ),
         m_appending( aIsAppending ),
+        m_sheetLoad( aIsSheetLoad ),
         m_progressReporter( aProgressReporter ),
         m_lineReader( aLineReader ),
         m_lastProgressLine( 0 ),
@@ -2455,12 +2456,8 @@ SCH_SHEET_PIN* SCH_IO_KICAD_SEXPR_PARSER::parseSchSheetPin( SCH_SHEET* aSheet )
 
     wxString name = FromUTF8();
 
-    if( name.IsEmpty() )
-    {
-        THROW_PARSE_ERROR( _( "Empty sheet pin name" ), CurSource(), CurLine(), CurLineNumber(),
-                           CurOffset() );
-    }
-
+    // An unnamed pin is junk, but rejecting it makes the whole schematic unopenable with no way
+    // out but hand-editing the file.  Load it so the user can rename or delete it
     auto sheetPin = std::make_unique<SCH_SHEET_PIN>( aSheet, VECTOR2I( 0, 0 ), name );
 
     token = NextTok();
@@ -3032,7 +3029,14 @@ void SCH_IO_KICAD_SEXPR_PARSER::ParseSchematic( SCH_SHEET* aSheet, bool aIsCopya
                 THROW_PARSE_ERROR( _( "No schematic object" ), CurSource(), CurLine(),
                                    CurLineNumber(), CurOffset() );
 
-            schematic->GetEmbeddedFiles()->SetAreFontsEmbedded( parseBool() );
+            bool embedFonts = parseBool();
+
+            // A sheet loaded into an open schematic must not clear the destination's flag;
+            // saving with it off deletes the fonts the destination already embedded
+            if( m_sheetLoad )
+                embedFonts = embedFonts || schematic->GetAreFontsEmbedded();
+
+            schematic->GetEmbeddedFiles()->SetAreFontsEmbedded( embedFonts );
             NeedRIGHT();
             break;
         }

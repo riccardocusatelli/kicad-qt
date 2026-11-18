@@ -50,6 +50,8 @@ public:
 
     void UpdateDelayProfileNames( const std::vector<wxString>& aNames ) const;
 
+    void RemapDelayProfileNames( const std::map<wxString, wxString>& aRenames ) const;
+
 private:
     void OnAddNetclassClick( wxCommandEvent& event ) override;
     void OnRemoveNetclassClick( wxCommandEvent& event ) override;
@@ -67,7 +69,8 @@ private:
 
     void onUnitsChanged( wxCommandEvent& aEvent );
 
-    bool validateNetclassName( int aRow, const wxString& aName, bool focusFirst = true );
+    bool validateNetclassName( int aRow, const wxString& aName, bool focusFirst = true,
+                               bool aDeferError = false );
     bool validateNetclassClearance( int aRow );
 
     void rebuildNetclassDropdowns();

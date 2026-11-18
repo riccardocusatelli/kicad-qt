@@ -40,6 +40,7 @@
 #include <gal/graphics_abstraction_layer.h>
 #include <gal/painter.h>
 #include <algorithm>
+#include <unordered_set>
 
 #include <core/profile.h>
 #include <core/ki_log.h>
@@ -155,17 +156,14 @@ private:
      *
      * @param aReorderMap is the mapping of old to new layer ids
      */
-    void reorderGroups( std::unordered_map<int, int> aReorderMap )
+    void reorderGroups( const std::unordered_map<int, int>& aReorderMap )
     {
         for( int i = 0; i < m_groupsSize; ++i )
         {
-            int orig_layer = m_groups[i].first;
-            int new_layer = orig_layer;
+            auto it = aReorderMap.find( m_groups[i].first );
 
-            if( aReorderMap.count( orig_layer ) )
-                new_layer = aReorderMap.at( orig_layer );
-
-            m_groups[i].first = new_layer;
+            if( it != aReorderMap.end() )
+                m_groups[i].first = it->second;
         }
     }
 
@@ -697,26 +695,49 @@ void VIEW::SortLayers( std::vector<int>& aLayers ) const
 
 void VIEW::ReorderLayerData( std::unordered_map<int, int> aReorderMap )
 {
-    std::map<int,VIEW_LAYER> new_map;
+    // GerbView's remapping is not a permutation once an image is deleted, so permute in place.
+    // Rebuilding the map can drop an id, and m_layers[] then default-constructs a null R-tree
+    std::map<int, VIEW_LAYER> moved;
+    std::unordered_set<int>   destinations;
 
-    for( auto& [_, layer] : m_layers )
+    for( const auto& [from, to] : aReorderMap )
     {
-        auto reorder_it = aReorderMap.find( layer.id );
-
-        // If the layer is not in the reorder map or if it is mapped to itself,
-        // just copy the layer to the new map.
-        if( reorder_it == aReorderMap.end() || reorder_it->second == layer.id )
-        {
-            new_map.emplace( layer.id, layer );
+        if( from == to )
             continue;
+
+        auto source = m_layers.find( from );
+
+        if( source == m_layers.end() || !m_layers.count( to ) )
+            continue;
+
+        // Every caller permutes or compacts, so two sources landing on one destination means the
+        // caller built a bad map and the loser's items are about to be discarded
+        if( destinations.count( to ) )
+        {
+            KI_LOG_DEBUG( wxT( "VIEW::ReorderLayerData: layer %d also maps to %d, which already "
+                             "takes a layer; its items will be lost" ), from, to );
         }
 
-        auto [new_it,__] = new_map.emplace( reorder_it->second, layer );
-        new_it->second.id = reorder_it->second;
+        moved.emplace( from, source->second );
+        destinations.insert( to );
     }
 
-    // Transfer reordered data (using the copy assignment operator ):
-    m_layers = new_map;
+    // Every mover was copied before any of them was overwritten, so these can run in any order
+    for( const auto& [from, layer] : moved )
+    {
+        auto destination = m_layers.find( aReorderMap.at( from ) );
+
+        destination->second = layer;
+        destination->second.id = destination->first;
+    }
+
+    // A source nothing moves onto keeps its settings but must own an empty tree rather than the
+    // one it just handed to its destination
+    for( const auto& [from, _] : moved )
+    {
+        if( !destinations.count( from ) )
+            m_layers.find( from )->second.items = std::make_shared<VIEW_RTREE>();
+    }
 
     SortOrderedLayers();
 
@@ -1265,21 +1286,16 @@ void VIEW::clearGroupCache()
 
 void VIEW::invalidateItem( VIEW_ITEM* aItem, int aUpdateFlags )
 {
+    // updateLayers updates geometry too, so we do not have to update both of them at the
+    // same time
+    if( aUpdateFlags & LAYERS )
+        updateLayers( aItem );
+    else if( aUpdateFlags & GEOMETRY )
+        updateBbox( aItem );
+
+    // Now that we have initialized, set flags to ALL for the code below
     if( aUpdateFlags & INITIAL_ADD )
-    {
-        // Don't update layers or bbox, since it was done in VIEW::Add()
-        // Now that we have initialized, set flags to ALL for the code below
         aUpdateFlags = ALL;
-    }
-    else
-    {
-        // updateLayers updates geometry too, so we do not have to update both of them at the
-        // same time
-        if( aUpdateFlags & LAYERS )
-            updateLayers( aItem );
-        else if( aUpdateFlags & GEOMETRY )
-            updateBbox( aItem );
-    }
 
     std::vector<int> layers = aItem->ViewGetLayers();
 

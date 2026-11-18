@@ -39,6 +39,7 @@
 #include <gal/cursors.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <gal/opengl/opengl_gal.h>
+#include <gal/opengl/gpu_oom_error.h>
 #include <gal/cairo/cairo_gal.h>
 #include <math/vector2wx.h>
 
@@ -49,6 +50,8 @@
 #include <widgets/wx_infobar.h>
 
 #include <kiplatform/ui.h>
+
+#include <stdexcept>
 
 #include <core/profile.h>
 
@@ -66,6 +69,67 @@
  * @ingroup trace_env_vars
  */
 static const wxChar traceDrawPanel[] = wxT( "KICAD_DRAW_PANEL" );
+
+
+namespace
+{
+/// Why DoRePaint drew or returned early; reported under KICAD_GAL_CONTEXT when it changes
+enum PAINT_STATE
+{
+    PAINT_DREW = 0,
+    PAINT_MUTEX_HELD,
+    PAINT_DRAWING_DISABLED,
+    PAINT_NOT_VISIBLE,
+    PAINT_CONTEXT_LOCKED,
+    PAINT_REENTRANT,
+    PAINT_CONTEXT_BIND_FAILED
+};
+
+const wxChar* paintStateName( int aState )
+{
+    switch( aState )
+    {
+    case PAINT_DREW:                return wxS( "drew" );
+    case PAINT_MUTEX_HELD:          return wxS( "skipped, refresh mutex held" );
+    case PAINT_DRAWING_DISABLED:    return wxS( "skipped, drawing disabled" );
+    case PAINT_NOT_VISIBLE:         return wxS( "skipped, GAL not initialized or not visible" );
+    case PAINT_CONTEXT_LOCKED:      return wxS( "skipped, context locked" );
+    case PAINT_REENTRANT:           return wxS( "skipped, already drawing" );
+    case PAINT_CONTEXT_BIND_FAILED: return wxS( "skipped, context could not be made current" );
+    default:                        return wxS( "none yet" );
+    }
+}
+
+/// Describe why a window is not shown on screen, naming the first hidden ancestor
+wxString visibilityDetail( wxWindow* aWindow )
+{
+    if( !aWindow )
+        return wxS( "no window" );
+
+    wxRect   rect = aWindow->GetClientRect();
+    wxString hidden = wxS( "none" );
+
+    for( wxWindow* w = aWindow; w; w = w->GetParent() )
+    {
+        if( !w->IsShown() )
+        {
+            hidden = wxString::Format( wxS( "%s '%s' %p" ), w->GetClassInfo()->GetClassName(), w->GetName(), w );
+            break;
+        }
+
+        if( w->IsTopLevel() )
+            break;
+    }
+
+    wxTopLevelWindow* tlw = dynamic_cast<wxTopLevelWindow*>( wxGetTopLevelParent( aWindow ) );
+
+    return wxString::Format( wxS( "shownOnScreen %d client %dx%d hiddenAncestor %s tlwShown %d tlwIconized %d "
+                                  "tlwEnabled %d" ),
+                             aWindow->IsShownOnScreen(), rect.width, rect.height, hidden,
+                             tlw ? (int) tlw->IsShown() : -1, tlw ? (int) tlw->IsIconized() : -1,
+                             tlw ? (int) tlw->IsEnabled() : -1 );
+}
+} // namespace
 
 
 EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWindowId,
@@ -87,6 +151,11 @@ EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWin
         m_eventDispatcher( nullptr ),
         m_lostFocus( false ),
         m_glRecoveryAttempted( false ),
+        m_contextBindFailures( 0 ),
+        m_pendingResize( false ),
+        m_tracedPaintState( -1 ),
+        m_tracedPaintRepeats( 0 ),
+        m_enableRetries( 0 ),
         m_stealsFocus( true ),
         m_statusPopup( nullptr )
 {
@@ -168,11 +237,16 @@ EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWin
              wxTimerEventHandler( EDA_DRAW_PANEL_GAL::onRefreshTimer ), nullptr, this );
 
     Connect( wxEVT_SHOW, wxShowEventHandler( EDA_DRAW_PANEL_GAL::onShowEvent ), nullptr, this );
+
+    KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s created, backend %d" ), traceName(), (int) m_backend );
 }
 
 
 EDA_DRAW_PANEL_GAL::~EDA_DRAW_PANEL_GAL()
 {
+    // The owning frame may already be half destroyed, so only the pointer is safe to report
+    KI_LOG_TRACE( traceGalContext, wxS( "Canvas %p destroyed" ), this );
+
     // Ensure EDA_DRAW_PANEL_GAL::onShowEvent is not fired during Dtor process
     Disconnect( wxEVT_SHOW, wxShowEventHandler( EDA_DRAW_PANEL_GAL::onShowEvent ) );
     StopDrawing();
@@ -214,11 +288,15 @@ void EDA_DRAW_PANEL_GAL::onPaint( wxPaintEvent& WXUNUSED( aEvent ) )
 
 bool EDA_DRAW_PANEL_GAL::recoverFromGalError( const std::exception& aError )
 {
+    // A predicted GPU out-of-memory cannot be cured by reinitializing OpenGL; it would just
+    // hit the same VRAM ceiling. Skip straight to the software fallback.
+    const bool gpuOutOfMemory = dynamic_cast<const KIGFX::GPU_OOM_ERROR*>( &aError ) != nullptr;
+
     try
     {
         // Sleep/wake and GPU resets can invalidate the entire GL context.
         // Try a full reinit of the current backend before falling back.
-        if( !m_glRecoveryAttempted )
+        if( !gpuOutOfMemory && !m_glRecoveryAttempted )
         {
             m_glRecoveryAttempted = true;
             GAL_TYPE prevBackend = m_backend;
@@ -259,21 +337,47 @@ bool EDA_DRAW_PANEL_GAL::recoverFromGalError( const std::exception& aError )
 }
 
 
+/// Frames to drop before giving up on the GL context and letting the backend recover
+static constexpr int MAX_CONTEXT_BIND_RETRIES = 2;
+
+
 bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 {
     if( !m_refreshMutex.try_lock() )
+    {
+        tracePaintState( PAINT_MUTEX_HELD );
         return false;
+    }
 
     std::lock_guard<std::mutex> lock( m_refreshMutex, std::adopt_lock );
 
     if( !m_drawingEnabled )
+    {
+        tracePaintState( PAINT_DRAWING_DISABLED );
         return false;
+    }
 
-    if( !m_gal->IsInitialized() || !m_gal->IsVisible() || m_gal->IsContextLocked() )
+    if( !m_gal->IsInitialized() || !m_gal->IsVisible() )
+    {
+        tracePaintState( PAINT_NOT_VISIBLE );
         return false;
+    }
+
+    if( m_gal->IsContextLocked() )
+    {
+        tracePaintState( PAINT_CONTEXT_LOCKED );
+        return false;
+    }
 
     if( m_drawing )
+    {
+        tracePaintState( PAINT_REENTRANT );
         return false;
+    }
+
+    // The context may have become current since the size change was deferred
+    if( m_pendingResize )
+        ResizeGal();
 
     m_lastRepaintStart = std::chrono::steady_clock::now();
 
@@ -369,6 +473,20 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
             KIGFX::GAL_DRAWING_CONTEXT ctx( m_gal );
             cntCtx.Stop();
 
+            if( !ctx.IsDrawing() )
+            {
+                // A canvas being torn down never reaches here; DoRePaint returns above once
+                // the window stops being visible.  So repeated failures mean a live canvas
+                // whose context is gone for good, and retrying forever would leave it blank
+                tracePaintState( PAINT_CONTEXT_BIND_FAILED );
+
+                if( ++m_contextBindFailures > MAX_CONTEXT_BIND_RETRIES )
+                    throw std::runtime_error( "Could not make the OpenGL context current" );
+
+                RequestRefresh();
+                return false;
+            }
+
             if( m_view->IsTargetDirty( KIGFX::TARGET_OVERLAY )
                 && !m_gal->HasTarget( KIGFX::TARGET_OVERLAY ) )
             {
@@ -415,6 +533,8 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 
         // OpenGL frame completed successfully, allow future recovery attempts
         m_glRecoveryAttempted = false;
+        m_contextBindFailures = 0;
+        tracePaintState( PAINT_DREW );
     }
     catch( std::exception& err )
     {
@@ -461,7 +581,20 @@ void EDA_DRAW_PANEL_GAL::ResizeGal( bool aForce )
         return;
 
     KIGFX::GAL_CONTEXT_LOCKER locker( m_gal );
-    wxSize                    clientSize = GetClientSize();
+
+    // Resizing reallocates the framebuffer, which only exists in this canvas' own context
+    if( !m_gal->IsContextValid() )
+    {
+        // wx reports a given size once, so dropping it here would leave the canvas stuck at
+        // whatever size the GAL was built with until something else resizes the window
+        m_pendingResize = true;
+        RequestRefresh();
+        return;
+    }
+
+    m_pendingResize = false;
+
+    wxSize      clientSize = GetClientSize();
     WX_INFOBAR* infobar = GetParentEDAFrame() ? GetParentEDAFrame()->GetInfoBar() : nullptr;
 
     if( !aForce && ToVECTOR2I( clientSize ) == m_gal->GetScreenPixelSize() )
@@ -565,9 +698,20 @@ void EDA_DRAW_PANEL_GAL::ForceRefresh()
             Connect( wxEVT_IDLE, wxIdleEventHandler( EDA_DRAW_PANEL_GAL::onIdle ), nullptr, this );
 
             m_drawingEnabled = true;
+
+            KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s drawing enabled after %d retries" ), traceName(),
+                        m_enableRetries );
+            m_enableRetries = 0;
         }
         else
         {
+            // A canvas that never paints keeps retrying here, so report the first and then every 50th
+            if( m_enableRetries++ % 50 == 0 )
+            {
+                KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s waiting for GAL, retry %d: %s" ), traceName(),
+                            m_enableRetries, visibilityDetail( dynamic_cast<wxWindow*>( m_gal ) ) );
+            }
+
             // Try again soon
             m_refreshTimer.StartOnce( 100 );
             return;
@@ -619,6 +763,8 @@ void EDA_DRAW_PANEL_GAL::SetEventDispatcher( TOOL_DISPATCHER* aEventDispatcher )
 
 void EDA_DRAW_PANEL_GAL::StartDrawing()
 {
+    KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s StartDrawing" ), traceName() );
+
     // Start querying GAL if it is ready
     m_refreshTimer.StartOnce( 100 );
 }
@@ -626,6 +772,8 @@ void EDA_DRAW_PANEL_GAL::StartDrawing()
 
 void EDA_DRAW_PANEL_GAL::StopDrawing()
 {
+    KI_LOG_TRACE( traceGalContext, wxS( "Canvas %p StopDrawing, was enabled %d" ), this, m_drawingEnabled );
+
     m_refreshTimer.Stop();
     m_drawingEnabled = false;
 
@@ -669,6 +817,9 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
 
     // Prevent refreshing canvas during backend switch
     StopDrawing();
+
+    m_contextBindFailures = 0;
+    m_pendingResize = false;
 
     KIGFX::GAL* new_gal = nullptr;
 
@@ -761,6 +912,9 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
 
     m_backend = aGalType;
 
+    KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s switched to backend %d, result %d" ), traceName(),
+                (int) aGalType, result );
+
     return result;
 }
 
@@ -835,10 +989,50 @@ void EDA_DRAW_PANEL_GAL::onRefreshTimer( wxTimerEvent& aEvent )
 
 void EDA_DRAW_PANEL_GAL::onShowEvent( wxShowEvent& aEvent )
 {
+    KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s show event %d: %s" ), traceName(), aEvent.IsShown(),
+                visibilityDetail( dynamic_cast<wxWindow*>( m_gal ) ) );
+
     if( m_gal && m_gal->IsInitialized() && m_gal->IsVisible() )
     {
         OnShow();
     }
+}
+
+
+void EDA_DRAW_PANEL_GAL::tracePaintState( int aState )
+{
+    if( aState == m_tracedPaintState )
+    {
+        // A canvas stuck behind one guard would otherwise go silent, so keep a slow heartbeat
+        if( aState != PAINT_DREW && ++m_tracedPaintRepeats % 200 == 0 )
+        {
+            KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s still %s (%d times)" ), traceName(),
+                        paintStateName( aState ), m_tracedPaintRepeats );
+        }
+
+        return;
+    }
+
+    wxString detail;
+
+    if( aState == PAINT_NOT_VISIBLE )
+        detail = wxS( ": " ) + visibilityDetail( dynamic_cast<wxWindow*>( m_gal ) );
+
+    KI_LOG_TRACE( traceGalContext, wxS( "Canvas %s %s -> %s after %d repeats%s" ), traceName(),
+                paintStateName( m_tracedPaintState ), paintStateName( aState ), m_tracedPaintRepeats, detail );
+
+    m_tracedPaintState = aState;
+    m_tracedPaintRepeats = 0;
+}
+
+
+wxString EDA_DRAW_PANEL_GAL::traceName() const
+{
+    wxTopLevelWindow* tlw =
+            dynamic_cast<wxTopLevelWindow*>( wxGetTopLevelParent( const_cast<EDA_DRAW_PANEL_GAL*>( this ) ) );
+
+    return wxString::Format( wxS( "%p [%s%s]" ), this, IsDialogPreview() ? wxS( "preview in " ) : wxS( "" ),
+                             tlw ? tlw->GetTitle() : wxString( wxS( "no frame" ) ) );
 }
 
 

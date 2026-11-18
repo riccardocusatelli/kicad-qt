@@ -45,6 +45,7 @@
 #include <footprint.h>
 #include <footprint_editor_settings.h>
 #include <footprint_library_adapter.h>
+#include <kiplatform/environment.h>
 #include <lset.h>
 #include <kiface_base.h>
 #include <pad.h>
@@ -273,7 +274,7 @@ void PCB_BASE_FRAME::FocusOnItem( BOARD_ITEM* aItem, PCB_LAYER_ID aLayer, bool a
 }
 
 
-void PCB_BASE_FRAME::FocusOnItems( std::vector<BOARD_ITEM*> aItems, PCB_LAYER_ID aLayer, bool aAllowScroll )
+void PCB_BASE_FRAME::FocusOnItems( const std::vector<BOARD_ITEM*>& aItems, PCB_LAYER_ID aLayer, bool aAllowScroll )
 {
     static std::vector<KIID> lastBrightenedItemIDs;
 

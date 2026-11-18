@@ -1477,6 +1477,8 @@ void ROUTER_TOOL::performRouting( VECTOR2D aStartPosition )
 {
     m_router->ClearViewDecorations();
 
+    bool startWithVia = std::exchange( m_startWithVia, false );
+
     if( !prepareInteractive( aStartPosition ) )
         return;
 
@@ -1505,10 +1507,13 @@ void ROUTER_TOOL::performRouting( VECTOR2D aStartPosition )
     // Set initial cursor
     setCursor();
 
+    // A via or through pad already reaching the layer 'V' switched to must not gain a second via
+    int  viaTargetLayer = m_iface->GetPNSLayerFromBoardLayer( m_originalActiveLayer );
+    bool startReachesViaTarget = m_startItem && m_startItem->Layers().Overlaps( viaTargetLayer );
+
     // If the user pressed 'V' before starting to route, enable via placement now
-    if( m_startWithVia )
+    if( startWithVia && !startReachesViaTarget )
     {
-        m_startWithVia = false;
         handleLayerSwitch( ACT_PlaceThroughVia.MakeEvent(), true );
     }
 

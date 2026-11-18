@@ -27,6 +27,7 @@
 #include <sch_edit_frame.h>
 #include <tools/sch_find_replace_tool.h>
 #include <core/ki_assert.h>
+#include <tool/tool_dispatcher.h>
 
 
 DIALOG_SCH_FIND::DIALOG_SCH_FIND( SCH_BASE_FRAME* aParent, SCH_SEARCH_DATA* aData,
@@ -158,17 +159,24 @@ void DIALOG_SCH_FIND::OnCancel( wxCommandEvent& aEvent )
 
 void DIALOG_SCH_FIND::OnCharHook( wxKeyEvent& aEvent )
 {
-    if( aEvent.GetKeyCode() == WXK_F3 )
+    bool                      special = false;
+    std::optional<TOOL_EVENT> evt = m_frame->GetToolDispatcher()->GetToolEvent( &aEvent, &special );
+
+    if( evt && evt->IsKeyPressed() && evt->KeyCode() )
     {
-        updateFlags();
-        m_findReplaceData->findString = m_comboFind->GetValue();
+        // Match the user's hotkeys for the find actions, so they work while the dialog has focus
+        int hotkey = evt->Modifier() | evt->KeyCode();
 
-        if( aEvent.ShiftDown() )
-            m_findReplaceTool->FindNext( ACTIONS::findPrevious.MakeEvent() );
-        else
-            m_findReplaceTool->FindNext( ACTIONS::findNext.MakeEvent() );
-
-        return;
+        for( TOOL_ACTION* action : { &ACTIONS::findNext, &ACTIONS::findPrevious, &ACTIONS::findNextMarker } )
+        {
+            if( hotkey == action->GetHotKey() || hotkey == action->GetHotKeyAlt() )
+            {
+                updateFlags();
+                m_findReplaceData->findString = m_comboFind->GetValue();
+                m_findReplaceTool->FindNext( action->MakeEvent() );
+                return;
+            }
+        }
     }
 
     DIALOG_SCH_FIND_BASE::OnCharHook( aEvent );

@@ -1700,6 +1700,31 @@ void STEP_PCB_MODEL::getCopperLayerZPlacement( const PCB_LAYER_ID aLayer, double
 }
 
 
+double STEP_PCB_MODEL::getStackupBodyThickness() const
+{
+    int thickness = 0;
+
+    for( const BOARD_STACKUP_ITEM* item : m_stackup.GetList() )
+    {
+        if( !item->IsEnabled() )
+            continue;
+
+        if( item->GetType() == BS_ITEM_TYPE_DIELECTRIC )
+        {
+            for( int sublayer = 0; sublayer < item->GetSublayersCount(); sublayer++ )
+                thickness += item->GetThickness( sublayer );
+        }
+        else if( item->GetType() == BS_ITEM_TYPE_COPPER
+                 && IsInnerCopperLayer( item->GetBrdLayerId() ) )
+        {
+            thickness += item->GetThickness();
+        }
+    }
+
+    return pcbIUScale.IUTomm( thickness );
+}
+
+
 void STEP_PCB_MODEL::getBoardBodyZPlacement( double& aZPos, double& aThickness )
 {
     double f_pos, f_thickness;
@@ -1711,6 +1736,23 @@ void STEP_PCB_MODEL::getBoardBodyZPlacement( double& aZPos, double& aThickness )
 
     aThickness = ( top - bottom );
     aZPos = bottom;
+
+    if( aThickness < BOARD_THICKNESS_MIN_MM )
+    {
+        // The copper walk keys off list position, so a truncated or reordered stackup collapses
+        // the body and MakeShapes() emits a flat face; summing the layers ignores the order
+        aThickness = getStackupBodyThickness();
+
+        if( aThickness < BOARD_THICKNESS_MIN_MM )
+            aThickness = BOARD_THICKNESS_DEFAULT_MM;
+
+        aZPos = 0.0;
+
+        m_reporter->Report( wxString::Format( _( "Board stackup does not define a board thickness; "
+                                                 "exporting a %.3f mm board body." ),
+                                              aThickness ),
+                            RPT_SEVERITY_WARNING );
+    }
 
     KI_ASSERT( aZPos == 0.0 );
 }
@@ -2685,18 +2727,33 @@ bool STEP_PCB_MODEL::CreatePCB( SHAPE_POLY_SET& aOutline, const VECTOR2D& aOrigi
                         shape = cut.Shape();
                     };
 
-                    // submit_loop can throw mid-submission after queueing some blocks.  Drain the
-                    // pool before unwinding so no queued block outlives the captured mutex and
-                    // vector.  get() then re-raises any worker exception.
+                    // submit_loop() drops its multi_future if a later submission throws, leaving
+                    // queued blocks that outlive the captured mutex with no future to wait on.
                     BS::multi_future<void> cutFutures;
 
                     try
                     {
-                        cutFutures = tp.submit_loop( 0, vec.size(), subtractLoopFn );
+                        const size_t count = vec.size();
+                        const size_t blocks = std::min( count, tp.get_thread_count() );
+
+                        cutFutures.reserve( blocks );
+
+                        for( size_t blk = 0; blk < blocks; ++blk )
+                        {
+                            size_t first = ( count * blk ) / blocks;
+                            size_t last = ( count * ( blk + 1 ) ) / blocks;
+
+                            cutFutures.push_back( tp.submit_task(
+                                    [&subtractLoopFn, first, last]()
+                                    {
+                                        for( size_t idx = first; idx < last; ++idx )
+                                            subtractLoopFn( static_cast<int>( idx ) );
+                                    } ) );
+                        }
                     }
                     catch( ... )
                     {
-                        tp.wait();
+                        cutFutures.wait();
                         throw;
                     }
 
@@ -2801,7 +2858,8 @@ bool STEP_PCB_MODEL::CreatePCB( SHAPE_POLY_SET& aOutline, const VECTOR2D& aOrigi
         }
         catch( ... )
         {
-            tp.wait();
+            // The queued tasks hold the mutex by reference and must finish before it dies.
+            mf.wait();
             throw;
         }
 
@@ -2927,7 +2985,8 @@ bool STEP_PCB_MODEL::CreatePCB( SHAPE_POLY_SET& aOutline, const VECTOR2D& aOrigi
     Quantity_ColorRGBA copper_color( m_copperColor[0], m_copperColor[1], m_copperColor[2], 1.0 );
     Quantity_ColorRGBA pad_color( m_padColor[0], m_padColor[1], m_padColor[2], 1.0 );
 
-    Quantity_ColorRGBA board_color( 0.42f, 0.45f, 0.29f, 0.98f );
+    // Viewers show the back faces of a translucent solid, which reads as inverted normals
+    Quantity_ColorRGBA board_color( 0.42f, 0.45f, 0.29f, 1.0f );
     Quantity_ColorRGBA front_silk_color( 1.0f, 1.0f, 1.0f, 0.9f );
     Quantity_ColorRGBA back_silk_color = front_silk_color;
     Quantity_ColorRGBA front_mask_color( 0.08f, 0.2f, 0.14f, 0.83f );

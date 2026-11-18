@@ -20,6 +20,13 @@
 
 #pragma once
 
+#include <functional>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+
 #include "http_lib/http_lib_settings.h"
 #include <http_lib/http_lib_connection.h>
 
@@ -27,7 +34,14 @@
 #include <sch_io/sch_io_mgr.h>
 #include <wildcards_and_files_ext.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <optional>
 #include <set>
+#include <shared_mutex>
+#include <thread>
+#include <unordered_set>
 
 class LIBRARY_MANAGER_ADAPTER;
 
@@ -42,20 +56,23 @@ class SCH_IO_HTTP_LIB : public SCH_IO
 {
 public:
     SCH_IO_HTTP_LIB();
-    ~SCH_IO_HTTP_LIB() override = default;
+    ~SCH_IO_HTTP_LIB() override { stopBackgroundRefresh(); }
 
     const IO_BASE::IO_FILE_DESC GetLibraryDesc() const override
     {
         return IO_BASE::IO_FILE_DESC( _HKI( "KiCad HTTP library files" ), { FILEEXT::HTTPLibraryFileExtension } );
     }
 
-    int GetModifyHash() const override { return 0; }
+    int GetModifyHash() const override { return m_modifyHash; }
 
     void EnumerateSymbolLib( wxArrayString& aSymbolNameList, const wxString& aLibraryPath,
                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     void EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList, const wxString& aLibraryPath,
                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
+
+    void CheckLibrary( const wxString& aLibraryPath,
+                       const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     LIB_SYMBOL* LoadSymbol( const wxString& aLibraryPath, const wxString& aAliasName,
                             const std::map<std::string, UTF8>* aProperties = nullptr ) override;
@@ -79,6 +96,21 @@ public:
 
     HTTP_LIB_SETTINGS* Settings() const { return m_settings.get(); }
 
+    using CONNECTION_BUILDER = std::function<std::unique_ptr<HTTP_LIB_CONNECTION>( const HTTP_LIB_SOURCE& )>;
+
+    void SetConnectionBuilder( CONNECTION_BUILDER aFactory )
+    {
+        m_connectionFactory = std::move( aFactory );
+    }
+
+    using SOURCE_PATCHER = std::function<void( HTTP_LIB_SOURCE& )>;
+
+    /// Allows updating a source after initial load; used for QA testing
+    void SetSourcePatcher( SOURCE_PATCHER aOverride )
+    {
+        m_sourcePatcher = std::move( aOverride );
+    }
+
     void SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
                      const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
@@ -91,18 +123,46 @@ private:
 
     void connect();
 
-    void syncCache();
-
-    void syncCache( const HTTP_LIB_CATEGORY& category );
-
-    /// Refresh the cached parts for a category if it has never been cached or has expired.
-    void syncCacheIfStale( const HTTP_LIB_CATEGORY& category );
-
+    /**
+     * Build the symbol for one part from its source symbol.
+     *
+     * @param aPendingSourceLibs receives the nickname of a source library that has not finished
+     *                           loading, when that is why the source symbol was not found.
+     */
     LIB_SYMBOL* loadSymbolFromPart( const wxString& aLibraryPath, const wxString& aSymbolName,
-                                    const HTTP_LIB_CATEGORY& aCategory, const HTTP_LIB_PART& aPart );
+                                    const HTTP_LIB_CATEGORY& aCategory, const HTTP_LIB_PART& aPart,
+                                    std::set<wxString>& aCustomFields, std::set<wxString>& aPendingSourceLibs );
+
+    void cacheLib( const wxString& aLibraryPath );
+
+    /**
+     * Rebuild the cache from the last fetched parts once a source library that was still loading
+     * when the cache was built has finished, so its parts stop being empty symbols.
+     */
+    void resolvePendingSources();
+
+    size_t computeSignature( const std::map<std::string, HTTP_LIB_CATEGORY>& aCategoryData ) const;
+
+    /**
+     * @param aSignature is the signature of \a aCategoryData, recorded with the published cache.
+     * @param aExpectedModifyHash when set, the result is only published if no other build has
+     *                            published since the caller read this modify hash.
+     * @return true if the new cache was published.
+     */
+    bool materializeCache( const wxString& aLibraryPath, std::map<std::string, HTTP_LIB_CATEGORY> aCategoryData,
+                           size_t aSignature, std::optional<int> aExpectedModifyHash = std::nullopt );
+
+    void startBackgroundRefresh();
+    void stopBackgroundRefresh();
+    void backgroundRefreshWorker();
 
 private:
     SYMBOL_LIBRARY_ADAPTER*              m_adapter;
+
+    /// Allows replacing actual HTTP connection for QA tests
+    CONNECTION_BUILDER                   m_connectionFactory;
+
+    SOURCE_PATCHER                       m_sourcePatcher;
 
     /// Generally will be null if no valid connection is established
     std::unique_ptr<HTTP_LIB_CONNECTION> m_conn;
@@ -110,6 +170,7 @@ private:
     std::set<wxString>                   m_customFields;
     std::set<wxString>                   m_defaultShownFields;
     wxString                             m_lastError;
+    wxString                             m_libraryPath;
 
     wxString symbol_field = "symbol";
     wxString footprint_field = "footprint";
@@ -119,6 +180,33 @@ private:
     wxString datasheet_field = "datasheet";
     wxString reference_field = "reference";
 
-    //     category.id       category
-    std::map<std::string, HTTP_LIB_CATEGORY> m_cachedCategories;
+    std::map<wxString, std::unique_ptr<LIB_SYMBOL>> m_symbolCache;
+
+    /// Symbol name -> (part id, category id); used for the SelectOne fallback in LoadSymbol.
+    std::map<wxString, std::pair<std::string, std::string>> m_partIdMap;
+
+    std::atomic<bool> m_cachePopulated{ false };
+    size_t m_cacheSignature = 0;
+    int m_modifyHash = 0;
+
+    /// Source libraries that were still loading when the cache was built
+    std::set<wxString> m_pendingSourceLibs;
+
+    /// The parts the cache was built from, kept only while m_pendingSourceLibs is not empty
+    std::map<std::string, HTTP_LIB_CATEGORY> m_pendingCategoryData;
+
+    /// Protects m_symbolCache, m_partIdMap, m_customFields, and the pending source state.
+    std::shared_mutex m_cacheMutex;
+
+    /// Serializes loadSymbolFromPart calls
+    std::mutex m_symbolLoadMutex;
+
+    std::thread             m_refreshThread;
+    std::atomic<bool>       m_refreshRunning{ false };
+    std::condition_variable m_refreshCV;
+    std::mutex              m_refreshMutex;
+
+    bool m_inCacheLib = false;
+
+    std::unordered_set<wxString> m_inProgressLoads;
 };

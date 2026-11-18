@@ -443,36 +443,43 @@ std::vector<PCB_MARKER*> BOARD::ResolveDRCExclusions( bool aCreateMarkers )
 
     for( PCB_MARKER* marker : GetBoard()->Markers() )
     {
-        std::set<wxString>::iterator it;
-        wxString                     serialized = marker->SerializeToString();
-        wxString                     matchedExclusion;
+        wxString serialized = marker->SerializeToString();
+        wxString matchedExclusion;
+        bool     matched = false;
 
         if( !serialized.Contains( "unconnected_items" ) )
         {
-            it = exclusions.find( serialized );
-
-            if( it != exclusions.end() )
-                matchedExclusion = *it;
+            // Markers reported on several layers serialize identically, so one stored exclusion
+            // has to cover them all or the extras can never be excluded
+            matched = exclusions.count( serialized ) > 0;
+            matchedExclusion = serialized;
         }
         else
         {
             const int  numberOfFieldsExcludingIds = 3;
             const char delimiter = '|';
-            it = FindByFirstNFields( exclusions, serialized, delimiter, numberOfFieldsExcludingIds );
+            auto       it = FindByFirstNFields( exclusions, serialized, delimiter, numberOfFieldsExcludingIds );
 
             if( it != exclusions.end() )
+            {
                 matchedExclusion = *it;
+                matched = true;
+
+                // Unlike the exact match above this one is a prefix match, so it has to be
+                // consumed or a single exclusion swallows every violation at that position
+                exclusions.erase( it );
+            }
         }
 
-        if( it != exclusions.end() )
+        if( matched )
         {
-            marker->SetExcluded( true, comments[matchedExclusion] );
+            const wxString& comment = comments[matchedExclusion];
+
+            marker->SetExcluded( true, comment );
 
             // Exclusion still valid; store back to BOARD_DESIGN_SETTINGS
             m_designSettings->m_DrcExclusions.insert( matchedExclusion );
-            m_designSettings->m_DrcExclusionComments[matchedExclusion] = comments[matchedExclusion];
-
-            exclusions.erase( it );
+            m_designSettings->m_DrcExclusionComments[matchedExclusion] = comment;
         }
     }
 
@@ -482,6 +489,10 @@ std::vector<PCB_MARKER*> BOARD::ResolveDRCExclusions( bool aCreateMarkers )
     {
         for( const wxString& serialized : exclusions )
         {
+            // Exact matches aren't consumed above, so skip the ones a marker already claimed
+            if( m_designSettings->m_DrcExclusions.count( serialized ) )
+                continue;
+
             PCB_MARKER* marker = PCB_MARKER::DeserializeFromString( serialized );
 
             if( !marker )
@@ -489,20 +500,14 @@ std::vector<PCB_MARKER*> BOARD::ResolveDRCExclusions( bool aCreateMarkers )
 
             std::vector<KIID> ids = marker->GetRCItem()->GetIDs();
 
-            int uuidCount = 0;
-
             for( const KIID& uuid : ids )
             {
-                if( uuidCount < 1 || uuid != niluuid )
+                if( uuid != niluuid && !ResolveItem( uuid, true ) )
                 {
-                    if( !ResolveItem( uuid, true ) )
-                    {
-                        delete marker;
-                        marker = nullptr;
-                        break;
-                    }
+                    delete marker;
+                    marker = nullptr;
+                    break;
                 }
-                uuidCount++;
             }
 
             if( marker )
@@ -627,18 +632,21 @@ bool BOARD::ResolveTextVar( wxString* token, int aDepth ) const
 
     wxString var = *token;
 
+    if( GetTitleBlock().TextVarResolver( token, m_project ) )
+        return true;
+
+    // Resolve from the project's live text variables before the board's cached properties so
+    // changes made outside the board (schematic, project settings) are always reflected.
+    if( GetProject() && GetProject()->TextVarResolver( token ) )
+        return true;
+
+    // Fall back to the board's cached properties for backward compatibility with boards that
+    // may carry properties not present in the project.
     if( m_properties.count( var ) )
     {
         *token = m_properties.at( var );
         return true;
     }
-    else if( GetTitleBlock().TextVarResolver( token, m_project ) )
-    {
-        return true;
-    }
-
-    if( GetProject() && GetProject()->TextVarResolver( token ) )
-        return true;
 
     return false;
 }
@@ -1273,9 +1281,6 @@ void BOARD::FixupEmbeddedData()
 
 wxString BOARD::GetUniqueZoneName( const wxString& aBaseName, const ZONE* aExclude ) const
 {
-    if( aBaseName.IsEmpty() )
-        return aBaseName;
-
     auto inUse = [&]( const wxString& aName )
     {
         for( const ZONE* zone : m_zones )
@@ -1287,7 +1292,13 @@ wxString BOARD::GetUniqueZoneName( const wxString& aBaseName, const ZONE* aExclu
         return false;
     };
 
-    if( !inUse( aBaseName ) )
+    return MakeUniqueZoneName( aBaseName, inUse );
+}
+
+
+wxString BOARD::MakeUniqueZoneName( const wxString& aBaseName, const std::function<bool( const wxString& )>& aInUse )
+{
+    if( aBaseName.IsEmpty() || !aInUse( aBaseName ) )
         return aBaseName;
 
     // Strip a trailing _<number> so repeated copies increment the root (foo_1 -> foo_2),
@@ -1316,7 +1327,7 @@ wxString BOARD::GetUniqueZoneName( const wxString& aBaseName, const ZONE* aExclu
     {
         wxString candidate = wxString::Format( wxT( "%s_%d" ), root, i );
 
-        if( !inUse( candidate ) )
+        if( !aInUse( candidate ) )
             return candidate;
     }
 }
@@ -2950,6 +2961,41 @@ void BOARD::RenameVariant( const wxString& aOldName, const wxString& aNewName )
 }
 
 
+void BOARD::CopyVariant( const wxString& aOldName, const wxString& aNewName, const wxString& aNewDescription )
+{
+    if( aOldName.IsEmpty() || aNewName.IsEmpty()
+        || aNewName.CmpNoCase( GetDefaultVariantName() ) == 0 )
+    {
+        return;
+    }
+
+    wxString actualOldName = FindVariantNameCaseInsensitive( m_variantNames, aOldName );
+
+    if( actualOldName.IsEmpty() )
+        return;
+
+    if( wxString existingName = FindVariantNameCaseInsensitive( m_variantNames, aNewName ); !existingName.IsEmpty() )
+        return;
+
+    AddVariant( aNewName );
+
+    if( !aNewDescription.IsEmpty() )
+        SetVariantDescription( aNewName, aNewDescription );
+    else
+        SetVariantDescription( aNewName, GetVariantDescription( actualOldName ) );
+
+    for( FOOTPRINT* fp : m_footprints )
+    {
+        if( const FOOTPRINT_VARIANT* variant = fp->GetVariant( actualOldName ) )
+        {
+            FOOTPRINT_VARIANT copied = *variant;
+            copied.SetName( aNewName );
+            fp->SetVariant( copied );
+        }
+    }
+}
+
+
 wxString BOARD::GetVariantDescription( const wxString& aVariantName ) const
 {
     if( aVariantName.IsEmpty() || aVariantName.CmpNoCase( GetDefaultVariantName() ) == 0 )
@@ -3465,6 +3511,13 @@ void BOARD::EmbedFonts()
     for( KIFONT::OUTLINE_FONT* font : GetFonts() )
     {
         EMBEDDED_FILES::EMBEDDED_FILE* file = GetEmbeddedFiles()->AddFile( font->GetFileName(), false );
+
+        if( !file )
+        {
+            KI_LOG_TRACE( "EMBED", "Failed to add font file: %s", font->GetFileName() );
+            continue;
+        }
+
         file->type = EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE::FONT;
     }
 }

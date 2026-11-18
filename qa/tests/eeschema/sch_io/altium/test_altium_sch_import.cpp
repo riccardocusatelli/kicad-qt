@@ -20,9 +20,12 @@
 #include <boost/test/unit_test.hpp>
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
+#include <connection_graph.h>
+#include <erc/erc.h>
 #include <lib_id.h>
 #include <schematic.h>
 #include <sch_io/altium/sch_io_altium.h>
+#include <sch_no_connect.h>
 #include <sch_screen.h>
 #include <sch_sheet.h>
 #include <sch_symbol.h>
@@ -59,6 +62,20 @@ struct ALTIUM_SCH_IMPORT_FIXTURE
     {
         return wxString::FromUTF8( KI_TEST::GetEeschemaTestDataDir()
                                    + "/plugins/altium/issue24861/" )
+               + aName;
+    }
+
+    wxString issue22908DataFile( const wxString& aName ) const
+    {
+        return wxString::FromUTF8( KI_TEST::GetEeschemaTestDataDir()
+                                   + "/plugins/altium/issue22908/" )
+               + aName;
+    }
+
+    wxString issue16903DataFile( const wxString& aName ) const
+    {
+        return wxString::FromUTF8( KI_TEST::GetEeschemaTestDataDir()
+                                   + "/plugins/altium/issue16903/" )
                + aName;
     }
 
@@ -229,6 +246,70 @@ BOOST_AUTO_TEST_CASE( Issue24843_SymbolOrientationMatchesAltium )
                              "Symbol '" << ref << "' imported with orientation " << actual.at( ref )
                                         << ", expected " << angle );
     }
+}
+
+
+// https://gitlab.com/kicad/code/kicad/-/issues/16903
+// Every connectable coordinate in this design sits on a 50 mil grid in Altium's own frame, so the
+// importer's Y flip must preserve that grid phase rather than shift the sheet off grid.
+BOOST_AUTO_TEST_CASE( Issue16903_ImportKeepsGeometryOnGrid )
+{
+    SCH_IO_ALTIUM plugin;
+
+    SCH_SHEET* rootSheet =
+            plugin.LoadSchematicFile( issue16903DataFile( wxT( "hierarchical_schematic_top.SchDoc" ) ),
+                                      &m_schematic );
+    BOOST_REQUIRE( rootSheet );
+
+    m_schematic.RefreshHierarchy();
+
+    ERC_TESTER tester( &m_schematic );
+    BOOST_CHECK_EQUAL( tester.TestOffGridEndpoints(), 0 );
+}
+
+
+// https://gitlab.com/kicad/code/kicad/-/issues/22908
+// Only the 34 Generic No ERC crosses are no-connects, the four Specific No ERC checkboxes are not
+BOOST_AUTO_TEST_CASE( Issue22908_SpecificNoErcIsNotNoConnect )
+{
+    SCH_IO_ALTIUM plugin;
+
+    SCH_SHEET* rootSheet = plugin.LoadSchematicFile( issue22908DataFile( wxT( "3_mpcie.SchDoc" ) ), &m_schematic );
+    BOOST_REQUIRE( rootSheet );
+
+    SCH_SCREEN* screen = rootSheet->GetScreen();
+    BOOST_REQUIRE( screen );
+
+    // Altium places these in 10 mil units with the Y axis flipped about the page bottom
+    static const std::vector<VECTOR2I> crosses = {
+        { 360, 500 }, { 360, 540 }, { 360, 610 }, { 360, 600 }, { 360, 620 }, { 360, 530 }, { 360, 460 },
+        { 360, 450 }, { 170, 550 }, { 170, 540 }, { 170, 520 }, { 170, 510 }, { 170, 610 }, { 170, 590 },
+        { 170, 580 }, { 880, 500 }, { 880, 540 }, { 880, 610 }, { 880, 600 }, { 880, 620 }, { 880, 530 },
+        { 880, 460 }, { 880, 450 }, { 690, 550 }, { 690, 540 }, { 690, 520 }, { 690, 510 }, { 690, 610 },
+        { 690, 590 }, { 690, 580 }, { 480, 650 }, { 1000, 650 }, { 290, 340 }, { 810, 340 }
+    };
+
+    const int gridPitch = m_schematic.Settings().m_ConnectionGridSize;
+    const int pageHeight = screen->GetPageSettings().GetHeightIU( schIUScale.IU_PER_MILS );
+    const int flipY = ( pageHeight / gridPitch ) * gridPitch;
+
+    std::set<std::pair<int, int>> expected;
+
+    for( const VECTOR2I& cross : crosses )
+        expected.emplace( schIUScale.MilsToIU( cross.x * 10 ), flipY - schIUScale.MilsToIU( cross.y * 10 ) );
+
+    std::set<std::pair<int, int>> actual;
+
+    size_t actualCount = 0;
+
+    for( SCH_ITEM* item : screen->Items().OfType( SCH_NO_CONNECT_T ) )
+    {
+        ++actualCount;
+        actual.emplace( item->GetPosition().x, item->GetPosition().y );
+    }
+
+    BOOST_CHECK_EQUAL( actualCount, crosses.size() );
+    BOOST_CHECK( actual == expected );
 }
 
 

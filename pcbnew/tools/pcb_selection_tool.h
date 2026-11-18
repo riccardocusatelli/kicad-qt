@@ -45,6 +45,7 @@
 class PCB_BASE_FRAME;
 class BOARD_ITEM;
 class GENERAL_COLLECTOR;
+class PAD;
 class PCB_TABLE;
 class PCB_TABLECELL;
 
@@ -164,6 +165,25 @@ public:
     bool Selectable( const BOARD_ITEM* aItem, bool checkVisibilityOnly = false ) const;
 
     /**
+     * Return the layers of @a aVisibleLayers which are actually shown.
+     *
+     * BOARD::GetVisibleLayers() keeps its bits for layers the board does not enable, so a layer
+     * the Appearance panel never offered still reads back as visible.  Masking with the enabled
+     * layers gives the same answer BOARD::IsLayerVisible() gives for a single layer.
+     *
+     * @param aVisibleLayers is the raw visible layer set.
+     * @param aEnabledLayers is the set of layers enabled on the board.
+     */
+    static LSET resolveVisibleLayers( const LSET& aVisibleLayers, const LSET& aEnabledLayers );
+
+    /**
+     * @return true if @a aPad is drawn on at least one shown layer.
+     *
+     * @param aVisibleLayers is the shown layer set, as returned by resolveVisibleLayers().
+     */
+    static bool isPadVisible( const PAD& aPad, const LSET& aVisibleLayers );
+
+    /**
      * Select all items with the given net code.
      *
      * @param aNetCode is the target net to select
@@ -260,6 +280,13 @@ public:
 
     /// True if aItem may be selected while aEnteredGroup is entered (24967).
     static bool isWithinEnteredGroup( BOARD_ITEM* aItem, PCB_GROUP* aEnteredGroup, bool aIsFootprintEditor );
+
+    /**
+     * True if the Render tab's Footprints Front/Back switches leave aItem drawn, mirroring the
+     * ViewGetLOD() overrides that implement them (25416).
+     */
+    static bool isOnVisibleFootprintSide( const BOARD_ITEM& aItem, bool aFrontVisible,
+                                          bool aBackVisible, bool aIsFootprintEditor );
 
     /**
      * If the most recent FilterCollectorForLockedItems call filtered a locked item, show an

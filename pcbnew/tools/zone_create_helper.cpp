@@ -160,6 +160,7 @@ std::unique_ptr<ZONE> ZONE_CREATE_HELPER::createZoneFromExisting( const ZONE& aS
     zoneSettings << aSrcZone;
 
     zoneSettings.ExportSetting( *newZone );
+    newZone->SetZoneName( board->GetUniqueZoneName( newZone->GetZoneName() ) );
 
     return newZone;
 }

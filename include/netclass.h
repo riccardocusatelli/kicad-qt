@@ -26,6 +26,7 @@
 #ifndef CLASS_NETCLASS_H
 #define CLASS_NETCLASS_H
 
+#include <memory>
 #include <optional>
 
 #include <gal/color4d.h>
@@ -35,6 +36,11 @@
 #include <api/serializable.h>
 
 using KIGFX::COLOR4D;
+
+namespace kiapi::common::project
+{
+    class NetClass;
+}
 
 DECL_SET_FOR_SWIG( STRINGSET, wxString )
 
@@ -69,6 +75,9 @@ public:
     void Serialize( google::protobuf::Any &aContainer ) const override;
     bool Deserialize( const google::protobuf::Any &aContainer ) override;
 
+    void Serialize( kiapi::common::project::NetClass& aOutput ) const;
+    bool Deserialize( const kiapi::common::project::NetClass& aInput );
+
     /// @brief Resets all parent fields to point to this netclass
     void ResetParents();
 
@@ -82,6 +91,13 @@ public:
 
     /// @brief Sets the netclasses which make up this netclass
     void SetConstituentNetclasses( std::vector<NETCLASS*>&& constituents );
+
+    /// @brief Sets an aggregate's constituents and shares their ownership, since items keep the
+    /// aggregate alive after NET_SETTINGS replaces the netclasses it was built from
+    void SetConstituentOwners( std::vector<std::shared_ptr<NETCLASS>>&& aConstituents );
+
+    /// @brief Empty for a root netclass
+    const std::vector<std::shared_ptr<NETCLASS>>& GetConstituentOwners() const { return m_constituentOwners; }
 
     /// @brief Determines if the given netclass name is a constituent of this (maybe aggregate)
     /// netclass
@@ -251,6 +267,8 @@ protected:
     bool m_isDefault; ///< Mark if this instance is the default netclass
 
     std::vector<NETCLASS*> m_constituents; ///< NETCLASSes contributing to an aggregate
+
+    std::vector<std::shared_ptr<NETCLASS>> m_constituentOwners; ///< Keeps an aggregate's constituents alive
 
     wxString m_Name;                        ///< Name of the net class
     int      m_Priority;                    ///< The priority for multiple netclass resolution

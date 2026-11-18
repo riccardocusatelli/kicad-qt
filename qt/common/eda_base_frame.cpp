@@ -1933,6 +1933,8 @@ void EDA_BASE_FRAME::FinishAUIInitialization()
 void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowCloseButton,
                                        INFOBAR_MESSAGE_TYPE aType )
 {
+    KI_CHECK( m_infoBar, /* void */ );
+
     m_infoBar->RemoveAllButtons();
 
     if( aShowCloseButton )
@@ -1945,6 +1947,8 @@ void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowClos
 void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowCloseButton,
                                        std::function<void(void)> aCallback )
 {
+    KI_CHECK( m_infoBar, /* void */ );
+
     m_infoBar->RemoveAllButtons();
 
     if( aShowCloseButton )
@@ -1959,6 +1963,8 @@ void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowClos
 
 void EDA_BASE_FRAME::ShowInfoBarWarning( const wxString& aWarningMsg, bool aShowCloseButton )
 {
+    KI_CHECK( m_infoBar, /* void */ );
+
     m_infoBar->RemoveAllButtons();
 
     if( aShowCloseButton )
@@ -1970,6 +1976,8 @@ void EDA_BASE_FRAME::ShowInfoBarWarning( const wxString& aWarningMsg, bool aShow
 
 void EDA_BASE_FRAME::ShowInfoBarMsg( const wxString& aMsg, bool aShowCloseButton )
 {
+    KI_CHECK( m_infoBar, /* void */ );
+
     m_infoBar->RemoveAllButtons();
 
     if( aShowCloseButton )

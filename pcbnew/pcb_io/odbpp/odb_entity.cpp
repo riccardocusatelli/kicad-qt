@@ -62,6 +62,46 @@
 #include "pcb_io_odbpp.h"
 
 
+namespace
+{
+
+/**
+ * Convert copper thickness from internal units to millimeters.
+ */
+double CopperThicknessMm( int aThicknessIu )
+{
+    return static_cast<double>( aThicknessIu ) / pcbIUScale.mmToIU( 1.0 );
+}
+
+
+/**
+ * Copper weight in ounces per square foot, the unit named by the stackup.xml attribute
+ * CopperWeight_oz_ft2
+ */
+double CopperWeightOz( int aThicknessIu )
+{
+    return CopperThicknessMm( aThicknessIu ) / 0.035;
+}
+
+
+/**
+ * The value of the .copper_weight layer attribute.
+ *
+ * um for metric output and oz/ft2 for imperial output
+ *
+ * See "How Measurements Are Stored" in the ODB++ Design Format Specification.
+ */
+double CopperWeightValue( int aThicknessIu )
+{
+    if( PCB_IO_ODBPP::m_unitsStr == "MM" )
+        return CopperThicknessMm( aThicknessIu ) * 1000.0;
+
+    return CopperWeightOz( aThicknessIu );
+}
+
+} // namespace
+
+
 bool ODB_ENTITY_BASE::CreateDirectoryTree( ODB_TREE_WRITER& writer )
 {
     try
@@ -797,10 +837,8 @@ void ODB_LAYER_ENTITY::InitDrillData()
                 if( isNPTHLayer != padIsNPTH )
                     continue;
 
-                m_tools.value().AddDrillTools( padIsNPTH ? wxT( "NON_PLATED" ) : wxT( "PLATED" ),
-                                               ODB::SymDouble2String(
-                                                       std::min( pad->GetDrillSizeX(),
-                                                                pad->GetDrillSizeY() ) ) );
+                m_tools.value().AddDrillTool( padIsNPTH ? wxT( "NON_PLATED" ) : wxT( "PLATED" ),
+                                               std::min( pad->GetDrillSizeX(), pad->GetDrillSizeY() ) );
 
                 m_layerItems[pad->GetNetCode()].push_back( item );
             }
@@ -838,11 +876,10 @@ void ODB_LAYER_ENTITY::InitDrillData()
                         continue;
                     }
 
-                    m_tools.value().AddDrillTools(
+                    m_tools.value().AddDrillTool(
                             pad->GetAttribute() == PAD_ATTRIB::PTH ? wxT( "PLATED" )
                                                                     : wxT( "NON_PLATED" ),
-                            ODB::SymDouble2String(
-                                    std::min( pad->GetDrillSizeX(), pad->GetDrillSizeY() ) ) );
+                            std::min( pad->GetDrillSizeX(), pad->GetDrillSizeY() ) );
 
                     m_layerItems[pad->GetNetCode()].push_back( item );
                 }
@@ -896,19 +933,15 @@ void ODB_LAYER_ENTITY::InitDrillData()
                         if( diameter <= 0 )
                             continue;
 
-                        m_tools.value().AddDrillTools( wxT( "NON_PLATED" ),
-                                                       ODB::SymDouble2String( diameter ),
-                                                       wxT( "BLIND" ) );
+                        m_tools.value().AddDrillTool( wxT( "NON_PLATED" ), diameter, wxT( "BLIND" ) );
                     }
                     else if( isNonPlatedLayer )
                     {
-                        m_tools.value().AddDrillTools( wxT( "NON_PLATED" ),
-                                                       ODB::SymDouble2String( via->GetDrillValue() ) );
+                        m_tools.value().AddDrillTool( wxT( "NON_PLATED" ), via->GetDrillValue() );
                     }
                     else
                     {
-                        m_tools.value().AddDrillTools( wxT( "VIA" ),
-                                                       ODB::SymDouble2String( via->GetDrillValue() ) );
+                        m_tools.value().AddDrillTool( wxT( "VIA" ), via->GetDrillValue() );
                     }
 
                     m_layerItems[via->GetNetCode()].push_back( item );
@@ -934,8 +967,7 @@ void ODB_LAYER_ENTITY::InitDrillData()
                                                                            : wxT( "PLATED" );
                     wxString type2 = isBackdrillLayer ? wxT( "BLIND" ) : wxT( "STANDARD" );
 
-                    m_tools.value().AddDrillTools( typeLabel, ODB::SymDouble2String( drillSize ),
-                                                   type2 );
+                    m_tools.value().AddDrillTool( typeLabel, drillSize, type2 );
 
                     m_layerItems[pad->GetNetCode()].push_back( item );
                 }
@@ -967,8 +999,7 @@ void ODB_LAYER_ENTITY::InitDrillData()
                     {
                         PCB_VIA* via = static_cast<PCB_VIA*>( item );
 
-                        m_tools.value().AddDrillTools( wxT( "VIA" ),
-                                                       ODB::SymDouble2String( via->GetDrillValue() ) );
+                        m_tools.value().AddDrillTool( wxT( "VIA" ), via->GetDrillValue() );
 
                         m_layerItems[via->GetNetCode()].push_back( item );
                     }
@@ -982,10 +1013,10 @@ void ODB_LAYER_ENTITY::InitDrillData()
                             continue;
                         }
 
-                        m_tools.value().AddDrillTools(
+                        m_tools.value().AddDrillTool(
                                 pad->GetAttribute() == PAD_ATTRIB::PTH ? wxT( "PLATED" )
                                                                         : wxT( "NON_PLATED" ),
-                                ODB::SymDouble2String( pad->GetDrillSizeX() ) );
+                                pad->GetDrillSizeX() );
 
                         m_layerItems[pad->GetNetCode()].push_back( item );
                     }
@@ -1155,15 +1186,12 @@ void ODB_LAYER_ENTITY::GenAttrList( ODB_TREE_WRITER& writer )
 
         if( thickness > 0 )
         {
-            double thicknessOut = PCB_IO_ODBPP::m_scale * thickness;
-            ost << ".layer_dielectric=" << ODB::Double2String( thicknessOut ) << std::endl;
+            ost << ".layer_dielectric=" << ODB::Data2String( thickness ) << std::endl;
         }
 
         if( stackupItem->GetType() == BS_ITEM_TYPE_COPPER )
         {
-            double copperThicknessMM = static_cast<double>( thickness ) / pcbIUScale.mmToIU( 1.0 );
-            double thicknessOz = copperThicknessMM / 0.035;
-            ost << ".copper_weight=" << ODB::Double2String( thicknessOz ) << std::endl;
+            ost << ".copper_weight=" << ODB::Double2String( CopperWeightValue( thickness ) ) << std::endl;
         }
 
         if( stackupItem->HasEpsilonRValue() )

@@ -229,7 +229,7 @@ public:
     /**
      * Select the given tool in the toolbars of the frame.
      */
-    void SelectToolbarAction( const TOOL_ACTION& aAction );
+    void SelectToolbarAction( const TOOL_ACTION& aAction ) override;
 
     /**
      * Create (or fill again) the toolbars of the frame from its toolbar settings: the main and

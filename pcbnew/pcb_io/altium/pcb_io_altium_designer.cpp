@@ -260,6 +260,7 @@ BOARD* PCB_IO_ALTIUM_DESIGNER::LoadBoard( const wxString& aFileName, BOARD* aApp
             { ALTIUM_PCB_DIR::SMARTUNIONS, "SmartUnions" },
             { ALTIUM_PCB_DIR::TEXTS6, "Texts6" },
             { ALTIUM_PCB_DIR::TRACKS6, "Tracks6" },
+            { ALTIUM_PCB_DIR::UNIONNAMES, "UnionNames" },
             { ALTIUM_PCB_DIR::VIAS6, "Vias6" },
             { ALTIUM_PCB_DIR::WIDESTRINGS6, "WideStrings6" }
     };
@@ -271,7 +272,7 @@ BOARD* PCB_IO_ALTIUM_DESIGNER::LoadBoard( const wxString& aFileName, BOARD* aApp
     {
         // Parse File
         ALTIUM_PCB pcb( m_board, m_progressReporter, m_layer_mapping_handler, m_reporter );
-        pcb.Parse( altiumPcbFile, mapping );
+        pcb.Parse( altiumPcbFile, mapping, m_props );
     }
     catch( CFB::CFBException& exception )
     {

@@ -154,18 +154,20 @@ void GL_CONTEXT_MANAGER::DeleteAll()
 }
 
 
-void GL_CONTEXT_MANAGER::LockCtx( KIGL_CONTEXT* aContext, KIGL_CANVAS* aCanvas )
+bool GL_CONTEXT_MANAGER::LockCtx( KIGL_CONTEXT* aContext, KIGL_CANVAS* aCanvas )
 {
-    KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
+    KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, false );
 
     m_glCtxMutex.lock();
     KIGL_CANVAS* canvas = aCanvas ? aCanvas : m_glContexts.at( aContext );
 
     // On the window of the canvas, or offscreen when the window has no native one yet (or
     // anymore): without a current context the GL calls would go to another context
-    aContext->makeCurrent( validSurface( aContext, canvas ) );
+    bool current = aContext->makeCurrent( validSurface( aContext, canvas ) );
 
     m_glCtx = aContext;
+
+    return current;
 }
 
 

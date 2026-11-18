@@ -20,6 +20,7 @@
 
 #include <dialogs/panel_plugin_settings.h>
 #include <api/api_server.h>
+#include <api/api_plugin_manager.h>
 #include <widgets/ui_common.h>
 #include <pgm_base.h>
 #include <pgm_gui.h>
@@ -64,7 +65,19 @@ bool PANEL_PLUGIN_SETTINGS::TransferDataFromWindow()
     wxString interpreter = m_pickerPythonInterpreter->GetTextCtrlValue();
 
     if( m_pythonInterpreterValid || interpreter.IsEmpty() )
+    {
+        bool interpreterChanged = !interpreter.IsEmpty()
+                                  && interpreter != settings->m_Api.python_interpreter;
+
         settings->m_Api.python_interpreter = interpreter;
+
+#ifdef KICAD_IPC_API
+        if( interpreterChanged )
+            PgmGui().GetPluginManager().HandlePythonInterpreterChanged();
+#else
+        wxUnusedVar( interpreterChanged );
+#endif
+    }
 
     settings->m_Api.enable_server = m_cbEnableApi->GetValue();
 

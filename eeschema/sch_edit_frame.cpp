@@ -1049,6 +1049,12 @@ bool SCH_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 
 void SCH_EDIT_FRAME::doCloseWindow()
 {
+#ifdef KICAD_IPC_API
+    PgmGui().GetApiServer().DeregisterHandler( m_apiHandler.get() );
+    PgmGui().GetPluginManager().RemoveAvailabilityChangedListener( m_pluginAvailabilityListener );
+    m_pluginAvailabilityListener = -1;
+#endif
+
     // Unregister the autosave saver before any cleanup that might invalidate m_schematic
     if( m_schematic )
         Kiway().LocalHistory().UnregisterSaver( m_schematic );
@@ -1075,12 +1081,6 @@ void SCH_EDIT_FRAME::doCloseWindow()
 
         Kiway().LocalHistory().RemoveAutosaveFiles( Prj().GetProjectPath(), sheetSrcs );
     }
-
-#ifdef KICAD_IPC_API
-    PgmGui().GetApiServer().DeregisterHandler( m_apiHandler.get() );
-    PgmGui().GetPluginManager().RemoveAvailabilityChangedListener( m_pluginAvailabilityListener );
-    m_pluginAvailabilityListener = -1;
-#endif
 
     // Close modeless dialogs.  They're trouble when they get destroyed after the frame.
     Unbind( EDA_EVT_CLOSE_DIALOG_BOOK_REPORTER, &SCH_EDIT_FRAME::onCloseSymbolDiffDialog, this );
@@ -2319,12 +2319,13 @@ wxWindow* SCH_EDIT_FRAME::createHighlightedNetNavigator()
 
     sizer->Add( searchSizer, 0, wxEXPAND | wxALL, FromDIP( 2 ) );
 
-    m_netNavigator = new wxGenericTreeCtrl( panel, wxID_ANY, wxPoint( 0, 0 ), FromDIP( wxSize( 160, 250 ) ),
-                                            wxTR_DEFAULT_STYLE | wxNO_BORDER );
+    m_netNavigator = new NET_NAVIGATOR_TREE( panel, wxID_ANY, wxPoint( 0, 0 ), FromDIP( wxSize( 160, 250 ) ),
+                                             wxTR_DEFAULT_STYLE | wxNO_BORDER );
     sizer->Add( m_netNavigator, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP( 2 ) );
 
     panel->SetSizer( sizer );
 
+    m_netNavigator->Bind( wxEVT_DPI_CHANGED, &SCH_EDIT_FRAME::onNetNavigatorDPIChanged, this );
     m_netNavigatorFilter->Bind( wxEVT_COMMAND_TEXT_UPDATED, &SCH_EDIT_FRAME::onNetNavigatorFilterChanged, this );
     m_netNavigatorFilter->Bind( wxEVT_KEY_DOWN, &SCH_EDIT_FRAME::onNetNavigatorKey, this );
     m_netNavigator->Bind( wxEVT_KEY_DOWN, &SCH_EDIT_FRAME::onNetNavigatorKey, this );
@@ -2360,20 +2361,18 @@ wxWindow* SCH_EDIT_FRAME::createHighlightedNetNavigator()
 }
 
 
-void SCH_EDIT_FRAME::SetHighlightedConnection( const wxString& aConnection,
-                                               const NET_NAVIGATOR_ITEM_DATA* aSelection )
+void SCH_EDIT_FRAME::SetHighlightedConnection( const wxString& aConnection, const NET_NAVIGATOR_ITEM_DATA* aSelection,
+                                               bool aForceNetNavigatorRefresh )
 {
-    bool refreshNetNavigator = aConnection != m_highlightedConn;
+    bool connectionChanged = aConnection != m_highlightedConn;
 
     m_highlightedConn = aConnection;
 
-    if( refreshNetNavigator )
-    {
+    if( connectionChanged || aForceNetNavigatorRefresh )
         RefreshNetNavigator( aSelection );
 
-        if( m_hierarchy )
-            m_hierarchy->UpdateNetHighlight( aConnection );
-    }
+    if( connectionChanged && m_hierarchy )
+        m_hierarchy->UpdateNetHighlight( aConnection );
 }
 
 

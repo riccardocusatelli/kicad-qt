@@ -271,14 +271,14 @@ bool SCH_SHEET_PATH::IsContainedWithin( const SCH_SHEET_PATH& aSheetPathToTest )
     {
         if( at( i )->m_Uuid != aSheetPathToTest.at( i )->m_Uuid )
         {
-            KI_LOG_TRACE( traceSchSheetPaths, "Sheet path '%s' is not within path '%s'.",
+            KI_TRACE( traceSchSheetPaths, "Sheet path '%s' is not within path '%s'.",
                         aSheetPathToTest.Path().AsString(), Path().AsString() );
 
             return false;
         }
     }
 
-    KI_LOG_TRACE( traceSchSheetPaths, "Sheet path '%s' is within path '%s'.",
+    KI_TRACE( traceSchSheetPaths, "Sheet path '%s' is within path '%s'.",
                 aSheetPathToTest.Path().AsString(), Path().AsString() );
 
     return true;
@@ -893,9 +893,9 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
     if( aProjectName.IsEmpty() || !LastScreen() )
         return;
 
-    KI_LOG_TRACE( traceSchSheetPaths, "CheckForMissingSymbolInstances for path: %s (project: %s)",
+    KI_TRACE( traceSchSheetPaths, "CheckForMissingSymbolInstances for path: %s (project: %s)",
                 PathHumanReadable( false ), aProjectName );
-    KI_LOG_TRACE( traceSchSheetPaths, "  Sheet path size=%zu, Path().AsString()='%s'",
+    KI_TRACE( traceSchSheetPaths, "  Sheet path size=%zu, Path().AsString()='%s'",
                 size(), Path().AsString() );
 
     for( SCH_ITEM* item : LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
@@ -908,7 +908,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
 
         if( !symbol->GetInstance( symbolInstance, Path() ) )
         {
-            KI_LOG_TRACE( traceSchSheetPaths, "Adding missing symbol \"%s\" instance data for "
+            KI_TRACE( traceSchSheetPaths, "Adding missing symbol \"%s\" instance data for "
                         "sheet path '%s'.",
                         symbol->m_Uuid.AsString(), PathHumanReadable( false ) );
 
@@ -921,7 +921,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
                 symbolInstance.m_Reference = refField->GetShownText( this, true );
                 symbolInstance.m_Unit = symbol->GetUnit();
 
-                KI_LOG_TRACE( traceSchSheetPaths,
+                KI_TRACE( traceSchSheetPaths,
                            "  Legacy format: Using reference '%s' from field, unit %d",
                            symbolInstance.m_Reference, symbolInstance.m_Unit );
             }
@@ -944,7 +944,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
 
                 symbolInstance = *sourceIt;
 
-                KI_LOG_TRACE( traceSchSheetPaths,
+                KI_TRACE( traceSchSheetPaths,
                            "  Using available instance (project '%s'): ref=%s, unit=%d, variants=%zu",
                            sourceIt->m_ProjectName, symbolInstance.m_Reference,
                            symbolInstance.m_Unit, symbolInstance.m_Variants.size() );
@@ -956,7 +956,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
                 symbolInstance.m_Reference = refField->GetText();
                 symbolInstance.m_Unit = symbol->GetUnit();
 
-                KI_LOG_TRACE( traceSchSheetPaths,
+                KI_TRACE( traceSchSheetPaths,
                            "  No instance data: Using reference '%s' from field, unit %d",
                            symbolInstance.m_Reference, symbolInstance.m_Unit );
             }
@@ -965,13 +965,13 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
             symbolInstance.m_Path = Path();
             symbol->AddHierarchicalReference( symbolInstance );
 
-            KI_LOG_TRACE( traceSchSheetPaths,
+            KI_TRACE( traceSchSheetPaths,
                        "  Created instance: ref=%s, path=%s",
                        symbolInstance.m_Reference, symbolInstance.m_Path.AsString() );
         }
         else
         {
-            KI_LOG_TRACE( traceSchSheetPaths,
+            KI_TRACE( traceSchSheetPaths,
                        "  Symbol %s already has instance: ref=%s, path=%s",
                        symbol->m_Uuid.AsString(),
                        symbolInstance.m_Reference,
@@ -1037,7 +1037,7 @@ void SCH_SHEET_LIST::BuildSheetList( SCH_SHEET* aSheet, bool aCheckIntegrity )
     if( !aSheet )
         return;
 
-    KI_LOG_TRACE( traceSchSheetPaths,
+    KI_TRACE( traceSchSheetPaths,
                "BuildSheetList called with sheet '%s' (UUID=%s, isVirtualRoot=%d)",
                aSheet->GetName(),
                aSheet->m_Uuid.AsString(),
@@ -1046,7 +1046,7 @@ void SCH_SHEET_LIST::BuildSheetList( SCH_SHEET* aSheet, bool aCheckIntegrity )
     // Special handling for virtual root: process its children without adding the root itself
     if( aSheet->IsVirtualRootSheet() )
     {
-        KI_LOG_TRACE( traceSchSheetPaths, "  Skipping virtual root, processing children only" );
+        KI_TRACE( traceSchSheetPaths, "  Skipping virtual root, processing children only" );
 
         if( aSheet->GetScreen() )
         {
@@ -1573,7 +1573,7 @@ void SCH_SHEET_LIST::UpdateSymbolInstanceData(
 
             if( it == aSymbolInstances.end() )
             {
-                KI_LOG_TRACE( traceSchSheetPaths, "No symbol instance found for symbol '%s'",
+                KI_TRACE( traceSchSheetPaths, "No symbol instance found for symbol '%s'",
                             sheetPathWithSymbolUuid.AsString() );
                 continue;
             }
@@ -1612,14 +1612,14 @@ void SCH_SHEET_LIST::UpdateSheetInstanceData( const std::vector<SCH_SHEET_INSTAN
 
         if( it == aSheetInstances.end() )
         {
-            KI_LOG_TRACE( traceSchSheetPaths, "No sheet instance found for path '%s'",
-                        path.Path().AsString() );
+            KI_TRACE( traceSchSheetPaths, "No sheet instance found for path '%s'", path.Path().AsString() );
             continue;
         }
 
-        KI_LOG_TRACE( traceSchSheetPaths, "Setting sheet '%s' instance '%s' page number '%s'",
-                    ( sheet->GetName().IsEmpty() ) ? wxString( wxT( "root" ) ) : sheet->GetName(),
-                    path.Path().AsString(), it->m_PageNumber );
+        KI_TRACE( traceSchSheetPaths, "Setting sheet '%s' instance '%s' page number '%s'",
+                  ( sheet->GetName().IsEmpty() ) ? wxString( wxT( "root" ) ) : sheet->GetName(), path.Path().AsString(),
+                  it->m_PageNumber );
+
         path.SetPageNumber( it->m_PageNumber );
     }
 }
@@ -1860,17 +1860,14 @@ void SCH_SHEET_LIST::AddNewSheetInstances( const SCH_SHEET_PATH& aPrefixSheetPat
 
 void SCH_SHEET_LIST::CheckForMissingSymbolInstances( const wxString& aProjectName )
 {
-    KI_LOG_TRACE( traceSchSheetPaths,
-               "SCH_SHEET_LIST::CheckForMissingSymbolInstances: Processing %zu sheet paths",
-               size() );
+    KI_TRACE( traceSchSheetPaths, "SCH_SHEET_LIST::CheckForMissingSymbolInstances: Processing %zu sheet paths",
+              size() );
 
     for( SCH_SHEET_PATH& sheetPath : *this )
     {
-        KI_LOG_TRACE( traceSchSheetPaths,
-                   "  Processing sheet path: '%s' (size=%zu, KIID_PATH='%s')",
-                   sheetPath.PathHumanReadable( false ),
-                   sheetPath.size(),
-                   sheetPath.Path().AsString() );
+        KI_TRACE( traceSchSheetPaths, "  Processing sheet path: '%s' (size=%zu, KIID_PATH='%s')",
+                  sheetPath.PathHumanReadable( false ), sheetPath.size(), sheetPath.Path().AsString() );
+
         sheetPath.CheckForMissingSymbolInstances( aProjectName );
     }
 }

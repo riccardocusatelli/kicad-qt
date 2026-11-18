@@ -47,6 +47,7 @@
 
 #include <board.h>
 #include <board_design_settings.h>
+#include <length_delay_calculation/length_delay_calculation.h>
 #include <drc/drc_engine.h>
 #include <pcb_track.h>
 #include <pcb_shape.h>

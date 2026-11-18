@@ -48,6 +48,7 @@ EDA_LIST_DIALOG::EDA_LIST_DIALOG( TOOLKIT_WINDOW_ARG aParent, const wxString& aT
     // correct for wxfb not supporting FromDIP
     m_listBox->SetMinSize( FromDIP( m_listBox->GetMinSize() ) );
     m_filterBox->SetHint( _( "Filter" ) );
+    OptOut( m_filterBox );
 
     initDialog( aItemHeaders, aItemList, aPreselectText );
 
@@ -73,6 +74,7 @@ EDA_LIST_DIALOG::EDA_LIST_DIALOG( TOOLKIT_WINDOW_ARG aParent, const wxString& aT
         m_sortList( aSortList )
 {
     m_filterBox->SetHint( _( "Filter" ) );
+    OptOut( m_filterBox );
 }
 
 

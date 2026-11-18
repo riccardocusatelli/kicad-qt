@@ -715,14 +715,14 @@ void ACTION_TOOLBAR::onPaletteAction( ACTION_GROUP* aGroup, const TOOL_ACTION& a
     if( !m_toolManager )
         return;
 
+    // Update the main toolbar item with the selected action before the tool starts running
+    doSelectAction( aGroup, aAction );
+
     // Dispatch a tool event
     OPT_TOOL_EVENT evt = aAction.MakeEvent();
     evt->SetHasPosition( false );
     m_toolManager->ProcessEvent( *evt );
     m_toolManager->GetToolHolder()->RefreshCanvas();
-
-    // Update the main toolbar item with the selected action
-    doSelectAction( aGroup, aAction );
 
     m_parent->UpdateUIConditions();
 }

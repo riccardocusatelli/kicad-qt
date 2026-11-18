@@ -78,8 +78,9 @@ wxString WX_HTML_REPORT_BOX::generateHtml( const wxString& aLine )
     // single lines (an invisible image of the height of the spacing)
     int additionalLineSpacing = KiROUND( QFontMetrics( font() ).height() * 0.6 );
 
-    return wxString::Format( wxT( "<img align=texttop height=%d width=0 src=#>%s<br>" ),
-                             additionalLineSpacing, aLine );
+    // The spacer after the line, so that it does not shift the line itself
+    return wxString::Format( wxT( "%s<img align=texttop height=%d width=0 src=#><br>" ), aLine,
+                             additionalLineSpacing );
 }
 
 

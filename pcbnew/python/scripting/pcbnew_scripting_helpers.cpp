@@ -48,6 +48,7 @@
 #include <pcb_io/pcb_io_mgr.h>
 #include <string_utils.h>
 #include <filename_resolver.h>
+#include <ki_exception.h>
 #include <macros.h>
 #include <pcbnew_scripting_helpers.h>
 #include <pgm_base.h>
@@ -63,6 +64,7 @@
 #include <wildcards_and_files_ext.h>
 #include <wx/app.h>
 #include <wx/crt.h>
+#include <wx/log.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <base_screen.h>
@@ -320,14 +322,23 @@ bool SaveBoard( wxString& aFileName, BOARD* aBoard, PCB_IO_MGR::PCB_FILE_T aForm
 {
     aBoard->BuildConnectivity();
     aBoard->SynchronizeNetsAndNetClasses( false );
+    aBoard->SynchronizeProperties();
 
     try
     {
         PCB_IO_MGR::Save( aFormat, aFileName, aBoard, nullptr );
     }
-    catch( ... )
+    catch( const IO_ERROR& ioe )
     {
+        wxLogError( _( "Cannot save board '%s': %s" ), aFileName, ioe.What() );
         return false;
+    }
+    catch( const std::exception& e )
+    {
+        // Rethrow so std::bad_alloc and similar aren't silently turned into a false return.
+        wxLogError( _( "Unexpected error saving board '%s': %s" ), aFileName,
+                    wxString::FromUTF8( e.what() ) );
+        throw;
     }
 
     if( !aSkipSettings )

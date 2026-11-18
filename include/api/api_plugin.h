@@ -24,10 +24,12 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <vector>
 #include <nlohmann/json_fwd.hpp>
 #include <nlohmann/json-schema.hpp>
 #include <tl/expected.hpp>
 #include <wx/filename.h>
+#include <wx/image.h>
 #include <wx/string.h>
 
 #include <api/plugin_action_scope.h>

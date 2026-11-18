@@ -90,6 +90,8 @@ static struct PGM_SINGLE_TOP : public PGM_GUI
 
     void OnPgmExit()
     {
+        CancelDesignBlockPreload();
+
         // Abort and wait on any background jobs
         GetKiCadThreadPool().purge();
         GetKiCadThreadPool().wait();

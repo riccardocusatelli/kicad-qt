@@ -26,6 +26,7 @@
 #define CLASS_BOARD_H_
 
 #include <atomic>
+#include <functional>
 #include <board_item_container.h>
 #include <board_stackup_manager/board_stackup.h>
 #include <embedded_files.h>
@@ -428,6 +429,13 @@ public:
      */
     wxString GetUniqueZoneName( const wxString& aBaseName, const ZONE* aExclude = nullptr ) const;
 
+    /**
+     * Return a name based on aBaseName for which aInUse returns false, adding or incrementing a
+     * _<number> suffix as needed. An empty name is returned unchanged.
+     */
+    static wxString MakeUniqueZoneName( const wxString&                               aBaseName,
+                                        const std::function<bool( const wxString& )>& aInUse );
+
     const GENERATORS& Generators() const { return m_generators; }
 
     PCB_BOARD_OUTLINE*       BoardOutline() { return m_boardOutline; }
@@ -473,6 +481,8 @@ public:
     void AddVariant( const wxString& aVariantName );
     void DeleteVariant( const wxString& aVariantName );
     void RenameVariant( const wxString& aOldName, const wxString& aNewName );
+    void CopyVariant( const wxString& aOldName, const wxString& aNewName,
+                      const wxString& aNewDescription = wxEmptyString );
 
     wxString GetVariantDescription( const wxString& aVariantName ) const;
     void SetVariantDescription( const wxString& aVariantName, const wxString& aDescription );

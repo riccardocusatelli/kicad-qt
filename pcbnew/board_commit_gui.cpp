@@ -197,7 +197,10 @@ public:
             m_toolMgr->PostAction( PCB_ACTIONS::zoneFillDirty );
         }
 
-        m_toolMgr->PostAction( PCB_ACTIONS::rehatchShapes );
+        // Rehatching only refreshes cached view geometry (consumers regenerate it lazily), and
+        // dispatching it headlessly makes the tool manager query the platform cursor position
+        if( m_toolMgr->GetView() )
+            m_toolMgr->PostAction( PCB_ACTIONS::rehatchShapes );
 
         if( aResult.selectedModified )
             m_toolMgr->ProcessEvent( EVENTS::SelectedItemsModified );

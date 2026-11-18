@@ -1120,7 +1120,19 @@ wxString SCHEMATIC::GetUniqueFilenameForCurrentSheet()
     if( startIdx >= CurrentSheet().size() )
         return wxEmptyString;
 
-    wxFileName rootFn( CurrentSheet().at( startIdx )->GetFileName() );
+    SCH_SHEET* topSheet = CurrentSheet().at( startIdx );
+
+    // A top-level sheet keeps its file on the screen, because the SHEET_FILENAME field is only
+    // set on the sheet instances that a parent sheet owns
+    wxString topFileName;
+
+    if( topSheet->GetScreen() )
+        topFileName = topSheet->GetScreen()->GetFileName();
+
+    if( topFileName.IsEmpty() )
+        topFileName = topSheet->GetFileName();
+
+    wxFileName rootFn( topFileName );
     wxString   filename = rootFn.GetName();
 
     for( unsigned i = startIdx + 1; i < CurrentSheet().size(); i++ )
@@ -1555,7 +1567,7 @@ void SCHEMATIC::CleanUp( SCH_COMMIT* aCommit, SCH_SCREEN* aScreen )
 
     for( SCH_ITEM* item : aScreen->Items().OfType( SCH_JUNCTION_T ) )
     {
-        if( !aScreen->IsExplicitJunction( item->GetPosition() ) )
+        if( !aScreen->IsExplicitJunctionAllowed( item->GetPosition() ) )
         {
             if( item->IsSelected() || item->HasFlag( SELECTED_BY_DRAG ) )
                 continue;
@@ -2129,8 +2141,7 @@ SCH_SHEET_LIST SCHEMATIC::BuildSheetListSortedByPageNumbers() const
 {
     SCH_SHEET_LIST hierarchy;
 
-    KI_LOG_TRACE( traceSchSheetPaths, "BuildSheetListSortedByPageNumbers: %zu top-level sheets",
-                m_topLevelSheets.size() );
+    KI_TRACE( traceSchSheetPaths, "BuildSheetListSortedByPageNumbers: %zu top-level sheets", m_topLevelSheets.size() );
 
     // Can't build hierarchy without top-level sheets
     if( m_topLevelSheets.empty() )
@@ -2141,8 +2152,8 @@ SCH_SHEET_LIST SCHEMATIC::BuildSheetListSortedByPageNumbers() const
     {
         if( sheet )
         {
-            KI_LOG_TRACE( traceSchSheetPaths, "  Top-level sheet: '%s' (UUID=%s, isVirtualRoot=%d)", sheet->GetName(),
-                        sheet->m_Uuid.AsString(), sheet->m_Uuid == niluuid ? 1 : 0 );
+            KI_TRACE( traceSchSheetPaths, "  Top-level sheet: '%s' (UUID=%s, isVirtualRoot=%d)", sheet->GetName(),
+                      sheet->m_Uuid.AsString(), sheet->m_Uuid == niluuid ? 1 : 0 );
 
             // Build the sheet list for this top-level sheet
             SCH_SHEET_LIST sheetList;

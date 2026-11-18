@@ -270,10 +270,11 @@ wxString SCH_FIELD::GetShownText( bool aAllowExtraText, int aDepth ) const
         const SCH_SHEET_PATH& currentSheet = schematic->CurrentSheet();
         wxString variantName = schematic->GetCurrentVariant();
 
-        KI_LOG_TRACE( traceSchFieldRendering,
-                    "GetShownText (no path arg): field=%s, current sheet path='%s', variant='%s', size=%zu, empty=%d",
-                    GetName(), currentSheet.Path().AsString(), variantName, currentSheet.size(),
-                    currentSheet.empty() ? 1 : 0 );
+        KI_TRACE( traceSchFieldRendering,
+                  "GetShownText (no path arg): field=%s, current sheet path='%s', variant='%s', size=%zu, empty=%d",
+                  GetName(), currentSheet.Path().AsString(), variantName, currentSheet.size(),
+                  currentSheet.empty() ? 1 : 0 );
+
         return GetShownText( &currentSheet, aAllowExtraText, aDepth, variantName );
     }
     else
@@ -1497,7 +1498,7 @@ wxString SCH_FIELD::getUnescapedText( const SCH_SHEET_PATH* aPath, const wxStrin
     // Only use the path if it's non-empty; an empty path can't match any instances
     if( m_parent && aPath && !aPath->empty() )
     {
-        KI_LOG_TRACE( traceSchFieldRendering, "  Path is valid and non-empty, parent type=%d", m_parent->Type() );
+        KI_TRACE( traceSchFieldRendering, "  Path is valid and non-empty, parent type=%d", m_parent->Type() );
 
         switch( m_parent->Type() )
         {
@@ -1506,12 +1507,12 @@ wxString SCH_FIELD::getUnescapedText( const SCH_SHEET_PATH* aPath, const wxStrin
             {
                 if( m_id == FIELD_T::REFERENCE )
                 {
-                    KI_LOG_TRACE( traceSchFieldRendering, "  Calling GetRef for symbol %s on path %s",
-                                symbol->m_Uuid.AsString(), aPath->Path().AsString() );
+                    KI_TRACE( traceSchFieldRendering, "  Calling GetRef for symbol %s on path %s",
+                              symbol->m_Uuid.AsString(), aPath->Path().AsString() );
 
                     retv = symbol->GetRef( aPath, true );
 
-                    KI_LOG_TRACE( traceSchFieldRendering, "  GetRef returned: '%s'", retv );
+                    KI_TRACE( traceSchFieldRendering, "  GetRef returned: '%s'", retv );
                 }
                 else if( !aVariantName.IsEmpty() )
                 {
@@ -1570,6 +1571,11 @@ static struct SCH_FIELD_DESC
         propMgr.AddTypeCast( new TYPE_CAST<SCH_FIELD, EDA_TEXT> );
         propMgr.InheritsAfter( TYPE_HASH( SCH_FIELD ), TYPE_HASH( SCH_ITEM ) );
         propMgr.InheritsAfter( TYPE_HASH( SCH_FIELD ), TYPE_HASH( EDA_TEXT ) );
+
+        // Library fields are written at symbol scope rather than inside a unit body, so a
+        // per-unit or per-body-style assignment is silently dropped by the next save
+        propMgr.Mask( TYPE_HASH( SCH_FIELD ), TYPE_HASH( SCH_ITEM ), _HKI( "Unit" ) );
+        propMgr.Mask( TYPE_HASH( SCH_FIELD ), TYPE_HASH( SCH_ITEM ), _HKI( "Body Style" ) );
 
         const wxString textProps = _HKI( "Text Properties" );
 

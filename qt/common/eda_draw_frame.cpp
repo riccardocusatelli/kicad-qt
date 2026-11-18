@@ -554,6 +554,10 @@ void EDA_DRAW_FRAME::configureToolbars()
                     QObject::connect( m_overrideLocksCb, &QCheckBox::clicked, m_overrideLocksCb,
                                       [this]( bool )
                                       {
+                                          // The edit points of the selection depend on it
+                                          if( m_toolManager )
+                                              m_toolManager->PostEvent( EVENTS::SelectedEvent );
+
                                           if( m_canvas )
                                               m_canvas->SetFocus();
                                       } );

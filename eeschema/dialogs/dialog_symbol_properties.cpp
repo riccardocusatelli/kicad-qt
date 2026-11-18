@@ -912,6 +912,9 @@ void DIALOG_SYMBOL_PROPERTIES::OnGridEditorShown( wxGridEvent& aEvent )
     }
 
     m_editorShown = true;
+
+    // Let WX_GRID run its editor-positioning handler
+    aEvent.Skip();
 }
 
 

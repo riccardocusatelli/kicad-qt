@@ -44,6 +44,7 @@
 #include <panel_text_variables.h>
 #include <project.h>
 #include <project/project_file.h>
+#include <project/net_settings.h>
 #include <settings/settings_manager.h>
 #include <widgets/resettable_panel.h>
 #include <widgets/wx_progress_reporters.h>
@@ -266,6 +267,10 @@ DIALOG_BOARD_SETUP::DIALOG_BOARD_SETUP( PCB_EDIT_FRAME* aFrame, wxWindow* aParen
 
     SetEvtHandlerEnabled( true );
 
+    // Bound after DIALOG_SHIM's handlers so these run first
+    Bind( wxEVT_BUTTON, &DIALOG_BOARD_SETUP::onCancelButton, this, wxID_CANCEL );
+    Bind( wxEVT_CLOSE_WINDOW, &DIALOG_BOARD_SETUP::onCloseWindow, this );
+
     finishDialogSettings();
 
     if( Prj().IsReadOnly() )
@@ -282,6 +287,87 @@ DIALOG_BOARD_SETUP::DIALOG_BOARD_SETUP( PCB_EDIT_FRAME* aFrame, wxWindow* aParen
 
 DIALOG_BOARD_SETUP::~DIALOG_BOARD_SETUP()
 {
+    Unbind( wxEVT_BUTTON, &DIALOG_BOARD_SETUP::onCancelButton, this, wxID_CANCEL );
+    Unbind( wxEVT_CLOSE_WINDOW, &DIALOG_BOARD_SETUP::onCloseWindow, this );
+}
+
+
+bool DIALOG_BOARD_SETUP::canDiscardChanges()
+{
+    auto* rules = static_cast<PANEL_SETUP_RULES*>( m_treebook->GetResolvedPage( m_customRulesPage ) );
+
+    if( !rules || !rules->IsModified() )
+        return true;
+
+    return OKOrCancelDialog( this, _( "Confirmation" ), _( "Discard changes to custom rules?" ), wxEmptyString,
+                             _( "Discard Changes" ) ) == wxID_OK;
+}
+
+
+void DIALOG_BOARD_SETUP::onCancelButton( wxCommandEvent& aEvent )
+{
+    if( canDiscardChanges() )
+        aEvent.Skip();
+}
+
+
+void DIALOG_BOARD_SETUP::onCloseWindow( wxCloseEvent& aEvent )
+{
+    if( aEvent.CanVeto() && !canDiscardChanges() )
+    {
+        aEvent.Veto();
+        return;
+    }
+
+    aEvent.Skip();
+}
+
+
+void DIALOG_BOARD_SETUP::onPageChanging( wxBookCtrlEvent& aEvent )
+{
+    // Rules are written to disk only on OK so Cancel can still discard them
+    if( aEvent.GetOldSelection() == (int) m_customRulesPage )
+        return;
+
+    PAGED_DIALOG::onPageChanging( aEvent );
+}
+
+
+bool DIALOG_BOARD_SETUP::TransferDataFromWindow()
+{
+    if( !PAGED_DIALOG::TransferDataFromWindow() )
+        return false;
+
+    // References to renamed profiles can only be fixed up after all pages have saved
+    auto* tuningProfiles =
+            static_cast<PANEL_SETUP_TUNING_PROFILES*>( m_treebook->GetResolvedPage( m_tuningProfilesPage ) );
+
+    if( tuningProfiles )
+    {
+        const std::map<wxString, wxString> renames = tuningProfiles->TakeProfileRenames();
+
+        if( !renames.empty() )
+        {
+            std::shared_ptr<NET_SETTINGS>& netSettings = m_frame->Prj().GetProjectFile().NetSettings();
+
+            auto remapProfile = [&renames]( const std::shared_ptr<NETCLASS>& aNetclass )
+            {
+                auto it = renames.find( aNetclass->GetTuningProfile() );
+
+                if( it != renames.end() )
+                    aNetclass->SetTuningProfile( it->second );
+            };
+
+            remapProfile( netSettings->GetDefaultNetclass() );
+
+            for( const auto& [name, netclass] : netSettings->GetNetclasses() )
+                remapProfile( netclass );
+
+            netSettings->ClearAllCaches();
+        }
+    }
+
+    return true;
 }
 
 
@@ -318,6 +404,7 @@ void DIALOG_BOARD_SETUP::onPageChanged( wxBookCtrlEvent& aEvent )
         }
         else if( page == m_netclassesPage || m_currentPage == m_tuningProfilesPage )
         {
+            m_netClasses->RemapDelayProfileNames( m_tuningProfiles->TakeProfileRenames() );
             m_netClasses->UpdateDelayProfileNames( m_tuningProfiles->GetDelayProfileNames() );
         }
         else if( page == m_tuningProfilesPage )

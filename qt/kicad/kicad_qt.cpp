@@ -257,7 +257,7 @@ int PGM_KICAD::OnPgmRun()
 
 void PGM_KICAD::OnPgmExit()
 {
-    m_libraryPreloadAbort.store( true );
+    CancelDesignBlockPreload();
 
     GetKiCadThreadPool().purge();
     GetKiCadThreadPool().wait();

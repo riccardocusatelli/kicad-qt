@@ -36,8 +36,14 @@
 #include <padstack.h>
 #include <pcb_painter.h>
 #include <pcb_track.h>
+#include <settings/settings_manager.h>
+#include <tool/tool_manager.h>
+#include <tools/zone_create_helper.h>
+#include <view/view.h>
 #include <zone.h>
 #include <zone_utils.h>
+
+#include <functional>
 
 
 struct ZONE_TEST_FIXTURE
@@ -72,6 +78,25 @@ static std::unique_ptr<ZONE> CreateSimilarZone( BOARD_ITEM_CONTAINER& aParent, c
     zone->SetOutline( outline.release() );
 
     return zone;
+}
+
+
+static FOOTPRINT* MakeFootprintWithRuleArea( BOARD& aBoard, const std::vector<BOX2I>& aCutouts )
+{
+    FOOTPRINT* fp = new FOOTPRINT( &aBoard );
+    aBoard.Add( fp );
+
+    ZONE* zone = new ZONE( fp );
+    zone->SetIsRuleArea( true );
+    zone->SetLayer( F_Cu );
+    zone->Outline()->AddOutline( KIGEOM::BoxToLineChain(
+            BOX2I( VECTOR2I( 0, 0 ), VECTOR2I( pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) ) ) ) );
+
+    for( const BOX2I& cutout : aCutouts )
+        zone->Outline()->AddHole( KIGEOM::BoxToLineChain( cutout ) );
+
+    fp->Add( zone );
+    return fp;
 }
 
 
@@ -688,6 +713,119 @@ BOOST_AUTO_TEST_CASE( RuleAreaOutlineDrawnAboveCopper )
 
     BOOST_TEST( KIGFX::ZoneOutlineDrawnOnLayer( false, copperPass ) );
     BOOST_TEST( !KIGFX::ZoneOutlineDrawnOnLayer( false, zonePass ) );
+}
+
+
+/**
+ * A cutout moved without changing its corner count must still report a library mismatch.
+ */
+BOOST_AUTO_TEST_CASE( LibraryParityDetectsMovedCutout )
+{
+    const VECTOR2I cutoutSize( pcbIUScale.mmToIU( 1 ), pcbIUScale.mmToIU( 1 ) );
+    const BOX2I    cutoutA( VECTOR2I( pcbIUScale.mmToIU( 2 ), pcbIUScale.mmToIU( 2 ) ), cutoutSize );
+    const BOX2I    cutoutB( VECTOR2I( pcbIUScale.mmToIU( 6 ), pcbIUScale.mmToIU( 6 ) ), cutoutSize );
+
+    FOOTPRINT* fp = MakeFootprintWithRuleArea( m_board, { cutoutA } );
+    FOOTPRINT* same = MakeFootprintWithRuleArea( m_board, { cutoutA } );
+    FOOTPRINT* moved = MakeFootprintWithRuleArea( m_board, { cutoutB } );
+
+    BOOST_CHECK_MESSAGE( !fp->FootprintNeedsUpdate( same, BOARD_ITEM::COMPARE_FLAGS::DRC ),
+                         "Identical rule areas must not report a mismatch" );
+
+    BOOST_CHECK_MESSAGE( fp->FootprintNeedsUpdate( moved, BOARD_ITEM::COMPARE_FLAGS::DRC ),
+                         "A moved cutout with the same corner count must report a mismatch" );
+}
+
+
+/**
+ * A changed cutout count must report a mismatch even when the vertex totals stay equal.
+ */
+BOOST_AUTO_TEST_CASE( LibraryParityDetectsCutoutCountChange )
+{
+    const VECTOR2I cutoutSize( pcbIUScale.mmToIU( 1 ), pcbIUScale.mmToIU( 1 ) );
+    const BOX2I    cutout1( VECTOR2I( pcbIUScale.mmToIU( 2 ), pcbIUScale.mmToIU( 2 ) ), cutoutSize );
+    const BOX2I    cutout2( VECTOR2I( pcbIUScale.mmToIU( 6 ), pcbIUScale.mmToIU( 6 ) ), cutoutSize );
+
+    FOOTPRINT* twoCutouts = MakeFootprintWithRuleArea( m_board, { cutout1, cutout2 } );
+    FOOTPRINT* oneCutout = MakeFootprintWithRuleArea( m_board, { cutout1 } );
+
+    // Match the vertex total of the two rectangles
+    ZONE*             zone = oneCutout->Zones()[0];
+    SHAPE_LINE_CHAIN& hole = zone->Outline()->Hole( 0, 0 );
+
+    const int mid = pcbIUScale.mmToIU( 2 ) + pcbIUScale.mmToIU( 1 ) / 2;
+    hole.Insert( 1, VECTOR2I( mid, pcbIUScale.mmToIU( 2 ) ) );
+    hole.Insert( 3, VECTOR2I( mid, pcbIUScale.mmToIU( 3 ) ) );
+    hole.Insert( 5, VECTOR2I( pcbIUScale.mmToIU( 2 ), mid ) );
+    hole.Insert( 7, VECTOR2I( pcbIUScale.mmToIU( 3 ), mid ) );
+
+    BOOST_REQUIRE_EQUAL( twoCutouts->Zones()[0]->Outline()->TotalVertices(),
+                         oneCutout->Zones()[0]->Outline()->TotalVertices() );
+
+    BOOST_CHECK_MESSAGE( twoCutouts->FootprintNeedsUpdate( oneCutout, BOARD_ITEM::COMPARE_FLAGS::DRC ),
+                         "A changed cutout count with equal total vertices must report a mismatch" );
+}
+
+
+/**
+ * Add a Similar Zone must not copy the source zone's name as is (AIR 945).
+ */
+BOOST_AUTO_TEST_CASE( SimilarZoneGetsUniqueName )
+{
+    KIGFX::VIEW   view;
+    TOOL_MANAGER  toolMgr;
+    DRAWING_TOOL* drawingTool = new DRAWING_TOOL();
+
+    toolMgr.SetEnvironment( &m_board, &view, nullptr, nullptr, nullptr );
+    toolMgr.RegisterTool( drawingTool );
+
+    const BOX2I box( VECTOR2I( 0, 0 ), VECTOR2I( pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) ) );
+
+    ZONE* named = CreateSquareZone( m_board, box, F_Cu ).release();
+    named->SetZoneName( wxS( "GND_POUR" ) );
+    m_board.Add( named );
+
+    ZONE* unnamed = CreateSquareZone( m_board, box, F_Cu ).release();
+    m_board.Add( unnamed );
+
+    ZONE_CREATE_HELPER::PARAMS params{ false, F_Cu, ZONE_MODE::SIMILAR, named, LEADER_MODE::DIRECT };
+    ZONE_CREATE_HELPER         helper( *drawingTool, params );
+
+    BOOST_CHECK_EQUAL( helper.createZoneFromExisting( *named )->GetZoneName(), wxS( "GND_POUR_1" ) );
+    BOOST_CHECK( helper.createZoneFromExisting( *unnamed )->GetZoneName().IsEmpty() );
+}
+
+
+// Footprint keepouts must not keep a stale cached bbox after the footprint is transformed
+BOOST_AUTO_TEST_CASE( KeepoutBBoxTracksFootprintTransform )
+{
+    SETTINGS_MANAGER       settingsManager;
+    std::unique_ptr<BOARD> board;
+
+    KI_TEST::LoadBoard( settingsManager, "issue25580", board );
+
+    for( FOOTPRINT* fp : board->Footprints() )
+    {
+        BOOST_REQUIRE( !fp->Zones().empty() );
+
+        auto primeAndTransform =
+                [&]( const std::function<void()>& aTransform )
+                {
+                    for( ZONE* zone : fp->Zones() )
+                        zone->CacheBoundingBox();
+
+                    aTransform();
+
+                    for( ZONE* zone : fp->Zones() )
+                    {
+                        BOOST_CHECK_MESSAGE( zone->GetBoundingBox() == zone->Outline()->BBox(),
+                                             fp->GetReference() << " keepout bbox is stale after transform" );
+                    }
+                };
+
+        primeAndTransform( [&]() { fp->SetOrientation( fp->GetOrientation() + ANGLE_90 ); } );
+        primeAndTransform( [&]() { fp->SetPosition( fp->GetPosition() + VECTOR2I( 1234567, 7654321 ) ); } );
+    }
 }
 
 

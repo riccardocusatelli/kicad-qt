@@ -28,6 +28,7 @@
 #include <sch_tablecell.h>
 #include <sch_item.h>
 #include <algorithm>
+#include <core/ki_assert.h>
 
 
 class SCH_TABLE : public SCH_ITEM
@@ -121,7 +122,9 @@ public:
 
     int GetRowCount() const
     {
-        return m_cells.size() / m_colCount;
+        KI_CHECK_MSG( m_colCount, 0, wxT( "Degenerate table with no columns!" ) );
+
+        return (int) m_cells.size() / m_colCount;
     }
 
     void SetColWidth( int aCol, int aWidth ) { m_colWidths[aCol] = aWidth; }

@@ -33,8 +33,10 @@
 #include <wx/evtloop.h>
 #include <wx/socket.h>
 #include <core/raii.h>
+#include <trace_helpers.h>
 #include <wx/log.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 static const wxString HOSTNAME( wxT( "localhost" ) );
@@ -115,6 +117,8 @@ bool KIWAY_PLAYER::ShowModal( wxString* aResult, wxWindow* aResultantFocusWindow
 
     m_modal_resultant_parent = aResultantFocusWindow;
 
+    KI_LOG_TRACE( traceGalContext, wxS( "Modal frame '%s' %p showing" ), GetTitle(), this );
+
     Show( true );
     Raise();    // Needed on some Window managers to always display the frame
 
@@ -136,6 +140,9 @@ bool KIWAY_PLAYER::ShowModal( wxString* aResult, wxWindow* aResultantFocusWindow
         m_modal_loop = &event_loop;
         event_loop.Run();
     }
+
+    KI_LOG_TRACE( traceGalContext, wxS( "Modal frame '%s' %p loop ended, result %d" ), GetTitle(), this,
+                m_modal_ret_val );
 
     if( aResult )
         *aResult = m_modal_string;

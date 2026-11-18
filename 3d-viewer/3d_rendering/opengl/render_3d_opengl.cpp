@@ -28,6 +28,7 @@
 
 #include "plugins/3dapi/xv3d_types.h"
 #include "render_3d_opengl.h"
+#include "../orphaned_gl_objects.h"
 #include "opengl_utils.h"
 #include "common_ogl/ogl_utils.h"
 #include <board.h>
@@ -96,7 +97,7 @@ RENDER_3D_OPENGL::~RENDER_3D_OPENGL()
 
     freeAllLists();
 
-    if( m_canvasInitialized )
+    if( m_canvasInitialized && !ORPHANED_GL_OBJECTS::Active() )
         glDeleteTextures( 1, &m_circleTexture );
 
     delete m_spheres_gizmo;
@@ -952,7 +953,7 @@ void RENDER_3D_OPENGL::freeAllLists()
         map.clear();                      \
     }
 
-    if( m_canvasInitialized && glIsList( m_grid ) )
+    if( m_canvasInitialized && !ORPHANED_GL_OBJECTS::Active() && glIsList( m_grid ) )
         glDeleteLists( m_grid, 1 );
 
     m_grid = 0;

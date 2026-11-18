@@ -148,7 +148,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
     auto envVarsParam = m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "environment.vars",
             [&]() -> nlohmann::json
             {
-                nlohmann::json ret = {};
+                nlohmann::json ret = nlohmann::json::object();
 
                 for( const std::pair<wxString, ENV_VAR_ITEM> entry : m_Env.vars )
                 {
@@ -401,6 +401,9 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
 
     m_params.emplace_back( new PARAM<bool>( "embed_file_defaults.sim_model", &m_EmbedFileDefaults.sim_model, false ) );
 
+    m_params.emplace_back( new PARAM<bool>( "relative_path_defaults.jobset_destination",
+                                            &m_RelativePathDefaults.jobset_destination, false ) );
+
     m_params.emplace_back( new PARAM_LIST<wxString>( "system.extra_3d_search_dirs",
             &m_Extra3DSearchDirs, {} ) );
 
@@ -422,7 +425,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "git.repositories",
             [&]() -> nlohmann::json
             {
-                nlohmann::json ret = {};
+                nlohmann::json ret = nlohmann::json::array();
 
                 for( const GIT_REPOSITORY& repo : m_Git.repositories )
                 {
@@ -513,6 +516,8 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
             },
             nlohmann::json::object() ) );
 
+    // Let the save drop entries for dialogs and controls that no longer exist
+    m_params.back()->SetClearUnknownKeys();
 
     registerMigration( 0, 1, std::bind( &COMMON_SETTINGS::migrateSchema0to1, this ) );
     registerMigration( 1, 2, std::bind( &COMMON_SETTINGS::migrateSchema1to2, this ) );

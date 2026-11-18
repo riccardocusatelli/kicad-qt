@@ -19,16 +19,21 @@
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
+#include <qa_utils/file_utils.h>
 
 #include <board.h>
 #include <local_history.h>
+#include <netclass.h>
 #include <pgm_base.h>
 #include <project.h>
+#include <project/net_settings.h>
+#include <project/project_file.h>
 #include <settings/common_settings.h>
 #include <settings/settings_manager.h>
 
 #include <git2.h>
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -139,6 +144,76 @@ void writeTextFile( const wxString& aPath, const wxString& aContents )
     BOOST_REQUIRE( f.IsOpened() );
     f.Write( aContents );
     f.Close();
+}
+
+
+std::string readTextFile( const wxString& aPath )
+{
+    wxFFile f( aPath, wxT( "rb" ) );
+    BOOST_REQUIRE( f.IsOpened() );
+
+    wxString text;
+    BOOST_REQUIRE( f.ReadAll( &text ) );
+
+    return text.ToStdString();
+}
+
+
+std::string historyEntryBytes( const HISTORY_FILE_DATA& aEntry )
+{
+    if( !aEntry.content.empty() )
+        return aEntry.content;
+
+    if( !aEntry.sourcePath.IsEmpty() )
+        return readTextFile( aEntry.sourcePath );
+
+    return std::string();
+}
+
+
+// One project seeded on disk and loaded, shared by the snapshot tests.
+struct SNAPSHOT_PROJECT
+{
+    SNAPSHOT_PROJECT( const wxString& aDirPrefix, const wxString& aFileName ) :
+            m_tempDir( aDirPrefix ),
+            m_proPath( m_tempDir.PathStr() + wxFileName::GetPathSeparator() + aFileName )
+    {
+        writeTextFile( m_proPath, wxS( "{ \"meta\": { \"version\": 3 } }\n" ) );
+        m_project = std::make_unique<SCOPED_PROJECT_LOAD>( m_mgr, m_proPath );
+    }
+
+    PROJECT&      Project() { return m_mgr.Prj(); }
+    PROJECT_FILE& ProjectFile() { return m_mgr.Prj().GetProjectFile(); }
+
+    SETTINGS_MANAGER                     m_mgr;
+    KI_TEST::SCOPED_TEMP_DIR             m_tempDir;
+    wxString                             m_proPath;
+    std::unique_ptr<SCOPED_PROJECT_LOAD> m_project;
+};
+
+
+void addNetclass( PROJECT_FILE& aProjectFile, const wxString& aName )
+{
+    std::shared_ptr<NETCLASS> netclass = std::make_shared<NETCLASS>( aName );
+    aProjectFile.NetSettings()->SetNetclass( aName, netclass );
+}
+
+
+// Snapshot the project and return the bytes recorded for the .kicad_pro.
+std::string snapshotProjectBytes( PROJECT& aProject )
+{
+    std::vector<HISTORY_FILE_DATA> fileData;
+    aProject.SaveToHistory( aProject.GetProjectFullName(), fileData );
+
+    auto it = std::find_if( fileData.begin(), fileData.end(),
+                            []( const HISTORY_FILE_DATA& aEntry )
+                            {
+                                return aEntry.relativePath.EndsWith( wxS( ".kicad_pro" ) );
+                            } );
+
+    BOOST_REQUIRE( it != fileData.end() );
+
+    return historyEntryBytes( *it );
 }
 }  // namespace
 
@@ -892,6 +967,115 @@ BOOST_AUTO_TEST_CASE( DivergentAutosaveStillFlaggedStale )
 
     BOOST_CHECK_MESSAGE( stale.size() == 1,
                          "Genuinely divergent autosave must still be flagged stale for recovery" );
+}
+
+
+BOOST_AUTO_TEST_CASE( EnforceSizeLimitKeepsUnstagedFilesInNextSnapshot )
+{
+    LIBGIT2_SCOPE libgit;
+
+    bool&                backupEnabled = Pgm().GetCommonSettings()->m_Backup.enabled;
+    SCOPED_BOOL_OVERRIDE restoreBackupFlag( backupEnabled );
+    backupEnabled = true;
+
+    SCOPED_TEMP_DIR project( wxS( "kicad_qa_trim_partial_save" ) );
+    const wxString& path = project.Path();
+    const wxString  sep = wxFileName::GetPathSeparator();
+
+    writeTextFile( path + sep + wxS( "trim.kicad_pro" ), wxS( "{}\n" ) );
+    writeTextFile( path + sep + wxS( "trim.kicad_pcb" ), wxS( "(kicad_pcb (version 20240108))\n" ) );
+    writeTextFile( path + sep + wxS( "trim.kicad_sch" ), wxS( "(kicad_sch (version 20240108))\n" ) );
+
+    LOCAL_HISTORY history;
+    BOOST_REQUIRE( history.CommitFullProjectSnapshot( path, wxS( "Initial" ) ) );
+
+    writeTextFile( path + sep + wxS( "trim.kicad_pcb" ), wxS( "(kicad_pcb (version 20240108) (net 1))\n" ) );
+    BOOST_REQUIRE( history.CommitFullProjectSnapshot( path, wxS( "Second" ) ) );
+
+    BOOST_REQUIRE( history.EnforceSizeLimit( path, 1 ) );
+
+    writeTextFile( path + sep + wxS( "trim.kicad_sch" ), wxS( "(kicad_sch (version 20240108) (mod))\n" ) );
+    BOOST_REQUIRE( history.CommitSnapshot( { path + sep + wxS( "trim.kicad_sch" ) }, wxS( "Sch Save" ) ) );
+
+    wxString        historyDir = path + sep + wxS( ".history" );
+    git_repository* repo = nullptr;
+    BOOST_REQUIRE( git_repository_open( &repo, historyDir.mb_str().data() ) == 0 );
+
+    git_oid     headOid;
+    git_commit* head = nullptr;
+    git_tree*   tree = nullptr;
+    BOOST_REQUIRE( git_reference_name_to_id( &headOid, repo, "HEAD" ) == 0 );
+    BOOST_REQUIRE( git_commit_lookup( &head, repo, &headOid ) == 0 );
+    BOOST_REQUIRE( git_commit_tree( &tree, head ) == 0 );
+
+    BOOST_CHECK_MESSAGE( git_tree_entry_byname( tree, "trim.kicad_sch" ),
+                         "schematic missing from snapshot after trim" );
+    BOOST_CHECK_MESSAGE( git_tree_entry_byname( tree, "trim.kicad_pcb" ), "board dropped from snapshot after trim" );
+    BOOST_CHECK_MESSAGE( git_tree_entry_byname( tree, "trim.kicad_pro" ),
+                         "project file dropped from snapshot after trim" );
+
+    git_tree_free( tree );
+    git_commit_free( head );
+    git_repository_free( repo );
+}
+
+
+// A snapshot must serialize the live project settings, not copy the stale file from disk.
+BOOST_AUTO_TEST_CASE( ProjectSnapshotCarriesUnsavedSettings )
+{
+    SNAPSHOT_PROJECT tc( wxS( "kicad_qa_pro_snapshot" ), wxS( "snap.kicad_pro" ) );
+    BOOST_REQUIRE( tc.m_mgr.SaveProject() );
+
+    addNetclass( tc.ProjectFile(), wxS( "History Class" ) );
+
+    std::string bytes = snapshotProjectBytes( tc.Project() );
+
+    BOOST_CHECK_MESSAGE( bytes.find( "History Class" ) != std::string::npos,
+                         "project file snapshot must carry the unsaved netclass" );
+}
+
+
+// The snapshot flush must not swallow the next real save.
+BOOST_AUTO_TEST_CASE( ProjectSaveStillWritesAfterSnapshot )
+{
+    SNAPSHOT_PROJECT tc( wxS( "kicad_qa_pro_snapshot_save" ), wxS( "snapsave.kicad_pro" ) );
+    BOOST_REQUIRE( tc.m_mgr.SaveProject() );
+
+    PROJECT_FILE& projectFile = tc.ProjectFile();
+    addNetclass( projectFile, wxS( "History Class" ) );
+
+    projectFile.m_TextVars[wxS( "HISTORY_VAR" )] = wxS( "kept" );
+
+    snapshotProjectBytes( tc.Project() );
+
+    BOOST_CHECK_MESSAGE( projectFile.SaveToFile( tc.m_tempDir.PathStr() ),
+                         "a real save after the snapshot must still write the file" );
+
+    std::string onDisk = readTextFile( tc.m_proPath );
+
+    BOOST_CHECK_MESSAGE( onDisk.find( "History Class" ) != std::string::npos,
+                         "the netclass must reach the file after the snapshot" );
+    BOOST_CHECK_MESSAGE( onDisk.find( "HISTORY_VAR" ) != std::string::npos,
+                         "the text variable must reach the file after the snapshot" );
+}
+
+
+// A snapshot of a clean project must not make the next save rewrite an unchanged file (#24402).
+BOOST_AUTO_TEST_CASE( ProjectSnapshotDoesNotDirtyACleanProject )
+{
+    SNAPSHOT_PROJECT tc( wxS( "kicad_qa_pro_snapshot_clean" ), wxS( "snapclean.kicad_pro" ) );
+
+    PROJECT_FILE& projectFile = tc.ProjectFile();
+
+    BOOST_REQUIRE( tc.m_mgr.SaveProject() );
+
+    std::string before = readTextFile( tc.m_proPath );
+
+    snapshotProjectBytes( tc.Project() );
+
+    BOOST_CHECK_MESSAGE( !projectFile.SaveToFile( tc.m_tempDir.PathStr() ),
+                         "an unchanged project must not be rewritten after a snapshot" );
+    BOOST_CHECK_EQUAL( before, readTextFile( tc.m_proPath ) );
 }
 
 

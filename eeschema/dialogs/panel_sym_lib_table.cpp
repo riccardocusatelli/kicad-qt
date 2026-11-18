@@ -186,6 +186,7 @@ protected:
 
             if( options != result )
             {
+                tbl->OnModify();
                 row.SetOptions( result );
                 m_grid->Refresh();
             }
@@ -195,7 +196,8 @@ protected:
     void openTable( const LIBRARY_TABLE_ROW& aRow ) override
     {
         wxFileName fn( LIBRARY_MANAGER::ExpandURI( aRow.URI(), Pgm().GetSettingsManager().Prj() ) );
-        std::shared_ptr<LIBRARY_TABLE> child = std::make_shared<LIBRARY_TABLE>( fn, LIBRARY_TABLE_SCOPE::GLOBAL, LIBRARY_TABLE_TYPE::SYMBOL );
+        std::shared_ptr<LIBRARY_TABLE> child = std::make_shared<LIBRARY_TABLE>( fn, LIBRARY_TABLE_SCOPE::GLOBAL,
+                                                                                LIBRARY_TABLE_TYPE::SYMBOL );
 
         if( !child->IsOk() )
         {
@@ -723,11 +725,14 @@ void PANEL_SYM_LIB_TABLE::onReset( wxCommandEvent& event )
                                                           lastGlobalLibDir, wxEmptyString ),
                     true /* take ownership */ );
 
-    LIB_TABLE_NOTEBOOK_PANEL* panel0 =
-            static_cast<LIB_TABLE_NOTEBOOK_PANEL*>( m_notebook->GetPage( 0 ) );
+    LIB_TABLE_NOTEBOOK_PANEL* panel0 = static_cast<LIB_TABLE_NOTEBOOK_PANEL*>( m_notebook->GetPage( 0 ) );
     panel0->ClearDirty();
+
     static_cast<LIB_TABLE_GRID_DATA_MODEL*>( grid->GetTable() )->SetChangeCallback(
-            [panel0]() { panel0->MarkDirty(); } );
+            [panel0]()
+            {
+                panel0->MarkDirty();
+            } );
 
     m_parent->m_GlobalTableChanged = true;
 

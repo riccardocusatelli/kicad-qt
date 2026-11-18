@@ -130,6 +130,7 @@ set( KICOMMON_MODEL_SRCS
     jobs/job.cpp
     jobs/job_dispatcher.cpp
     jobs/job_registry.cpp
+    jobs/jobs_output.cpp
     jobs/jobs_output_archive.cpp
     jobs/jobs_output_folder.cpp
     jobs/job_export_pcb_drill.cpp
@@ -154,6 +155,7 @@ set( KICOMMON_MODEL_SRCS
     jobs/job_export_sch_pythonbom.cpp
     jobs/job_special_copyfiles.cpp
     jobs/job_special_execute.cpp
+    jobs/job_unknown.cpp
     jobs/jobset.cpp
     jobs/job_fp_export_svg.cpp
     jobs/job_fp_upgrade.cpp
@@ -279,6 +281,7 @@ set( KICOMMON_MODEL_SRCS
 
     api/serializable.cpp
     api/api_utils.cpp
+    api/api_enums.cpp
 
     )
 
@@ -937,7 +940,7 @@ set( COMMON_SRCS
     http_lib/http_lib_connection.cpp
     http_lib/http_lib_settings.cpp
 
-    api/api_enums.cpp
+    api/api_text_attributes.cpp
     )
 
 # This needs to be in the common library until draw_panel_gal is moved to kicommon

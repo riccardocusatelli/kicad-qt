@@ -25,7 +25,13 @@
 #include <sch_io/sch_io.h>
 #include <sch_io/sch_io_mgr.h>
 #include <wildcards_and_files_ext.h>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
+#include <set>
+#include <shared_mutex>
+#include <thread>
 #include <unordered_set>
 
 
@@ -56,7 +62,7 @@ public:
                                       { FILEEXT::DatabaseLibraryFileExtension } );
     }
 
-    int GetModifyHash() const override { return 0; }
+    int GetModifyHash() const override { return m_modifyHash; }
 
     void EnumerateSymbolLib( wxArrayString&    aSymbolNameList,
                              const wxString&   aLibraryPath,
@@ -65,6 +71,9 @@ public:
     void EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList,
                              const wxString&           aLibraryPath,
                              const std::map<std::string, UTF8>*         aProperties = nullptr ) override;
+
+    void CheckLibrary( const wxString& aLibraryPath,
+                       const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     LIB_SYMBOL* LoadSymbol( const wxString& aLibraryPath, const wxString& aAliasName,
                             const std::map<std::string, UTF8>* aProperties = nullptr ) override;
@@ -93,7 +102,25 @@ public:
     bool TestConnection( wxString* aErrorMsg = nullptr );
 
 private:
-    void cacheLib();
+    typedef std::vector<std::pair<const DATABASE_LIB_TABLE*, std::vector<DATABASE_CONNECTION::ROW>>> TABLE_RESULT_LIST;
+
+    /**
+     * @param aForce rebuilds the symbol cache even when it is populated and the rows are unchanged.
+     */
+    void cacheLib( bool aForce = false );
+
+    /**
+     * Rebuild the cache once a source library that was still loading when the cache was built has
+     * finished, so its rows stop being empty symbols.
+     */
+    void resolvePendingSources();
+
+    size_t computeSignature( const TABLE_RESULT_LIST& aTableResults ) const;
+
+    bool  materializeCache( const TABLE_RESULT_LIST& aTableResults,
+                            std::map<wxString, std::unique_ptr<LIB_SYMBOL>>& aSymbolCache,
+                            std::map<wxString, std::pair<std::string, std::string>>& aSanitizedNameMap,
+                            std::set<wxString>& aPendingSourceLibs );
 
     void ensureSettings( const wxString& aSettingsPath );
 
@@ -101,9 +128,14 @@ private:
 
     void connect();
 
+    /**
+     * @param aPendingSourceLibs receives the nickname of a source library that has not finished
+     *                           loading, when that is why the source symbol was not found.
+     */
     std::unique_ptr<LIB_SYMBOL> loadSymbolFromRow( const wxString& aSymbolName,
                                                    const DATABASE_LIB_TABLE& aTable,
-                                                   const DATABASE_CONNECTION::ROW& aRow );
+                                                   const DATABASE_CONNECTION::ROW& aRow,
+                                                   std::set<wxString>& aPendingSourceLibs );
 
     static std::optional<bool> boolFromAny( const std::any& aVal );
 
@@ -121,22 +153,40 @@ private:
     std::map<wxString, std::unique_ptr<LIB_SYMBOL>> m_nameToSymbolcache;
     std::map<wxString, std::pair<std::string, std::string>> m_sanitizedNameMap;
 
+    /// Source libraries that were still loading when the cache was built
+    std::set<wxString> m_pendingSourceLibs;
+
     long long m_cacheTimestamp;
 
     /// True once the LIB_SYMBOL cache has been materialized at least once.
-    bool m_cachePopulated;
+    std::atomic<bool> m_cachePopulated{ false };
+
+    int m_modifyHash = 0;
 
     /// Signature of the raw database rows at last materialization; used to skip rebuilding the
     /// LIB_SYMBOL cache when a re-query returns identical data.
     size_t m_cacheSignature;
 
-    /// LIB_IDs whose resolution is in flight, used to break self-referential cycles where a row's
-    /// Symbols column points back into the same database library (issue #24249).
-    std::unordered_set<wxString> m_inProgressLoads;
+    /// LIB_IDs whose resolution is in flight on the calling thread, used to break self-referential
+    /// cycles where a row's Symbols column points back into the same database library (issue #24249).
+    /// The recursion is synchronous, so the chain is per thread; sharing the set would let concurrent
+    /// loads of the same symbol report a false cycle and would race on the container itself.
+    static thread_local std::unordered_set<wxString> s_inProgressLoads;
 
     /// Re-entrancy guard for cacheLib(), tripped when a self-referential load routes back through
     /// the adapter into LoadSymbol mid-build.
     bool m_inCacheLib = false;
+
+    void startBackgroundRefresh();
+    void stopBackgroundRefresh();
+    void backgroundRefreshWorker();
+
+    std::thread             m_refreshThread;
+    std::atomic<bool>       m_refreshRunning{ false };
+    std::condition_variable m_refreshCV;
+    std::mutex              m_refreshMutex;
+    std::shared_mutex       m_cacheMutex;
+    std::mutex              m_symbolLoadMutex;
 
     wxString m_lastError;
 };

@@ -26,6 +26,7 @@
 
 #include <gal/hidpi_gl_canvas.h>
 
+#include <advanced_config.h>
 #include <dpi_scaling.h>
 #include <kicad_gl/gl_utils.h>
 

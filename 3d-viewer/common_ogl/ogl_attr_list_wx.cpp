@@ -32,6 +32,7 @@
 #include <wx/debug.h>
 #include <core/arraydim.h>
 #include <core/ki_assert.h>
+#include <gal/hidpi_gl_canvas.h>
 
 
 KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasingMode,
@@ -39,7 +40,9 @@ KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasing
 {
     KI_ASSERT( aAntiAliasingMode <= ANTIALIASING_MODE::AA_8X );
 
-    auto makeAttribs = [aAlpha]( int aSamplers )
+    bool swapCopyAdded = false;
+
+    auto makeAttribs = [aAlpha, &swapCopyAdded]( int aSamplers, bool aSwapCopy = false )
     {
         wxGLAttributes dispAttrs;
 
@@ -49,8 +52,12 @@ KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasing
                 .Stencil( 8 )
                 .Samplers( aSamplers )
                 .SampleBuffers( aSamplers >= 0 ? 1 : -1 )
-                .MinRGBA( 8, 8, 8, aAlpha ? 8 : -1 )
-                .EndList();
+                .MinRGBA( 8, 8, 8, aAlpha ? 8 : -1 );
+
+        if( aSwapCopy )
+            swapCopyAdded = HIDPI_GL_CANVAS::AddSwapCopyAttributes( dispAttrs );
+
+        dispAttrs.EndList();
 
         return dispAttrs;
     };
@@ -73,6 +80,11 @@ KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasing
             }
         }
     }
+
+    wxGLAttributes copyAttribs = makeAttribs( maxSamples, true );
+
+    if( swapCopyAdded && wxGLCanvas::IsDisplaySupported( copyAttribs ) )
+        return copyAttribs;
 
     return makeAttribs( maxSamples );
 }

@@ -95,6 +95,7 @@ void SCH_IO_KICAD_SEXPR::init( SCHEMATIC* aSchematic,
 
     m_version   = 0;
     m_appending = false;
+    m_sheetLoad = aProperties && aProperties->count( "hierarchical_sheet_load" );
     m_rootSheet = nullptr;
     m_schematic = aSchematic;
     m_cache     = nullptr;
@@ -334,7 +335,7 @@ void SCH_IO_KICAD_SEXPR::loadFile( const wxString& aFileName, SCH_SHEET* aSheet 
     }
 
     SCH_IO_KICAD_SEXPR_PARSER parser( &reader, m_progressReporter, lineCount, m_rootSheet,
-                                      m_appending );
+                                      m_appending, m_sheetLoad );
 
     parser.ParseSchematic( aSheet );
 }
@@ -379,6 +380,7 @@ void SCH_IO_KICAD_SEXPR::SaveSchematicFile( const wxString& aFileName, SCH_SHEET
 
     PRETTIFIED_FILE_OUTPUTFORMATTER formatter( fn.GetFullPath() );
     FormatSchematicToFormatter( &formatter, aSheet, aSchematic, aProperties );
+    formatter.Finish();
 
     if( aSheet->GetScreen() )
         aSheet->GetScreen()->SetFileExists( true );

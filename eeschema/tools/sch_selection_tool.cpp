@@ -772,6 +772,24 @@ int SCH_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
                 else
                 {
                     m_selection = RequestSelection( SCH_COLLECTOR::MovableItems );
+
+                    // Pins aren't movable in the schematic editor, so if someone starts a drag on a
+                    // pin, promote it to the parent symbol.
+                    if( m_selection.Size() == 0 )
+                    {
+                        m_selection = RequestSelection( { SCH_PIN_T } );
+
+                        if( m_selection.Size() > 0 )
+                        {
+                            SCH_PIN* pin = static_cast<SCH_PIN*>( m_selection.GetItem( 0 ) );
+
+                            if( SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( pin->GetParentSymbol() ) )
+                            {
+                                m_selection.Clear();
+                                m_selection.Add( symbol );
+                            }
+                        }
+                    }
                 }
 
                 // Check if dragging has started within any of selected items bounding box
@@ -1205,6 +1223,11 @@ int SCH_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
             )
             {
                 m_nonModifiedCursor = KICURSOR::MOVING;
+            }
+            else if( m_selectionMode == SELECTION_MODE::INSIDE_LASSO
+                     || m_selectionMode == SELECTION_MODE::TOUCHING_LASSO )
+            {
+                m_nonModifiedCursor = KICURSOR::SELECT_LASSO;
             }
             else
             {
@@ -2227,6 +2250,7 @@ void SCH_SELECTION_TOOL::updateReferencePoint()
 int SCH_SELECTION_TOOL::SetSelectPoly( const TOOL_EVENT& aEvent )
 {
     m_selectionMode = SELECTION_MODE::INSIDE_LASSO;
+    m_nonModifiedCursor = KICURSOR::SELECT_LASSO;
     m_frame->GetCanvas()->SetCurrentCursor( KICURSOR::SELECT_LASSO );
     m_toolMgr->PostAction( ACTIONS::selectionTool );
     return 0;
@@ -2236,6 +2260,7 @@ int SCH_SELECTION_TOOL::SetSelectPoly( const TOOL_EVENT& aEvent )
 int SCH_SELECTION_TOOL::SetSelectRect( const TOOL_EVENT& aEvent )
 {
     m_selectionMode = SELECTION_MODE::INSIDE_RECTANGLE;
+    m_nonModifiedCursor = KICURSOR::ARROW;
     m_frame->GetCanvas()->SetCurrentCursor( KICURSOR::ARROW );
     m_toolMgr->PostAction( ACTIONS::selectionTool );
     return 0;

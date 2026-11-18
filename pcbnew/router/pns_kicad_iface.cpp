@@ -904,17 +904,17 @@ int PNS_PCBNEW_RULE_RESOLVER::Clearance( const PNS::ITEM* aA, const PNS::ITEM* a
 
     for( int layer = layers.Start(); layer <= layers.End(); ++layer )
     {
-        if( !sameNet && !freePad )
+        if( IsDrilledHole( aA ) && IsDrilledHole( aB ) )
         {
-            if( IsDrilledHole( aA ) && IsDrilledHole( aB ) )
+            if( QueryConstraint( PNS::CONSTRAINT_TYPE::CT_HOLE_TO_HOLE, aA, aB, layer, &constraint ) )
             {
-                if( QueryConstraint( PNS::CONSTRAINT_TYPE::CT_HOLE_TO_HOLE, aA, aB, layer, &constraint ) )
-                {
-                    if( constraint.m_Value.Min() > rv )
-                        rv = constraint.m_Value.Min();
-                }
+                if( constraint.m_Value.Min() > rv )
+                    rv = constraint.m_Value.Min();
             }
-            else if( isHole( aA ) || isHole( aB ) )
+        }
+        else if( isHole( aA ) || isHole( aB ) )
+        {
+            if( !sameNet )
             {
                 if( QueryConstraint( PNS::CONSTRAINT_TYPE::CT_HOLE_CLEARANCE, aA, aB, layer, &constraint ) )
                 {
@@ -922,9 +922,12 @@ int PNS_PCBNEW_RULE_RESOLVER::Clearance( const PNS::ITEM* aA, const PNS::ITEM* a
                         rv = constraint.m_Value.Min();
                 }
             }
+        }
 
-            // No 'else'; plated holes get both HOLE_CLEARANCE and CLEARANCE
-            if( isCopper( aA ) && ( !aB || isCopper( aB ) ) )
+        // No 'else'; plated holes get both HOLE_CLEARANCE and CLEARANCE
+        if( isCopper( aA ) && ( !aB || isCopper( aB ) ) && !sameNet && !freePad )
+        {
+            if( !sameNet && !freePad )
             {
                 if( QueryConstraint( PNS::CONSTRAINT_TYPE::CT_CLEARANCE, aA, aB, layer, &constraint ) )
                 {
@@ -932,15 +935,14 @@ int PNS_PCBNEW_RULE_RESOLVER::Clearance( const PNS::ITEM* aA, const PNS::ITEM* a
                         rv = constraint.m_Value.Min();
                 }
             }
+        }
 
-            // No 'else'; non-plated milled holes get both HOLE_CLEARANCE and EDGE_CLEARANCE
-            if( isEdge( aA ) || IsNonPlatedSlot( aA ) || isEdge( aB ) || IsNonPlatedSlot( aB ) )
+        if( isEdge( aA ) || IsNonPlatedSlot( aA ) || isEdge( aB ) || IsNonPlatedSlot( aB ) )
+        {
+            if( QueryConstraint( PNS::CONSTRAINT_TYPE::CT_EDGE_CLEARANCE, aA, aB, layer, &constraint ) )
             {
-                if( QueryConstraint( PNS::CONSTRAINT_TYPE::CT_EDGE_CLEARANCE, aA, aB, layer, &constraint ) )
-                {
-                    if( constraint.m_Value.Min() > rv )
-                        rv = constraint.m_Value.Min();
-                }
+                if( constraint.m_Value.Min() > rv )
+                    rv = constraint.m_Value.Min();
             }
         }
 
@@ -1422,7 +1424,7 @@ public:
     ~PNS_PCBNEW_DEBUG_DECORATOR()
     {
         PNS_PCBNEW_DEBUG_DECORATOR::Clear();
-        
+
         for ( PNS::ITEM* item : m_clonedItems )
         {
             delete item;
@@ -2882,6 +2884,12 @@ BOARD_CONNECTED_ITEM* PNS_KICAD_IFACE::createBoardItem( PNS::ITEM* aItem )
 
         if( BOARD_ITEM* src = aItem->GetSourceItem() )
         {
+            if( !m_itemGroups.contains( src ) )
+            {
+                if( EDA_GROUP* group = src->GetParentGroup() )
+                    m_itemGroups[src] = group;
+            }
+
             if( m_itemGroups.contains( src ) )
                 m_replacementMap[src].push_back( newBoardItem );
         }
@@ -3065,6 +3073,37 @@ int PNS_KICAD_IFACE_BASE::GetPNSLayerFromBoardLayer( PCB_LAYER_ID aLayer ) const
         return m_board->GetCopperLayerCount() - 1;
 
     return ( aLayer / 2 ) - 1;
+}
+
+
+void PNS_KICAD_IFACE_BASE::RemoveBoardConnected( const std::vector<const PNS::ITEM*>& aJoined,
+                                                 std::set<PNS::ITEM*>& aItems ) const
+{
+    if( !m_board )
+        return;
+
+    std::shared_ptr<CONNECTIVITY_DATA> connectivity = m_board->GetConnectivity();
+    std::set<const BOARD_ITEM*>        boardJoined;
+
+    for( const PNS::ITEM* item : aJoined )
+    {
+        BOARD_ITEM* parent = item->Parent();
+
+        if( !parent || !parent->IsConnected() || !boardJoined.insert( parent ).second )
+            continue;
+
+        for( BOARD_CONNECTED_ITEM* connected :
+             connectivity->GetConnectedItems( static_cast<BOARD_CONNECTED_ITEM*>( parent ) ) )
+        {
+            boardJoined.insert( connected );
+        }
+    }
+
+    std::erase_if( aItems,
+                   [&]( PNS::ITEM* aItem )
+                   {
+                       return aItem->Parent() && boardJoined.count( aItem->Parent() );
+                   } );
 }
 
 

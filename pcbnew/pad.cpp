@@ -24,6 +24,7 @@
  */
 
 #include <base_units.h>
+#include <api/api_pcb_utils.h>
 #include <bitmaps.h>
 #include <math/util.h>      // for KiROUND
 #include <msg_panel_context.h>
@@ -197,9 +198,7 @@ void PAD::Serialize( google::protobuf::Any &aContainer ) const
     pad.mutable_pad_to_die_length()->set_value_nm( GetPadToDieLength() );
     pad.mutable_pad_to_die_delay()->set_value_as( GetPadToDieDelay() );
 
-    google::protobuf::Any padStackMsg;
-    m_padStack.Serialize( padStackMsg );
-    padStackMsg.UnpackTo( pad.mutable_pad_stack() );
+    m_padStack.Serialize( *pad.mutable_pad_stack() );
 
     if( GetLocalClearance().has_value() )
         pad.mutable_copper_clearance_override()->set_value_nm( *GetLocalClearance() );
@@ -212,8 +211,17 @@ void PAD::Serialize( google::protobuf::Any &aContainer ) const
         pad.mutable_symbol_pin()->set_no_connect( pt->second );
     }
 
+    pad.set_fab_property( ToProtoEnum<PAD_PROP, PadFabricationProperty>( GetProperty() ) );
+
     if( FOOTPRINT* parent = GetParentFootprint() )
         pad.mutable_parent()->set_value( parent->m_Uuid.AsStdString() );
+
+    kiapi::board::PackTeardropSettings( *pad.mutable_teardrop(), GetTeardropParams() );
+
+    {
+        std::unique_lock lock( m_dataMutex );
+        kiapi::board::PackZoneLayerOverrides( pad.mutable_zone_layer_overrides(), m_zoneLayerOverrides );
+    }
 
     aContainer.PackFrom( pad );
 }
@@ -234,6 +242,7 @@ bool PAD::Deserialize( const google::protobuf::Any &aContainer )
     SetNumber( wxString::FromUTF8( pad.number() ) );
     SetPadToDieLength( pad.pad_to_die_length().value_nm() );
     SetPadToDieDelay( pad.pad_to_die_delay().value_as() );
+    SetProperty( FromProtoEnum<PAD_PROP>( pad.fab_property() ) );
 
     google::protobuf::Any padStackWrapper;
     padStackWrapper.PackFrom( pad.pad_stack() );
@@ -256,6 +265,18 @@ bool PAD::Deserialize( const google::protobuf::Any &aContainer )
 
         if( pad.symbol_pin().no_connect() )
             m_pinType += wxT( "+no_connect" );
+    }
+
+    if( pad.has_teardrop() )
+        kiapi::board::UnpackTeardropSettings( GetTeardropParams(), pad.teardrop() );
+    else
+        SetTeardropsEnabled( false );
+
+    ClearZoneLayerOverrides();
+
+    {
+        std::unique_lock lock( m_dataMutex );
+        kiapi::board::UnpackZoneLayerOverrides( m_zoneLayerOverrides, pad.zone_layer_overrides() );
     }
 
     return true;
@@ -473,6 +494,9 @@ bool PAD::FlashLayer( int aLayer, bool aOnlyCheckIfPermitted ) const
             }
         }
     }
+
+    if( GetAttribute() == PAD_ATTRIB::PTH && ( layer == F_Mask || layer == B_Mask ) )
+        return true;
 
     if( LSET::FrontBoardTechMask().test( aLayer ) )
         aLayer = F_Cu;
@@ -3381,6 +3405,16 @@ static struct PAD_DESC
                     .Map( BACKDRILL_MODE::BACKDRILL_TOP,    _HKI( "Backdrill top" ) )
                     .Map( BACKDRILL_MODE::BACKDRILL_BOTH,   _HKI( "Backdrill both" ) );
             }
+        }
+
+        ENUM_MAP<PCB_LAYER_ID>& layerEnum = ENUM_MAP<PCB_LAYER_ID>::Instance();
+
+        if( layerEnum.Choices().GetCount() == 0 )
+        {
+            layerEnum.Undefined( UNDEFINED_LAYER );
+
+            for( PCB_LAYER_ID layer : LSET::AllLayersMask() )
+                layerEnum.Map( layer, LSET::Name( layer ) );
         }
 
         ENUM_MAP<ZONE_CONNECTION>& zcMap = ENUM_MAP<ZONE_CONNECTION>::Instance();

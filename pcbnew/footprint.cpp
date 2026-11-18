@@ -311,15 +311,10 @@ void FOOTPRINT::Serialize( google::protobuf::Any &aContainer ) const
     if( const BOARD* board = GetBoard() )
         footprint.mutable_parent()->set_value( board->m_Uuid.AsStdString() );
 
-    google::protobuf::Any buf;
-    GetField( FIELD_T::REFERENCE )->Serialize( buf );
-    buf.UnpackTo( footprint.mutable_reference_field() );
-    GetField( FIELD_T::VALUE )->Serialize( buf );
-    buf.UnpackTo( footprint.mutable_value_field() );
-    GetField( FIELD_T::DATASHEET )->Serialize( buf );
-    buf.UnpackTo( footprint.mutable_datasheet_field() );
-    GetField( FIELD_T::DESCRIPTION )->Serialize( buf );
-    buf.UnpackTo( footprint.mutable_description_field() );
+    GetField( FIELD_T::REFERENCE )->Serialize( *footprint.mutable_reference_field() );
+    GetField( FIELD_T::VALUE )->Serialize( *footprint.mutable_value_field() );
+    GetField( FIELD_T::DATASHEET )->Serialize( *footprint.mutable_datasheet_field() );
+    GetField( FIELD_T::DESCRIPTION )->Serialize( *footprint.mutable_description_field() );
 
     types::FootprintAttributes* attrs = footprint.mutable_attributes();
 
@@ -362,6 +357,15 @@ void FOOTPRINT::Serialize( google::protobuf::Any &aContainer ) const
 
     overrides->set_zone_connection(
             ToProtoEnum<ZONE_CONNECTION, types::ZoneConnectionStyle>( GetLocalZoneConnection() ) );
+
+    for( const FP_UNIT_INFO& unit : m_unitInfo )
+    {
+        types::FootprintUnitInfo* unitMsg = footprint.add_symbol_units();
+        unitMsg->set_name( unit.m_unitName.ToUTF8() );
+
+        for( const wxString& pinNumber : unit.m_pins )
+            unitMsg->add_pin_numbers( pinNumber.ToUTF8() );
+    }
 
     for( const wxString& group : GetNetTiePadGroups() )
     {
@@ -407,6 +411,12 @@ void FOOTPRINT::Serialize( google::protobuf::Any &aContainer ) const
         item->Serialize( *itemMsg );
     }
 
+    for( const PCB_POINT* item : Points() )
+    {
+        google::protobuf::Any* itemMsg = def->add_items();
+        item->Serialize( *itemMsg );
+    }
+
     for( const ZONE* item : Zones() )
     {
         google::protobuf::Any* itemMsg = def->add_items();
@@ -431,6 +441,23 @@ void FOOTPRINT::Serialize( google::protobuf::Any &aContainer ) const
     footprint.set_symbol_sheet_name( m_sheetname.ToUTF8() );
     footprint.set_symbol_sheet_filename( m_sheetfile.ToUTF8() );
     footprint.set_symbol_footprint_filters( m_filters.ToUTF8() );
+
+    kiapi::board::PackEmbeddedFiles( *footprint.mutable_embedded_files(), *this );
+
+    for( const auto& [variantName, variant] : m_variants )
+    {
+        types::FootprintVariant* variantMsg = footprint.add_variants();
+        variantMsg->set_name( variantName.ToUTF8() );
+        variantMsg->set_do_not_populate( variant.GetDNP() );
+        variantMsg->set_exclude_from_bill_of_materials( variant.GetExcludedFromBOM() );
+        variantMsg->set_exclude_from_position_files( variant.GetExcludedFromPosFiles() );
+
+        for( const auto& [fieldName, fieldValue] : variant.GetFields() )
+        {
+            variantMsg->mutable_fields()->insert( { std::string( fieldName.ToUTF8() ),
+                                                    std::string( fieldValue.ToUTF8() ) } );
+        }
+    }
 
     aContainer.PackFrom( footprint );
 }
@@ -643,6 +670,41 @@ bool FOOTPRINT::Deserialize( const google::protobuf::Any &aContainer )
 
         if( item && item->Deserialize( itemMsg ) )
             Add( item.release(), ADD_MODE::APPEND );
+    }
+
+    if( !kiapi::board::UnpackEmbeddedFiles( *this, footprint.embedded_files() ) )
+        return false;
+
+    m_variants.clear();
+
+    for( const types::FootprintVariant& variantMsg : footprint.variants() )
+    {
+        wxString variantName = wxString::FromUTF8( variantMsg.name() );
+
+        if( variantName.IsEmpty() || variantName.CmpNoCase( GetDefaultVariantName() ) == 0 )
+            continue;
+
+        FOOTPRINT_VARIANT& variant = m_variants[variantName];
+        variant.SetName( variantName );
+        variant.SetDNP( variantMsg.do_not_populate() );
+        variant.SetExcludedFromBOM( variantMsg.exclude_from_bill_of_materials() );
+        variant.SetExcludedFromPosFiles( variantMsg.exclude_from_position_files() );
+
+        for( const auto& [fieldName, fieldValue] : variantMsg.fields() )
+            variant.SetFieldValue( wxString::FromUTF8( fieldName ), wxString::FromUTF8( fieldValue ) );
+    }
+
+    m_unitInfo.clear();
+
+    for( const types::FootprintUnitInfo& unitMsg : footprint.symbol_units() )
+    {
+        FP_UNIT_INFO unit;
+        unit.m_unitName = wxString::FromUTF8( unitMsg.name() );
+
+        for( const std::string& pinNumber : unitMsg.pin_numbers() )
+            unit.m_pins.emplace_back( wxString::FromUTF8( pinNumber ) );
+
+        m_unitInfo.push_back( std::move( unit ) );
     }
 
     return true;
@@ -1134,12 +1196,20 @@ bool FOOTPRINT::ResolveTextVar( wxString* token, int aDepth ) const
 
     if( token->IsSameAs( wxT( "REFERENCE" ) ) )
     {
-        *token = Reference().GetShownText( false, aDepth + 1 );
+        if( const PCB_FIELD* reference = GetField( FIELD_T::REFERENCE ) )
+            *token = reference->GetShownText( false, aDepth + 1 );
+        else
+            token->Clear();
+
         return true;
     }
     else if( token->IsSameAs( wxT( "VALUE" ) ) )
     {
-        *token = Value().GetShownText( false, aDepth + 1 );
+        if( const PCB_FIELD* value = GetField( FIELD_T::VALUE ) )
+            *token = value->GetShownText( false, aDepth + 1 );
+        else
+            token->Clear();
+
         return true;
     }
     else if( token->IsSameAs( wxT( "LAYER" ) ) )
@@ -1721,24 +1791,22 @@ const BOX2I FOOTPRINT::GetBoundingBox( bool aIncludeText ) const
 {
     const BOARD* board = GetBoard();
 
+    if( board )
     {
         std::lock_guard<std::mutex> lock( m_geometry_cache_mutex );
 
-        if( board )
-        {
-            if( !m_geometry_cache )
-                m_geometry_cache = std::make_unique<FOOTPRINT_GEOMETRY_CACHE_DATA>();
+        if( !m_geometry_cache )
+            m_geometry_cache = std::make_unique<FOOTPRINT_GEOMETRY_CACHE_DATA>();
 
-            if( aIncludeText )
-            {
-                if( m_geometry_cache->bounding_box_timestamp >= board->GetTimeStamp() )
-                    return m_geometry_cache->bounding_box;
-            }
-            else
-            {
-                if( m_geometry_cache->text_excluded_bbox_timestamp >= board->GetTimeStamp() )
-                    return m_geometry_cache->text_excluded_bbox;
-            }
+        if( aIncludeText )
+        {
+            if( m_geometry_cache->bounding_box_timestamp >= board->GetTimeStamp() )
+                return m_geometry_cache->bounding_box;
+        }
+        else
+        {
+            if( m_geometry_cache->text_excluded_bbox_timestamp >= board->GetTimeStamp() )
+                return m_geometry_cache->text_excluded_bbox;
         }
     }
 
@@ -1821,6 +1889,12 @@ const BOX2I FOOTPRINT::GetBoundingBox( bool aIncludeText ) const
             bbox.Merge( text->GetBoundingBox() );
         }
 
+        // A footprint is constructed with its mandatory fields, but they can be removed again
+        // through the editing dialogs or the scripting API, and the const accessors return
+        // nullptr rather than recreating them.
+        const PCB_FIELD* value = GetField( FIELD_T::VALUE );
+        const PCB_FIELD* reference = GetField( FIELD_T::REFERENCE );
+
         // This can be further optimized when aIncludeInvisibleText is true, but currently
         // leaving this as is until it's determined there is a noticeable speed hit.
         bool   valueLayerIsVisible = true;
@@ -1832,24 +1906,30 @@ const BOX2I FOOTPRINT::GetBoundingBox( bool aIncludeText ) const
             // not being present in the current PCB stackup.  Values, references, and all
             // footprint text can also be turned off via the GAL meta-layers, so the 2nd and
             // 3rd "&&" conditionals handle that.
-            valueLayerIsVisible = board->IsLayerVisible( Value().GetLayer() )
-                                  && board->IsElementVisible( LAYER_FP_VALUES )
-                                  && board->IsElementVisible( LAYER_FP_TEXT );
+            if( value )
+            {
+                valueLayerIsVisible = board->IsLayerVisible( value->GetLayer() )
+                                      && board->IsElementVisible( LAYER_FP_VALUES )
+                                      && board->IsElementVisible( LAYER_FP_TEXT );
+            }
 
-            refLayerIsVisible = board->IsLayerVisible( Reference().GetLayer() )
-                                && board->IsElementVisible( LAYER_FP_REFERENCES )
-                                && board->IsElementVisible( LAYER_FP_TEXT );
+            if( reference )
+            {
+                refLayerIsVisible = board->IsLayerVisible( reference->GetLayer() )
+                                    && board->IsElementVisible( LAYER_FP_REFERENCES )
+                                    && board->IsElementVisible( LAYER_FP_TEXT );
+            }
         }
 
 
-        if( ( Value().IsVisible() && valueLayerIsVisible ) || noDrawItems )
+        if( value && ( ( value->IsVisible() && valueLayerIsVisible ) || noDrawItems ) )
         {
-            bbox.Merge( Value().GetBoundingBox() );
+            bbox.Merge( value->GetBoundingBox() );
         }
 
-        if( ( Reference().IsVisible() && refLayerIsVisible ) || noDrawItems )
+        if( reference && ( ( reference->IsVisible() && refLayerIsVisible ) || noDrawItems ) )
         {
-            bbox.Merge( Reference().GetBoundingBox() );
+            bbox.Merge( reference->GetBoundingBox() );
         }
     }
 
@@ -1939,6 +2019,8 @@ SHAPE_POLY_SET FOOTPRINT::GetBoundingHull() const
 
     if( board )
     {
+        std::lock_guard<std::mutex> lock( m_geometry_cache_mutex );
+
         if( m_geometry_cache && m_geometry_cache->hull_timestamp >= board->GetTimeStamp() )
             return m_geometry_cache->hull;
     }
@@ -1951,10 +2033,7 @@ SHAPE_POLY_SET FOOTPRINT::GetBoundingHull() const
             continue;
 
         if( item->Type() != PCB_FIELD_T && item->Type() != PCB_REFERENCE_IMAGE_T )
-        {
-            item->TransformShapeToPolygon( rawPolys, UNDEFINED_LAYER, 0, ARC_LOW_DEF,
-                                           ERROR_OUTSIDE );
-        }
+            item->TransformShapeToPolygon( rawPolys, UNDEFINED_LAYER, 0, ARC_LOW_DEF, ERROR_OUTSIDE );
 
         // We intentionally exclude footprint fields from the bounding hull.
     }
@@ -2005,19 +2084,23 @@ SHAPE_POLY_SET FOOTPRINT::GetBoundingHull() const
     std::vector<VECTOR2I> convex_hull;
     BuildConvexHull( convex_hull, rawPolys );
 
-    if( !m_geometry_cache )
-        m_geometry_cache = std::make_unique<FOOTPRINT_GEOMETRY_CACHE_DATA>();
+    {
+        std::lock_guard<std::mutex> lock( m_geometry_cache_mutex );
 
-    m_geometry_cache->hull.RemoveAllContours();
-    m_geometry_cache->hull.NewOutline();
+        if( !m_geometry_cache )
+            m_geometry_cache = std::make_unique<FOOTPRINT_GEOMETRY_CACHE_DATA>();
 
-    for( const VECTOR2I& pt : convex_hull )
-        m_geometry_cache->hull.Append( pt );
+        m_geometry_cache->hull.RemoveAllContours();
+        m_geometry_cache->hull.NewOutline();
 
-    if( board )
-        m_geometry_cache->hull_timestamp = board->GetTimeStamp();
+        for( const VECTOR2I& pt : convex_hull )
+            m_geometry_cache->hull.Append( pt );
 
-    return m_geometry_cache->hull;
+        if( board )
+            m_geometry_cache->hull_timestamp = board->GetTimeStamp();
+
+        return m_geometry_cache->hull;
+    }
 }
 
 
@@ -4684,6 +4767,13 @@ void FOOTPRINT::EmbedFonts()
     for( KIFONT::OUTLINE_FONT* font : GetFonts() )
     {
         EMBEDDED_FILES::EMBEDDED_FILE* file = GetEmbeddedFiles()->AddFile( font->GetFileName(), false );
+
+        if( !file )
+        {
+            KI_LOG_TRACE( "EMBED", "Failed to add font file: %s", font->GetFileName() );
+            continue;
+        }
+
         file->type = EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE::FONT;
     }
 }

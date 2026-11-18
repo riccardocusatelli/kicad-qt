@@ -37,6 +37,10 @@
 #include <eda_3d_viewer_settings.h>
 #include <frame_type.h>
 #include <kiway_player.h>
+
+#include <optional>
+
+#include <3d_rendering/orphaned_gl_objects.h>
 #include <3d_rendering/raytracing/render_3d_raytrace_gl.h>
 #include <3d_rendering/opengl/render_3d_opengl.h>
 #include <advanced_config.h>
@@ -174,7 +178,12 @@ void EDA_3D_CANVAS::ReleaseOpenGL()
 
         if( gl_mgr )
         {
-            gl_mgr->LockCtx( m_glRC, this );
+            // wxGTK destroys the native window before this runs, and our context cannot be
+            // made current without it.  The renderers then have to come down without GL
+            std::optional<ORPHANED_GL_OBJECTS> orphaned;
+
+            if( !gl_mgr->LockCtx( m_glRC, this ) )
+                orphaned.emplace();
 
             delete m_3d_render_raytracing;
             m_3d_render_raytracing = nullptr;
@@ -509,7 +518,7 @@ void EDA_3D_CANVAS::DoRePaint()
             bool reloadRaytracingForCalculations = false;
 
             if( m_boardAdapter.m_Cfg->m_Render.engine == RENDER_ENGINE::OPENGL
-                    && m_3d_render_opengl->IsReloadRequestPending() )
+                && ( m_3d_render_opengl->IsReloadRequestPending() || m_reload_raytracing_hit_test ) )
             {
                 reloadRaytracingForCalculations = true;
             }
@@ -525,7 +534,10 @@ void EDA_3D_CANVAS::DoRePaint()
             // reloading twice (maybe it's not too bad of an idea?) or doing a complicated
             // refactor.
             if( reloadRaytracingForCalculations )
+            {
+                m_reload_raytracing_hit_test = false;
                 m_3d_render_raytracing->Reload( nullptr, nullptr, true );
+            }
         }
         catch( std::runtime_error& )
         {
@@ -779,7 +791,7 @@ void EDA_3D_CANVAS::RenderToFrameBuffer( unsigned char* buffer, int width, int h
 
             bool reloadRaytracingForCalculations = false;
             if( m_boardAdapter.m_Cfg->m_Render.engine == RENDER_ENGINE::OPENGL
-                && m_3d_render_opengl->IsReloadRequestPending() )
+                && ( m_3d_render_opengl->IsReloadRequestPending() || m_reload_raytracing_hit_test ) )
             {
                 reloadRaytracingForCalculations = true;
             }
@@ -787,7 +799,10 @@ void EDA_3D_CANVAS::RenderToFrameBuffer( unsigned char* buffer, int width, int h
             requested_redraw = m_3d_render->Redraw( false, nullptr, nullptr );
 
             if( reloadRaytracingForCalculations )
+            {
+                m_reload_raytracing_hit_test = false;
                 m_3d_render_raytracing->Reload( nullptr, nullptr, true );
+            }
         }
         catch( std::runtime_error& )
         {
@@ -1090,23 +1105,29 @@ void EDA_3D_CANVAS::onLeftUp( const MOUSE_STATE& aMouse )
         restart_editingTimeOut_Timer();
     }
 
-    wxSize logicalSize = GetClientSize();
-    int    logicalW = logicalSize.GetWidth();
-    int    logicalH = logicalSize.GetHeight();
+    bool gizmoClicked = false;
 
-    int gizmo_x = 0, gizmo_y = 0, gizmo_width = 0, gizmo_height = 0;
-    std::tie( gizmo_x, gizmo_y, gizmo_width, gizmo_height ) = m_3d_render_opengl->getGizmoViewport();
+    if( m_boardAdapter.m_Cfg->m_Render.show_navigator
+        && m_boardAdapter.m_Cfg->m_Render.engine == RENDER_ENGINE::OPENGL )
+    {
+        wxSize logicalSize = GetClientSize();
+        int    logicalW = logicalSize.GetWidth();
+        int    logicalH = logicalSize.GetHeight();
 
-    float scaleX = static_cast<float>( static_cast<double>( gizmo_width ) / static_cast<double>( logicalW ) );
-    float scaleY = static_cast<float>( static_cast<double>( gizmo_height ) / static_cast<double>( logicalH ) );
+        int gizmo_x = 0, gizmo_y = 0, gizmo_width = 0, gizmo_height = 0;
+        std::tie( gizmo_x, gizmo_y, gizmo_width, gizmo_height ) = m_3d_render_opengl->getGizmoViewport();
 
-    int scaledMouseX = static_cast<int>( static_cast<float>( aMouse.m_position.x ) * scaleX );
-    int scaledMouseY = static_cast<int>( static_cast<float>( logicalH - aMouse.m_position.y ) * scaleY );
+        float scaleX = static_cast<float>( static_cast<double>( gizmo_width ) / static_cast<double>( logicalW ) );
+        float scaleY = static_cast<float>( static_cast<double>( gizmo_height ) / static_cast<double>( logicalH ) );
 
-    m_3d_render_opengl->handleGizmoMouseInput( scaledMouseX, scaledMouseY );
-    m_3d_render_opengl->updateGizmoSelection( m_camera.GetRotationMatrix() );
+        int scaledMouseX = static_cast<int>( static_cast<float>( aMouse.m_position.x ) * scaleX );
+        int scaledMouseY = static_cast<int>( static_cast<float>( logicalH - aMouse.m_position.y ) * scaleY );
 
-    bool gizmoClicked = m_3d_render_opengl->getSelectedGizmoSphere() != SPHERES_GIZMO::GizmoSphereSelection::None;
+        m_3d_render_opengl->handleGizmoMouseInput( scaledMouseX, scaledMouseY );
+        m_3d_render_opengl->updateGizmoSelection( m_camera.GetRotationMatrix() );
+
+        gizmoClicked = m_3d_render_opengl->getSelectedGizmoSphere() != SPHERES_GIZMO::GizmoSphereSelection::None;
+    }
 
     // A plain click that missed the orientation gizmo: cross-probe the clicked footprint,
     // or clear the selection when clicking empty space. A click-drag rotation or a click

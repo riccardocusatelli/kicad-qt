@@ -39,6 +39,7 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
     {
         PRETTIFIED_FILE_OUTPUTFORMATTER formatter( aOutFileName );
         Format( &formatter, GNL_ALL | GNL_OPT_KICAD );
+        formatter.Finish();
     }
 
     catch( const IO_ERROR& ioe )

@@ -34,7 +34,9 @@
 #include <3d_rendering/raytracing/shapes2D/polygon_2d.h>
 #include <board.h>
 #include <footprint.h>
+#include <footprint_library_adapter.h>
 #include <layer_range.h>
+#include <project_pcb.h>
 #include <3d_math.h>
 #include "3d_fastmath.h"
 #include <geometry/geometry_utils.h>
@@ -310,6 +312,47 @@ bool BOARD_ADAPTER::IsFootprintShown( const FOOTPRINT* aFootprint ) const
         return m_Cfg->m_Render.show_footprints_normal;
 
     return m_Cfg->m_Render.show_footprints_virtual;
+}
+
+
+wxString BOARD_ADAPTER::GetFootprintLibraryPath( const FOOTPRINT* aFootprint ) const
+{
+    if( !aFootprint )
+        return wxEmptyString;
+
+    const wxString libraryName = aFootprint->GetFPID().GetLibNickname();
+
+    if( libraryName.empty() )
+        return wxEmptyString;
+
+    PROJECT* project = m_board ? m_board->GetProject() : nullptr;
+
+    // Footprint-editor boards have no project, so fall back to the 3D cache.
+    if( !project && m_3dModelManager )
+        project = m_3dModelManager->GetProject();
+
+    if( !project )
+        return wxEmptyString;
+
+    try
+    {
+        FOOTPRINT_LIBRARY_ADAPTER* adapter = PROJECT_PCB::FootprintLibAdapter( project );
+
+        if( !adapter )
+            return wxEmptyString;
+
+        // GetRow() can throw an exception
+        std::optional<LIBRARY_TABLE_ROW*> fpRow = adapter->GetRow( libraryName );
+
+        if( fpRow )
+            return LIBRARY_MANAGER::GetFullURI( *fpRow, true );
+    }
+    catch( ... )
+    {
+        // Do nothing if the libraryName is not found in lib table
+    }
+
+    return wxEmptyString;
 }
 
 

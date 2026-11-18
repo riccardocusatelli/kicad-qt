@@ -96,6 +96,7 @@ static const wxChar UsePdfPrint[] = wxT( "UsePdfPrint" );
 static const wxChar SmallDrillMarkSize[] = wxT( "SmallDrillMarkSize" );
 static const wxChar HotkeysDumper[] = wxT( "HotkeysDumper" );
 static const wxChar DrawBoundingBoxes[] = wxT( "DrawBoundingBoxes" );
+static const wxChar GLSwapCopy[] = wxT( "GLSwapCopy" );
 static const wxChar ShowPcbnewExportNetlist[] = wxT( "ShowPcbnewExportNetlist" );
 static const wxChar Skip3DModelFileCache[] = wxT( "Skip3DModelFileCache" );
 static const wxChar Skip3DModelMemoryCache[] = wxT( "Skip3DModelMemoryCache" );
@@ -298,6 +299,7 @@ ADVANCED_CFG::ADVANCED_CFG()
     m_SmallDrillMarkSize = 0.35;
     m_HotkeysDumper = false;
     m_DrawBoundingBoxes = false;
+    m_GLSwapCopy = true;
     m_MsgPanelShowUuids = 0;
     m_ShowPcbnewExportNetlist = false;
     m_Skip3DModelFileCache = false;
@@ -534,6 +536,9 @@ void ADVANCED_CFG::loadSettings( wxConfigBase& aCfg )
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::DrawBoundingBoxes, &m_DrawBoundingBoxes,
                                                            m_DrawBoundingBoxes ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::GLSwapCopy, &m_GLSwapCopy,
+                                                           m_GLSwapCopy ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ShowPcbnewExportNetlist,
                                                            &m_ShowPcbnewExportNetlist, m_ShowPcbnewExportNetlist ) );

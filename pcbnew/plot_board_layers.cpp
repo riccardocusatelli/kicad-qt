@@ -132,15 +132,24 @@ void PlotBoardLayers( BOARD* aBoard, PLOTTER* aPlotter, const LSEQ& aLayers,
     if( !aBoard || !aPlotter || aLayers.empty() )
         return;
 
+    aPlotter->ClearPlottedFootprints();
+
+    PCB_PLOT_PARAMS plotOptions = aPlotOptions;
+
+    // Gerber carries no colour, so a drill mark lands as ink instead of knocking out its pad
+    // The plot dialog forces them off for gerber but API and CLI callers arrive here directly
+    if( aPlotter->GetPlotterType() == PLOT_FORMAT::GERBER )
+        plotOptions.SetDrillMarksType( DRILL_MARKS::NO_DRILL_SHAPE );
+
     for( PCB_LAYER_ID layer : aLayers )
-        PlotOneBoardLayer( aBoard, aPlotter, layer, aPlotOptions, layer == aLayers[0] );
+        PlotOneBoardLayer( aBoard, aPlotter, layer, plotOptions, layer == aLayers[0] );
 
     // Drill marks are plotted in white to knockout the pad if any layers of the pad are
     // being plotted, and in black if the pad is not being plotted. For the former, this
     // must happen after all other layers are plotted.
-    if( aPlotOptions.GetDrillMarksType() != DRILL_MARKS::NO_DRILL_SHAPE )
+    if( plotOptions.GetDrillMarksType() != DRILL_MARKS::NO_DRILL_SHAPE )
     {
-        BRDITEMS_PLOTTER itemplotter( aPlotter, aBoard, aPlotOptions );
+        BRDITEMS_PLOTTER itemplotter( aPlotter, aBoard, plotOptions );
         itemplotter.SetLayerSet( aLayers );
         itemplotter.PlotDrillMarks();
     }
@@ -151,10 +160,16 @@ void PlotInteractiveLayer( BOARD* aBoard, PLOTTER* aPlotter, const PCB_PLOT_PARA
 {
     for( const FOOTPRINT* fp : aBoard->Footprints() )
     {
-        if( fp->GetLayer() == F_Cu && !aPlotOpt.m_PDFFrontFPPropertyPopups )
+        bool onBack = fp->GetLayer() == B_Cu;
+
+        if( !onBack && !aPlotOpt.m_PDFFrontFPPropertyPopups )
             continue;
 
-        if( fp->GetLayer() == B_Cu && !aPlotOpt.m_PDFBackFPPropertyPopups )
+        if( onBack && !aPlotOpt.m_PDFBackFPPropertyPopups )
+            continue;
+
+        // A bookmark or a popup where the footprint draws nothing would point at empty space
+        if( !aPlotter->WasFootprintPlotted( fp ) )
             continue;
 
         std::vector<wxString> properties;
@@ -660,6 +675,8 @@ void PlotStandardLayer( BOARD* aBoard, PLOTTER* aPlotter, const LSET& aLayerMask
                 && (   ( onFrontFab && footprint->GetLayer() == F_Cu )
                     || ( onBackFab && footprint->GetLayer() == B_Cu ) ) )
         {
+            aPlotter->MarkFootprintPlotted( footprint );
+
             const SHAPE_POLY_SET& courtyard = footprint->GetCourtyard( footprint->GetLayer() );
             VECTOR2I              center = footprint->GetPosition();
             EDA_ANGLE             orient = footprint->GetOrientation();
@@ -1040,7 +1057,12 @@ void GenerateLayerPoly( SHAPE_POLY_SET* aResult, BOARD *aBoard, PLOTTER* aPlotte
             if( inflate != 0 )
                 footprint->TransformPadsToPolySet( exactPolys, aLayer, 0, maxError, ERROR_OUTSIDE );
 
+            int outlinesBefore = aResult->OutlineCount();
+
             footprint->TransformPadsToPolySet( *aResult, aLayer, inflate, maxError, ERROR_OUTSIDE );
+
+            if( aResult->OutlineCount() > outlinesBefore )
+                aPlotter->MarkFootprintPlotted( footprint );
 
             for( const PCB_FIELD* field : footprint->GetFields() )
             {
@@ -1053,13 +1075,18 @@ void GenerateLayerPoly( SHAPE_POLY_SET* aResult, BOARD *aBoard, PLOTTER* aPlotte
                     continue;
 
                 if( field->IsVisible() && field->IsOnLayer( aLayer ) )
+                {
+                    aPlotter->MarkFootprintPlotted( footprint );
                     handleFPTextItem( static_cast<const PCB_TEXT&>( *field ) );
+                }
             }
 
             for( const BOARD_ITEM* item : footprint->GraphicalItems() )
             {
                 if( item->IsOnLayer( aLayer ) )
                 {
+                    aPlotter->MarkFootprintPlotted( footprint );
+
                     if( item->Type() == PCB_TEXT_T )
                     {
                         handleFPTextItem( static_cast<const PCB_TEXT&>( *item ) );

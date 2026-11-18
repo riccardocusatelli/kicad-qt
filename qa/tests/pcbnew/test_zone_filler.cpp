@@ -1299,6 +1299,79 @@ BOOST_FIXTURE_TEST_CASE( RegressionTeardropCustomPadAnchor, ZONE_FILL_TEST_FIXTU
 }
 
 
+BOOST_FIXTURE_TEST_CASE( RegressionTeardropArcAnchor, ZONE_FILL_TEST_FIXTURE )
+{
+    KI_TEST::LoadBoard( m_settingsManager, "teardrop_arc_anchor", m_board );
+
+    TOOL_MANAGER toolMgr;
+    toolMgr.SetEnvironment( m_board.get(), nullptr, nullptr, nullptr, nullptr );
+
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    toolMgr.RegisterTool( dummyTool );
+
+    BOARD_COMMIT     commit( dummyTool );
+    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
+
+    if( !commit.Empty() )
+        commit.Push( _( "Add teardrops" ), SKIP_UNDO | SKIP_SET_DIRTY );
+
+    BOOST_REQUIRE( !m_board->Footprints().empty() );
+    BOOST_REQUIRE( !m_board->Footprints().front()->Pads().empty() );
+
+    PAD* pad = m_board->Footprints().front()->Pads().front();
+
+    const int minEdgeLen = 2 * m_board->GetDesignSettings().m_MaxError;
+
+    int teardropCount = 0;
+
+    for( ZONE* zone : m_board->Zones() )
+    {
+        if( !zone->IsTeardropArea() )
+            continue;
+
+        teardropCount++;
+
+        const SHAPE_LINE_CHAIN& chain = zone->Outline()->COutline( 0 );
+
+        SEG         throat;
+        SEG::ecoord bestSq = -1;
+
+        for( int ii = 0; ii < chain.SegmentCount(); ii++ )
+        {
+            SEG seg = chain.CSegment( ii );
+
+            if( seg.Length() < minEdgeLen )
+                continue;
+
+            SEG::ecoord distSq = ( seg.Center() - pad->GetPosition() ).SquaredEuclideanNorm();
+
+            if( distSq > bestSq )
+            {
+                bestSq = distSq;
+                throat = seg;
+            }
+        }
+
+        BOOST_REQUIRE( bestSq >= 0 );
+
+        for( const VECTOR2I& pt : { throat.A, throat.B } )
+        {
+            bool onTrack = false;
+
+            for( PCB_TRACK* track : m_board->Tracks() )
+                onTrack |= track->HitTest( pt, 0 );
+
+            BOOST_CHECK_MESSAGE( onTrack, wxString::Format( "Teardrop anchor (%.6f, %.6f) mm is off the "
+                                                            "track copper",
+                                                            pcbIUScale.IUTomm( pt.x ), pcbIUScale.IUTomm( pt.y ) ) );
+        }
+    }
+
+    BOOST_CHECK_MESSAGE( teardropCount == 1, wxString::Format( "Expected 1 teardrop zone, found %d", teardropCount ) );
+}
+
+
 /**
  * Test that teardrops connecting to oval pads at their curved ends have proper tangent curves.
  *
@@ -2055,6 +2128,115 @@ BOOST_FIXTURE_TEST_CASE( OffCenterTeardropSymmetry, ZONE_FILL_TEST_FIXTURE )
     }
 
     BOOST_CHECK_MESSAGE( teardropCount > 0, "Expected at least one teardrop zone for off-center track" );
+}
+
+
+// 0.1 mm beside the track axis and inside the 0.15 mm half width, so the track crosses the item.
+static const VECTOR2I crossedPosition( pcbIUScale.mmToIU( 0.1 ), pcbIUScale.mmToIU( 10 ) );
+
+
+static PCB_TRACK* addCrossingTrack( BOARD& aBoard )
+{
+    PCB_TRACK* track = new PCB_TRACK( &aBoard );
+    track->SetLayer( F_Cu );
+    track->SetWidth( pcbIUScale.mmToIU( 0.3 ) );
+    track->SetStart( VECTOR2I( 0, 0 ) );
+    track->SetEnd( VECTOR2I( 0, pcbIUScale.mmToIU( 20 ) ) );
+    aBoard.Add( track );
+    track->SetNetCode( 1 );
+
+    return track;
+}
+
+
+static void checkCrossingTrackTeardropsStayOnCopper( BOARD& aBoard, const PCB_TRACK* aTrack,
+                                                     const BOARD_ITEM* aCrossed )
+{
+    aBoard.BuildConnectivity();
+
+    TOOL_MANAGER toolMgr;
+    toolMgr.SetEnvironment( &aBoard, nullptr, nullptr, nullptr, nullptr );
+
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    toolMgr.RegisterTool( dummyTool );
+
+    BOARD_COMMIT     commit( dummyTool );
+    TEARDROP_MANAGER teardropMgr( &aBoard, &toolMgr );
+    teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
+
+    if( !commit.Empty() )
+        commit.Push( _( "Add teardrops" ), SKIP_UNDO | SKIP_SET_DIRTY );
+
+    // A straight edged teardrop has five corners. Two sit on the track, two on the crossed item
+    // and one behind its centre. The pad hit test uses an inscribed polygon, so allow its error.
+    int tolerance = std::max( aBoard.GetDesignSettings().m_MaxError, pcbIUScale.mmToIU( 0.001 ) );
+    int teardrops = 0;
+
+    for( ZONE* zone : aBoard.Zones() )
+    {
+        if( !zone->IsTeardropArea() )
+            continue;
+
+        teardrops++;
+
+        for( const VECTOR2I& pt : zone->Outline()->COutline( 0 ).CPoints() )
+        {
+            BOOST_CHECK_MESSAGE( aTrack->HitTest( pt, tolerance ) || aCrossed->HitTest( pt, tolerance ),
+                                 wxString::Format( "Teardrop corner (%.3f, %.3f) mm lies outside both "
+                                                   "the track and the crossed item",
+                                                   pcbIUScale.IUTomm( pt.x ), pcbIUScale.IUTomm( pt.y ) ) );
+        }
+    }
+
+    BOOST_CHECK_EQUAL( teardrops, 2 );
+}
+
+
+BOOST_AUTO_TEST_CASE( CrossingTrackTeardropOnViaStaysOnTrack )
+{
+    BOARD board;
+    board.Add( new NETINFO_ITEM( &board, wxT( "N1" ), 1 ) );
+
+    PCB_TRACK* track = addCrossingTrack( board );
+
+    PCB_VIA* via = new PCB_VIA( &board );
+    via->Padstack().SetMode( PADSTACK::MODE::NORMAL );
+    via->SetPosition( crossedPosition );
+    via->SetLayerPair( F_Cu, B_Cu );
+    via->SetDrill( pcbIUScale.mmToIU( 0.3 ) );
+    via->SetWidth( PADSTACK::ALL_LAYERS, pcbIUScale.mmToIU( 1.0 ) );
+    via->GetTeardropParams().m_Enabled = true;
+    via->GetTeardropParams().m_CurvedEdges = false;
+    board.Add( via );
+    via->SetNetCode( 1 );
+
+    checkCrossingTrackTeardropsStayOnCopper( board, track, via );
+}
+
+
+BOOST_AUTO_TEST_CASE( CrossingTrackTeardropOnPadStaysOnTrack )
+{
+    BOARD board;
+    board.Add( new NETINFO_ITEM( &board, wxT( "N1" ), 1 ) );
+
+    PCB_TRACK* track = addCrossingTrack( board );
+
+    FOOTPRINT* footprint = new FOOTPRINT( &board );
+    PAD*       pad = new PAD( footprint );
+    pad->Padstack().SetMode( PADSTACK::MODE::NORMAL );
+    pad->SetAttribute( PAD_ATTRIB::PTH );
+    pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
+    pad->SetLayerSet( LSET::AllCuMask() );
+    pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 1.0 ), pcbIUScale.mmToIU( 1.0 ) ) );
+    pad->SetDrillSize( VECTOR2I( pcbIUScale.mmToIU( 0.3 ), pcbIUScale.mmToIU( 0.3 ) ) );
+    pad->SetPosition( crossedPosition );
+    pad->GetTeardropParams().m_Enabled = true;
+    pad->GetTeardropParams().m_CurvedEdges = false;
+    footprint->Add( pad );
+    board.Add( footprint );
+    pad->SetNetCode( 1 );
+
+    checkCrossingTrackTeardropsStayOnCopper( board, track, pad );
 }
 
 
@@ -3751,4 +3933,98 @@ BOOST_FIXTURE_TEST_CASE( SameNetBorderIdenticalAcrossFillModes, ZONE_FILL_TEST_F
     BOOST_REQUIRE_MESSAGE( checkedZones >= 3,
                            wxString::Format( "Expected at least three zones sharing a same-net "
                                              "border, found %d.", checkedZones ) );
+}
+
+
+// Issue 23790: a different-net knockout elsewhere in a zone must not notch the corner where it
+// abuts a same-net zone along a shared edge
+BOOST_FIXTURE_TEST_CASE( RegressionSameNetTouchingZonesCorner, ZONE_FILL_TEST_FIXTURE )
+{
+    ADVANCED_CFG& cfg = const_cast<ADVANCED_CFG&>( ADVANCED_CFG::GetCfg() );
+
+    struct ScopeGuard
+    {
+        bool& ref;
+        bool  orig;
+        ~ScopeGuard() { ref = orig; }
+    } guard{ cfg.m_ZoneFillIterativeRefill, cfg.m_ZoneFillIterativeRefill };
+
+    cfg.m_ZoneFillIterativeRefill = true;
+
+    KI_TEST::LoadBoard( m_settingsManager, "issue23790/touching_zones", m_board );
+    KI_TEST::FillZones( m_board.get() );
+
+    std::vector<ZONE*> rails;
+
+    for( ZONE* zone : m_board->Zones() )
+    {
+        if( zone->GetNetname() == wxS( "gate_drv_rail" ) )
+            rails.push_back( zone );
+    }
+
+    BOOST_REQUIRE_EQUAL( rails.size(), 2 );
+
+    const PCB_LAYER_ID layer = F_Cu;
+    const int          reach = rails[0]->GetMinThickness();
+
+    // The band either side of the shared edge, within the combined outline
+    SHAPE_POLY_SET nearA = *rails[0]->Outline();
+    SHAPE_POLY_SET nearB = *rails[1]->Outline();
+    nearA.Inflate( reach, CORNER_STRATEGY::ROUND_ALL_CORNERS, ARC_HIGH_DEF );
+    nearB.Inflate( reach, CORNER_STRATEGY::ROUND_ALL_CORNERS, ARC_HIGH_DEF );
+
+    SHAPE_POLY_SET seam = *rails[0]->Outline();
+    seam.BooleanAdd( *rails[1]->Outline() );
+    seam.BooleanIntersection( nearA );
+    seam.BooleanIntersection( nearB );
+
+    seam.BooleanSubtract( *rails[0]->GetFilledPolysList( layer ) );
+    seam.BooleanSubtract( *rails[1]->GetFilledPolysList( layer ) );
+
+    double uncovered = seam.Area() / ( pcbIUScale.IU_PER_MM * (double) pcbIUScale.IU_PER_MM );
+
+    BOOST_CHECK_MESSAGE( uncovered < 0.01,
+                         wxString::Format( "%.4f mm^2 unfilled at the shared edge", uncovered ) );
+}
+
+
+// The iterative refill must keep the pad and via clearance holes of a zone overlapped by two
+// higher-priority same-net zones and a higher-priority zone on another net (issue 25670).
+BOOST_FIXTURE_TEST_CASE( RegressionIterativeRefillKeepsClearanceHoles, ZONE_FILL_TEST_FIXTURE )
+{
+    ADVANCED_CFG& cfg = const_cast<ADVANCED_CFG&>( ADVANCED_CFG::GetCfg() );
+
+    struct ScopeGuard
+    {
+        bool& ref;
+        bool  orig;
+        ~ScopeGuard() { ref = orig; }
+    } guard{ cfg.m_ZoneFillIterativeRefill, cfg.m_ZoneFillIterativeRefill };
+
+    cfg.m_ZoneFillIterativeRefill = true;
+
+    KI_TEST::LoadBoard( m_settingsManager, "issue25670/issue25670", m_board );
+    KI_TEST::FillZones( m_board.get() );
+
+    BOARD_DESIGN_SETTINGS& bds = m_board->GetDesignSettings();
+    int                    zoneViolations = 0;
+
+    // The board also carries a pad-to-via spacing error that is unrelated to the fill
+    bds.m_DRCEngine->SetViolationHandler(
+            [&]( const std::shared_ptr<DRC_ITEM>& aItem, const VECTOR2I& aPos, int aLayer,
+                 const std::function<void( PCB_MARKER* )>& aPathGenerator )
+            {
+                if( aItem->GetErrorCode() != DRCE_CLEARANCE && aItem->GetErrorCode() != DRCE_SHORTING_ITEMS )
+                    return;
+
+                BOARD_ITEM* itemA = m_board->ResolveItem( aItem->GetMainItemID() );
+                BOARD_ITEM* itemB = m_board->ResolveItem( aItem->GetAuxItemID() );
+
+                if( dynamic_cast<ZONE*>( itemA ) || dynamic_cast<ZONE*>( itemB ) )
+                    zoneViolations++;
+            } );
+
+    bds.m_DRCEngine->RunTests( EDA_UNITS::MM, true, false );
+
+    BOOST_CHECK_EQUAL( zoneViolations, 0 );
 }

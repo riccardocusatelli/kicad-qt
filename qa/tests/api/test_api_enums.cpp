@@ -37,6 +37,8 @@
 // Board-specific
 #include <api/board/board_types.pb.h>
 #include <api/board/board_commands.pb.h>
+#include <api/common/types/embedded_files.pb.h>
+#include <embedded_files.h>
 #include <board_stackup_manager/board_stackup.h>
 #include <padstack.h>
 #include <pcb_dimension.h>
@@ -62,6 +64,16 @@ BOOST_AUTO_TEST_CASE( VerticalAlignment )
 BOOST_AUTO_TEST_CASE( StrokeLineStyle )
 {
     testEnums<LINE_STYLE, types::StrokeLineStyle>();
+}
+
+/// Clients that never set a stroke style send SLS_UNKNOWN, which must read as the default style
+/// rather than trip an assert (Sentry KICAD-1BSY).
+BOOST_AUTO_TEST_CASE( UnsetStrokeLineStyleIsDefault )
+{
+    LINE_STYLE style = LINE_STYLE::SOLID;
+
+    BOOST_REQUIRE_NO_THROW( ( style = FromProtoEnum<LINE_STYLE, types::StrokeLineStyle>( types::SLS_UNKNOWN ) ) );
+    BOOST_CHECK( style == LINE_STYLE::DEFAULT );
 }
 
 BOOST_AUTO_TEST_CASE( KiCadObjectType )
@@ -97,6 +109,11 @@ BOOST_AUTO_TEST_CASE( PadType )
 BOOST_AUTO_TEST_CASE( PadStackType )
 {
     testEnums<PADSTACK::MODE, kiapi::board::types::PadStackType>();
+}
+
+BOOST_AUTO_TEST_CASE( PadFabricationProperty )
+{
+    testEnums<PAD_PROP, kiapi::board::types::PadFabricationProperty>();
 }
 
 BOOST_AUTO_TEST_CASE( DrillShape )
@@ -135,9 +152,9 @@ BOOST_AUTO_TEST_CASE( PlacementRuleSourceType )
     testEnums<PLACEMENT_SOURCE_T, kiapi::board::types::PlacementRuleSourceType>();
 }
 
-BOOST_AUTO_TEST_CASE( TeardropType )
+BOOST_AUTO_TEST_CASE( ZoneTeardropType )
 {
-    testEnums<TEARDROP_TYPE, kiapi::board::types::TeardropType>();
+    testEnums<TEARDROP_TYPE, kiapi::board::types::ZoneTeardropType>();
 }
 
 BOOST_AUTO_TEST_CASE( DimensionTextBorderStyle )
@@ -203,6 +220,11 @@ BOOST_AUTO_TEST_CASE( BoardEdgeConnectorType )
 BOOST_AUTO_TEST_CASE( DrcSeverity )
 {
     testEnums<SEVERITY, kiapi::board::commands::DrcSeverity>();
+}
+
+BOOST_AUTO_TEST_CASE( EmbeddedFileType )
+{
+    testEnums<EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE, kiapi::common::types::EmbeddedFileType>();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

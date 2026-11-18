@@ -136,6 +136,7 @@ void FP_CACHE::Save( FOOTPRINT* aFootprintFilter )
 
             m_owner->SetOutputFormatter( &formatter );
             m_owner->Format( footprint.get() );
+            formatter.Finish();
         }
 
         m_cache_timestamp += fn.GetTimestamp();
@@ -3001,15 +3002,15 @@ void PCB_IO_KICAD_SEXPR::format( const ZONE* aZone ) const
                       formatInternalUnits( aZone->GetThermalReliefSpokeWidth() ).c_str() );
     }
 
-    if( aZone->GetCornerSmoothingType() != ZONE_SETTINGS::SMOOTHING_NONE )
+    if( aZone->GetCornerSmoothingType() != ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING )
     {
         switch( aZone->GetCornerSmoothingType() )
         {
-        case ZONE_SETTINGS::SMOOTHING_CHAMFER:
+        case ZONE_SETTINGS::CORNER_SMOOTHING::CHAMFER:
             m_out->Print( "(smoothing chamfer)" );
             break;
 
-        case ZONE_SETTINGS::SMOOTHING_FILLET:
+        case ZONE_SETTINGS::CORNER_SMOOTHING::FILLET:
             m_out->Print( "(smoothing fillet)" );
             break;
 
@@ -3176,6 +3177,57 @@ BOARD* PCB_IO_KICAD_SEXPR::DoLoad( LINE_READER& aReader, BOARD* aAppendToMe,
 
     PCB_IO_KICAD_SEXPR_PARSER parser( &aReader, aAppendToMe, m_queryUserCallback, aProgressReporter, aLineCount,
                                       preserveDestinationStackup );
+
+
+    parser.SetLayerMappingHandler( m_layer_mapping_handler );
+
+    std::set<BOARD_ITEM*>   itemsBefore;
+    std::set<NETINFO_ITEM*> netsBefore;
+
+    if( aAppendToMe )
+    {
+        for( BOARD_ITEM* item : aAppendToMe->GetItemSet() )
+            itemsBefore.insert( item );
+
+        for( NETINFO_ITEM* net : aAppendToMe->GetNetInfo() )
+            netsBefore.insert( net );
+    }
+
+    auto revertPartialAppend = [&]()
+    {
+        if( !aAppendToMe )
+            return;
+
+        std::vector<BOARD_ITEM*> addedItems;
+
+        for( BOARD_ITEM* item : aAppendToMe->GetItemSet() )
+        {
+            if( !itemsBefore.contains( item ) )
+                addedItems.push_back( item );
+        }
+
+        // Remove everything before deleting anything, group member back pointers
+        // must be unlinked while their groups are still alive
+        for( BOARD_ITEM* item : addedItems )
+            aAppendToMe->Remove( item );
+
+        for( BOARD_ITEM* item : addedItems )
+            delete item;
+
+        std::vector<NETINFO_ITEM*> addedNets;
+
+        for( NETINFO_ITEM* net : aAppendToMe->GetNetInfo() )
+        {
+            if( !netsBefore.contains( net ) )
+                addedNets.push_back( net );
+        }
+
+        for( NETINFO_ITEM* net : addedNets )
+        {
+            aAppendToMe->Remove( net );
+            delete net;
+        }
+    };
     BOARD* board;
 
     try
@@ -3184,15 +3236,24 @@ BOARD* PCB_IO_KICAD_SEXPR::DoLoad( LINE_READER& aReader, BOARD* aAppendToMe,
     }
     catch( const FUTURE_FORMAT_ERROR& )
     {
+        revertPartialAppend();
+
         // Don't wrap a FUTURE_FORMAT_ERROR in another
         throw;
     }
     catch( const PARSE_ERROR& parse_error )
     {
+        revertPartialAppend();
+
         if( parser.IsTooRecent() )
             throw FUTURE_FORMAT_ERROR( parse_error, parser.GetRequiredVersion() );
         else
             throw;
+    }
+    catch( ... )
+    {
+        revertPartialAppend();
+        throw;
     }
 
     if( !board )
@@ -3443,9 +3504,9 @@ void PCB_IO_KICAD_SEXPR::FootprintSave( const wxString& aLibraryPath, const FOOT
 
     if( it != m_cache->GetFootprints().end() )
     {
-        KI_LOG_TRACE( traceKicadPcbPlugin, wxT( "Removing footprint file '%s'." ), fullPath );
+        // Save() below writes atomically via sibling temp + rename, so no pre-delete.
+        KI_LOG_TRACE( traceKicadPcbPlugin, wxT( "Replacing footprint file '%s'." ), fullPath );
         m_cache->GetFootprints().erase( footprintName );
-        wxRemoveFile( fullPath );
     }
 
     // I need my own copy for the cache

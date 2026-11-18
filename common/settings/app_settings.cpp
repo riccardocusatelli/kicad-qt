@@ -103,7 +103,7 @@ APP_SETTINGS_BASE::APP_SETTINGS_BASE( const std::string& aFilename, int aSchemaV
             "design_block_chooser.lib_tree.column_widths",
             [&]() -> nlohmann::json
             {
-                nlohmann::json ret = {};
+                nlohmann::json ret = nlohmann::json::object();
 
                 for( const auto& [name, width] : m_DesignBlockChooserPanel.tree.column_widths )
                     ret[std::string( name.ToUTF8() )] = width;
@@ -127,6 +127,9 @@ APP_SETTINGS_BASE::APP_SETTINGS_BASE( const std::string& aFilename, int aSchemaV
             },
             {} ) );
 
+    // Let the save drop widths for columns that no longer exist
+    m_params.back()->SetClearUnknownKeys();
+
     m_params.emplace_back( new PARAM<float>( "graphics.highlight_factor",
             &m_Graphics.highlight_factor, 0.5f, 0.0, 1.0f ) );
 
@@ -141,7 +144,7 @@ APP_SETTINGS_BASE::APP_SETTINGS_BASE( const std::string& aFilename, int aSchemaV
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "lib_tree.column_widths",
             [&]() -> nlohmann::json
             {
-                nlohmann::json ret = {};
+                nlohmann::json ret = nlohmann::json::object();
 
                 for( const std::pair<const wxString, int>& pair : m_LibTree.column_widths )
                     ret[std::string( pair.first.ToUTF8() )] = pair.second;
@@ -164,6 +167,9 @@ APP_SETTINGS_BASE::APP_SETTINGS_BASE( const std::string& aFilename, int aSchemaV
                 }
             },
             {} ) );
+
+    // Let the save drop widths for columns that no longer exist
+    m_params.back()->SetClearUnknownKeys();
 
     m_params.emplace_back(
             new PARAM_LIST<wxString>( "lib_tree.open_libs", &m_LibTree.open_libs, {} ) );

@@ -32,6 +32,7 @@
 
 
 class LIBRARY_MANAGER;
+class LIBRARY_MANAGER_ADAPTER;
 class PROJECT;
 
 
@@ -48,16 +49,22 @@ enum class LOAD_STATUS
 struct KICOMMON_API LIB_STATUS
 {
     LOAD_STATUS                  load_status = LOAD_STATUS::INVALID;
-    std::optional<LIBRARY_ERROR> error;
+    std::optional<LIBRARY_ERROR> error = std::nullopt;
 };
 
 
 /// Storage for an actual loaded library (including library content owned by the plugin)
 struct KICOMMON_API LIB_DATA
 {
+    /// Never destroyed while holding the map's mutex; a plugin's worker thread may be blocked on it
     std::unique_ptr<IO_BASE> plugin;
     const LIBRARY_TABLE_ROW* row = nullptr;
     LIB_STATUS               status;
+
+    // For an entry in the process-wide globalLibs() cache, the adapter that loaded it and so owns
+    // the lifetime of row. Its destructor evicts the entry; identity is by adapter, not by the
+    // reusable row pointer.
+    const LIBRARY_MANAGER_ADAPTER* global_owner = nullptr;
 
     int                   modify_hash = -1;
     std::vector<wxString> available_fields_cache;
@@ -150,6 +157,9 @@ public:
 
     virtual std::optional<LIB_STATUS> LoadOne( LIB_DATA* aLib ) = 0;
 
+    /// Validates that a library is loadable.  May not necessarily load the library!
+    virtual std::optional<LIB_STATUS> CheckLibrary( LIB_DATA* aLib ) { return LoadOne( aLib ); }
+
     /// Returns async load progress between 0.0 and 1.0, or nullopt if load is not in progress
     std::optional<float> AsyncLoadProgress() const;
 
@@ -160,6 +170,14 @@ public:
     void AbortAsyncLoad();
 
     bool IsLibraryLoaded( const wxString& aNickname );
+
+    /**
+     * Return true if the library has an enabled row in the table but has not finished loading.
+     *
+     * A lookup into such a library that misses now may succeed later, unlike one into a library
+     * that is loaded, failed to load, or does not exist.
+     */
+    bool IsLibraryLoadPending( const wxString& aNickname ) const;
 
     /// Returns the status of a loaded library, or nullopt if the library hasn't been loaded (yet)
     std::optional<LIB_STATUS> GetLibraryStatus( const wxString& aNickname ) const;
@@ -185,7 +203,7 @@ public:
 
     virtual bool SupportsConfigurationDialog( const wxString& aNickname ) const { return false; }
 
-    virtual void ShowConfigurationDialog( const wxString& aNickname, wxWindow* aParent ) const {};
+    virtual int ShowConfigurationDialog( const wxString& aNickname, wxWindow* aParent ) const { return wxID_CANCEL; }
 
     virtual std::optional<LIBRARY_ERROR> LibraryError( const wxString& aNickname ) const;
 
@@ -217,6 +235,14 @@ protected:
     /// Aborts any async load in progress; blocks until fully done aborting
     void abortLoad();
 
+    /// Erases this adapter's own entries (LIB_DATA::global_owner == this) from the process-wide
+    /// globalLibs() cache. The cached LIB_DATA::row pointers reference this manager's tables, so
+    /// they must be dropped before the manager is destroyed or a later manager's fetchIfLoaded()
+    /// would dereference freed rows. Derived destructors must call this while globalLibs() is
+    /// still resolvable. Derived destructors must also call resetProjectCache() so plugin worker
+    /// threads are joined while the derived adapter is still alive.
+    void evictOwnedGlobalEntries();
+
     /// Aborts pending loads and resets every project-scope cache entry in place
     /// (plugin and row cleared, status returned to INVALID) while preserving the
     /// nickname keys. Keeping the keys acts as a sentinel: fetchIfLoaded() finds
@@ -224,6 +250,8 @@ protected:
     /// falling through to globalLibs(), which is what preserves project-over-
     /// global shadowing across a project table reload. Shared between
     /// ProjectChanged() and ProjectTablesChanged() so both hooks stay in sync.
+    /// Derived destructors must also call this so plugin worker threads are joined while the
+    /// derived adapter is still alive.
     void resetProjectCache();
 
     /// Creates a concrete plugin for the given row
@@ -236,7 +264,9 @@ protected:
     /// and tree refreshes. Keyed by nickname, a safe over-approximation of the real resource (the
     /// plugin instance): sharing one mutex across two distinct resources can only over-serialize,
     /// never under-protect. Static because global-library plugins are shared process-wide.
-    static std::mutex& pluginMutex( const wxString& aNickname );
+    /// Recursive because database/http libraries resolve references back through the adapter into
+    /// other plugins' LoadSymbol paths while already holding their own mutex.
+    static std::recursive_mutex& pluginMutex( const wxString& aNickname );
 
     LIBRARY_MANAGER& m_manager;
 

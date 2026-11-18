@@ -91,6 +91,8 @@ struct PGM_SINGLE_TOP : public PGM_GUI
 
     void OnPgmExit()
     {
+        CancelDesignBlockPreload();
+
         GetKiCadThreadPool().purge();
         GetKiCadThreadPool().wait();
 
