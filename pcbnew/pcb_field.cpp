@@ -246,13 +246,7 @@ bool PCB_FIELD::Matches( const EDA_SEARCH_DATA& aSearchData, void* aAuxData ) co
 
 wxString PCB_FIELD::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-<<<<<<< b2e17e0a
-    wxString content = aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() );
-||||||| 1304b76aad
-    wxString content = aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() );
-=======
-    wxString content = aFull ? GetShownText( FOR_GUI ) : KIUI::EllipsizeMenuText( GetText() );
->>>>>>> ed8c16703e
+    wxString content = aFull ? GetShownText( FOR_GUI ) : EllipsizeMenuText( GetText() );
     wxString ref = GetParentFootprint()->GetReference();
 
     switch( m_id )

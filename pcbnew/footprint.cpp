@@ -306,42 +306,9 @@ FOOTPRINT::FOOTPRINT( const FOOTPRINT& aFootprint ) :
     // the footprint when the change is undone
     for( PCB_FIELD* field : aFootprint.m_fields )
     {
-<<<<<<< b2e17e0a
         PCB_FIELD* newField = new PCB_FIELD( *field );
         ptrMap[field] = newField;
         Add( newField );
-||||||| 1304b76aad
-        if( field->IsMandatory() )
-        {
-            PCB_FIELD* existingField = GetField( field->GetId() );
-            ptrMap[field] = existingField;
-            *existingField = *field;
-            existingField->SetParent( this );
-        }
-        else
-        {
-            PCB_FIELD* newField = static_cast<PCB_FIELD*>( field->Clone() );
-            ptrMap[field] = newField;
-            Add( newField );
-        }
-=======
-        if( field->IsMandatory() )
-        {
-            PCB_FIELD* existingField = GetField( field->GetId() );
-            ptrMap[field] = existingField;
-            *existingField = *field;
-
-            // Assignment retains the constructor-generated KIID because m_Uuid is const
-            existingField->SetUuidDirect( field->m_Uuid );
-            existingField->SetParent( this );
-        }
-        else
-        {
-            PCB_FIELD* newField = static_cast<PCB_FIELD*>( field->Clone() );
-            ptrMap[field] = newField;
-            Add( newField );
-        }
->>>>>>> ed8c16703e
     }
 
     // Copy pads

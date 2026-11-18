@@ -24,11 +24,11 @@
 #include <tools/pcb_selection.h>
 
 
-std::set<KIID> CollectConstraintScopeIds( const PCB_SELECTION& aSelection )
+std::set<KIID> CollectConstraintScopeIds( const std::vector<EDA_ITEM*>& aItems )
 {
     std::set<KIID> ids;
 
-    for( EDA_ITEM* item : aSelection )
+    for( EDA_ITEM* item : aItems )
     {
         if( !item->IsBOARD_ITEM() )
             continue;
@@ -40,6 +40,14 @@ std::set<KIID> CollectConstraintScopeIds( const PCB_SELECTION& aSelection )
     }
 
     return ids;
+}
+
+
+std::set<KIID> CollectConstraintScopeIds( const PCB_SELECTION& aSelection )
+{
+    const std::deque<EDA_ITEM*> items = aSelection.GetItems();
+
+    return CollectConstraintScopeIds( std::vector<EDA_ITEM*>( items.begin(), items.end() ) );
 }
 
 

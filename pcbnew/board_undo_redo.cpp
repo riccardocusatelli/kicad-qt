@@ -309,7 +309,8 @@ BOARD_UNDO_REDO::RESULT BOARD_UNDO_REDO::Apply( BOARD& aBoard, PICKED_ITEMS_LIST
                 aListener.ItemRemoved( item );
                 parent->Remove( item, REMOVE_MODE::BULK );
 
-                item->SwapItemData( image );
+                if( item->Type() != PCB_MARKER_T )
+                    item->SwapItemData( image );
 
                 clear_local_ratsnest_flags( item );
                 item->ClearFlags( UR_TRANSIENT );
@@ -340,6 +341,9 @@ BOARD_UNDO_REDO::RESULT BOARD_UNDO_REDO::Apply( BOARD& aBoard, PICKED_ITEMS_LIST
                     parentFP->Remove( boardItem );
                 else
                     aBoard.Remove( boardItem, REMOVE_MODE::BULK );
+
+                if( PCB_GROUP* group = dynamic_cast<PCB_GROUP*>( boardItem ) )
+                    group->RemoveAll();
 
                 update_item_change_state( eda_item, ITEM_CHANGE_TYPE::DELETED );
 
@@ -423,11 +427,14 @@ BOARD_UNDO_REDO::RESULT BOARD_UNDO_REDO::Apply( BOARD& aBoard, PICKED_ITEMS_LIST
             continue;
 
         BOARD_ITEM* parentGroup = aBoard.ResolveItem( wrapper.GetGroupId(), true );
-        wrapper.GetItem()->SetParentGroup( dynamic_cast<PCB_GROUP*>( parentGroup ) );
+        BOARD_ITEM* boardItem = aBoard.ResolveItem( wrapper.GetItem()->m_Uuid, true );
+
+        if( boardItem )
+            boardItem->SetParentGroup( dynamic_cast<PCB_GROUP*>( parentGroup ) );
 
         // Restore the group's member list, which BOARD::Remove() cleared above.
         if( PCB_GROUP* parentPcbGroup = dynamic_cast<PCB_GROUP*>( parentGroup ) )
-            parentPcbGroup->GetItems().insert( wrapper.GetItem() );
+            parentPcbGroup->GetItems().insert( boardItem );
 
         if( EDA_GROUP* group = dynamic_cast<PCB_GROUP*>( wrapper.GetItem() ) )
         {

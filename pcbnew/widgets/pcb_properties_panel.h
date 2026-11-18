@@ -31,24 +31,6 @@ class SELECTION;
 class BOARD;
 class PCB_BASE_EDIT_FRAME;
 class PROPERTY_MANAGER;
-<<<<<<< ours
-||||||| base
-class PG_UNIT_EDITOR;
-class PG_CHECKBOX_EDITOR;
-class PG_RATIO_EDITOR;
-class PG_NET_SELECTOR_EDITOR;
-class PG_FPID_EDITOR;
-class PG_URL_EDITOR;
-=======
-class PG_UNIT_EDITOR;
-class PG_CHECKBOX_EDITOR;
-class PG_RATIO_EDITOR;
-class PG_NET_SELECTOR_EDITOR;
-class PG_TRACK_WIDTH_EDITOR;
-class PG_FPID_EDITOR;
-class PG_URL_EDITOR;
-class wxButton;
->>>>>>> theirs
 
 class PCB_PROPERTIES_PANEL : public PROPERTIES_PANEL
 {
@@ -109,7 +91,13 @@ protected:
      */
     EDA_ITEM* getFrontItem();
 
-<<<<<<< ours
+    /**
+     * Creates a new selection with any generator children removed that are part of a read only generator.
+     *
+     * @param aSelection the selection to filter
+     */
+    static SELECTION filterOutReadOnlyGenChildren( const SELECTION& aSelection );
+
 private:
     /// Register the custom editors of the properties with the grid of the GUI toolkit
     /// (pcb_properties_panel_wx.cpp, qt/pcbnew/widgets/pcb_properties_panel_qt.cpp).
@@ -123,49 +111,18 @@ private:
         void operator()( TOOLKIT_STATE* aState ) const;
     };
 
+    /// Use the track width editor (the width presets of the board) for @a aProp.
+    void setTrackWidthEditor( TOOLKIT_PG_PROPERTY* aProp ) const;
+
     std::unique_ptr<TOOLKIT_STATE, TOOLKIT_STATE_DELETER> m_toolkitState;
 
-||||||| base
-=======
-    /**
-     * Creates a new selection with any generator children removed that are part of a read only generator.
-     *
-     * @param aSelection the selection to filter
-     */
-    static SELECTION filterOutReadOnlyGenChildren( const SELECTION& aSelection );
-
->>>>>>> theirs
 protected:
     PCB_BASE_EDIT_FRAME* m_frame;
     PROPERTY_MANAGER&    m_propMgr;
-<<<<<<< ours
-||||||| base
-    PG_UNIT_EDITOR*      m_unitEditorInstance;
-    PG_CHECKBOX_EDITOR*  m_checkboxEditorInstance;
-    PG_RATIO_EDITOR*     m_ratioEditorInstance;
-    PG_NET_SELECTOR_EDITOR* m_netSelectorEditorInstance;
-    PG_FPID_EDITOR*      m_fpEditorInstance;
-    PG_URL_EDITOR*       m_urlEditorInstance;
-=======
-    PG_UNIT_EDITOR*      m_unitEditorInstance;
-    PG_CHECKBOX_EDITOR*  m_checkboxEditorInstance;
-    PG_RATIO_EDITOR*     m_ratioEditorInstance;
-    PG_NET_SELECTOR_EDITOR* m_netSelectorEditorInstance;
-    PG_TRACK_WIDTH_EDITOR*  m_trackWidthEditorInstance;
-    PG_FPID_EDITOR*      m_fpEditorInstance;
-    PG_URL_EDITOR*       m_urlEditorInstance;
->>>>>>> theirs
 
-<<<<<<< ours
     static std::set<wxString> m_currentFieldNames;
-||||||| base
-    static std::set<wxString> m_currentFieldNames;
-    wxPGChoices m_nets;
-=======
-    wxPGChoices m_nets;
 
     bool m_scaleConfirmPending;
->>>>>>> theirs
 };
 
 #endif /* PCB_PROPERTIES_PANEL_H */

@@ -112,16 +112,10 @@ static PROJECT* footprintLibraryProject()
 {
     PROJECT* project = nullptr;
 
-    if( wxTheApp )
+    if( TOOLKIT_WINDOW* top = TOOLKIT::GetActiveTopWindow() )
     {
-        wxWindow* focus = wxWindow::FindFocus();
-        wxWindow* top = focus ? wxGetTopLevelParent( focus ) : wxTheApp->GetTopWindow();
-
-        if( top )
-        {
-            if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
-                project = &holder->Prj();
-        }
+        if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
+            project = &holder->Prj();
     }
 
     if( !project )
@@ -180,37 +174,9 @@ static wxString filterFootprints( const wxString& aFilterJson )
 
         // A query that can only match nothing is a successful empty result, not a failure.
         if( zeroFilters && !hasFilters )
-<<<<<<< ours
-            return wxS( "[]" );
-
-        PROJECT* project = nullptr;
-
-        if( TOOLKIT_WINDOW* top = TOOLKIT::GetActiveTopWindow() )
-||||||| base
-            return wxS( "[]" );
-
-        PROJECT* project = nullptr;
-
-        if( wxTheApp )
-=======
->>>>>>> theirs
         {
-<<<<<<< ours
-            if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
-                project = &holder->Prj();
-||||||| base
-            wxWindow* focus = wxWindow::FindFocus();
-            wxWindow* top = focus ? wxGetTopLevelParent( focus ) : wxTheApp->GetTopWindow();
-
-            if( top )
-            {
-                if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( top ) )
-                    project = &holder->Prj();
-            }
-=======
             result.m_Success = true;
             return result.ToJsonStr();
->>>>>>> theirs
         }
 
         FOOTPRINT_LIBRARY_ADAPTER* adapter = PROJECT_PCB::FootprintLibAdapter( footprintLibraryProject() );
@@ -335,11 +301,6 @@ static float footprintLibraryLoadProgress()
 
 namespace PCB {
 
-<<<<<<< ours
-static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
-||||||| base
-static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
-=======
 // Non-job kiface exports for diff/merge (returned by IfaceOrAddress). Defined
 // after the kiface instance so they can route into its jobs handler.
 static int pcbnewMergeExport( int aKind, const wxString& aAncestor, const wxString& aOurs,
@@ -353,8 +314,7 @@ pcbnewAttachDiffCanvasesExport( int aKind, const wxString& aFileA, const wxStrin
                                 WIDGET_DIFF_CANVAS* aAfter, KICAD_DIFF::DOCUMENT_DIFF* aDiff, REPORTER* aReporter );
 
 
-static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
->>>>>>> theirs
+static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
@@ -669,16 +629,9 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
         case KIFACE_FILTER_FOOTPRINTS:
             return KifaceServiceAddress<KIFACE_FILTER_FOOTPRINTS_SERVICE>( &filterFootprints );
 
-<<<<<<< ours
         case KIFACE_TEST_FOOTPRINT_LINK:
             return reinterpret_cast<void*>( &PROJECT_PCB::TestFootprintLink );
 
-        case KIFACE_SCRIPTING_LEGACY:
-            return reinterpret_cast<void*>( PyInit__pcbnew );
-||||||| base
-        case KIFACE_SCRIPTING_LEGACY:
-            return reinterpret_cast<void*>( PyInit__pcbnew );
-=======
         case KIFACE_TRIGGER_FOOTPRINTS_LOAD:
             // Start the background load of the libraries filtered by filterFootprints
             return KifaceServiceAddress<KIFACE_TRIGGER_FOOTPRINTS_LOAD_SERVICE>( &startFootprintLibraryLoad );
@@ -695,7 +648,6 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 
         case KIFACE_ATTACH_DIFF_CANVASES:
             return KifaceServiceAddress<KIFACE_ATTACH_DIFF_CANVASES_SERVICE>( &pcbnewAttachDiffCanvasesExport );
->>>>>>> theirs
 
         default:
             return nullptr;
@@ -828,19 +780,13 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKi
 
     start_common( aCtlBits );
 
-<<<<<<< ours
+    m_kiway = dynamic_cast<KIWAY*>( aKiway );
+
     // In kicad-cli (no KIWAY of the editors) the jobs run on the files only.
     if( KIWAY* kiway = dynamic_cast<KIWAY*>( aKiway ) )
         m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER_GUI>( kiway );
     else
         m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER>( aKiway );
-||||||| base
-    m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER>( aKiway );
-=======
-    m_kiway = aKiway;
-
-    m_jobHandler = std::make_unique<PCBNEW_JOBS_HANDLER>( aKiway );
->>>>>>> theirs
 
     if( m_start_flags & KFCTL_CLI )
     {
@@ -1426,71 +1372,15 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
             // crashes when switching projects during library preload.
             if( !aborted )
             {
-<<<<<<< ours
-                // Collect and report library load errors from adapter
-                wxString errors = adapter->GetLibraryLoadErrors();
-
-                KI_LOG_TRACE( traceLibraries,
-                            "pcbnew PreloadLibraries: adapter errors.IsEmpty()=%d, length=%zu",
-                            errors.IsEmpty(), errors.length() );
-
-                if( !errors.IsEmpty() )
-                {
-                    std::vector<LOAD_MESSAGE> messages =
-                            ExtractLibraryLoadErrors( errors, RPT_SEVERITY_ERROR );
-
-                    KI_LOG_TRACE( traceLibraries, "  -> adapter: collected %zu messages",
-                                messages.size() );
-
-                    if( !messages.empty() )
-                        PgmGui().AddLibraryLoadMessages( messages );
-                }
-                else
-                {
-                    KI_LOG_TRACE( traceLibraries, "  -> no errors from footprint adapter" );
-                }
-||||||| base
-                // Collect and report library load errors from adapter
-                wxString errors = adapter->GetLibraryLoadErrors();
-
-                KI_LOG_TRACE( traceLibraries,
-                            "pcbnew PreloadLibraries: adapter errors.IsEmpty()=%d, length=%zu",
-                            errors.IsEmpty(), errors.length() );
-
-                if( !errors.IsEmpty() )
-                {
-                    std::vector<LOAD_MESSAGE> messages =
-                            ExtractLibraryLoadErrors( errors, RPT_SEVERITY_ERROR );
-
-                    KI_LOG_TRACE( traceLibraries, "  -> adapter: collected %zu messages",
-                                messages.size() );
-
-                    if( !messages.empty() )
-                        Pgm().AddLibraryLoadMessages( messages );
-                }
-                else
-                {
-                    KI_LOG_TRACE( traceLibraries, "  -> no errors from footprint adapter" );
-                }
-=======
                 // Report library load errors from adapter
-                Pgm().AddLibraryLoadMessages( adapter->GetLibraryLoadErrors() );
->>>>>>> theirs
+                PgmGui().AddLibraryLoadMessages( adapter->GetLibraryLoadErrors() );
             }
             else
             {
                 KI_LOG_TRACE( traceLibraries, "pcbnew PreloadLibraries: aborted, skipping footprint processing" );
             }
 
-<<<<<<< ours
-            m_libraryPreloadAbort.store( false );
             PgmGui().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
-||||||| base
-            m_libraryPreloadAbort.store( false );
-            Pgm().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
-=======
-            Pgm().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
->>>>>>> theirs
             m_libraryPreloadBackgroundJob.reset();
 
             // Only send reload notifications if we weren't aborted

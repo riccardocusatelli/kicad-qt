@@ -49,7 +49,8 @@ public:
     {
         NONE,
         USER_DEFINED,
-        NETCLASS
+        NETCLASS,
+        NET_CHAIN
     };
 
     LIST_ITEM( unsigned int aGroupNumber, const wxString& aGroupName, GROUP_TYPE aGroupType ) :
@@ -68,6 +69,7 @@ public:
         KI_ASSERT( aNet );
         m_net_name = UnescapeString( aNet->GetNetname() );
         m_net_class = UnescapeString( aNet->GetNetClass()->GetHumanReadableName() );
+        m_netChainName = UnescapeString( aNet->GetNetChain() );
         m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + 2, 0 );
     }
 
@@ -101,6 +103,7 @@ public:
 
     const wxString& GetNetName() const { return m_net_name; }
     const wxString& GetNetclassName() const { return m_net_class; }
+    const wxString& GetNetChainName() const { return m_netChainName; }
 
     void ResetColumnChangedBits()
     {
@@ -118,6 +121,14 @@ public:
 
         m_column_changed[COLUMN_PAD_COUNT] |= ( m_pad_count != aValue );
         m_pad_count = aValue;
+    }
+
+    bool NetChainNameChanged() const { return m_column_changed[COLUMN_NET_CHAIN]; }
+
+    void SetNetChainName( const wxString& aValue )
+    {
+        m_column_changed[COLUMN_NET_CHAIN] |= static_cast<int>( m_netChainName != aValue );
+        m_netChainName = aValue;
     }
 
     void AddPadCount( unsigned int aValue )
@@ -380,6 +391,24 @@ public:
         m_pad_die_length -= aValue;
     }
 
+    int64_t GetNetChainLength() const { return m_netChainLength; }
+
+    bool NetChainLengthChanged() const { return m_column_changed[COLUMN_NET_CHAIN_LENGTH]; }
+
+    void SetNetChainLength( int64_t aValue )
+    {
+        m_column_changed[COLUMN_NET_CHAIN_LENGTH] |= ( m_netChainLength != aValue );
+        m_netChainLength = aValue;
+    }
+
+    int64_t GetNetChainDelay() const { return m_netChainDelay; }
+
+    void SetNetChainDelay( int64_t aValue )
+    {
+        m_column_changed[COLUMN_NET_CHAIN_LENGTH] |= ( m_netChainDelay != aValue );
+        m_netChainDelay = aValue;
+    }
+
     int64_t GetPadDieDelay() const { return m_pad_die_delay; }
 
     void SetPadDieDelay( int64_t aValue )
@@ -407,6 +436,37 @@ public:
 
         m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
         m_pad_die_delay -= aValue;
+    }
+
+    int64_t GetUnroutedLength() const { return m_unrouted_length; }
+
+    bool UnroutedLengthChanged() const { return m_column_changed[COLUMN_UNROUTED_LENGTH]; }
+
+    void SetUnroutedLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SetUnroutedLength( m_parent->GetUnroutedLength() - m_unrouted_length + aValue );
+
+        m_column_changed[COLUMN_UNROUTED_LENGTH] |= ( m_unrouted_length != aValue );
+        m_unrouted_length = aValue;
+    }
+
+    void AddUnroutedLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->AddUnroutedLength( aValue );
+
+        m_column_changed[COLUMN_UNROUTED_LENGTH] |= ( aValue != 0 );
+        m_unrouted_length += aValue;
+    }
+
+    void SubUnroutedLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubUnroutedLength( aValue );
+
+        m_column_changed[COLUMN_UNROUTED_LENGTH] |= ( aValue != 0 );
+        m_unrouted_length -= aValue;
     }
 
     // the total length column is always computed, never stored.
@@ -444,6 +504,7 @@ public:
 
             m_parent->SubPadDieLength( GetPadDieLength() );
             m_parent->SubPadDieDelay( GetPadDieDelay() );
+            m_parent->SubUnroutedLength( GetUnroutedLength() );
 
             m_parent->m_children.erase( std::find( m_parent->m_children.begin(),
                                                    m_parent->m_children.end(), this ) );
@@ -466,6 +527,7 @@ public:
 
             m_parent->AddPadDieLength( GetPadDieLength() );
             m_parent->AddPadDieDelay( GetPadDieDelay() );
+            m_parent->AddUnroutedLength( GetUnroutedLength() );
 
             m_parent->m_children.push_back( this );
         }
@@ -484,6 +546,9 @@ private:
     int64_t       m_via_delay = 0;
     int64_t       m_pad_die_length = 0;
     int64_t       m_pad_die_delay = 0;
+    int64_t       m_netChainLength = 0;
+    int64_t       m_netChainDelay = 0;
+    int64_t       m_unrouted_length = 0;
 
     std::map<PCB_LAYER_ID, int64_t> m_layer_wire_length{};
     std::map<PCB_LAYER_ID, int64_t> m_layer_wire_delay{};
@@ -497,6 +562,7 @@ private:
     // cached formatted names for faster display sorting
     wxString m_net_name;
     wxString m_net_class;
+    wxString m_netChainName;
     wxString m_group_name;
 };
 

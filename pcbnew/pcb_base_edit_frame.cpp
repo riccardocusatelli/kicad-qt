@@ -244,35 +244,7 @@ COLOR_SETTINGS* PCB_BASE_EDIT_FRAME::GetColorSettings( bool aForceRefresh ) cons
 }
 
 
-<<<<<<< b2e17e0a
-wxString PCB_BASE_EDIT_FRAME::GetDesignRulesPath()
-{
-    if( !GetBoard() )
-        return wxEmptyString;
-
-    wxFileName fn = GetBoard()->GetFileName();
-    fn.SetExt( FILEEXT::DesignRulesFileExtension );
-    return Prj().AbsolutePath( fn.GetFullName() );
-}
-
-
 void PCB_BASE_EDIT_FRAME::handleActivateEvent( bool aActive )
-||||||| 1304b76aad
-wxString PCB_BASE_EDIT_FRAME::GetDesignRulesPath()
-{
-    if( !GetBoard() )
-        return wxEmptyString;
-
-    wxFileName fn = GetBoard()->GetFileName();
-    fn.SetExt( FILEEXT::DesignRulesFileExtension );
-    return Prj().AbsolutePath( fn.GetFullName() );
-}
-
-
-void PCB_BASE_EDIT_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
-=======
-void PCB_BASE_EDIT_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
->>>>>>> ed8c16703e
 {
     PCB_BASE_FRAME::handleActivateEvent( aActive );
 
@@ -289,24 +261,8 @@ void PCB_BASE_EDIT_FRAME::HandleSystemColorChange()
     if( m_appearancePanel )
         m_appearancePanel->OnDarkModeToggle();
 
-<<<<<<< b2e17e0a
-    EDA_3D_VIEWER_FRAME* viewer = Get3DViewerFrame();
-
-    if( viewer )
-        viewer->OnDarkModeToggle();
-||||||| 1304b76aad
-    EDA_3D_VIEWER_FRAME* viewer = Get3DViewerFrame();
-
-    if( viewer )
-        viewer->OnDarkModeToggle();
-
-    aEvent.Skip();
-=======
     if( EDA_3D_VIEWER_FRAME* our3DViewer = GetOur3DViewerFrame() )
         our3DViewer->OnDarkModeToggle();
-
-    aEvent.Skip();
->>>>>>> ed8c16703e
 }
 
 

@@ -41,7 +41,6 @@
 #include <exporters/fab_model/fab_pin.h>
 #include <font/font.h>
 #include <footprint.h>
-#include <pcb_io/common/footprint_order.h>
 #include <hash_eda.h>
 #include <drill/drill_enumerator.h>
 #include <pad.h>
@@ -1432,28 +1431,12 @@ void ODB_LAYER_ENTITY::InitFeatureData()
     if( m_layerItems.empty() )
         return;
 
-    const NETINFO_LIST&   nets = m_board->GetNetInfo();
-    const FOOTPRINT_ORDER footprintOrder( m_board );
+    const NETINFO_LIST& nets = m_board->GetNetInfo();
 
     for( const NETINFO_ITEM* net : nets )
     {
         std::vector<BOARD_ITEM*>& vec = m_layerItems[net->GetNetCode()];
 
-<<<<<<< b2e17e0a
-        std::stable_sort( vec.begin(), vec.end(), footprintOrder );
-
-||||||| 1304b76aad
-        std::stable_sort( vec.begin(), vec.end(),
-                          []( BOARD_ITEM* a, BOARD_ITEM* b )
-                          {
-                              if( a->GetParentFootprint() == b->GetParentFootprint() )
-                                  return a->Type() < b->Type();
-
-                              return a->GetParentFootprint() < b->GetParentFootprint();
-                          } );
-
-=======
->>>>>>> ed8c16703e
         if( vec.empty() )
             continue;
 

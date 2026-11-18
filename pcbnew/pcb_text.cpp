@@ -674,13 +674,7 @@ wxString PCB_TEXT::GetTextTypeDescription() const
 
 wxString PCB_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-<<<<<<< b2e17e0a
-    wxString content = aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() );
-||||||| 1304b76aad
-    wxString content = aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() );
-=======
-    wxString content = aFull ? GetShownText( FOR_GUI ) : KIUI::EllipsizeMenuText( GetText() );
->>>>>>> ed8c16703e
+    wxString content = aFull ? GetShownText( FOR_GUI ) : EllipsizeMenuText( GetText() );
 
     if( FOOTPRINT* parentFP = GetParentFootprint() )
     {

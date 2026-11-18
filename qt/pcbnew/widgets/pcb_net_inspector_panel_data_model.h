@@ -351,7 +351,8 @@ public:
         }
         else if( aRole == Qt::TextAlignmentRole )
         {
-            if( aIndex.column() == COLUMN_NAME || aIndex.column() == COLUMN_NETCLASS )
+            if( aIndex.column() == COLUMN_NAME || aIndex.column() == COLUMN_NET_CHAIN
+                    || aIndex.column() == COLUMN_NETCLASS )
                 return QVariant::fromValue( Qt::AlignLeft | Qt::AlignVCenter );
 
             return QVariant::fromValue( Qt::AlignCenter );
@@ -372,7 +373,8 @@ public:
         if( aRole == Qt::DisplayRole )
             return ToQString( m_parent.m_columns[aSection].display_name );
 
-        if( aRole == Qt::TextAlignmentRole && aSection != COLUMN_NAME && aSection != COLUMN_NETCLASS )
+        if( aRole == Qt::TextAlignmentRole && aSection != COLUMN_NAME && aSection != COLUMN_NET_CHAIN
+                && aSection != COLUMN_NETCLASS )
             return QVariant::fromValue( Qt::AlignCenter );
 
         return QVariant();

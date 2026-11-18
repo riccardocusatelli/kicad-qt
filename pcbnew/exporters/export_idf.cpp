@@ -1022,25 +1022,7 @@ void IDF_EXPORTER::exportFootprint( FOOTPRINT* aFootprint, IDF3_BOARD& aIDFBoard
 }
 
 
-<<<<<<< ours
-/**
- * Generate IDFv3 compliant board (*.emn) and library (*.emp) files representing the user's
- * PCB design.
- */
-bool ExportBoardToIDF3( BOARD* aPcb, PROJECT* aProject, const wxString& aFullFileName,
-                        bool aUseThou, double aXRef, double aYRef, bool aIncludeUnspecified,
-                        bool aIncludeDNP, wxString* aErrorMsg )
-||||||| base
-/**
- * Generate IDFv3 compliant board (*.emn) and library (*.emp) files representing the user's
- * PCB design.
- */
-bool PCB_EDIT_FRAME::Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
-                                  bool aUseThou, double aXRef, double aYRef,
-                                  bool aIncludeUnspecified, bool aIncludeDNP )
-=======
 VECTOR2D IDF_EXPORTER::getOrigin() const
->>>>>>> theirs
 {
     VECTOR2D origin;
     KI_CHECK( m_settings && m_board, origin );
@@ -1086,14 +1068,6 @@ bool IDF_EXPORTER::Export( const wxString& aFullFileName ) const
     // Switch the locale to standard C (needed to print floating point numbers)
     LOCALE_IO toggle;
 
-<<<<<<< ours
-    resolver = PROJECT_PCB::Get3DCacheManager( aProject )->GetResolver();
-
-||||||| base
-    resolver = PROJECT_PCB::Get3DCacheManager( &Prj() )->GetResolver();
-
-=======
->>>>>>> theirs
     bool ok = true;
     double scale = pcbIUScale.MM_PER_IU;   // we must scale internal units to mm for IDF
     IDF3::IDF_UNIT idfUnit;
@@ -1134,67 +1108,24 @@ bool IDF_EXPORTER::Export( const wxString& aFullFileName ) const
         idf_export_outline( m_board, idfBoard );
 
         // Output the drill holes and footprint (library) data.
-<<<<<<< ours
-        for( FOOTPRINT* footprint : aPcb->Footprints() )
-            idf_export_footprint( aPcb, footprint, idfBoard, aIncludeUnspecified, aIncludeDNP );
-
-        if( !idfBoard.WriteFile( aFullFileName, idfUnit, false ) )
-        {
-            wxString msg;
-            msg << _( "IDF Export Failed:\n" ) << From_UTF8( idfBoard.GetError().c_str() );
-            if( aErrorMsg )
-                *aErrorMsg = msg;
-||||||| base
-        for( FOOTPRINT* footprint : aPcb->Footprints() )
-            idf_export_footprint( aPcb, footprint, idfBoard, aIncludeUnspecified, aIncludeDNP );
-
-        if( !idfBoard.WriteFile( aFullFileName, idfUnit, false ) )
-        {
-            wxString msg;
-            msg << _( "IDF Export Failed:\n" ) << From_UTF8( idfBoard.GetError().c_str() );
-            wxMessageBox( msg );
-=======
         for( FOOTPRINT* footprint : m_board->Footprints() )
             exportFootprint( footprint, idfBoard );
->>>>>>> theirs
 
         if( !idfBoard.WriteFile( aFullFileName, idfUnit, m_reporter ) )
             ok = false;
     }
     catch( const IO_ERROR& ioe )
     {
-<<<<<<< ours
-        wxString msg;
-        msg << _( "IDF Export Failed:\n" ) << ioe.What();
-        if( aErrorMsg )
-            *aErrorMsg = msg;
-||||||| base
-        wxString msg;
-        msg << _( "IDF Export Failed:\n" ) << ioe.What();
-        wxMessageBox( msg );
-=======
         if( m_reporter && !idfBoard.GetError().empty() )
             m_reporter->Report( ioe.What(), RPT_SEVERITY_ERROR );
->>>>>>> theirs
 
         ok = false;
     }
     catch( const std::exception& e )
     {
-<<<<<<< ours
-        wxString msg;
-        msg << _( "IDF Export Failed:\n" ) << From_UTF8( e.what() );
-        if( aErrorMsg )
-            *aErrorMsg = msg;
-||||||| base
-        wxString msg;
-        msg << _( "IDF Export Failed:\n" ) << From_UTF8( e.what() );
-        wxMessageBox( msg );
-=======
         if( m_reporter && !idfBoard.GetError().empty() )
             m_reporter->Report( From_UTF8( e.what() ), RPT_SEVERITY_ERROR );
 
->>>>>>> theirs
         ok = false;
     }
 

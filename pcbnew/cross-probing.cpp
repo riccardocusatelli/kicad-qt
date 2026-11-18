@@ -76,17 +76,13 @@
 
 #include <wx/filename.h>
 #include <wx/log.h>
-<<<<<<< b2e17e0a
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
-||||||| 1304b76aad
-=======
 #include <wx/msgdlg.h>
 
 
 using namespace kiapi::common::commands;
->>>>>>> ed8c16703e
 
 /* Execute a remote command sent via a socket on port KICAD_PCB_PORT_SERVICE_NUMBER
  *

@@ -90,34 +90,8 @@ class PCB_EDIT_FRAME : public PCB_BASE_EDIT_FRAME, public BOARD_LISTENER
 public:
     virtual ~PCB_EDIT_FRAME();
 
-<<<<<<< b2e17e0a
-    /**
-     * Load the footprints for each #SCH_COMPONENT in \a aNetlist from the list of libraries.
-     *
-     * @param aNetlist is the netlist of components to load the footprints into.
-     * @param aReporter is the #REPORTER object to report to.
-     * @throw IO_ERROR if an I/O error occurs or a #PARSE_ERROR if a file parsing error
-     *           occurs while reading footprint library files.
-     */
-    void LoadFootprints( NETLIST& aNetlist, REPORTER& aReporter );
-
     /// Close the frame (@a aCommandId wxID_CLOSE) or quit KiCad (wxID_EXIT).
     void OnQuit( int aCommandId );
-||||||| 1304b76aad
-    /**
-     * Load the footprints for each #SCH_COMPONENT in \a aNetlist from the list of libraries.
-     *
-     * @param aNetlist is the netlist of components to load the footprints into.
-     * @param aReporter is the #REPORTER object to report to.
-     * @throw IO_ERROR if an I/O error occurs or a #PARSE_ERROR if a file parsing error
-     *           occurs while reading footprint library files.
-     */
-    void LoadFootprints( NETLIST& aNetlist, REPORTER& aReporter );
-
-    void OnQuit( wxCommandEvent& event );
-=======
-    void OnQuit( wxCommandEvent& event );
->>>>>>> ed8c16703e
 
     /**
      * Get if the current board has been modified but not saved.
@@ -199,7 +173,7 @@ public:
     /**
      * Fill the via stack preset selector with the board's defined presets plus an edit entry.
      */
-    void UpdateViaStackSelectBox( wxChoice* aViaStackSelectBox );
+    void UpdateViaStackSelectBox( TOOLKIT_CHOICE* aViaStackSelectBox );
 
     /**
      * Update the variant selection dropdown with the current board's variant names.
@@ -316,7 +290,7 @@ public:
     /**
      * Handle the via stack preset selector on the auxiliary toolbar.
      */
-    void SelectViaStack_Event( wxCommandEvent& event );
+    void SelectViaStack_Event();
 
 
     /**
@@ -787,72 +761,6 @@ protected:
      */
     void SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType ) override;
 
-<<<<<<< b2e17e0a
-    /**
-     * Fill action menu with all registered action plugins
-     */
-    void buildActionPluginMenus( ACTION_MENU* aActionMenu );
-
-    /**
-     * Append action plugin buttons to given toolbar
-     */
-    void addActionPluginTools( ACTION_TOOLBAR* aToolbar );
-
-    /**
-     * Execute action plugin's Run() method and updates undo buffer.
-     *
-     * @param aActionPlugin action plugin
-     */
-    void RunActionPlugin( ACTION_PLUGIN* aActionPlugin );
-
-    /**
-     * Launched by the menu when an action is called.
-     *
-     * @param aId is the id of the menu item.
-     */
-    void OnActionPluginMenu( int aId );
-
-    /**
-     * Launched by the button when an action is called.
-     *
-     * @param aId is the id of the button.
-     */
-    void OnActionPluginButton( int aId );
-
-||||||| 1304b76aad
-    /**
-     * Fill action menu with all registered action plugins
-     */
-    void buildActionPluginMenus( ACTION_MENU* aActionMenu );
-
-    /**
-     * Append action plugin buttons to given toolbar
-     */
-    void addActionPluginTools( ACTION_TOOLBAR* aToolbar );
-
-    /**
-     * Execute action plugin's Run() method and updates undo buffer.
-     *
-     * @param aActionPlugin action plugin
-     */
-    void RunActionPlugin( ACTION_PLUGIN* aActionPlugin );
-
-    /**
-     * Launched by the menu when an action is called.
-     *
-     * @param aEvent sent by wx
-     */
-    void OnActionPluginMenu( wxCommandEvent& aEvent);
-
-    /**
-     * Launched by the button when an action is called.
-     *
-     * @param aEvent sent by wx
-     */
-    void OnActionPluginButton( wxCommandEvent& aEvent );
-
-=======
->>>>>>> ed8c16703e
     PLUGIN_ACTION_SCOPE PluginActionScope() const override { return PLUGIN_ACTION_SCOPE::PCB; }
 
     /**
@@ -915,15 +823,9 @@ protected:
     // protected so that PCB::IFACE::CreateWindow() is the only factory.
     PCB_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
-<<<<<<< b2e17e0a
     /// Zoom to fit the board once the frame has its final size (shown on screen).
     void onSize();
 
-||||||| 1304b76aad
-    void onSize( wxSizeEvent& aEvent );
-
-=======
->>>>>>> ed8c16703e
     int inferLegacyEdgeClearance( BOARD* aBoard, bool aShowUserMsg = true );
 
     void redrawNetnames();
@@ -937,31 +839,17 @@ protected:
 
     void saveProjectSettings() override;
 
-<<<<<<< b2e17e0a
     /**
      * A modeless report dialog was closed (with the button @a aId).
      *
      * @param aDialogName is the name of the dialog.
      */
     void onCloseModelessBookReporterDialogs( const wxString& aDialogName, int aId );
-||||||| 1304b76aad
-    void onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent );
-=======
-    void onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent );
-    void onCloseFootprintFieldsTableDialog( wxCommandEvent& aEvent );
->>>>>>> ed8c16703e
 
-<<<<<<< b2e17e0a
-#ifdef KICAD_IPC_API
+    /// The footprint fields table dialog was closed.
+    void onCloseFootprintFieldsTableDialog();
+
     void onPluginAvailabilityChanged();
-#endif
-||||||| 1304b76aad
-#ifdef KICAD_IPC_API
-    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
-#endif
-=======
-    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
->>>>>>> ed8c16703e
 
 private:
     /// Dock the panels of the frame around the canvas (shown as in the settings).
@@ -990,20 +878,10 @@ private:
     void onViaSizeChoice();
 
 public:
-<<<<<<< b2e17e0a
     TOOLKIT_CHOICE* m_SelTrackWidthBox;    // a choice box to display and select current track width
     TOOLKIT_CHOICE* m_SelViaSizeBox;       // a choice box to display and select current via diameter
+    TOOLKIT_CHOICE* m_SelViaStackBox;      // a choice box to display and select current via stack preset
     TOOLKIT_CHOICE* m_CurrentVariantCtrl;  // a choice box to display and select current variant
-||||||| 1304b76aad
-    wxChoice* m_SelTrackWidthBox;        // a choice box to display and select current track width
-    wxChoice* m_SelViaSizeBox;           // a choice box to display and select current via diameter
-    wxChoice* m_CurrentVariantCtrl;      // a choice box to display and select current variant
-=======
-    wxChoice* m_SelTrackWidthBox;        // a choice box to display and select current track width
-    wxChoice* m_SelViaSizeBox;           // a choice box to display and select current via diameter
-    wxChoice* m_SelViaStackBox;          // a choice box to display and select current via stack preset
-    wxChoice* m_CurrentVariantCtrl;      // a choice box to display and select current variant
->>>>>>> ed8c16703e
 
     bool      m_ShowLayerManagerTools;
     bool      m_ShowSearch;
@@ -1029,14 +907,8 @@ public:
     void detachTextVarTracker();
 
     void StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItems );
-<<<<<<< b2e17e0a
     void OnCrossProbeFlashTimer();
-||||||| 1304b76aad
-    void OnCrossProbeFlashTimer( wxTimerEvent& aEvent );
-=======
-    void OnCrossProbeFlashTimer( wxTimerEvent& aEvent );
     void UpdateProperties() override;
->>>>>>> ed8c16703e
 
 private:
     /// Recompile the design rules, reporting a parse error in the infobar.
@@ -1099,16 +971,10 @@ private:
 
     std::unique_ptr<API_HANDLER_PCB>    m_apiHandler;
     std::unique_ptr<API_HANDLER_COMMON> m_apiHandlerCommon;
-<<<<<<< b2e17e0a
+    std::unique_ptr<API_HANDLER_LIBRARIES> m_apiLibrariesHandler;
 
     /// The id of the listener of the plugin availability (-1 for none)
     int m_pluginAvailabilityListener = -1;
-#endif
-||||||| 1304b76aad
-#endif
-=======
-    std::unique_ptr<API_HANDLER_LIBRARIES> m_apiLibrariesHandler;
->>>>>>> ed8c16703e
 };
 
 #endif  // __PCB_EDIT_FRAME_H__

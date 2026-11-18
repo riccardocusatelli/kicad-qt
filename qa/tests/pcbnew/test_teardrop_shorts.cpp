@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE( NoTeardropOnZoneConnectedThermalPad )
     toolMgr.RegisterTool( dummyTool );
 
     BOARD_COMMIT     commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( board.get() );
 
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 

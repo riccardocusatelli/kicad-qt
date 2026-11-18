@@ -53,3 +53,16 @@ void SCH_PROPERTIES_PANEL::registerEditors()
     // the unit editors follow the units of the frame, the footprint chooser opens from it
     m_grid->SetEditorFrame( m_frame );
 }
+
+
+// The Qt grid has no editable keys nor context menu yet (see PROPERTIES_PANEL)
+bool SCH_PROPERTIES_PANEL::isKeyEditable( const wxPGProperty* aPGProp ) const
+{
+    return false;
+}
+
+
+bool SCH_PROPERTIES_PANEL::buildContextMenu( wxMenu& aMenu, wxPGProperty* aPGProp )
+{
+    return false;
+}

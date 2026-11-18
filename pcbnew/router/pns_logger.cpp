@@ -32,10 +32,7 @@
 
 #include "pns_item.h"
 #include "pns_via.h"
-<<<<<<< b2e17e0a
 #include <core/ki_assert.h>
-||||||| 1304b76aad
-=======
 #include "pns_segment.h"
 #include "pns_line.h"
 #include "pns_router.h"
@@ -56,7 +53,6 @@ void from_json( const nlohmann::json& aJson, VECTOR2I& aPoint )
     aPoint.x = aJson.at( "x" ).get<int>();
     aPoint.y = aJson.at( "y" ).get<int>();
 }
->>>>>>> ed8c16703e
 
 
 namespace PNS {

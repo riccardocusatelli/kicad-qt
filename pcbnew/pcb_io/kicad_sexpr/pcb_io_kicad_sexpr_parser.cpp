@@ -2759,19 +2759,9 @@ void PCB_IO_KICAD_SEXPR_PARSER::remapAppendedLayers( const std::vector<LAYER>& a
     // the (modal) dialog it shows over the load progress reporter
     std::map<wxString, PCB_LAYER_ID> remap = m_layerMappingHandler( descs );
 
-<<<<<<< ours
-||||||| base
-    if( progressWindow )
-        progressWindow->Show();
-
-=======
-    if( progressWindow )
-        progressWindow->Show();
-
     if( remap.empty() )
         THROW_IO_CANCELLED();
 
->>>>>>> theirs
     LSET enabled = m_board->GetEnabledLayers();
 
     for( const LAYER& src : aSourceLayers )

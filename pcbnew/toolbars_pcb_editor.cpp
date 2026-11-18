@@ -476,20 +476,25 @@ void PCB_EDIT_FRAME::configureToolbars()
     RegisterCustomToolbarControlFactory( PCB_ACTION_TOOLBAR_CONTROLS::viaDiameter, viaDiaSelectorFactory );
 
     // Box to display and choose via stack presets
-    auto viaStackSelectorFactory = [this]( ACTION_TOOLBAR* aToolbar )
-    {
-        if( !m_SelViaStackBox )
-        {
-            m_SelViaStackBox = new wxChoice( aToolbar, ID_AUX_TOOLBAR_PCB_VIA_STACK, wxDefaultPosition, wxDefaultSize,
-                                             0, nullptr );
-        }
+    auto viaStackSelectorFactory =
+            [this]( ACTION_TOOLBAR* aToolbar )
+            {
+                if( !m_SelViaStackBox )
+                {
+                    m_SelViaStackBox = TOOLKIT::CreateChoice( aToolbar, ID_AUX_TOOLBAR_PCB_VIA_STACK,
+                                                              [this]()
+                                                              {
+                                                                  SelectViaStack_Event();
+                                                              } );
+                }
 
-        m_SelViaStackBox->SetToolTip( _( "Select the microvia stack preset placed by the "
-                                         "microvia stack tool." ) );
+                TOOLKIT::ChoiceSetToolTip( m_SelViaStackBox,
+                                           _( "Select the microvia stack preset placed by the "
+                                              "microvia stack tool." ) );
 
-        UpdateViaStackSelectBox( m_SelViaStackBox );
-        aToolbar->Add( m_SelViaStackBox );
-    };
+                UpdateViaStackSelectBox( m_SelViaStackBox );
+                aToolbar->Add( m_SelViaStackBox );
+            };
 
     RegisterCustomToolbarControlFactory( PCB_ACTION_TOOLBAR_CONTROLS::viaStack, viaStackSelectorFactory );
 
@@ -524,19 +529,7 @@ void PCB_EDIT_FRAME::configureToolbars()
             [this]( ACTION_TOOLBAR* aToolbar )
             {
                 bool haveApiPlugins = Pgm().GetCommonSettings()->m_Api.enable_server
-<<<<<<< ours
                                         && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
-#else
-                bool haveApiPlugins = false;
-#endif
-||||||| base
-                                        && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
-#else
-                bool haveApiPlugins = false;
-#endif
-=======
-                                        && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
->>>>>>> theirs
 
                 if( haveApiPlugins )
                 {
@@ -609,50 +602,6 @@ void PCB_EDIT_FRAME::SetCurrentVariant( const wxString& aVariantName )
             ds->SetVariantDesc( variantDesc.ToStdString() );
         }
     }
-<<<<<<< ours
-}
-
-
-void PCB_EDIT_FRAME::onVariantSelected()
-{
-    if( !m_CurrentVariantCtrl )
-        return;
-
-    int selection = TOOLKIT::ChoiceGetSelection( m_CurrentVariantCtrl );
-
-    if( selection == wxNOT_FOUND || selection == 0 )
-    {
-        // "<Default>" selected - clear the current variant
-        SetCurrentVariant( wxEmptyString );
-    }
-    else
-    {
-        wxString selectedVariant = TOOLKIT::ChoiceGetString( m_CurrentVariantCtrl, selection );
-        SetCurrentVariant( selectedVariant );
-    }
-||||||| base
-}
-
-
-void PCB_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
-{
-    if( !m_CurrentVariantCtrl )
-        return;
-
-    int selection = m_CurrentVariantCtrl->GetSelection();
-
-    if( selection == wxNOT_FOUND || selection == 0 )
-    {
-        // "<Default>" selected - clear the current variant
-        SetCurrentVariant( wxEmptyString );
-    }
-    else
-    {
-        wxString selectedVariant = m_CurrentVariantCtrl->GetString( selection );
-        SetCurrentVariant( selectedVariant );
-    }
-=======
->>>>>>> theirs
 
     // Refresh the view and properties panel to show the new variant state
     UpdateProperties();
@@ -693,12 +642,12 @@ void PCB_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
 }
 
 
-void PCB_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
+void PCB_EDIT_FRAME::onVariantSelected()
 {
     if( !m_CurrentVariantCtrl )
         return;
 
-    int selection = m_CurrentVariantCtrl->GetSelection();
+    int selection = TOOLKIT::ChoiceGetSelection( m_CurrentVariantCtrl );
 
     if( selection == wxNOT_FOUND || selection == 0 )
     {
@@ -707,7 +656,7 @@ void PCB_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
     }
     else
     {
-        wxString selectedVariant = m_CurrentVariantCtrl->GetString( selection );
+        wxString selectedVariant = TOOLKIT::ChoiceGetString( m_CurrentVariantCtrl, selection );
         SetCurrentVariant( selectedVariant );
     }
 }
@@ -844,23 +793,23 @@ void PCB_EDIT_FRAME::UpdateViaSizeSelectBox( TOOLKIT_CHOICE* aViaSizeSelectBox, 
 }
 
 
-void PCB_EDIT_FRAME::UpdateViaStackSelectBox( wxChoice* aViaStackSelectBox )
+void PCB_EDIT_FRAME::UpdateViaStackSelectBox( TOOLKIT_CHOICE* aViaStackSelectBox )
 {
     if( aViaStackSelectBox == nullptr )
         return;
 
-    aViaStackSelectBox->Clear();
+    TOOLKIT::ChoiceClear( aViaStackSelectBox );
 
     const std::vector<VIA_STACK_PRESET>& presets = GetDesignSettings().m_ViaStackPresets;
 
     if( presets.empty() )
-        aViaStackSelectBox->Append( _( "Microvia stack: none defined" ) );
+        TOOLKIT::ChoiceAppend( aViaStackSelectBox, _( "Microvia stack: none defined" ) );
 
     for( const VIA_STACK_PRESET& preset : presets )
-        aViaStackSelectBox->Append( wxString::Format( _( "Microvia stack: %s" ), preset.m_Name ) );
+        TOOLKIT::ChoiceAppend( aViaStackSelectBox, wxString::Format( _( "Microvia stack: %s" ), preset.m_Name ) );
 
-    aViaStackSelectBox->Append( wxT( "---" ) );
-    aViaStackSelectBox->Append( _( "Edit Pre-defined Microvia Stacks..." ) );
+    TOOLKIT::ChoiceAppend( aViaStackSelectBox, wxT( "---" ) );
+    TOOLKIT::ChoiceAppend( aViaStackSelectBox, _( "Edit Pre-defined Microvia Stacks..." ) );
 
     int idx = GetDesignSettings().GetViaStackIndex();
 
@@ -870,7 +819,7 @@ void PCB_EDIT_FRAME::UpdateViaStackSelectBox( wxChoice* aViaStackSelectBox )
         GetDesignSettings().SetViaStackIndex( 0 );
     }
 
-    aViaStackSelectBox->SetSelection( presets.empty() ? 0 : idx );
+    TOOLKIT::ChoiceSetSelection( aViaStackSelectBox, presets.empty() ? 0 : idx );
 }
 
 

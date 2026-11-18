@@ -32,22 +32,11 @@ set( QA_UTIL_COMMON_SRC
 
     wx_utils/unit_test_utils.cpp
     wx_utils/wx_assert.cpp
-<<<<<<< b2e17e0a
-||||||| 1304b76aad
-
-    # PDF testing helpers
-    pdf_test_utils.cpp
-=======
-
-    # Format testing helpers
-    pdf_test_utils.cpp
-    svg_test_utils.cpp
->>>>>>> ed8c16703e
 )
 
-# PDF testing helpers (they decode images with wxImage, so not without wxWidgets)
+# Format testing helpers (they use wxImage and wxXmlDocument, so not without wxWidgets)
 if( NOT KICAD_WX_FREE )
-    list( APPEND QA_UTIL_COMMON_SRC pdf_test_utils.cpp )
+    list( APPEND QA_UTIL_COMMON_SRC pdf_test_utils.cpp svg_test_utils.cpp )
 endif()
 
 # A generic library of useful functions for various testing purposes

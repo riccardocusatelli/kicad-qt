@@ -34,13 +34,7 @@ class RATSNEST_VIEW_ITEM;
 class CONNECTIVITY_DATA;
 class PROGRESS_REPORTER;
 
-/// Apply pcbnew's canonical GAL layer order (copper and zones below silk, fab
-/// and courtyard) to any view, including ones that are not a PCB_DRAW_PANEL_GAL.
-void ApplyPcbGalLayerOrder( KIGFX::VIEW* aView );
-
-/// Make pcbnew's derived layers (pad copper, zones, holes, netnames) follow their board layer's
-/// visibility on any view, and keep the zoom-sized footprint anchor uncached.
-void ApplyPcbGalLayerDeps( KIGFX::VIEW* aView );
+// ApplyPcbGalLayerOrder() and ApplyPcbGalLayerDeps() are declared in pcb_view.h
 
 class PCB_DRAW_PANEL_GAL : public EDA_DRAW_PANEL_GAL
 {

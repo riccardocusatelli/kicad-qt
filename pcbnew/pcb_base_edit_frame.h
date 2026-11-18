@@ -155,13 +155,7 @@ public:
      * Put data pointed by List in the previous state, i.e. the state memorized by \a aList.
      *
      * @param aList a PICKED_ITEMS_LIST pointer to the list of items to undo/redo.
-<<<<<<< b2e17e0a
-     * @param aRehatchShapes rehatch the shapes if items that can change them were restored.
-     * @return true if items that can change the board outline or the hatching were restored.
-||||||| 1304b76aad
-=======
      * @param aRehatchShapes is true to rehatch shapes on undo/redo.
->>>>>>> ed8c16703e
      */
     bool PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool aRehatchShapes = true );
 
@@ -208,16 +202,7 @@ public:
     void OnVertexEditorPaneClosed( PCB_VERTEX_EDITOR_PANE* aPane );
     static wxString VertexEditorPaneName();
 
-<<<<<<< b2e17e0a
     ///< @copydoc EDA_DRAW_FRAME::UseGalCanvas()
-||||||| 1304b76aad
-    wxAuiManager& GetAuiManager() { return m_auimgr; }
-
-    ///< @copydoc EDA_DRAW_FRAME::UseGalCanvas()
-=======
-    wxAuiManager& GetAuiManager() { return m_auimgr; }
-
->>>>>>> ed8c16703e
     void ActivateGalCanvas() override;
 
     virtual void SetBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr ) override;
@@ -279,7 +264,8 @@ protected:
 
     void unitsChangeRefresh() override;
 
-<<<<<<< b2e17e0a
+    const TOOL_ACTION* drawArcAction( ARC_DRAW_MODE aMode ) const override;
+
     /// Update the colors of the panels with the ones of the system (dark mode toggled).
     void HandleSystemColorChange() override;
 
@@ -290,13 +276,6 @@ private:
 
     /// Add the layer selector (#m_SelLayerBox) to a toolbar.
     void addLayerSelector( ACTION_TOOLBAR* aToolbar );
-||||||| 1304b76aad
-    void onDarkModeToggle( wxSysColourChangedEvent& aEvent );
-=======
-    const TOOL_ACTION* drawArcAction( ARC_DRAW_MODE aMode ) const override;
-
-    void onDarkModeToggle( wxSysColourChangedEvent& aEvent );
->>>>>>> ed8c16703e
 
 protected:
     bool                    m_undoRedoBlocked;
@@ -308,14 +287,6 @@ protected:
     PCB_VERTEX_EDITOR_PANE* m_vertexEditorPane;
 
     PCB_LAYER_BOX_SELECTOR* m_SelLayerBox; // a combo box to display and select active layer
-<<<<<<< b2e17e0a
-||||||| 1304b76aad
-
-    wxAuiNotebook*          m_tabbedPanel;        /// Panel with Layers and Object Inspector tabs
-=======
-
-    wxAuiNotebook*          m_tabbedPanel;        ///< Panel with Layers and Object Inspector tabs
->>>>>>> ed8c16703e
 };
 
 #endif

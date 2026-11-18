@@ -50,7 +50,7 @@ void PCB_LAYER_BOX_SELECTOR::Resync()
 
     const int size = 14;
 
-    LSET show = ( LSET::AllCuMask() | LSET::AllNonCuMask() ) & ~m_layerMaskDisable;
+    LSET show = LSET::AllLayersMask() & ~m_layerMaskDisable;
     LSET activated = getEnabledLayers() & ~m_layerMaskDisable;
 
     for( PCB_LAYER_ID layerid : show.UIOrder() )

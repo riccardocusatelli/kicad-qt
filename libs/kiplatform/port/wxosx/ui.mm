@@ -312,7 +312,6 @@ void KIPLATFORM::UI::CancelPendingScroll( wxDataViewCtrl* aCtrl )
 {
     // Not needed on this platform; the native control does not race on model resets.
 }
-<<<<<<< b2e17e0a
 
 
 void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
@@ -323,8 +322,6 @@ void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
 void KIPLATFORM::UI::SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason )
 {
 }
-||||||| 1304b76aad
-=======
 
 
 void KIPLATFORM::UI::SetWMClass( wxWindow* aWindow, const wxString& aClass )
@@ -357,4 +354,3 @@ void KIPLATFORM::UI::KeepAboveExternalRendering( wxWindow* aChild )
 {
     // Child views are composited above the Metal layer of their parent
 }
->>>>>>> ed8c16703e

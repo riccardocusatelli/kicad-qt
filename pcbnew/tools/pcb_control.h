@@ -27,15 +27,9 @@
 #include <functional>
 #include <memory>
 #include <tools/pcb_tool_base.h>
-<<<<<<< b2e17e0a
 class STATUS_TEXT_POPUP;
-||||||| 1304b76aad
-#include <status_popup.h>
-=======
-#include <status_popup.h>
 #include <wx/dialog.h>
 #include <wx/weakref.h>
->>>>>>> ed8c16703e
 
 namespace KIGFX {
     class ORIGIN_VIEWITEM;

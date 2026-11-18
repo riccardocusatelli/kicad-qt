@@ -861,8 +861,8 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/drc/drc_test_provider_zone_connections.cpp
     pcbnew/exporters/export_d356.cpp
     pcbnew/exporters/export_gencad_writer.cpp
-    pcbnew/exporters/export_ipc2581.cpp
-    pcbnew/exporters/export_odbpp.cpp
+    pcbnew/pcb_io/ipc2581/ipc2581_export_job.cpp
+    pcbnew/pcb_io/odbpp/odb_export_job.cpp
     pcbnew/exporters/exporter_vrml.cpp
     pcbnew/exporters/gendrill_excellon_writer.cpp
     pcbnew/exporters/gendrill_gerber_writer.cpp

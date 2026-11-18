@@ -38,7 +38,8 @@
 #include <widgets/kistatusbar.h>
 
 #include "pl_editor_frame.h"
-#include "properties_frame.h"
+#include "pl_editor_settings.h"
+#include "widgets/pl_properties_panel.h"
 
 
 void PL_EDITOR_FRAME::setupLayout()
@@ -70,7 +71,9 @@ void PL_EDITOR_FRAME::setupLayout()
     }
 
     CreateInfoBar();
-    m_propertiesPagelayout = new PROPERTIES_FRAME( this );
+    m_propertiesPagelayout = new PL_PROPERTIES_PANEL( this );
+    m_propertiesPagelayout->SetSplitterProportion(
+            static_cast<PL_EDITOR_SETTINGS*>( config() )->m_PropertiesSplitter );
 
     // The canvas, the info bar and the message panel
     setupCentralArea();

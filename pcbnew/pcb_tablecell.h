@@ -25,7 +25,7 @@
 #include <board_item_container.h>
 
 
-class wxPGChoices;
+class PROPERTY_CHOICES;
 
 namespace kiapi::board::types
 {
@@ -99,7 +99,7 @@ public:
      * The font names EDA_TEXT's Font property offers, for the Font Name a generated table and
      * its cells offer instead.
      */
-    static wxPGChoices FontChoices( INSPECTABLE* aItem );
+    static PROPERTY_CHOICES FontChoices( INSPECTABLE* aItem );
 
     bool IsFilledForHitTesting() const override { return true; }
 

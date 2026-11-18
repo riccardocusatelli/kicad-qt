@@ -19,16 +19,7 @@
 
 add_subdirectory( sexpr )
 add_subdirectory( kimath )
-<<<<<<< b2e17e0a
 
-if( KICAD_IPC_API AND NOT KICAD_WX_FREE )
+if( NOT KICAD_WX_FREE )
     add_subdirectory( kinng )
 endif()
-||||||| 1304b76aad
-
-if( KICAD_IPC_API )
-    add_subdirectory( kinng )
-endif()
-=======
-add_subdirectory( kinng )
->>>>>>> ed8c16703e

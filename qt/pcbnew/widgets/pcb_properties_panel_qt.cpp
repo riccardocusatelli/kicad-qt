@@ -120,3 +120,22 @@ void PCB_PROPERTIES_PANEL::registerEditors()
     m_grid->SetCustomEditor( PG_PROPERTY::EDITOR::NET,
                              std::make_unique<PG_NET_SELECTOR_EDITOR>( m_frame ) );
 }
+
+
+// The Qt grid has no editable keys nor context menu yet (see PROPERTIES_PANEL)
+bool PCB_PROPERTIES_PANEL::isKeyEditable( const wxPGProperty* aPGProp ) const
+{
+    return false;
+}
+
+
+bool PCB_PROPERTIES_PANEL::buildContextMenu( wxMenu& aMenu, wxPGProperty* aPGProp )
+{
+    return false;
+}
+
+
+void PCB_PROPERTIES_PANEL::setTrackWidthEditor( TOOLKIT_PG_PROPERTY* aProp ) const
+{
+    // No combo box of the track width presets in the Qt grid yet: the unit editor stays
+}

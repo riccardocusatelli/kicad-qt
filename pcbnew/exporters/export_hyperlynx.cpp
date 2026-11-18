@@ -709,11 +709,6 @@ bool HYPERLYNX_EXPORTER::Run()
 }
 
 
-<<<<<<< b2e17e0a
-bool ExportBoardToHyperlynx( BOARD* aBoard, const wxFileName& aPath )
-||||||| 1304b76aad
-int BOARD_EDITOR_CONTROL::ExportHyperlynx( const TOOL_EVENT& aEvent )
-=======
 bool ExportBoardToHyperlynxFile( BOARD* aBoard, const wxString& aFullFilename )
 {
     HYPERLYNX_EXPORTER exporter;
@@ -721,65 +716,4 @@ bool ExportBoardToHyperlynxFile( BOARD* aBoard, const wxString& aFullFilename )
     exporter.SetOutputFilename( wxFileName( aFullFilename ) );
 
     return exporter.Run();
-}
-
-
-int BOARD_EDITOR_CONTROL::ExportHyperlynx( const TOOL_EVENT& aEvent )
->>>>>>> ed8c16703e
-{
-<<<<<<< b2e17e0a
-    HYPERLYNX_EXPORTER exporter;
-    exporter.SetBoard( aBoard );
-    exporter.SetOutputFilename( aPath );
-    return exporter.Run();
-||||||| 1304b76aad
-    wxString    wildcard =  wxT( "*.hyp" );
-    BOARD*      board = m_frame->GetBoard();
-    wxFileName  fn = board->GetFileName();
-
-    fn.SetExt( wxT("hyp") );
-
-    wxFileDialog dlg( m_frame, _( "Export Hyperlynx Layout" ), fn.GetPath(), fn.GetFullName(),
-                      wildcard, wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
-
-    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
-
-    if( dlg.ShowModal() != wxID_OK )
-        return 0;
-
-    fn = dlg.GetPath();
-
-    // always enforce filename extension, user may not have entered it.
-    fn.SetExt( wxT( "hyp" ) );
-
-    HYPERLYNX_EXPORTER exporter;
-    exporter.SetBoard( board );
-    exporter.SetOutputFilename( fn );
-    exporter.Run();
-
-    return 0;
-=======
-    wxString    wildcard =  wxT( "*.hyp" );
-    BOARD*      board = m_frame->GetBoard();
-    wxFileName  fn = board->GetFileName();
-
-    fn.SetExt( wxT("hyp") );
-
-    wxFileDialog dlg( m_frame, _( "Export Hyperlynx Layout" ), fn.GetPath(), fn.GetFullName(),
-                      wildcard, wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
-
-    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
-
-    if( dlg.ShowModal() != wxID_OK )
-        return 0;
-
-    fn = dlg.GetPath();
-
-    // always enforce filename extension, user may not have entered it.
-    fn.SetExt( wxT( "hyp" ) );
-
-    ExportBoardToHyperlynxFile( board, fn.GetFullPath() );
-
-    return 0;
->>>>>>> ed8c16703e
 }

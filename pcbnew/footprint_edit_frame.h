@@ -127,17 +127,13 @@ public:
 
     bool IsCurrentFPFromBoard() const override;
 
-<<<<<<< b2e17e0a
     bool CanCloseFPFromBoard( bool doClose ) override;
-||||||| 1304b76aad
-    bool CanCloseFPFromBoard( bool doClose );
-=======
+
     /**
      * Prompt to save each dirty tab that meets the requirements.  Returns false if the user
      * cancels so the window close can be vetoed.
      */
     bool HandleUnsavedChanges( bool aFromBoardOnly );
->>>>>>> ed8c16703e
 
     FOOTPRINT_EDITOR_SETTINGS* GetSettings();
 
@@ -425,11 +421,6 @@ public:
 
     void KiwayMailIn( KIWAY_MAIL_EVENT& mail ) override;
 
-<<<<<<< b2e17e0a
-||||||| 1304b76aad
-    DECLARE_EVENT_TABLE()
-
-=======
     /**
      * Return the tabbed-document strip, or nullptr if the tabs UI is not mounted.
      */
@@ -445,9 +436,7 @@ public:
      */
     void CloseActiveFootprintTab();
 
-    DECLARE_EVENT_TABLE()
 
->>>>>>> ed8c16703e
 protected:
     /// protected so only friend PCB::IFACE::CreateWindow() can act as sole factory.
     FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
@@ -480,7 +469,10 @@ protected:
 
     void setupUIConditions() override;
 
-    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+    void onPluginAvailabilityChanged();
+
+    /// The id of the listener of the plugin availability
+    int m_pluginAvailabilityListener = -1;
 
     void centerItemIdleHandler( wxIdleEvent& aEvent );
 
@@ -498,15 +490,12 @@ protected:
 private:
     friend struct PCB::IFACE;
 
-<<<<<<< b2e17e0a
     /// The panes of the frame, around its canvas (footprint_edit_frame_wx.cpp and the Qt build).
     void setupLayout();
 
     /// The events of the frame that the toolkit gives to it (menu commands, keys, sizes...).
     void setupToolkitEvents();
 
-||||||| 1304b76aad
-=======
     /**
      * Find or create the tab for aLibId over its own fp-holder board and make it the active tab.
      */
@@ -605,7 +594,6 @@ private:
      */
     bool activeBoardOwnedByTab() const;
 
->>>>>>> ed8c16703e
     FOOTPRINT_TREE_PANE*        m_treePane;
     LIB_ID                      m_centerItemOnIdle;
 

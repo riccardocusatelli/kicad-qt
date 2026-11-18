@@ -34,11 +34,8 @@
 #include <font/font.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
-<<<<<<< ours
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
-||||||| base
-=======
 #include <view/view.h>
 
 
@@ -46,7 +43,6 @@ bool BOARD_ITEM::FitsEnabledLayers( const LSET& aEnabledLayers, int aCopperLayer
 {
     return IsLayerAgnostic() || ( GetLayerSet() & aEnabledLayers ).any();
 }
->>>>>>> theirs
 
 
 bool BOARD_ITEM::IsGroupableType() const

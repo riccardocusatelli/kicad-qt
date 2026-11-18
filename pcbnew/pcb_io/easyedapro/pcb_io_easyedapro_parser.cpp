@@ -1790,13 +1790,6 @@ void PCB_IO_EASYEDAPRO_PARSER::ParseBoard( BOARD* aBoard, const nlohmann::json& 
                         std::make_unique<PCB_REFERENCE_IMAGE>( aBoard, kcenter, klayer );
                 REFERENCE_IMAGE& refImage = bitmap->GetReferenceImage();
 
-<<<<<<< ours
-||||||| base
-                wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags()
-                                              & ~wxImage::Load_Verbose );
-=======
-                wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags() & ~wxImage::Load_Verbose );
->>>>>>> theirs
 
                 if( refImage.ReadImageFile( buf ) )
                 {

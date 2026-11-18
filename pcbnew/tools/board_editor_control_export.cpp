@@ -143,7 +143,7 @@ int BOARD_EDITOR_CONTROL::ExportHyperlynx( const TOOL_EVENT& aEvent )
     // always enforce filename extension, user may not have entered it.
     fn.SetExt( wxT( "hyp" ) );
 
-    ExportBoardToHyperlynx( board, fn );
+    ExportBoardToHyperlynxFile( board, fn.GetFullPath() );
 
     return 0;
 }
@@ -227,7 +227,8 @@ int BOARD_EDITOR_CONTROL::ExportGenCAD( const TOOL_EVENT& aEvent )
     bool storeOriginCoords = optionsDialog.GetOption( STORE_ORIGIN_COORDS );
 
     // No idea on *why* this should be needed... maybe to fix net names?
-    m_frame->Compile_Ratsnest( true );
+    m_frame->GetBoard()->CompileRatsnest();
+    m_frame->SetMsgPanel( m_frame->GetBoard() );
 
     GENCAD_EXPORTER exporter( m_frame->GetBoard() );
 

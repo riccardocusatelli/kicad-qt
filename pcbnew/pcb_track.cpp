@@ -2897,15 +2897,6 @@ void PCB_VIA::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANE
     GetMsgPanelInfoBase_Common( aContext, aList );
 
     aList.emplace_back( _( "Layer" ), LayerMaskDescribe() );
-<<<<<<< b2e17e0a
-    // TODO(JE) padstacks
-    aList.emplace_back( _( "Diameter" ), aContext->MessageTextFromValue( GetWidth( PADSTACK::ALL_LAYERS ) ) );
-    aList.emplace_back( _( "Hole" ), aContext->MessageTextFromValue( GetDrillValue() ) );
-||||||| 1304b76aad
-    // TODO(JE) padstacks
-    aList.emplace_back( _( "Diameter" ), aFrame->MessageTextFromValue( GetWidth( PADSTACK::ALL_LAYERS ) ) );
-    aList.emplace_back( _( "Hole" ), aFrame->MessageTextFromValue( GetDrillValue() ) );
-=======
 
     std::set<int> widths;
     m_padStack.ForEachUniqueLayer(
@@ -2918,12 +2909,11 @@ void PCB_VIA::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANE
             } );
 
     if( widths.size() == 1 )
-        aList.emplace_back( _( "Diameter" ), aFrame->MessageTextFromValue( *widths.begin() ) );
+        aList.emplace_back( _( "Diameter" ), aContext->MessageTextFromValue( *widths.begin() ) );
     else
         aList.emplace_back( _( "Diameter" ), _( "(mixed)" ) );
 
-    aList.emplace_back( _( "Hole" ), aFrame->MessageTextFromValue( GetDrillValue() ) );
->>>>>>> ed8c16703e
+    aList.emplace_back( _( "Hole" ), aContext->MessageTextFromValue( GetDrillValue() ) );
 
     wxString  source;
     int clearance = GetOwnClearance( GetLayer(), &source );

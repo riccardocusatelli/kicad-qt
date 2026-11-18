@@ -32,7 +32,8 @@
 #include <wx/statusbr.h>
 
 #include "pl_editor_frame.h"
-#include "properties_frame.h"
+#include "pl_editor_settings.h"
+#include "widgets/pl_properties_panel.h"
 
 #include <core/arraydim.h>
 #include <tool/action_toolbar.h>
@@ -81,7 +82,9 @@ void PL_EDITOR_FRAME::setupLayout()
     m_auimgr.SetManagedWindow( this );
 
     CreateInfoBar();
-    m_propertiesPagelayout = new PROPERTIES_FRAME( this );
+    m_propertiesPagelayout = new PL_PROPERTIES_PANEL( this );
+    m_propertiesPagelayout->SetSplitterProportion(
+            static_cast<PL_EDITOR_SETTINGS*>( config() )->m_PropertiesSplitter );
 
     // Rows; layers 4 - 6
     m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )

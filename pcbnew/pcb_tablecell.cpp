@@ -291,19 +291,13 @@ void PCB_TABLECELL::SetRowHeight( int aHeight )
 }
 
 
-<<<<<<< b2e17e0a
-void PCB_TABLECELL::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
-||||||| 1304b76aad
-void PCB_TABLECELL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
-=======
-wxPGChoices PCB_TABLECELL::FontChoices( INSPECTABLE* aItem )
+PROPERTY_CHOICES PCB_TABLECELL::FontChoices( INSPECTABLE* aItem )
 {
     return PROPERTY_MANAGER::Instance().GetProperty( TYPE_HASH( EDA_TEXT ), _HKI( "Font" ) )->GetChoices( aItem );
 }
 
 
-void PCB_TABLECELL::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
->>>>>>> ed8c16703e
+void PCB_TABLECELL::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Table Cell" ), GetAddr() );
 

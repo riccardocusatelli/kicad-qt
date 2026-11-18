@@ -248,15 +248,7 @@ public:
 protected:
     void swapData( BOARD_ITEM* aImage ) override;
 
-<<<<<<< b2e17e0a
-    void GetMsgPanelInfoBase_Common( MSG_PANEL_CONTEXT* aContext,
-                                     std::vector<MSG_PANEL_ITEM>& aList ) const;
-||||||| 1304b76aad
-    void GetMsgPanelInfoBase_Common( EDA_DRAW_FRAME* aFrame,
-                                     std::vector<MSG_PANEL_ITEM>& aList ) const;
-=======
-    void GetMsgPanelInfoBase_Common( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) const;
->>>>>>> ed8c16703e
+    void GetMsgPanelInfoBase_Common( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) const;
 
 protected:
     VECTOR2I m_Start;        ///< Line start point

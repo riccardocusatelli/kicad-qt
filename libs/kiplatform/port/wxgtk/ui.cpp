@@ -1080,7 +1080,6 @@ wxPoint KIPLATFORM::UI::GetMousePosition()
 
 
 #endif
-<<<<<<< b2e17e0a
 
 
 void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
@@ -1091,8 +1090,6 @@ void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
 void KIPLATFORM::UI::SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason )
 {
 }
-||||||| 1304b76aad
-=======
 
 
 void KIPLATFORM::UI::GetNativeWindowHandles( wxWindow* aWindow, void** aHandle, void** aDisplay,
@@ -1307,4 +1304,3 @@ void KIPLATFORM::UI::KeepAboveExternalRendering( wxWindow* aChild )
         KI_LOG_TRACE( traceRhi, wxS( "KeepAboveExternalRendering: gdk_window_ensure_native failed" ) );
 #endif
 }
->>>>>>> ed8c16703e

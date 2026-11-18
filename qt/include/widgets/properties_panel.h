@@ -47,6 +47,8 @@ class PROPERTY_BASE;
 class PROPERTY_GRID;
 class QLabel;
 class SELECTION;
+class wxMenu;
+class wxPGProperty;
 
 
 /**
@@ -98,6 +100,18 @@ protected:
     /// The user changed the property @a aName to @a aValue.
     virtual void valueChanged( const wxString& aName, const wxVariant& aValue ) {}
 
+    // The hooks of the editable keys and the context menu of the wx grid (fields and custom
+    // properties added, removed and renamed from the grid): the Qt grid has none yet
+    virtual bool isKeyEditable( const wxPGProperty* aPGProp ) const { return false; }
+    virtual bool isKeyNameInUse( const wxString& aName ) const { return false; }
+    virtual void onKeyRenamed( const wxString& aOldName, const wxString& aNewName ) {}
+
+    virtual bool buildContextMenu( wxMenu& aMenu, wxPGProperty* aPGProp ) { return false; }
+    virtual void onNewItemLeftBlank( const wxString& aKey ) {}
+
+    void beginLabelEdit( const wxString& aKey, bool aStartBlank = false ) {}
+    void settlePendingLabelEdit() {}
+
     /**
      * Utility to fetch a property value and convert to wxVariant
      * Precondition: aItem is known to have property aProperty
@@ -137,12 +151,15 @@ private:
 
 public:
     int                         m_SuppressGridChangeEvents;
+    bool                        m_ValueChangeVetoed = false;
 
 protected:
     std::vector<PROPERTY_BASE*> m_displayed;    // no ownership of pointers
     PROPERTY_GRID*              m_grid;
     EDA_BASE_FRAME*             m_frame;
     QLabel*                     m_caption;
+
+    wxString                    m_contextMenuPropertyName;
 
     /// Proportion of the grid column splitter that is used for the key column (0.0 - 1.0)
     float m_splitter_key_proportion;

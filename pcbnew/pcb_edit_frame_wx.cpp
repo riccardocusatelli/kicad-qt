@@ -35,8 +35,11 @@
 #include <class_draw_panel_gal.h>
 #include <core/profile.h>
 #include <dialogs/dialog_book_reporter.h>
+#include <dialogs/dialog_footprint_fields_table.h>
 #include <id.h>
 #include <pcb_edit_frame.h>
+#include <widgets/panel_constraints.h>
+#include <widgets/git_commit_pane.h>
 #include <pcbnew_id.h>
 #include <pcbnew_settings.h>
 #include <tool/action_toolbar.h>
@@ -65,6 +68,11 @@ struct PCB_EDIT_FRAME::TOOLKIT_STATE : public wxEvtHandler
         m_frame->onCloseModelessBookReporterDialogs( aEvent.GetString(), aEvent.GetId() );
     }
 
+    void onCloseFootprintFieldsTableDialog( wxCommandEvent& aEvent )
+    {
+        m_frame->onCloseFootprintFieldsTableDialog();
+    }
+
     PCB_EDIT_FRAME* m_frame;
 };
 
@@ -77,6 +85,10 @@ void PCB_EDIT_FRAME::TOOLKIT_STATE_DELETER::operator()( TOOLKIT_STATE* aState ) 
 
 void PCB_EDIT_FRAME::setupLayout()
 {
+    // The panels only the wxWidgets build has so far
+    m_constraintsPanel = new PANEL_CONSTRAINTS( this );
+    m_gitCommitPane = new GIT_COMMIT_PANE( this );
+
     m_auimgr.SetManagedWindow( this );
 
     CreateInfoBar();
@@ -84,14 +96,7 @@ void PCB_EDIT_FRAME::setupLayout()
     // Secondary infobar stacked above the main one.  Load-time notices (such as
     // the WRL -> STEP migration prompt) belong here so they aren't clobbered by
     // the main infobar's read-only warnings, DRC rule errors, etc.
-#if defined( __WXOSX_MAC__ )
-    m_loadNoticeInfoBar = new WX_INFOBAR( GetToolCanvas() );
-#else
-    m_loadNoticeInfoBar = new WX_INFOBAR( this, &m_auimgr );
-    m_auimgr.AddPane( m_loadNoticeInfoBar,
-                      EDA_PANE().InfoBar().Name( wxS( "LoadNoticeInfoBar" ) ).Top().Layer( 1 )
-                              .Row( 1 ) );
-#endif
+    m_loadNoticeInfoBar = new WX_INFOBAR( GetToolCanvas(), wxID_ANY, true );
 
     unsigned int auiFlags = wxAUI_MGR_DEFAULT;
 #if !defined( _WIN32 )
@@ -183,7 +188,35 @@ void PCB_EDIT_FRAME::setupLayout()
                       .DestroyOnClose( false )
                       .CloseButton( true ) );
 
+    m_auimgr.AddPane( m_constraintsPanel, EDA_PANE().Name( ConstraintsPaneName() )
+                      .Bottom().Layer( 1 )
+                      .Caption( _( "Geometric Constraints" ) ).PaneBorder( false )
+                      .MinSize( FromDIP( wxSize( 360, 120 ) ) )
+                      .BestSize( FromDIP( wxSize( 600, 200 ) ) )
+                      .FloatingSize( FromDIP( wxSize( 600, 240 ) ) )
+                      .DestroyOnClose( false )
+                      .CloseButton( true )
+                      .Hide() );
+
+    m_auimgr.AddPane( m_gitCommitPane,
+                      EDA_PANE()
+                              .Name( GitCommitPaneName() )
+                              .Right()
+                              .Layer( 5 )
+                              .Caption( _( "Version Control" ) )
+                              .PaneBorder( false )
+                              .MinSize( wxSize( m_gitCommitPane->GetMinDockWidth(), FromDIP( 120 ) ) )
+                              .BestSize( wxSize( std::max( m_gitCommitPane->GetMinDockWidth(), FromDIP( 300 ) ),
+                                                 FromDIP( 300 ) ) )
+                              .FloatingSize( FromDIP( wxSize( 300, 400 ) ) )
+                              .DestroyOnClose( false )
+                              .CloseButton( true )
+                              .Hide() );
+
     RestoreAuiLayout();
+
+    // A saved layout brings its own minimum, so the one the panel needs is set again.
+    m_auimgr.GetPane( GitCommitPaneName() ).min_size.x = m_gitCommitPane->GetMinDockWidth();
 
     m_auimgr.GetPane( "LayersManager" ).Show( m_ShowLayerManagerTools );
     m_auimgr.GetPane( "SelectionFilter" ).Show( m_ShowLayerManagerTools );
@@ -191,20 +224,11 @@ void PCB_EDIT_FRAME::setupLayout()
     m_auimgr.GetPane( NetInspectorPanelName() ).Show( m_ShowNetInspector );
     m_auimgr.GetPane( SearchPaneName() ).Show( m_ShowSearch );
     m_auimgr.GetPane( DesignBlocksPaneName() ).Show( GetPcbNewSettings()->m_AuiPanels.design_blocks_show );
+    m_auimgr.GetPane( GitCommitPaneName() ).Show( GetPcbNewSettings()->m_AuiPanels.show_git_commit_pane );
 
     // The selection filter doesn't need to grow in the vertical direction when docked
     m_auimgr.GetPane( "SelectionFilter" ).dock_proportion = 0;
     FinishAUIInitialization();
-
-    // FinishAUIInitialization only hides the primary "InfoBar" pane; the
-    // stacked load-notice bar has to be hidden explicitly.
-#if !defined( __WXOSX_MAC__ )
-    if( wxAuiPaneInfo& pane = m_auimgr.GetPane( wxS( "LoadNoticeInfoBar" ) ); pane.IsOk() )
-    {
-        pane.Hide();
-        m_auimgr.Update();
-    }
-#endif
 }
 
 
@@ -216,21 +240,10 @@ void PCB_EDIT_FRAME::setupToolkitEvents()
     Bind( wxEVT_CHOICE, &PCB_EDIT_FRAME::OnSelectZoom, this, ID_ON_ZOOM_SELECT );
     Bind( wxEVT_CHOICE, &PCB_EDIT_FRAME::OnSelectGrid, this, ID_ON_GRID_SELECT );
 
-    // This is used temporarily to fix a client size issue on GTK that causes zoom to fit
-    // to calculate the wrong zoom size.  See PCB_EDIT_FRAME::onSize().
-    auto zoomFitDone = std::make_shared<bool>( false );
-
+    // The canvas refits itself after a resize while the view is still at its zoom to fit
     Bind( wxEVT_SIZE,
-          [this, zoomFitDone]( wxSizeEvent& aEvent )
+          [this]( wxSizeEvent& aEvent )
           {
-              // We only need this until the frame is done resizing and the final client size
-              // is established.
-              if( !*zoomFitDone && IsShownOnScreen() )
-              {
-                  *zoomFitDone = true;
-                  onSize();
-              }
-
               // Skip() is called in the base class.
               OnSize( aEvent );
           } );
@@ -295,6 +308,7 @@ void PCB_EDIT_FRAME::setupToolkitEvents()
               {
                   redrawNetnames();
                   m_lastNetnamesViewport = viewport;
+                  m_lastNetnamesScale = GetCanvas()->GetView()->GetScale();
               }
 
               // Do not forget to pass the Idle event to other clients:
@@ -304,6 +318,8 @@ void PCB_EDIT_FRAME::setupToolkitEvents()
     m_toolkitState.reset( new TOOLKIT_STATE( this ) );
 
     Bind( EDA_EVT_CLOSE_DIALOG_BOOK_REPORTER, &TOOLKIT_STATE::onCloseModelessBookReporterDialogs,
+          m_toolkitState.get() );
+    Bind( EDA_EVT_CLOSE_DIALOG_FOOTPRINT_FIELDS_TABLE, &TOOLKIT_STATE::onCloseFootprintFieldsTableDialog,
           m_toolkitState.get() );
 }
 
@@ -315,6 +331,8 @@ void PCB_EDIT_FRAME::releaseToolkitEvents()
 
     // Clean up mode-less dialogs.
     Unbind( EDA_EVT_CLOSE_DIALOG_BOOK_REPORTER, &TOOLKIT_STATE::onCloseModelessBookReporterDialogs,
+            m_toolkitState.get() );
+    Unbind( EDA_EVT_CLOSE_DIALOG_FOOTPRINT_FIELDS_TABLE, &TOOLKIT_STATE::onCloseFootprintFieldsTableDialog,
             m_toolkitState.get() );
 
     m_toolkitState.reset();

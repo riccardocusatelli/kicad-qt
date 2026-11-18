@@ -52,12 +52,7 @@
     },
     "nng",
     "protobuf",
-<<<<<<< b2e17e0a
     "zlib",
-    "zstd"
-||||||| 1304b76aad
-    "zstd"
-=======
     "zstd",
     {
       "name": "vulkan-headers",
@@ -73,7 +68,6 @@
       "features": [ "tools" ],
       "host": true
     }
->>>>>>> ed8c16703e
   ],
   "default-features": [ "wx" ],
   "features": {

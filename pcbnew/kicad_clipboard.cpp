@@ -61,116 +61,6 @@ void CLIPBOARD_IO::SetBoard( BOARD* aBoard )
 }
 
 
-void CLIPBOARD_IO::SaveItems( const std::vector<EDA_ITEM*>& aItems, const VECTOR2I& aRefPoint,
-                              bool isFootprintEditor )
-{
-<<<<<<< b2e17e0a
-    VECTOR2I refPoint = aRefPoint;
-||||||| 1304b76aad
-    wxLogNull         doNotLog; // disable logging of failed clipboard actions
-    auto clipboard = wxTheClipboard;
-    wxClipboardLocker clipboardLock( clipboard );
-
-    if( !clipboardLock || !clipboard->IsOpened() )
-        return;
-
-    clipboard->SetData( new wxTextDataObject( aData ) );
-
-    clipboard->Flush();
-
-#ifndef __WXOSX__
-    // This section exists to return the clipboard data, ensuring it has fully
-    // been processed by the system clipboard.  This appears to be needed for
-    // extremely large clipboard copies on asynchronous linux clipboard managers
-    // such as KDE's Klipper. However, a read back of the data on OSX before the
-    // clipboard is closed seems to cause an ASAN error (heap-buffer-overflow)
-    // since it uses the cached version of the clipboard data and not the system
-    // clipboard data.
-    if( clipboard->IsSupported( wxDF_TEXT ) || clipboard->IsSupported( wxDF_UNICODETEXT ) )
-    {
-        wxTextDataObject data;
-        clipboard->GetData( data );
-        ignore_unused( data.GetText() );
-    }
-#endif
-}
-
-
-wxString CLIPBOARD_IO::clipboardReader()
-{
-    wxLogNull doNotLog; // disable logging of failed clipboard actions
-
-    auto clipboard = wxTheClipboard;
-    wxClipboardLocker clipboardLock( clipboard );
-
-    if( !clipboardLock )
-        return wxEmptyString;
-
-    if( clipboard->IsSupported( wxDF_TEXT ) || clipboard->IsSupported( wxDF_UNICODETEXT ) )
-    {
-        wxTextDataObject data;
-        clipboard->GetData( data );
-        return data.GetText();
-    }
-
-    return wxEmptyString;
-}
-
-
-void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootprintEditor )
-{
-    VECTOR2I refPoint( 0, 0 );
-=======
-    wxLogNull         doNotLog; // disable logging of failed clipboard actions
-    auto clipboard = wxTheClipboard;
-    wxClipboardLocker clipboardLock( clipboard );
-
-    if( !clipboardLock || !clipboard->IsOpened() )
-        return;
-
-    clipboard->SetData( new wxTextDataObject( aData ) );
-
-    clipboard->Flush();
-
-#ifndef __WXOSX__
-    // This section exists to return the clipboard data, ensuring it has fully
-    // been processed by the system clipboard.  This appears to be needed for
-    // extremely large clipboard copies on asynchronous linux clipboard managers
-    // such as KDE's Klipper. However, a read back of the data on OSX before the
-    // clipboard is closed seems to cause an ASAN error (heap-buffer-overflow)
-    // since it uses the cached version of the clipboard data and not the system
-    // clipboard data.
-    if( clipboard->IsSupported( wxDF_TEXT ) || clipboard->IsSupported( wxDF_UNICODETEXT ) )
-    {
-        wxTextDataObject data;
-        clipboard->GetData( data );
-        ignore_unused( data.GetText() );
-    }
-#endif
-}
-
-
-wxString CLIPBOARD_IO::clipboardReader()
-{
-    wxLogNull doNotLog; // disable logging of failed clipboard actions
-
-    auto clipboard = wxTheClipboard;
-    wxClipboardLocker clipboardLock( clipboard );
-
-    if( !clipboardLock )
-        return wxEmptyString;
-
-    if( clipboard->IsSupported( wxDF_TEXT ) || clipboard->IsSupported( wxDF_UNICODETEXT ) )
-    {
-        wxTextDataObject data;
-        clipboard->GetData( data );
-        return data.GetText();
-    }
-
-    return wxEmptyString;
-}
-
-
 std::vector<BOARD_ITEM*> CLIPBOARD_IO::CopiedItems( const PCB_SELECTION& aSelection )
 {
     std::vector<BOARD_ITEM*> items;
@@ -197,10 +87,10 @@ std::vector<BOARD_ITEM*> CLIPBOARD_IO::CopiedItems( const PCB_SELECTION& aSelect
 }
 
 
-void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootprintEditor )
+void CLIPBOARD_IO::SaveItems( const std::vector<EDA_ITEM*>& aItems, const VECTOR2I& aRefPoint,
+                              bool isFootprintEditor )
 {
-    VECTOR2I refPoint( 0, 0 );
->>>>>>> ed8c16703e
+    VECTOR2I refPoint = aRefPoint;
 
     // dont even start if the selection is empty
     if( aItems.empty() )
@@ -259,57 +149,9 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
     std::set<const EDA_ITEM*> promotedSources;
 
     // Copy without nets
-    const bool loneFootprint = aSelected.Size() == 1 && aSelected.Front()->Type() == PCB_FOOTPRINT_T;
+    const bool loneFootprint = aItems.size() == 1 && aItems.front()->Type() == PCB_FOOTPRINT_T;
 
-<<<<<<< b2e17e0a
-    if( aItems.size() == 1 && aItems.front()->Type() == PCB_FOOTPRINT_T )
-    {
-        // make the footprint safe to transfer to other pcbs
-        const FOOTPRINT* footprint = static_cast<FOOTPRINT*>( aItems.front() );
-        // Do not modify existing board
-        FOOTPRINT newFootprint( *footprint );
-
-        for( PAD* pad : newFootprint.Pads() )
-            pad->SetNetCode( 0 );
-
-        // locked means "locked in place"; copied items therefore can't be locked
-        newFootprint.SetLocked( false );
-
-        // locate the reference point at (0, 0) in the copied items
-        newFootprint.Move( VECTOR2I( -refPoint.x, -refPoint.y ) );
-
-        Format( static_cast<BOARD_ITEM*>( &newFootprint ) );
-
-        newFootprint.SetParent( nullptr );
-        newFootprint.SetParentGroup( nullptr );
-    }
-    else if( isFootprintEditor )
-||||||| 1304b76aad
-    if( aSelected.Size() == 1 && aSelected.Front()->Type() == PCB_FOOTPRINT_T )
-    {
-        // make the footprint safe to transfer to other pcbs
-        const FOOTPRINT* footprint = static_cast<FOOTPRINT*>( aSelected.Front() );
-        // Do not modify existing board
-        FOOTPRINT newFootprint( *footprint );
-
-        for( PAD* pad : newFootprint.Pads() )
-            pad->SetNetCode( 0 );
-
-        // locked means "locked in place"; copied items therefore can't be locked
-        newFootprint.SetLocked( false );
-
-        // locate the reference point at (0, 0) in the copied items
-        newFootprint.Move( VECTOR2I( -refPoint.x, -refPoint.y ) );
-
-        Format( static_cast<BOARD_ITEM*>( &newFootprint ) );
-
-        newFootprint.SetParent( nullptr );
-        newFootprint.SetParentGroup( nullptr );
-    }
-    else if( isFootprintEditor )
-=======
     if( isFootprintEditor )
->>>>>>> ed8c16703e
     {
         FOOTPRINT partialFootprint( m_board );
 
@@ -415,7 +257,7 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
 
         // Carry footprint constraints whose members were all copied, like the board branch below;
         // the paste path remaps the member KIIDs to the pasted copies.
-        std::set<KIID> selectedIds = CollectConstraintScopeIds( aSelected );
+        std::set<KIID> selectedIds = CollectConstraintScopeIds( aItems );
 
         for( PCB_CONSTRAINT* constraint : editedFootprint->Constraints() )
         {
@@ -561,7 +403,7 @@ void CLIPBOARD_IO::SaveSelection( const PCB_SELECTION& aSelected, bool isFootpri
         // Copy a constraint along with its objects when every participant is in the selection
         // (Zulip "Geometry Constraint Solver", 2026-06-18).  Member KIIDs are preserved; the
         // paste/append parser remaps them to the pasted copies.
-        std::set<KIID> selectedIds = CollectConstraintScopeIds( aSelected );
+        std::set<KIID> selectedIds = CollectConstraintScopeIds( aItems );
 
         for( PCB_CONSTRAINT* constraint : m_board->Constraints() )
         {
@@ -625,7 +467,6 @@ void CLIPBOARD_IO::SaveBoard( const wxString& aFileName, BOARD& aBoard,
 
     m_writer( wxString( prettyData.c_str(), wxConvUTF8 ) );
 }
-<<<<<<< b2e17e0a
 
 
 BOARD* CLIPBOARD_IO::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
@@ -675,68 +516,3 @@ BOARD* CLIPBOARD_IO::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
 
     return board;
 }
-||||||| 1304b76aad
-
-
-BOARD* CLIPBOARD_IO::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                                const std::map<std::string, UTF8>* aProperties, PROJECT* aProject )
-{
-    std::string result( m_reader().mb_str() );
-
-    std::function<bool( wxString, int, wxString, wxString )> queryUser =
-            [&]( wxString aTitle, int aIcon, wxString aMessage, wxString aAction ) -> bool
-            {
-                KIDIALOG dlg( nullptr, aMessage, aTitle, wxOK | wxCANCEL | aIcon );
-
-                if( !aAction.IsEmpty() )
-                    dlg.SetOKLabel( aAction );
-
-                dlg.DoNotShowCheckbox( aMessage, 0 );
-
-                return dlg.ShowModal() == wxID_OK;
-            };
-
-    STRING_LINE_READER reader( result, wxT( "clipboard" ) );
-    PCB_IO_KICAD_SEXPR_PARSER         parser( &reader, aAppendToMe, queryUser );
-
-    init( aProperties );
-
-    BOARD_ITEM* item;
-    BOARD* board;
-
-    try
-    {
-        item =  parser.Parse();
-    }
-    catch( const FUTURE_FORMAT_ERROR& )
-    {
-        // Don't wrap a FUTURE_FORMAT_ERROR in another
-        throw;
-    }
-    catch( const PARSE_ERROR& parse_error )
-    {
-        if( parser.IsTooRecent() )
-            throw FUTURE_FORMAT_ERROR( parse_error, parser.GetRequiredVersion() );
-        else
-            throw;
-    }
-
-    if( item->Type() != PCB_T )
-    {
-        // The parser loaded something that was valid, but wasn't a board.
-        THROW_PARSE_ERROR( _( "Clipboard content is not KiCad compatible" ), parser.CurSource(),
-                           parser.CurLine(), parser.CurLineNumber(), parser.CurOffset() );
-    }
-    else
-    {
-        board = dynamic_cast<BOARD*>( item );
-    }
-
-    // Give the filename to the board if it's new
-    if( board && !aAppendToMe )
-        board->SetFileName( aFileName );
-
-    return board;
-}
-=======
->>>>>>> ed8c16703e

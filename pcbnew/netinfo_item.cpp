@@ -93,11 +93,6 @@ void NETINFO_ITEM::SetNetClass( const std::shared_ptr<NETCLASS>& aNetClass )
 }
 
 
-<<<<<<< b2e17e0a
-void NETINFO_ITEM::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
-||||||| 1304b76aad
-void NETINFO_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
-=======
 void NETINFO_ITEM::ResolveTerminalPads( BOARD* aBoard )
 {
     for( int i = 0; i < 2; ++i )
@@ -118,8 +113,7 @@ void NETINFO_ITEM::SetTerminal( int aIndex, PAD* aPad )
 }
 
 
-void NETINFO_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
->>>>>>> ed8c16703e
+void NETINFO_ITEM::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Net Name" ), UnescapeString( GetNetname() ) );
 

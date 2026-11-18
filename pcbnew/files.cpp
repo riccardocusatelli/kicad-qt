@@ -75,7 +75,6 @@
 #include <dialogs/dialog_map_layers.h>
 #include <dialogs/dialog_export_odbpp.h>
 #include <pcb_io/odbpp/odb_export_job.h>
-#include <exporters/export_odbpp.h>
 #include <jobs/job_export_pcb_odb.h>
 #include <dialogs/dialog_import_choose_project.h>
 #include <tools/pcb_actions.h>
@@ -516,30 +515,6 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
     std::unique_ptr<LOCKFILE> lock = std::make_unique<LOCKFILE>( fullFileName );
 
-<<<<<<< ours
-    if( !lock->Valid() && lock->IsLockedByMe() )
-    {
-        // If we cannot acquire the lock but we appear to be the one who locked it, check to
-        // see if there is another KiCad instance running.  If not, then we can override the
-        // lock.  This could happen if KiCad crashed or was interrupted.
-
-        if( !PgmGui().SingleInstance()->IsAnotherRunning() )
-            lock->OverrideLock();
-    }
-
-||||||| base
-    if( !lock->Valid() && lock->IsLockedByMe() )
-    {
-        // If we cannot acquire the lock but we appear to be the one who locked it, check to
-        // see if there is another KiCad instance running.  If not, then we can override the
-        // lock.  This could happen if KiCad crashed or was interrupted.
-
-        if( !Pgm().SingleInstance()->IsAnotherRunning() )
-            lock->OverrideLock();
-    }
-
-=======
->>>>>>> theirs
     if( !lock->Valid() )
     {
         // If project-level lock override was already granted, silently override this file's lock
@@ -1359,66 +1334,7 @@ int BOARD_EDITOR_CONTROL::GenIPC2581File( const TOOL_EVENT& aEvent )
 int BOARD_EDITOR_CONTROL::GenerateODBPPFiles( const TOOL_EVENT& aEvent )
 {
     DIALOG_EXPORT_ODBPP dlg( m_frame );
-<<<<<<< ours
-
-    if( dlg.ShowModal() != wxID_OK )
-        return 0;
-
-    // Refill zones if they are out-of-date so the export matches the current layout.
-    m_toolMgr->GetTool<ZONE_FILLER_TOOL>()->CheckAllZones( m_frame );
-
-    JOB_EXPORT_PCB_ODB job;
-
-    job.SetConfiguredOutputPath( dlg.GetOutputPath() );
-    job.m_filename = m_frame->GetBoard()->GetFileName();
-    job.m_compressionMode = static_cast<JOB_EXPORT_PCB_ODB::ODB_COMPRESSION>( dlg.GetCompressFormat() );
-
-    job.m_precision = dlg.GetPrecision();
-    job.m_units = dlg.GetUnitsString() == "mm" ? JOB_EXPORT_PCB_ODB::ODB_UNITS::MM
-                                               : JOB_EXPORT_PCB_ODB::ODB_UNITS::INCH;
-
-    WX_PROGRESS_REPORTER progressReporter( m_frame, _( "Generate ODB++ Files" ), 3, PR_CAN_ABORT );
-    WX_STRING_REPORTER reporter;
-
-    ExportODBPP( job, m_frame->GetBoard(), &progressReporter, &reporter,
-                 [&]( const wxString& aQuestion ) -> bool
-                 {
-                     KIDIALOG confirmDlg( m_frame, aQuestion, _( "Confirmation" ),
-                                          wxOK | wxCANCEL | wxICON_WARNING );
-                     confirmDlg.SetOKLabel( _( "Overwrite" ) );
-                     return confirmDlg.ShowModal() == wxID_OK;
-                 } );
-
-    if( reporter.HasMessage() )
-        DisplayError( m_frame, reporter.GetMessages() );
-||||||| base
-
-    if( dlg.ShowModal() != wxID_OK )
-        return 0;
-
-    // Refill zones if they are out-of-date so the export matches the current layout.
-    m_toolMgr->GetTool<ZONE_FILLER_TOOL>()->CheckAllZones( m_frame );
-
-    JOB_EXPORT_PCB_ODB job;
-
-    job.SetConfiguredOutputPath( dlg.GetOutputPath() );
-    job.m_filename = m_frame->GetBoard()->GetFileName();
-    job.m_compressionMode = static_cast<JOB_EXPORT_PCB_ODB::ODB_COMPRESSION>( dlg.GetCompressFormat() );
-
-    job.m_precision = dlg.GetPrecision();
-    job.m_units = dlg.GetUnitsString() == "mm" ? JOB_EXPORT_PCB_ODB::ODB_UNITS::MM
-                                               : JOB_EXPORT_PCB_ODB::ODB_UNITS::INCH;
-
-    WX_PROGRESS_REPORTER progressReporter( m_frame, _( "Generate ODB++ Files" ), 3, PR_CAN_ABORT );
-    WX_STRING_REPORTER reporter;
-
-    DIALOG_EXPORT_ODBPP::GenerateODBPPFiles( job, m_frame->GetBoard(), m_frame, &progressReporter, &reporter );
-
-    if( reporter.HasMessage() )
-        DisplayError( m_frame, reporter.GetMessages() );
-=======
     dlg.ShowModal();
->>>>>>> theirs
 
     return 0;
 }

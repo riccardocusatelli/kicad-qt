@@ -110,8 +110,6 @@
 #include <exporters/export_gencad_writer.h>
 #include <exporters/export_d356.h>
 #include <kiface_services.h>
-#include <exporters/export_ipc2581.h>
-#include <exporters/export_odbpp.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <netlist_reader/netlist_reader.h>
 #include <pcbnew_settings.h>
@@ -131,11 +129,8 @@
 #include <export_vrml.h>
 #include <kiplatform/io.h>
 #include <settings/settings_manager.h>
-#include <dialogs/dialog_export_idf.h>
 #include <pcb_io/ipc2581/ipc2581_export_job.h>
 #include <pcb_io/odbpp/odb_export_job.h>
-#include <dialogs/dialog_footprint_fields_table.h>
-#include <dialogs/dialog_board_stackup_job.h>
 #include <board_stackup_manager/board_stackup.h>
 #include <board_stackup_manager/board_stackup_reporter.h>
 #include <api/api_pcb_utils.h>
@@ -164,24 +159,24 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY_SERVICES* aKiway ) :
         JOB_DISPATCHER( aKiway ),
         m_cliBoard( nullptr )
 {
-<<<<<<< ours
+    Register( "bom", std::bind( &PCBNEW_JOBS_HANDLER::JobExportBom, this, std::placeholders::_1 ) );
     Register( "3d", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStep, this, std::placeholders::_1 ) );
-    Register( "render",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportRender, this, std::placeholders::_1 ) );
+    Register( "render", std::bind( &PCBNEW_JOBS_HANDLER::JobExportRender, this, std::placeholders::_1 ) );
     Register( "upgrade", std::bind( &PCBNEW_JOBS_HANDLER::JobUpgrade, this, std::placeholders::_1 ) );
+    Register( "downgrade", std::bind( &PCBNEW_JOBS_HANDLER::JobDowngrade, this, std::placeholders::_1 ) );
     Register( "pcb_import", std::bind( &PCBNEW_JOBS_HANDLER::JobImport, this, std::placeholders::_1 ) );
     Register( "svg", std::bind( &PCBNEW_JOBS_HANDLER::JobExportSvg, this, std::placeholders::_1 ) );
-    Register( "gencad",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportGencad, this, std::placeholders::_1 ) );
+    Register( "gencad", std::bind( &PCBNEW_JOBS_HANDLER::JobExportGencad, this, std::placeholders::_1 ) );
+    Register( "specctra_dsn",
+              std::bind( &PCBNEW_JOBS_HANDLER::JobExportSpecctraDsn, this, std::placeholders::_1 ) );
     Register( "dxf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDxf, this, std::placeholders::_1 ) );
     Register( "pdf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPdf, this, std::placeholders::_1 ) );
+    Register( "png", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPng, this, std::placeholders::_1 ) );
     Register( "ps", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPs, this, std::placeholders::_1 ) );
-    Register( "stats",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportStats, this, std::placeholders::_1 ) );
-    Register( "gerber",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerber, this, std::placeholders::_1 ) );
-    Register( "gerbers",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerbers, this, std::placeholders::_1 ) );
+    Register( "stats", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStats, this, std::placeholders::_1 ) );
+    Register( "stackup", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStackup, this, std::placeholders::_1 ) );
+    Register( "gerber", std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerber, this, std::placeholders::_1 ) );
+    Register( "gerbers", std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerbers, this, std::placeholders::_1 ) );
     Register( "hpgl",
               [&]( JOB* aJob )
               {
@@ -189,605 +184,18 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY_SERVICES* aKiway ) :
                                       RPT_SEVERITY_ERROR );
                   return CLI::EXIT_CODES::ERR_ARGS;
               } );
-    Register( "drill",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportDrill, this, std::placeholders::_1 ) );
+    Register( "drill", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDrill, this, std::placeholders::_1 ) );
     Register( "pos", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPos, this, std::placeholders::_1 ) );
-    Register( "fpupgrade",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpUpgrade, this, std::placeholders::_1 ) );
-    Register( "fpsvg",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpSvg, this, std::placeholders::_1 ) );
+    Register( "fpupgrade", std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpUpgrade, this, std::placeholders::_1 ) );
+    Register( "fpdowngrade", std::bind( &PCBNEW_JOBS_HANDLER::JobFpDowngrade, this, std::placeholders::_1 ) );
+    Register( "fpsvg", std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpSvg, this, std::placeholders::_1 ) );
+    Register( "pcb_diff", std::bind( &PCBNEW_JOBS_HANDLER::JobDiff, this, std::placeholders::_1 ) );
+    Register( "fp_diff", std::bind( &PCBNEW_JOBS_HANDLER::JobFpDiff, this, std::placeholders::_1 ) );
     Register( "drc", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDrc, this, std::placeholders::_1 ) );
-    Register( "ipc2581",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpc2581, this, std::placeholders::_1 ) );
-    Register( "ipcd356",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpcD356, this, std::placeholders::_1 ) );
-    Register( "odb",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportOdb, this, std::placeholders::_1 ) );
-||||||| base
-    Register( "3d", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStep, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_3D* svgJob = dynamic_cast<JOB_EXPORT_PCB_3D*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( svgJob && editFrame, false );
-
-                  DIALOG_EXPORT_STEP dlg( editFrame, aParent, "", svgJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "render",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportRender, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_PCB_RENDER* renderJob = dynamic_cast<JOB_PCB_RENDER*>( job );
-
-                  KI_CHECK( renderJob, false );
-
-                  DIALOG_RENDER_JOB dlg( aParent, renderJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "upgrade", std::bind( &PCBNEW_JOBS_HANDLER::JobUpgrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "pcb_import", std::bind( &PCBNEW_JOBS_HANDLER::JobImport, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "svg", std::bind( &PCBNEW_JOBS_HANDLER::JobExportSvg, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_SVG* svgJob = dynamic_cast<JOB_EXPORT_PCB_SVG*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( svgJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, svgJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "gencad",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportGencad, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_GENCAD* gencadJob = dynamic_cast<JOB_EXPORT_PCB_GENCAD*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( gencadJob && editFrame, false );
-
-                  DIALOG_GENCAD_EXPORT_OPTIONS dlg( editFrame, gencadJob->GetSettingsDialogTitle(), gencadJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "dxf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDxf, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_DXF* dxfJob = dynamic_cast<JOB_EXPORT_PCB_DXF*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( dxfJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, dxfJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "pdf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPdf, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_PDF* pdfJob = dynamic_cast<JOB_EXPORT_PCB_PDF*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( pdfJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, pdfJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "ps", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPs, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_PS* psJob = dynamic_cast<JOB_EXPORT_PCB_PS*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( psJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, psJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "stats",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportStats, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_STATS* statsJob = dynamic_cast<JOB_EXPORT_PCB_STATS*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( statsJob && editFrame, false );
-
-                  if( statsJob->m_filename.IsEmpty() && editFrame->GetBoard() )
-                  {
-                      wxFileName boardName = editFrame->GetBoard()->GetFileName();
-                      statsJob->m_filename = boardName.GetFullPath();
-                  }
-
-                  wxWindow* parent = aParent ? aParent : static_cast<wxWindow*>( editFrame );
-
-                  DIALOG_BOARD_STATS_JOB dlg( parent, statsJob );
-
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "gerber",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerber, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_GERBER* gJob = dynamic_cast<JOB_EXPORT_PCB_GERBER*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( gJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, gJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "gerbers",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerbers, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_GERBERS* gJob = dynamic_cast<JOB_EXPORT_PCB_GERBERS*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( gJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, gJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "hpgl",
-              [&]( JOB* aJob )
-              {
-                  m_reporter->Report( _( "Plotting to HPGL is no longer supported as of KiCad 10.0.\n" ),
-                                      RPT_SEVERITY_ERROR );
-                  return CLI::EXIT_CODES::ERR_ARGS;
-              },
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( editFrame, false );
-
-                  DisplayErrorMessage( editFrame,
-                                       _( "Plotting to HPGL is no longer supported as of KiCad 10.0." ) );
-                  return false;
-              } );
-    Register( "drill",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportDrill, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_DRILL* drillJob = dynamic_cast<JOB_EXPORT_PCB_DRILL*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( drillJob && editFrame, false );
-
-                  DIALOG_GENDRILL dlg( editFrame, drillJob, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "pos", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPos, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-			  {
-				  JOB_EXPORT_PCB_POS* posJob = dynamic_cast<JOB_EXPORT_PCB_POS*>( job );
-
-				  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( posJob && editFrame, false );
-
-				  DIALOG_GEN_FOOTPRINT_POSITION dlg( posJob, editFrame, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-			  } );
-    Register( "fpupgrade",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpUpgrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "fpsvg",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpSvg, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "drc", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDrc, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_PCB_DRC* drcJob = dynamic_cast<JOB_PCB_DRC*>( job );
-
-                  KI_CHECK( drcJob, false );
-
-                  DIALOG_DRC_JOB_CONFIG dlg( aParent, drcJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "ipc2581",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpc2581, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_IPC2581* ipcJob = dynamic_cast<JOB_EXPORT_PCB_IPC2581*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( ipcJob && editFrame, false );
-
-                  DIALOG_EXPORT_2581 dlg( ipcJob, editFrame, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "ipcd356",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpcD356, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "odb",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportOdb, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_ODB* odbJob = dynamic_cast<JOB_EXPORT_PCB_ODB*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR,
-                                                                                             false ) );
-
-                  KI_CHECK( odbJob && editFrame, false );
-
-                  DIALOG_EXPORT_ODBPP dlg( odbJob, editFrame, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-=======
-    Register( "bom", std::bind( &PCBNEW_JOBS_HANDLER::JobExportBom, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_BOM* bomJob = dynamic_cast<JOB_EXPORT_BOM*>( job );
-
-                  PCB_EDIT_FRAME* editFrame = static_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( bomJob && editFrame, false );
-
-                  DIALOG_FOOTPRINT_FIELDS_TABLE dlg( editFrame, bomJob );
-
-                  if( dlg.WasAborted() )
-                      return false;
-
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "3d", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStep, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_3D* svgJob = dynamic_cast<JOB_EXPORT_PCB_3D*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( svgJob && editFrame, false );
-
-                  DIALOG_EXPORT_STEP dlg( editFrame, aParent, "", svgJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "render", std::bind( &PCBNEW_JOBS_HANDLER::JobExportRender, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_PCB_RENDER* renderJob = dynamic_cast<JOB_PCB_RENDER*>( job );
-
-                  KI_CHECK( renderJob, false );
-
-                  DIALOG_RENDER_JOB dlg( aParent, renderJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "upgrade", std::bind( &PCBNEW_JOBS_HANDLER::JobUpgrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "downgrade", std::bind( &PCBNEW_JOBS_HANDLER::JobDowngrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "pcb_import", std::bind( &PCBNEW_JOBS_HANDLER::JobImport, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "svg", std::bind( &PCBNEW_JOBS_HANDLER::JobExportSvg, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_SVG* svgJob = dynamic_cast<JOB_EXPORT_PCB_SVG*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( svgJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, svgJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "gencad", std::bind( &PCBNEW_JOBS_HANDLER::JobExportGencad, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_GENCAD* gencadJob = dynamic_cast<JOB_EXPORT_PCB_GENCAD*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( gencadJob && editFrame, false );
-
-                  DIALOG_GENCAD_EXPORT_OPTIONS dlg( editFrame, gencadJob->GetSettingsDialogTitle(), gencadJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "specctra_dsn",
-              std::bind( &PCBNEW_JOBS_HANDLER::JobExportSpecctraDsn, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "dxf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDxf, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_DXF* dxfJob = dynamic_cast<JOB_EXPORT_PCB_DXF*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( dxfJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, dxfJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "pdf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPdf, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_PDF* pdfJob = dynamic_cast<JOB_EXPORT_PCB_PDF*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( pdfJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, pdfJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "png", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPng, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_PNG* pngJob = dynamic_cast<JOB_EXPORT_PCB_PNG*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( pngJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, pngJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "ps", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPs, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_PS* psJob = dynamic_cast<JOB_EXPORT_PCB_PS*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( psJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, psJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "stats", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStats, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_STATS* statsJob = dynamic_cast<JOB_EXPORT_PCB_STATS*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( statsJob && editFrame, false );
-
-                  if( statsJob->m_filename.IsEmpty() && editFrame->GetBoard() )
-                  {
-                      wxFileName boardName = editFrame->GetBoard()->GetFileName();
-                      statsJob->m_filename = boardName.GetFullPath();
-                  }
-
-                  wxWindow* parent = aParent ? aParent : static_cast<wxWindow*>( editFrame );
-
-                  DIALOG_BOARD_STATS_JOB dlg( parent, statsJob );
-
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "stackup", std::bind( &PCBNEW_JOBS_HANDLER::JobExportStackup, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_STACKUP* stackupJob = dynamic_cast<JOB_EXPORT_PCB_STACKUP*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( stackupJob && editFrame, false );
-
-                  if( stackupJob->m_filename.IsEmpty() && editFrame->GetBoard() )
-                  {
-                      wxFileName boardName = editFrame->GetBoard()->GetFileName();
-                      stackupJob->m_filename = boardName.GetFullPath();
-                  }
-
-                  wxWindow* parent = aParent ? aParent : static_cast<wxWindow*>( editFrame );
-
-                  DIALOG_BOARD_STACKUP_JOB dlg( parent, stackupJob );
-
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "gerber", std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerber, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_GERBER* gJob = dynamic_cast<JOB_EXPORT_PCB_GERBER*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( gJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, gJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "gerbers", std::bind( &PCBNEW_JOBS_HANDLER::JobExportGerbers, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_GERBERS* gJob = dynamic_cast<JOB_EXPORT_PCB_GERBERS*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( gJob && editFrame, false );
-
-                  DIALOG_PLOT dlg( editFrame, aParent, gJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register(
-            "hpgl",
-            [&]( JOB* aJob )
-            {
-                m_reporter->Report( _( "Plotting to HPGL is no longer supported as of KiCad 10.0.\n" ),
-                                    RPT_SEVERITY_ERROR );
-                return CLI::EXIT_CODES::ERR_ARGS;
-            },
-            [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-            {
-                PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                KI_CHECK( editFrame, false );
-
-                DisplayErrorMessage( editFrame, _( "Plotting to HPGL is no longer supported as of KiCad 10.0." ) );
-                return false;
-            } );
-    Register( "drill", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDrill, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_DRILL* drillJob = dynamic_cast<JOB_EXPORT_PCB_DRILL*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( drillJob && editFrame, false );
-
-                  DIALOG_GENDRILL dlg( editFrame, drillJob, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "pos", std::bind( &PCBNEW_JOBS_HANDLER::JobExportPos, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_POS* posJob = dynamic_cast<JOB_EXPORT_PCB_POS*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( posJob && editFrame, false );
-
-                  DIALOG_GEN_FOOTPRINT_POSITION dlg( posJob, editFrame, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "fpupgrade", std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpUpgrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "fpdowngrade", std::bind( &PCBNEW_JOBS_HANDLER::JobFpDowngrade, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "fpsvg", std::bind( &PCBNEW_JOBS_HANDLER::JobExportFpSvg, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "pcb_diff", std::bind( &PCBNEW_JOBS_HANDLER::JobDiff, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "fp_diff", std::bind( &PCBNEW_JOBS_HANDLER::JobFpDiff, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "drc", std::bind( &PCBNEW_JOBS_HANDLER::JobExportDrc, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_PCB_DRC* drcJob = dynamic_cast<JOB_PCB_DRC*>( job );
-
-                  KI_CHECK( drcJob, false );
-
-                  DIALOG_DRC_JOB_CONFIG dlg( aParent, drcJob );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "ipc2581", std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpc2581, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_IPC2581* ipcJob = dynamic_cast<JOB_EXPORT_PCB_IPC2581*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( ipcJob && editFrame, false );
-
-                  DIALOG_EXPORT_2581 dlg( ipcJob, editFrame, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "ipcd356", std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpcD356, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
-    Register( "odb", std::bind( &PCBNEW_JOBS_HANDLER::JobExportOdb, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_ODB* odbJob = dynamic_cast<JOB_EXPORT_PCB_ODB*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( odbJob && editFrame, false );
-
-                  DIALOG_EXPORT_ODBPP dlg( odbJob, editFrame, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
-    Register( "idf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportIdf, this, std::placeholders::_1 ),
-              [aKiway]( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  JOB_EXPORT_PCB_IDF* idfJob = dynamic_cast<JOB_EXPORT_PCB_IDF*>( job );
-
-                  PCB_EDIT_FRAME* editFrame =
-                          dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
-
-                  KI_CHECK( idfJob && editFrame, false );
-
-                  DIALOG_EXPORT_IDF3 dlg( idfJob, editFrame, aParent );
-                  return dlg.ShowModal() == wxID_OK;
-              } );
->>>>>>> theirs
+    Register( "ipc2581", std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpc2581, this, std::placeholders::_1 ) );
+    Register( "ipcd356", std::bind( &PCBNEW_JOBS_HANDLER::JobExportIpcD356, this, std::placeholders::_1 ) );
+    Register( "odb", std::bind( &PCBNEW_JOBS_HANDLER::JobExportOdb, this, std::placeholders::_1 ) );
+    Register( "idf", std::bind( &PCBNEW_JOBS_HANDLER::JobExportIdf, this, std::placeholders::_1 ) );
 }
 
 
@@ -796,20 +204,13 @@ PCBNEW_JOBS_HANDLER::~PCBNEW_JOBS_HANDLER()
 }
 
 
-<<<<<<< ours
-void PCBNEW_JOBS_HANDLER::fillAllZones( BOARD* aBoard )
-||||||| base
-TOOL_MANAGER* PCBNEW_JOBS_HANDLER::getToolManager( BOARD* aBrd )
-=======
 void PCBNEW_JOBS_HANDLER::ClearCachedBoard()
 {
     m_cliBoard.reset();
-    m_toolManager.reset();
 }
 
 
-TOOL_MANAGER* PCBNEW_JOBS_HANDLER::getToolManager( BOARD* aBrd )
->>>>>>> theirs
+void PCBNEW_JOBS_HANDLER::fillAllZones( BOARD* aBoard )
 {
     FillAllBoardZones( aBoard, m_progressReporter );
 }
@@ -1745,15 +1146,10 @@ int PCBNEW_JOBS_HANDLER::JobExportRender( JOB* aJob )
 
 
 bool PCBNEW_JOBS_HANDLER::preparePlotLayers( JOB_EXPORT_PCB_PLOT* aJob, BOARD* aBoard,
-                                             TOOL_MANAGER* aToolManager, LSEQ& aLayersToPlot )
+                                             LSEQ& aLayersToPlot )
 {
     if( aJob->m_checkZonesBeforePlot )
-    {
-        if( !aToolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            aToolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        aToolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
-    }
+        fillAllZones( aBoard );
 
     if( aJob->m_argLayers )
         aJob->m_plotLayerSequence = convertLayerArg( aJob->m_argLayers.value(), aBoard );
@@ -1850,44 +1246,9 @@ int PCBNEW_JOBS_HANDLER::JobExportSvg( JOB* aJob )
         return CLI::EXIT_CODES::ERR_INVALID_OUTPUT_CONFLICT;
     }
 
-<<<<<<< ours
-    if( aSvgJob->m_checkZonesBeforePlot )
-    {
-        fillAllZones( brd );
-    }
-
-    if( aSvgJob->m_argLayers )
-        aSvgJob->m_plotLayerSequence = convertLayerArg( aSvgJob->m_argLayers.value(), brd );
-
-    if( aSvgJob->m_argCommonLayers )
-        aSvgJob->m_plotOnAllLayersSequence = convertLayerArg( aSvgJob->m_argCommonLayers.value(), brd );
-
-    if( aSvgJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-||||||| base
-    if( aSvgJob->m_checkZonesBeforePlot )
-    {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
-    }
-
-    if( aSvgJob->m_argLayers )
-        aSvgJob->m_plotLayerSequence = convertLayerArg( aSvgJob->m_argLayers.value(), brd );
-
-    if( aSvgJob->m_argCommonLayers )
-        aSvgJob->m_plotOnAllLayersSequence = convertLayerArg( aSvgJob->m_argCommonLayers.value(), brd );
-
-    if( aSvgJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-=======
     LSEQ layersToPlot;
 
-    if( !preparePlotLayers( aSvgJob, brd, toolManager, layersToPlot ) )
->>>>>>> theirs
+    if( !preparePlotLayers( aSvgJob, brd, layersToPlot ) )
         return CLI::EXIT_CODES::ERR_ARGS;
 
     PCB_PLOT_PARAMS plotOpts;
@@ -1915,44 +1276,9 @@ int PCBNEW_JOBS_HANDLER::JobExportDxf( JOB* aJob )
         brd->SetCurrentVariant( aDxfJob->m_variant );
 
 
-<<<<<<< ours
-    if( aDxfJob->m_checkZonesBeforePlot )
-    {
-        fillAllZones( brd );
-    }
-
-    if( aDxfJob->m_argLayers )
-        aDxfJob->m_plotLayerSequence = convertLayerArg( aDxfJob->m_argLayers.value(), brd );
-
-    if( aDxfJob->m_argCommonLayers )
-        aDxfJob->m_plotOnAllLayersSequence = convertLayerArg( aDxfJob->m_argCommonLayers.value(), brd );
-
-    if( aDxfJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-||||||| base
-    if( aDxfJob->m_checkZonesBeforePlot )
-    {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
-    }
-
-    if( aDxfJob->m_argLayers )
-        aDxfJob->m_plotLayerSequence = convertLayerArg( aDxfJob->m_argLayers.value(), brd );
-
-    if( aDxfJob->m_argCommonLayers )
-        aDxfJob->m_plotOnAllLayersSequence = convertLayerArg( aDxfJob->m_argCommonLayers.value(), brd );
-
-    if( aDxfJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-=======
     LSEQ layersToPlot;
 
-    if( !preparePlotLayers( aDxfJob, brd, toolManager, layersToPlot ) )
->>>>>>> theirs
+    if( !preparePlotLayers( aDxfJob, brd, layersToPlot ) )
         return CLI::EXIT_CODES::ERR_ARGS;
 
     const bool isSingle = aDxfJob->m_genMode == JOB_EXPORT_PCB_DXF::GEN_MODE::SINGLE;
@@ -1991,50 +1317,9 @@ int PCBNEW_JOBS_HANDLER::JobExportPdf( JOB* aJob )
         brd->SetCurrentVariant( pdfJob->m_variant );
 
 
-<<<<<<< ours
-    if( pdfJob->m_checkZonesBeforePlot )
-    {
-        fillAllZones( brd );
-    }
-
-    if( pdfJob->m_argLayers )
-        pdfJob->m_plotLayerSequence = convertLayerArg( pdfJob->m_argLayers.value(), brd );
-
-    if( pdfJob->m_argCommonLayers )
-        pdfJob->m_plotOnAllLayersSequence = convertLayerArg( pdfJob->m_argCommonLayers.value(), brd );
-
-    if( pdfJob->m_pdfGenMode == JOB_EXPORT_PCB_PDF::GEN_MODE::ALL_LAYERS_ONE_FILE )
-        plotAllLayersOneFile = true;
-
-    if( pdfJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-||||||| base
-    if( pdfJob->m_checkZonesBeforePlot )
-    {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
-    }
-
-    if( pdfJob->m_argLayers )
-        pdfJob->m_plotLayerSequence = convertLayerArg( pdfJob->m_argLayers.value(), brd );
-
-    if( pdfJob->m_argCommonLayers )
-        pdfJob->m_plotOnAllLayersSequence = convertLayerArg( pdfJob->m_argCommonLayers.value(), brd );
-
-    if( pdfJob->m_pdfGenMode == JOB_EXPORT_PCB_PDF::GEN_MODE::ALL_LAYERS_ONE_FILE )
-        plotAllLayersOneFile = true;
-
-    if( pdfJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-=======
     LSEQ layersToPlot;
 
-    if( !preparePlotLayers( pdfJob, brd, toolManager, layersToPlot ) )
->>>>>>> theirs
+    if( !preparePlotLayers( pdfJob, brd, layersToPlot ) )
         return CLI::EXIT_CODES::ERR_ARGS;
 
     bool outputIsSingle = pdfJob->m_pdfSingle;
@@ -2083,11 +1368,9 @@ int PCBNEW_JOBS_HANDLER::JobExportPng( JOB* aJob )
     if( !pngJob->m_variant.IsEmpty() )
         brd->SetCurrentVariant( pngJob->m_variant );
 
-    TOOL_MANAGER* toolManager = getToolManager( brd );
-
     LSEQ layersToPlot;
 
-    if( !preparePlotLayers( pngJob, brd, toolManager, layersToPlot ) )
+    if( !preparePlotLayers( pngJob, brd, layersToPlot ) )
         return CLI::EXIT_CODES::ERR_ARGS;
 
     bool isSingle = pngJob->m_genMode == JOB_EXPORT_PCB_PNG::GEN_MODE::SINGLE;
@@ -2126,44 +1409,9 @@ int PCBNEW_JOBS_HANDLER::JobExportPs( JOB* aJob )
         brd->SetCurrentVariant( psJob->m_variant );
 
 
-<<<<<<< ours
-    if( psJob->m_checkZonesBeforePlot )
-    {
-        fillAllZones( brd );
-    }
-
-    if( psJob->m_argLayers )
-        psJob->m_plotLayerSequence = convertLayerArg( psJob->m_argLayers.value(), brd );
-
-    if( psJob->m_argCommonLayers )
-        psJob->m_plotOnAllLayersSequence = convertLayerArg( psJob->m_argCommonLayers.value(), brd );
-
-    if( psJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-||||||| base
-    if( psJob->m_checkZonesBeforePlot )
-    {
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
-    }
-
-    if( psJob->m_argLayers )
-        psJob->m_plotLayerSequence = convertLayerArg( psJob->m_argLayers.value(), brd );
-
-    if( psJob->m_argCommonLayers )
-        psJob->m_plotOnAllLayersSequence = convertLayerArg( psJob->m_argCommonLayers.value(), brd );
-
-    if( psJob->m_plotLayerSequence.size() < 1 )
-    {
-        m_reporter->Report( _( "At least one layer must be specified\n" ), RPT_SEVERITY_ERROR );
-=======
     LSEQ layersToPlot;
 
-    if( !preparePlotLayers( psJob, brd, toolManager, layersToPlot ) )
->>>>>>> theirs
+    if( !preparePlotLayers( psJob, brd, layersToPlot ) )
         return CLI::EXIT_CODES::ERR_ARGS;
 
     bool isSingle = psJob->m_genMode == JOB_EXPORT_PCB_PS::GEN_MODE::SINGLE;
@@ -3517,14 +2765,7 @@ void PCBNEW_JOBS_HANDLER::refillFabZones( const JOB_EXPORT_PCB_FAB& aJob, BOARD*
         return;
     }
 
-    TOOL_MANAGER* toolManager = getToolManager( aBoard );
-
-    if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-    {
-        toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-    }
-
-    toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
+    fillAllZones( aBoard );
 }
 
 
@@ -3567,15 +2808,9 @@ int PCBNEW_JOBS_HANDLER::JobExportIpc2581( JOB* aJob )
         return CLI::EXIT_CODES::ERR_INVALID_OUTPUT_CONFLICT;
     }
 
-<<<<<<< ours
-    if( !ExportIPC2581( *job, brd, m_progressReporter, m_reporter ) )
-||||||| base
-    if( !DIALOG_EXPORT_2581::GenerateFile( *job, brd, m_progressReporter, m_reporter ) )
-=======
     refillFabZones( *job, brd );
 
     if( !GenerateIpc2581File( *job, brd, m_progressReporter, m_reporter ) )
->>>>>>> theirs
         return CLI::EXIT_CODES::ERR_UNKNOWN;
 
     return CLI::EXIT_CODES::SUCCESS;
@@ -3723,33 +2958,11 @@ int PCBNEW_JOBS_HANDLER::JobExportOdb( JOB* aJob )
 
     if( result.m_ok )
     {
-<<<<<<< ours
-
-        fillAllZones( brd );
-||||||| base
-        TOOL_MANAGER* toolManager = getToolManager( brd );
-
-        if( !toolManager->FindTool( ZONE_FILLER_TOOL_NAME ) )
-            toolManager->RegisterTool( new ZONE_FILLER_TOOL );
-
-        toolManager->GetTool<ZONE_FILLER_TOOL>()->FillAllZones( nullptr, m_progressReporter, true );
-=======
         for( const wxString& path : result.m_outputs )
             aJob->AddOutput( path );
->>>>>>> theirs
     }
 
-<<<<<<< ours
-    ExportODBPP( *job, brd, m_progressReporter, m_reporter );
-
-    if( m_reporter->HasMessageOfSeverity( RPT_SEVERITY_ERROR ) )
-||||||| base
-    DIALOG_EXPORT_ODBPP::GenerateODBPPFiles( *job, brd, nullptr, m_progressReporter, m_reporter );
-
-    if( m_reporter->HasMessageOfSeverity( RPT_SEVERITY_ERROR ) )
-=======
     if( !result.m_ok || m_reporter->HasMessageOfSeverity( RPT_SEVERITY_ERROR ) )
->>>>>>> theirs
         return CLI::EXIT_CODES::ERR_UNKNOWN;
 
     return CLI::EXIT_CODES::SUCCESS;

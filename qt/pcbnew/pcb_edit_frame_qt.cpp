@@ -210,6 +210,7 @@ void PCB_EDIT_FRAME::setupToolkitEvents()
                                 {
                                     redrawNetnames();
                                     m_lastNetnamesViewport = viewport;
+                                    m_lastNetnamesScale = GetCanvas()->GetView()->GetScale();
                                 }
                             } );
 }

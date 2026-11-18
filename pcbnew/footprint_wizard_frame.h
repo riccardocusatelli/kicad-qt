@@ -36,28 +36,8 @@ class wxSashLayoutWindow;
 class wxSashEvent;
 class wxTextCtrl;
 class FOOTPRINT_EDIT_FRAME;
-<<<<<<< b2e17e0a
 class PCBNEW_SETTINGS;
-
-
-enum WizardParameterColumnNames
-{
-    WIZ_COL_NAME = 0,
-    WIZ_COL_VALUE,
-    WIZ_COL_UNITS
-};
-||||||| 1304b76aad
-
-
-enum WizardParameterColumnNames
-{
-    WIZ_COL_NAME = 0,
-    WIZ_COL_VALUE,
-    WIZ_COL_UNITS
-};
-=======
 class FOOTPRINT_WIZARD_PROPERTIES_PANEL;
->>>>>>> ed8c16703e
 
 class FOOTPRINT_WIZARD_FRAME : public PCB_BASE_EDIT_FRAME
 {

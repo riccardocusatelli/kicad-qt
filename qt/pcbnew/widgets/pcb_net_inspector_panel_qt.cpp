@@ -354,6 +354,7 @@ void PCB_NET_INSPECTOR_PANEL::adjustListColumnSizes( PANEL_NET_INSPECTOR_SETTING
                     switch( columnID )
                     {
                     case COLUMN_NAME:      return minNameWidth + extra_width;
+                    case COLUMN_NET_CHAIN:
                     case COLUMN_NETCLASS:  return minNameWidth + margins;
                     case COLUMN_VIA_COUNT: return minNumberWidth + margins;
                     case COLUMN_PAD_COUNT: return minNumberWidth + margins;
@@ -660,6 +661,7 @@ void PCB_NET_INSPECTOR_PANEL::OnConfigButton()
 
     // Grouping menu items
     addItem( &menu, ID_GROUP_BY_NETCLASS, _( "Group by Netclass" ), m_groupByNetclass );
+    addItem( &menu, ID_GROUP_BY_NET_CHAIN, _( "Group by Net Chain" ), m_groupByNetChain );
 
     menu.addSeparator();
 

@@ -58,7 +58,6 @@
 #include <scoped_set_reset.h>
 #include <string_utils.h>
 #include <wx_fstream_progress.h>
-#include <pcb_io/common/footprint_order.h>
 
 #include <geometry/shape_line_chain.h>
 #include <geometry/shape_poly_set.h>
@@ -3946,7 +3945,6 @@ void PCB_IO_IPC2581::generateLayerFeatures( wxXmlNode* aStepNode )
     const NETINFO_LIST& nets = m_board->GetNetInfo();
     FAB_LAYER_INDEX index( *m_board );
 
-    const FOOTPRINT_ORDER footprintOrder( m_board );
 
     for( PCB_LAYER_ID layer : layers )
     {
@@ -3967,30 +3965,11 @@ void PCB_IO_IPC2581::generateLayerFeatures( wxXmlNode* aStepNode )
                 {
                     auto netItems = netsOnLayer.find( net );
 
-<<<<<<< ours
-            std::stable_sort( vec.begin(), vec.end(), footprintOrder );
-
-            generateLayerSetNet( layerNode, layer, vec );
-        };
-||||||| base
-            std::stable_sort( vec.begin(), vec.end(),
-                       []( BOARD_ITEM* a, BOARD_ITEM* b )
-                       {
-                            if( a->GetParentFootprint() == b->GetParentFootprint() )
-                                return a->Type() < b->Type();
-
-                            return a->GetParentFootprint() < b->GetParentFootprint();
-                       } );
-
-            generateLayerSetNet( layerNode, layer, vec );
-        };
-=======
                     if( netItems == netsOnLayer.end() || netItems->second.empty() )
                         return;
 
                     generateLayerSetNet( layerNode, layer, netItems->second );
                 };
->>>>>>> theirs
 
         for( const NETINFO_ITEM* net : nets )
         {
@@ -4571,24 +4550,8 @@ wxXmlNode* PCB_IO_IPC2581::generateAvlSection()
     std::vector<FOOTPRINT*>     footprints;
     std::vector<AVL_ROW>        rows;
 
-<<<<<<< ours
-    // In the order of the board: the first footprint of each part gives its vendor data
     for( FOOTPRINT* fp : m_board->Footprints() )
-||||||| base
-    for( auto& [fp, name] : m_OEMRef_dict )
-=======
-    for( FOOTPRINT* fp : m_board->Footprints() )
->>>>>>> theirs
     {
-<<<<<<< ours
-        auto refIt = m_OEMRef_dict.find( fp );
-
-        if( refIt == m_OEMRef_dict.end() )
-            continue;
-
-        const wxString& name = refIt->second;
-||||||| base
-=======
         auto it = m_OEMRef_dict.find( fp );
 
         if( it == m_OEMRef_dict.end() )
@@ -4602,7 +4565,6 @@ wxXmlNode* PCB_IO_IPC2581::generateAvlSection()
     {
         FOOTPRINT*      fp = footprints[index];
         const wxString& name = rows[index].m_oemName;
->>>>>>> theirs
         auto [ it, success ] = unique_parts.insert( name );
 
         if( !success )

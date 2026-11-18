@@ -147,142 +147,7 @@ PL_EDITOR_FRAME::PL_EDITOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     configureToolbars();
     RecreateToolbars();
 
-<<<<<<< b2e17e0a
     setupLayout();
-||||||| 1304b76aad
-    wxStatusBar* stsbar = GetStatusBar();
-    int          spacer = KIUI::GetTextSize( wxT( "M" ), stsbar ).x * 2;
-
-    int dims[] = {
-
-        // balance of status bar on far left is set to a default or whatever is left over.
-        -1,
-
-        // When using GetTextSize() remember the width of '1' is not the same
-        // as the width of '0' unless the font is fixed width, and it usually won't be.
-
-        // zoom:
-        KIUI::GetTextSize( wxT( "Z 762000" ), stsbar ).x + spacer,
-
-        // cursor coords
-        KIUI::GetTextSize( wxT( "X 0234.567  Y 0234.567" ), stsbar ).x + spacer,
-
-        // delta distances
-        KIUI::GetTextSize( wxT( "dx 0234.567  dx 0234.567" ), stsbar ).x + spacer,
-
-        // grid size
-        KIUI::GetTextSize( wxT( "grid 0234.567" ), stsbar ).x + spacer,
-
-        // Coord origin (use the bigger message)
-        KIUI::GetTextSize( _( "coord origin: Right Bottom page corner" ), stsbar ).x + spacer,
-
-        // units display, Inches is bigger than mm
-        KIUI::GetTextSize( _( "Inches" ), stsbar ).x + spacer,
-
-        // constraint mode
-        KIUI::GetTextSize( _( "Constrain to H, V, 45" ), stsbar ).x + spacer
-    };
-
-    if( stsbar )
-        stsbar->SetFieldsCount( arrayDim( dims ), dims );
-
-    m_auimgr.SetManagedWindow( this );
-
-    CreateInfoBar();
-    m_propertiesPagelayout = new PROPERTIES_FRAME( this );
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-                      .Top().Layer( 6 ) );
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" )
-                      .Left().Layer( 3 ) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" )
-                      .Bottom().Layer( 6 ) );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
-                      .Right().Layer( 2 ) );
-
-    m_auimgr.AddPane( m_propertiesPagelayout, EDA_PANE().Palette().Name( "Props" )
-                      .Right().Layer( 3 )
-                      .Caption( _( "Properties" ) )
-                      .MinSize( m_propertiesPagelayout->GetMinSize() )
-                      .BestSize( m_propertiesFrameWidth, -1 ) );
-
-    // Center
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" )
-                      .Center() );
-
-    FinishAUIInitialization();
-=======
-    if( KISTATUSBAR* statusBar = dynamic_cast<KISTATUSBAR*>( GetStatusBar() ) )
-    {
-        int spacer = KIUI::GetTextSize( wxT( "M" ), statusBar ).x * 2;
-
-        int dims[] = {
-
-            // balance of status bar on far left is set to a default or whatever is left over.
-            -1,
-
-            // When using GetTextSize() remember the width of '1' is not the same
-            // as the width of '0' unless the font is fixed width, and it usually won't be.
-
-            // zoom:
-            KIUI::GetTextSize( wxT( "Z 762000" ), statusBar ).x + spacer,
-
-            // cursor coords
-            KIUI::GetTextSize( wxT( "X 0234.567  Y 0234.567" ), statusBar ).x + spacer,
-
-            // delta distances
-            KIUI::GetTextSize( wxT( "dx 0234.567  dx 0234.567" ), statusBar ).x + spacer,
-
-            // grid size
-            KIUI::GetTextSize( wxT( "grid 0234.567" ), statusBar ).x + spacer,
-
-            // Coord origin (use the bigger message)
-            KIUI::GetTextSize( _( "coord origin: Right Bottom page corner" ), statusBar ).x + spacer,
-
-            // units display, Inches is bigger than mm
-            KIUI::GetTextSize( _( "Inches" ), statusBar ).x + spacer,
-
-            // constraint mode
-            KIUI::GetTextSize( _( "Constrain to H, V, 45" ), statusBar ).x + spacer
-        };
-
-        statusBar->SetFieldsCount( arrayDim( dims ), dims );
-    }
-
-    m_auimgr.SetManagedWindow( this );
-
-    CreateInfoBar();
-    m_propertiesPagelayout = new PL_PROPERTIES_PANEL( this );
-    m_propertiesPagelayout->SetSplitterProportion(
-            static_cast<PL_EDITOR_SETTINGS*>( config() )->m_PropertiesSplitter );
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-                      .Top().Layer( 6 ) );
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" )
-                      .Left().Layer( 3 ) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" )
-                      .Bottom().Layer( 6 ) );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
-                      .Right().Layer( 2 ) );
-
-    m_auimgr.AddPane( m_propertiesPagelayout, EDA_PANE().Palette().Name( "Props" )
-                      .Right().Layer( 3 )
-                      .Caption( _( "Properties" ) )
-                      .MinSize( m_propertiesPagelayout->GetMinSize() )
-                      .BestSize( m_propertiesFrameWidth, -1 ) );
-
-    // Center
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" )
-                      .Center() );
-
-    FinishAUIInitialization();
->>>>>>> ed8c16703e
 
     resolveCanvasType();
 
@@ -491,19 +356,9 @@ void PL_EDITOR_FRAME::OnExit( wxCommandEvent& aEvent )
 bool PL_EDITOR_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Shutdown blocks must be determined and vetoed as early as possible
-<<<<<<< b2e17e0a
     if( KIPLATFORM::APP::SupportsShutdownBlockReason()
             && aRequest.IsSessionEndQuery()
             && IsContentModified() )
-    {
-||||||| 1304b76aad
-    if( KIPLATFORM::APP::SupportsShutdownBlockReason()
-            && aEvent.GetId() == wxEVT_QUERY_END_SESSION
-            && IsContentModified() )
-    {
-=======
-    if( isBlockableSessionEnd() && IsContentModified() )
->>>>>>> ed8c16703e
         return false;
 
     if( IsContentModified() )

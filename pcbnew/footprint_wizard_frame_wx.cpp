@@ -53,9 +53,9 @@ void FOOTPRINT_WIZARD_FRAME::setupLayout()
                       .BestSize( -1, m_msgFrameHeight ) );
 
     m_auimgr.AddPane( m_parametersPanel, EDA_PANE().Palette().Name( "Params" ).Left().Position(0)
-                      .Caption( _( "Parameters" ) ).MinSize( 360, 180 ) );
+                      .Caption( _( "Parameters" ) ).MinSize( 200, 320 ) );
     m_auimgr.AddPane( m_buildMessageBox, EDA_PANE().Palette().Name( "Output" ).Left().Position(1)
-                      .CaptionVisible( false ).MinSize( 360, -1 ) );
+                      .CaptionVisible( false ).MinSize( 120, -1 ) );
 
     m_auimgr.AddPane( GetCanvas(), wxAuiPaneInfo().Name( "DrawFrame" ).CentrePane() );
 }
@@ -71,12 +71,6 @@ void FOOTPRINT_WIZARD_FRAME::setupToolkitEvents()
           ID_FOOTPRINT_WIZARD_SELECT_WIZARD );
     Bind( wxEVT_TOOL, &FOOTPRINT_WIZARD_FRAME::ExportSelectedFootprint, this,
           ID_FOOTPRINT_WIZARD_DONE );
-
-    // listbox events
-    Bind( wxEVT_LISTBOX, &FOOTPRINT_WIZARD_FRAME::ClickOnPageList, this,
-          ID_FOOTPRINT_WIZARD_PAGE_LIST );
-    Bind( wxEVT_GRID_CELL_CHANGED, &FOOTPRINT_WIZARD_FRAME::ParametersUpdated, this,
-          ID_FOOTPRINT_WIZARD_PARAMETER_LIST );
 }
 
 

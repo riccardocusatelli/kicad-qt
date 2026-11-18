@@ -397,19 +397,10 @@ void PCB_SELECTION_TOOL::OnIdle()
 {
     if( m_frame->IsActive() && m_frame->IsEnabled() && m_frame->ToolStackIsEmpty() && !m_inSelectMultiple )
     {
-<<<<<<< b2e17e0a
+        bool dragSelected = m_frame->GetDragAction() == MOUSE_DRAG_ACTION::DRAG_SELECTED;
+
         setModifiersState( TOOLKIT::IsKeyDown( WXK_SHIFT ), TOOLKIT::IsKeyDown( WXK_CONTROL ),
                            TOOLKIT::IsKeyDown( WXK_ALT ) );
-||||||| 1304b76aad
-        wxMouseState keyboardState = wxGetMouseState();
-
-        setModifiersState( keyboardState.ShiftDown(), keyboardState.ControlDown(), keyboardState.AltDown() );
-=======
-        bool         dragSelected = m_frame->GetDragAction() == MOUSE_DRAG_ACTION::DRAG_SELECTED;
-        wxMouseState keyboardState = wxGetMouseState();
-
-        setModifiersState( keyboardState.ShiftDown(), keyboardState.ControlDown(), keyboardState.AltDown() );
->>>>>>> ed8c16703e
 
         if( m_additive )
             m_frame->GetCanvas()->SetCurrentCursor( KICURSOR::ADD );

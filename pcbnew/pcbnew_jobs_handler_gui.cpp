@@ -21,27 +21,34 @@
 
 #include <confirm.h>
 #include <core/ki_assert.h>
+#include <dialogs/dialog_board_stackup_job.h>
 #include <dialogs/dialog_board_stats_job.h>
 #include <dialogs/dialog_drc_job_config.h>
 #include <dialogs/dialog_export_2581.h>
 #include <dialogs/dialog_export_odbpp.h>
+#include <dialogs/dialog_export_idf.h>
 #include <dialogs/dialog_export_step.h>
+#include <dialogs/dialog_footprint_fields_table.h>
 #include <dialogs/dialog_gen_footprint_position.h>
 #include <dialogs/dialog_gencad_export_options.h>
 #include <dialogs/dialog_gendrill.h>
 #include <dialogs/dialog_plot.h>
 #include <dialogs/dialog_render_job.h>
+#include <jobs/job_export_bom.h>
 #include <jobs/job_export_pcb_3d.h>
 #include <jobs/job_export_pcb_drill.h>
 #include <jobs/job_export_pcb_dxf.h>
 #include <jobs/job_export_pcb_gencad.h>
 #include <jobs/job_export_pcb_gerber.h>
 #include <jobs/job_export_pcb_gerbers.h>
+#include <jobs/job_export_pcb_idf.h>
 #include <jobs/job_export_pcb_ipc2581.h>
 #include <jobs/job_export_pcb_odb.h>
 #include <jobs/job_export_pcb_pdf.h>
+#include <jobs/job_export_pcb_png.h>
 #include <jobs/job_export_pcb_pos.h>
 #include <jobs/job_export_pcb_ps.h>
+#include <jobs/job_export_pcb_stackup.h>
 #include <jobs/job_export_pcb_stats.h>
 #include <jobs/job_export_pcb_svg.h>
 #include <jobs/job_pcb_drc.h>
@@ -59,6 +66,22 @@ PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
         PCBNEW_JOBS_HANDLER( aKiway ),
         m_guiKiway( aKiway )
 {
+    RegisterConfig( "bom",
+                    [this]( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        JOB_EXPORT_BOM* bomJob = dynamic_cast<JOB_EXPORT_BOM*>( job );
+
+                        PCB_EDIT_FRAME* editFrame = boardEditor();
+
+                        KI_CHECK( bomJob && editFrame, false );
+
+                        DIALOG_FOOTPRINT_FIELDS_TABLE dlg( editFrame, bomJob );
+
+                        if( dlg.WasAborted() )
+                            return false;
+
+                        return dlg.ShowModal() == wxID_OK;
+                    } );
     RegisterConfig( "3d",
                     [this]( JOB* job, wxWindow* aParent ) -> bool
                     {
@@ -82,6 +105,11 @@ PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                         return dlg.ShowModal() == wxID_OK;
                     } );
     RegisterConfig( "upgrade",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
+    RegisterConfig( "downgrade",
                     []( JOB* job, wxWindow* aParent ) -> bool
                     {
                         return true;
@@ -115,6 +143,11 @@ PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                         DIALOG_GENCAD_EXPORT_OPTIONS dlg( editFrame, gencadJob->GetSettingsDialogTitle(), gencadJob );
                         return dlg.ShowModal() == wxID_OK;
                     } );
+    RegisterConfig( "specctra_dsn",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
     RegisterConfig( "dxf",
                     [this]( JOB* job, wxWindow* aParent ) -> bool
                     {
@@ -137,6 +170,18 @@ PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                         KI_CHECK( pdfJob && editFrame, false );
 
                         DIALOG_PLOT dlg( editFrame, aParent, pdfJob );
+                        return dlg.ShowModal() == wxID_OK;
+                    } );
+    RegisterConfig( "png",
+                    [this]( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        JOB_EXPORT_PCB_PNG* pngJob = dynamic_cast<JOB_EXPORT_PCB_PNG*>( job );
+
+                        PCB_EDIT_FRAME* editFrame = boardEditor();
+
+                        KI_CHECK( pngJob && editFrame, false );
+
+                        DIALOG_PLOT dlg( editFrame, aParent, pngJob );
                         return dlg.ShowModal() == wxID_OK;
                     } );
     RegisterConfig( "ps",
@@ -171,6 +216,26 @@ PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
 
                         DIALOG_BOARD_STATS_JOB dlg( parent, statsJob );
 
+                        return dlg.ShowModal() == wxID_OK;
+                    } );
+    RegisterConfig( "stackup",
+                    [this]( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        JOB_EXPORT_PCB_STACKUP* stackupJob = dynamic_cast<JOB_EXPORT_PCB_STACKUP*>( job );
+
+                        PCB_EDIT_FRAME* editFrame = boardEditor();
+
+                        KI_CHECK( stackupJob && editFrame, false );
+
+                        if( stackupJob->m_filename.IsEmpty() && editFrame->GetBoard() )
+                        {
+                            wxFileName boardName = editFrame->GetBoard()->GetFileName();
+                            stackupJob->m_filename = boardName.GetFullPath();
+                        }
+
+                        wxWindow* parent = aParent ? aParent : static_cast<wxWindow*>( editFrame );
+
+                        DIALOG_BOARD_STACKUP_JOB dlg( parent, stackupJob );
                         return dlg.ShowModal() == wxID_OK;
                     } );
     RegisterConfig( "gerber",
@@ -237,7 +302,22 @@ PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                     {
                         return true;
                     } );
+    RegisterConfig( "fpdowngrade",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
     RegisterConfig( "fpsvg",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
+    RegisterConfig( "pcb_diff",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
+    RegisterConfig( "fp_diff",
                     []( JOB* job, wxWindow* aParent ) -> bool
                     {
                         return true;
@@ -279,6 +359,18 @@ PCBNEW_JOBS_HANDLER_GUI::PCBNEW_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                         KI_CHECK( odbJob && editFrame, false );
 
                         DIALOG_EXPORT_ODBPP dlg( odbJob, editFrame, aParent );
+                        return dlg.ShowModal() == wxID_OK;
+                    } );
+    RegisterConfig( "idf",
+                    [this]( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        JOB_EXPORT_PCB_IDF* idfJob = dynamic_cast<JOB_EXPORT_PCB_IDF*>( job );
+
+                        PCB_EDIT_FRAME* editFrame = boardEditor();
+
+                        KI_CHECK( idfJob && editFrame, false );
+
+                        DIALOG_EXPORT_IDF3 dlg( idfJob, editFrame, aParent );
                         return dlg.ShowModal() == wxID_OK;
                     } );
 }

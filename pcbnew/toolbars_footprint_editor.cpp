@@ -270,10 +270,9 @@ void FOOTPRINT_EDIT_FRAME::configureToolbars()
 }
 
 
-void FOOTPRINT_EDIT_FRAME::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
+void FOOTPRINT_EDIT_FRAME::onPluginAvailabilityChanged()
 {
-    KI_LOG_TRACE( traceApi, "Footprint editor frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
+    KI_LOG_TRACE( traceApi, "Footprint editor frame: plugin availability changed" );
     RecreateToolbars();
     ReCreateMenuBar();
-    aEvt.Skip();
 }

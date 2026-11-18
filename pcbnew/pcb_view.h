@@ -29,6 +29,22 @@ class COLOR_SETTINGS;
 class PCB_DISPLAY_OPTIONS;
 class PROGRESS_REPORTER;
 
+/// Apply pcbnew's canonical GAL layer order (copper and zones below silk, fab
+/// and courtyard) to any view, including ones that are not a PCB_VIEW.
+void ApplyPcbGalLayerOrder( KIGFX::VIEW* aView );
+
+/// Make pcbnew's derived layers (pad copper, zones, holes, netnames) follow their board layer's
+/// visibility on any view, and keep the zoom-sized footprint anchor uncached.
+void ApplyPcbGalLayerDeps( KIGFX::VIEW* aView );
+
+/**
+ * Apply the layer and element visibility of a #BOARD to a view.
+ *
+ * @param aActiveLayer is the layer being edited. Its clearance outlines are the only ones shown,
+ *                     and none are if it is not a copper layer.
+ */
+void SyncPcbLayersVisibility( KIGFX::VIEW& aView, const BOARD* aBoard, PCB_LAYER_ID aActiveLayer );
+
 namespace KIGFX {
 
 class PCB_VIEW : public VIEW
@@ -64,17 +80,23 @@ public:
      *
      * @param aCached is true for a renderer that caches the items (OpenGL); a software
      *                renderer (Cairo) draws them each time.
+     * @param aRetainedScene is true for a canvas keeping a retained scene, which caches the
+     *                       ratsnest, the reference images and the drawing sheet with the board.
      */
-    void SetDefaultLayerDeps( bool aCached );
+    void SetDefaultLayerDeps( bool aCached, bool aRetainedScene = false );
 
     /// Bring a layer, and the layers drawn with it, on top of the others.
     void SetActiveLayerOnTop( PCB_LAYER_ID aLayer );
 
-    /// Set the layer shown in high contrast mode (and bring it on top).
+    /// Set the layers shown in high contrast mode (and bring them on top), without recolouring.
     void SetHighContrastLayer( PCB_LAYER_ID aLayer );
 
-    /// Show the layers and the elements visible in the board.
-    void SyncLayersVisibility( const BOARD* aBoard );
+    /**
+     * Show the layers and the elements visible in the board.
+     *
+     * @param aActiveLayer is the layer being edited: its clearance outlines are the only ones shown.
+     */
+    void SyncLayersVisibility( const BOARD* aBoard, PCB_LAYER_ID aActiveLayer = UNDEFINED_LAYER );
 
     /// Show the items of a board (replacing the current ones).
     void ShowBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr );

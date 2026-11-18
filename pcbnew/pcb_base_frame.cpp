@@ -22,16 +22,8 @@
  */
 
 #include <boost/version.hpp>
-<<<<<<< b2e17e0a
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
-
-#if BOOST_VERSION >= 106700
-||||||| 1304b76aad
-
-#if BOOST_VERSION >= 106700
-=======
->>>>>>> ed8c16703e
 #include <boost/uuid/entropy_error.hpp>
 
 #include <3d_viewer/eda_3d_viewer_frame.h>
@@ -114,20 +106,8 @@ bool PCB_BASE_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Close modeless dialogs.  They're trouble when they get destroyed after the frame and/or
     // board.
-<<<<<<< b2e17e0a
-    EDA_3D_VIEWER_FRAME* viewer3D = Get3DViewerFrame();
-
-    if( viewer3D )
-        viewer3D->Close( true );
-||||||| 1304b76aad
-    wxWindow* viewer3D = Get3DViewerFrame();
-
-    if( viewer3D )
-        viewer3D->Close( true );
-=======
-    if( wxWindow* our3DViewer = GetOur3DViewerFrame() )
+    if( EDA_3D_VIEWER_FRAME* our3DViewer = GetOur3DViewerFrame() )
         our3DViewer->Close( true );
->>>>>>> ed8c16703e
 
     // Similarly, wxConvBrokenFileNames uses some statically allocated variables that make it
     // crash when run later from a d'tor.
@@ -1135,17 +1115,7 @@ void PCB_BASE_FRAME::setFPWatcher( FOOTPRINT* aFootprint )
 
     if( m_watcher )
     {
-<<<<<<< b2e17e0a
         KI_LOG_TRACE( traceLibWatch, "Remove watch" );
-||||||| 1304b76aad
-    KI_LOG_TRACE( traceLibWatch, "Remove watch" );
-        m_watcher->RemoveAll();
-        m_watcher->SetOwner( nullptr );
-=======
-        KI_LOG_TRACE( traceLibWatch, "Remove watch" );
-        m_watcher->RemoveAll();
-        m_watcher->SetOwner( nullptr );
->>>>>>> ed8c16703e
         m_watcher.reset();
     }
 

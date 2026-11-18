@@ -300,7 +300,6 @@ namespace KIPLATFORM
          * controls do not exhibit this race.
          */
         void CancelPendingScroll( wxDataViewCtrl* aCtrl );
-<<<<<<< b2e17e0a
 
         /**
          * Sets the block reason why the window/application is preventing OS shutdown.
@@ -320,8 +319,6 @@ namespace KIPLATFORM
          * @param aWindow that has a shutdown block reason set
          */
         void RemoveShutdownBlockReason( wxWindow* aWindow );
-||||||| 1304b76aad
-=======
 
         /**
          * The width last asked of aColumn, by SetWidth or by the user dragging its border.
@@ -376,7 +373,6 @@ namespace KIPLATFORM
          * This makes the realized child's window native so the present is clipped around it.
          */
         void KeepAboveExternalRendering( wxWindow* aChild );
->>>>>>> ed8c16703e
     }
 }
 

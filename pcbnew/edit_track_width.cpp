@@ -98,27 +98,22 @@ void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* 
 }
 
 
-<<<<<<< b2e17e0a
-void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( int aCommandId )
-||||||| 1304b76aad
-void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( wxCommandEvent& event )
-=======
-void PCB_EDIT_FRAME::SelectViaStack_Event( wxCommandEvent& event )
+void PCB_EDIT_FRAME::SelectViaStack_Event()
 {
     int nPresets = (int) GetDesignSettings().m_ViaStackPresets.size();
-    int sel = m_SelViaStackBox->GetSelection();
+    int sel = TOOLKIT::ChoiceGetSelection( m_SelViaStackBox );
 
-    if( sel == int( m_SelViaStackBox->GetCount() - 2 ) )
+    if( sel == TOOLKIT::ChoiceGetCount( m_SelViaStackBox ) - 2 )
     {
         // the "---" separator
-        m_SelViaStackBox->SetSelection( GetDesignSettings().GetViaStackIndex() );
+        TOOLKIT::ChoiceSetSelection( m_SelViaStackBox, GetDesignSettings().GetViaStackIndex() );
     }
-    else if( sel == int( m_SelViaStackBox->GetCount() - 1 ) )
+    else if( sel == TOOLKIT::ChoiceGetCount( m_SelViaStackBox ) - 1 )
     {
         // "Edit Via Stacks..."
-        m_SelViaStackBox->SetSelection( GetDesignSettings().GetViaStackIndex() );
+        TOOLKIT::ChoiceSetSelection( m_SelViaStackBox, GetDesignSettings().GetViaStackIndex() );
 
-        // See the matching comment in Tracks_and_Vias_Size_Event: defer so the GTK
+        // See the matching comment in onTrackWidthChoice(): defer so the GTK
         // EVT_CHOICE signal unwinds before the toolbar is rebuilt.
         CallAfter(
                 [this]()
@@ -135,8 +130,7 @@ void PCB_EDIT_FRAME::SelectViaStack_Event( wxCommandEvent& event )
 }
 
 
-void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( wxCommandEvent& event )
->>>>>>> ed8c16703e
+void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( int aCommandId )
 {
     int ii;
     int id = aCommandId;

@@ -43,7 +43,7 @@ void PCB_LAYER_BOX_SELECTOR::Resync()
 
     const int size = 14;
 
-    LSET show = ( LSET::AllCuMask() | LSET::AllNonCuMask() ) & ~m_layerMaskDisable;
+    LSET show = LSET::AllLayersMask() & ~m_layerMaskDisable;
     LSET activated = getEnabledLayers() & ~m_layerMaskDisable;
 
     for( PCB_LAYER_ID layerid : show.UIOrder() )
@@ -81,7 +81,9 @@ void PCB_LAYER_BOX_SELECTOR::Resync()
     SetMinSize( wxSize( -1, -1 ) );
     wxSize bestSize = GetBestSize();
 
+#ifdef __WX_MAC__  // Mac widget GetBestSize() already includes icon width
     bestSize.x = GetBestSize().x + size + 10;
+#endif
     SetMinSize( bestSize );
 
     SetSelection( wxNOT_FOUND );

@@ -836,14 +836,8 @@ bool PCB_TEXTBOX::HitTest( const SHAPE_LINE_CHAIN& aPoly, bool aContained ) cons
 wxString PCB_TEXTBOX::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "PCB text box '%s' on %s" ),
-<<<<<<< b2e17e0a
-                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ), GetLayerName() );
-||||||| 1304b76aad
-                             aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() ), GetLayerName() );
-=======
-                             aFull ? GetShownText( FOR_GUI ) : KIUI::EllipsizeMenuText( GetText() ),
+                             aFull ? GetShownText( FOR_GUI ) : EllipsizeMenuText( GetText() ),
                              GetLayerName() );
->>>>>>> ed8c16703e
 }
 
 

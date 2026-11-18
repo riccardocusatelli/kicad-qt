@@ -41,33 +41,14 @@
 #include <wx/wfstream.h>
 #include <wx/log.h>
 
-<<<<<<< b2e17e0a
-#include <decompress.hpp>
 #include <core/ki_log.h>
 
-
-#define PLUGIN_VRML_MAJOR 1
-#define PLUGIN_VRML_MINOR 3
-#define PLUGIN_VRML_PATCH 2
-#define PLUGIN_VRML_REVNO 2
-
-||||||| 1304b76aad
-#include <decompress.hpp>
-
-
-#define PLUGIN_VRML_MAJOR 1
-#define PLUGIN_VRML_MINOR 3
-#define PLUGIN_VRML_PATCH 2
-#define PLUGIN_VRML_REVNO 2
-
-=======
 #include <algorithm>
 #include <limits>
 #include <memory>
 #include <vector>
 #include "loadmodel.h"
 #include "../model_import_internal.h"
->>>>>>> ed8c16703e
 
 /**
  * Flag to enable VRML plugin trace output.

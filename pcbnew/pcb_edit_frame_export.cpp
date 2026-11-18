@@ -26,6 +26,7 @@
 #include <wx/msgdlg.h>
 
 #include <board.h>
+#include <board_commit.h>
 #include <confirm.h>
 #include <exporters/export_idf.h>
 #include <exporters/export_vrml.h>
@@ -33,29 +34,11 @@
 #include <pcb_edit_frame.h>
 #include <pcb_track.h>
 #include <specctra_import_export/specctra.h>
+#include <tool/actions.h>
+#include <tool/tool_manager.h>
 #include <view/view.h>
 
 using namespace DSN;
-
-
-/**
- * Generate IDFv3 compliant board (*.emn) and library (*.emp) files representing the user's
- * PCB design.
- */
-bool PCB_EDIT_FRAME::Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
-                                  bool aUseThou, double aXRef, double aYRef,
-                                  bool aIncludeUnspecified, bool aIncludeDNP )
-{
-    wxString errorMsg;
-
-    bool ok = ExportBoardToIDF3( aPcb, &Prj(), aFullFileName, aUseThou, aXRef, aYRef,
-                                 aIncludeUnspecified, aIncludeDNP, &errorMsg );
-
-    if( !ok )
-        wxMessageBox( errorMsg );
-
-    return ok;
-}
 
 
 bool PCB_EDIT_FRAME::ExportVRML_File( const wxString& aFullFileName, double aMMtoWRMLunit,
@@ -115,22 +98,20 @@ bool PCB_EDIT_FRAME::ExportSpecctraFile( const wxString& aFullFilename )
 
 bool PCB_EDIT_FRAME::ImportSpecctraSession( const wxString& fullFileName )
 {
-    // To avoid issues with undo/redo lists (dangling pointers) clear the lists
-    // todo: use undo/redo feature
-    ClearUndoRedoList();
+    BOARD_COMMIT commit( this );
 
-    if( GetCanvas() )    // clear view:
-    {
-        for( PCB_TRACK* track : GetBoard()->Tracks() )
-            GetCanvas()->GetView()->Remove( track );
-    }
+    // Avoid dangling selection pointers when tracks/vias are removed by the import.
+    if( TOOL_MANAGER* tools = GetToolManager() )
+        tools->RunAction( ACTIONS::selectionClear );
 
     try
     {
-        DSN::ImportSpecctraSession( GetBoard(), fullFileName );
+        DSN::ImportSpecctraSession( GetBoard(), fullFileName, commit );
     }
     catch( const IO_ERROR& ioe )
     {
+        commit.Revert();
+
         wxString msg = _( "Board may be corrupted, do not save it.\n Fix problem and try again" );
 
         wxString extra = ioe.What();
@@ -139,20 +120,9 @@ bool PCB_EDIT_FRAME::ImportSpecctraSession( const wxString& fullFileName )
         return false;
     }
 
-    OnModify();
-
-    if( GetCanvas() )    // Update view:
-    {
-        // Update footprint positions
-
-        // add imported tracks (previous tracks are removed, therefore all are new)
-        for( PCB_TRACK* track : GetBoard()->Tracks() )
-            GetCanvas()->GetView()->Add( track );
-    }
+    commit.Push( _( "Import Specctra Session" ) );
 
     SetStatusText( wxString( _( "Session file imported and merged OK." ) ) );
-
-    Refresh();
 
     return true;
 }

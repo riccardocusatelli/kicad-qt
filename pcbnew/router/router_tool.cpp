@@ -461,16 +461,8 @@ protected:
 
     OPT_TOOL_EVENT eventHandler( int aId ) override
     {
-<<<<<<< b2e17e0a
-        BOARD_DESIGN_SETTINGS &bds = m_frame.GetBoard()->GetDesignSettings();
-        int id = aId;
-||||||| 1304b76aad
-        BOARD_DESIGN_SETTINGS &bds = m_frame.GetBoard()->GetDesignSettings();
-        int id = aEvent.GetId();
-=======
         BOARD_DESIGN_SETTINGS& bds = m_frame.GetBoard()->GetDesignSettings();
-        int                    id = aEvent.GetId();
->>>>>>> ed8c16703e
+        int                    id = aId;
 
         // On Windows, this handler can be called with an event ID not existing in any
         // menuitem, so only set flags when we have an ID match.
@@ -595,16 +587,8 @@ protected:
 
     OPT_TOOL_EVENT eventHandler( int aId ) override
     {
-<<<<<<< b2e17e0a
-        BOARD_DESIGN_SETTINGS &bds = m_frame.GetBoard()->GetDesignSettings();
-        int id = aId;
-||||||| 1304b76aad
-        BOARD_DESIGN_SETTINGS &bds = m_frame.GetBoard()->GetDesignSettings();
-        int id = aEvent.GetId();
-=======
         BOARD_DESIGN_SETTINGS& bds = m_frame.GetBoard()->GetDesignSettings();
-        int                    id = aEvent.GetId();
->>>>>>> ed8c16703e
+        int                    id = aId;
 
         // On Windows, this handler can be called with an event ID not existing in any
         // menuitem, so only set flags when we have an ID match.

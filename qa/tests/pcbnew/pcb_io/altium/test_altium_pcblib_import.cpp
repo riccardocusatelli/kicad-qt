@@ -22,14 +22,10 @@
  * Test suite for import of *.PcbLib libraries
  */
 
-<<<<<<< b2e17e0a
 // Before the wx headers: <wx/intl.h> defines a _() macro that clashes with Boost.Test data.
 #include <boost/test/data/test_case.hpp>
 
-||||||| 1304b76aad
-=======
 #include <memory>
->>>>>>> ed8c16703e
 #include <pcbnew_utils/board_test_utils.h>
 #include <pcbnew_utils/board_file_utils.h>
 #include <qa_utils/wx_utils/unit_test_utils.h>

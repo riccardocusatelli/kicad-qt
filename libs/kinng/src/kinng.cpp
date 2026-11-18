@@ -35,6 +35,16 @@
 static const char TraceNng[] = "KINNG";
 
 
+static void closeSocket( nng_socket aSocket )
+{
+#if NNG_MAJOR_VERSION < 2
+    nng_close( aSocket );
+#else
+    nng_socket_close( aSocket );
+#endif
+}
+
+
 KINNG_REQUEST_SERVER::KINNG_REQUEST_SERVER( const std::string& aSocketUrl ) :
         m_socketUrl( aSocketUrl ),
         m_callback()
@@ -117,18 +127,8 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     if( retCode != 0 )
     {
-<<<<<<< b2e17e0a
         KI_LOG_TRACE( TraceNng, "Got error code %d from nng_listener_create!", retCode );
-||||||| 1304b76aad
-        KI_LOG_TRACE( TraceNng,
-                    wxString::Format( wxS( "Got error code %d from nng_listener_create!" ),
-                                      retCode ) );
-=======
-        KI_LOG_TRACE( TraceNng,
-                    wxString::Format( wxS( "Got error code %d from nng_listener_create!" ),
-                                      retCode ) );
-        nng_close( socket );
->>>>>>> ed8c16703e
+        closeSocket( socket );
         return;
     }
 
@@ -138,10 +138,8 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     if( retCode != 0 )
     {
-        KI_LOG_TRACE( TraceNng,
-                    wxString::Format( wxS( "Got error code %d from nng_listener_start!" ),
-                                      retCode ) );
-        nng_close( socket );
+        KI_LOG_TRACE( TraceNng, "Got error code %d from nng_listener_start!", retCode );
+        closeSocket( socket );
         return;
     }
 
@@ -149,17 +147,8 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     while( !m_shutdown.load() )
     {
-<<<<<<< b2e17e0a
         // A message (not NNG_FLAG_ALLOC, which nng 2 does not have)
         nng_msg* msg = nullptr;
-||||||| 1304b76aad
-        char*    buf = nullptr;
-        size_t   sz;
-        uint64_t val;
-=======
-        char*    buf = nullptr;
-        size_t   sz = 0;
->>>>>>> ed8c16703e
 
         retCode = nng_recvmsg( socket, &msg, 0 );
 
@@ -168,32 +157,12 @@ void KINNG_REQUEST_SERVER::listenThread()
 
         if( retCode != 0 )
         {
-<<<<<<< b2e17e0a
             KI_LOG_TRACE( TraceNng, "Got error code %d from nng_recvmsg!", retCode );
-||||||| 1304b76aad
-            nng_free( buf, sz );
-            KI_LOG_TRACE( TraceNng,
-                        wxString::Format( wxS( "Got error code %d from nngc_recv!" ), retCode ) );
-=======
-            if( buf )
-                nng_free( buf, sz );
-
-            KI_LOG_TRACE( TraceNng,
-                        wxString::Format( wxS( "Got error code %d from nngc_recv!" ), retCode ) );
->>>>>>> ed8c16703e
             break;
         }
 
-<<<<<<< b2e17e0a
         m_sharedMessage.assign( static_cast<const char*>( nng_msg_body( msg ) ), nng_msg_len( msg ) );
         nng_msg_free( msg );
-||||||| 1304b76aad
-        m_sharedMessage.assign( buf, sz );
-=======
-        m_sharedMessage.assign( buf, sz );
-        nng_free( buf, sz );
-        buf = nullptr;
->>>>>>> ed8c16703e
 
         if( m_callback )
             m_callback( &m_sharedMessage );
@@ -218,9 +187,5 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     KI_LOG_TRACE( TraceNng, "KINNG_REQUEST_SERVER shutting down" );
 
-#if NNG_MAJOR_VERSION < 2
-    nng_close( socket );
-#else
-    nng_socket_close( socket );
-#endif
+    closeSocket( socket );
 }

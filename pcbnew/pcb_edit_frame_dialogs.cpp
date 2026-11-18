@@ -66,6 +66,13 @@
 #include <dialogs/dialog_dimension_properties.h>
 #include <dialogs/dialog_table_properties.h>
 #include <dialogs/dialog_book_reporter.h>
+#include <dialogs/dialog_generated_table_properties.h>
+#include <dialogs/panel_drill_chart_options.h>
+#include <pcb_drill_chart.h>
+#include <pcb_generated_table.h>
+#include <pcb_grid_item.h>
+#include <dialogs/dialog_find_by_properties.h>
+#include <dialogs/dialog_footprint_fields_table.h>
 #include <core/ki_assert.h>
 
 
@@ -106,84 +113,11 @@ void PCB_EDIT_FRAME::ShowBoardSetupDialog( const wxString& aInitialPage, wxWindo
     // QuasiModal required for Scintilla auto-complete
     if( dlg.ShowQuasiModal() == wxID_OK )
     {
-        // Note: We must synchronise time domain properties before nets and classes, otherwise the updates
-        // called by the board listener events are using stale data
-        GetBoard()->SynchronizeTuningProfileProperties();
-        GetBoard()->SynchronizeNetsAndNetClasses( true );
-
-        if( !GetBoard()->SynchronizeComponentClasses( std::unordered_set<wxString>() ) )
-        {
-            m_infoBar->RemoveAllButtons();
-            m_infoBar->AddCloseButton();
-            m_infoBar->ShowMessage( _( "Could not load component class assignment rules" ),
-                                    wxICON_WARNING, WX_INFOBAR::MESSAGE_TYPE::GENERIC );
-        }
-
         // We don't know if anything was modified, so err on the side of requiring a save
         OnModify();
 
         Kiway().CommonSettingsChanged( TEXTVARS_CHANGED );
-
-        Prj().IncrementTextVarsTicker();
-        Prj().IncrementNetclassesTicker();
-
-        PCBNEW_SETTINGS* settings = GetPcbNewSettings();
-        static LSET      maskAndPasteLayers = LSET( { F_Mask, F_Paste, B_Mask, B_Paste } );
-
-        GetCanvas()->GetView()->UpdateAllItemsConditionally(
-                [&]( KIGFX::VIEW_ITEM* aItem ) -> int
-                {
-                    int flags = 0;
-
-                    if( !aItem->IsBOARD_ITEM() )
-                        return flags;
-
-                    BOARD_ITEM* item = static_cast<BOARD_ITEM*>( aItem );
-
-                    if( item->Type() == PCB_VIA_T || item->Type() == PCB_PAD_T )
-                    {
-                        // Note: KIGFX::REPAINT isn't enough for things that go from invisible
-                        // to visible as they won't be found in the view layer's itemset for
-                        // re-painting.
-                        if( ( GetBoard()->GetVisibleLayers() & maskAndPasteLayers ).any() )
-                            flags |= KIGFX::ALL;
-                    }
-
-                    if( item->Type() == PCB_TRACE_T || item->Type() == PCB_ARC_T || item->Type() == PCB_VIA_T )
-                    {
-                        if( settings->m_Display.m_TrackClearance == SHOW_WITH_VIA_ALWAYS )
-                            flags |= KIGFX::REPAINT;
-                    }
-
-                    if( item->Type() == PCB_PAD_T )
-                    {
-                        if( settings->m_Display.m_PadClearance )
-                            flags |= KIGFX::REPAINT;
-                    }
-
-                    if( EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aItem ) )
-                    {
-                        if( text->HasTextVars() )
-                        {
-                            text->ClearRenderCache();
-                            text->ClearBoundingBoxCache();
-                            flags |= KIGFX::GEOMETRY | KIGFX::REPAINT;
-                        }
-                    }
-
-                    return flags;
-                } );
-
-        GetCanvas()->Refresh();
-
-        UpdateUserInterface();
-        ReCreateAuxiliaryToolbar();
-        m_toolManager->ResetTools( TOOL_BASE::MODEL_RELOAD );
-
-        //this event causes the routing tool to reload its design rules information
-        TOOL_EVENT toolEvent( TC_COMMAND, TA_MODEL_CHANGE, AS_ACTIVE );
-        toolEvent.SetHasPosition( false );
-        m_toolManager->ProcessEvent( toolEvent );
+        RefreshProjectSettings();
     }
 
     GetCanvas()->SetFocus();
@@ -235,6 +169,29 @@ void PCB_EDIT_FRAME::ShowFindDialog()
     m_findDialog->Show( true );
 }
 
+
+void PCB_EDIT_FRAME::ShowFindByPropertiesDialog()
+{
+    if( !m_findByPropertiesDialog )
+        m_findByPropertiesDialog = new DIALOG_FIND_BY_PROPERTIES( this );
+
+    m_findByPropertiesDialog->Show( true );
+    m_findByPropertiesDialog->Raise();
+}
+
+
+void PCB_EDIT_FRAME::NotifyFindByPropertiesDialog()
+{
+    if( m_findByPropertiesDialog && m_findByPropertiesDialog->IsShown() )
+        m_findByPropertiesDialog->OnSelectionChanged();
+}
+
+
+void PCB_EDIT_FRAME::UpdateProperties()
+{
+    EDA_DRAW_FRAME::UpdateProperties();
+    NotifyFindByPropertiesDialog();
+}
 
 void PCB_EDIT_FRAME::FindNext( bool reverse )
 {
@@ -371,6 +328,55 @@ DIALOG_BOOK_REPORTER* PCB_EDIT_FRAME::GetFootprintDiffDialog()
 }
 
 
+DIALOG_FOOTPRINT_FIELDS_TABLE* PCB_EDIT_FRAME::GetFootprintFieldsTableDialog()
+{
+    if( !m_footprintFieldsTableDialog )
+    {
+        auto* dlg = new DIALOG_FOOTPRINT_FIELDS_TABLE( this );
+
+        if( dlg->WasAborted() )
+        {
+            dlg->Destroy();
+            return nullptr;
+        }
+
+        m_footprintFieldsTableDialog = dlg;
+    }
+
+    return m_footprintFieldsTableDialog;
+}
+
+
+bool PCB_EDIT_FRAME::CloseFootprintFieldsTableDialog()
+{
+    if( !m_footprintFieldsTableDialog )
+        return true;
+
+    DIALOG_FOOTPRINT_FIELDS_TABLE* dlg = m_footprintFieldsTableDialog;
+
+    if( !dlg->Close( false ) )
+        return false;
+
+    if( m_footprintFieldsTableDialog == dlg )
+    {
+        dlg->Destroy();
+        m_footprintFieldsTableDialog = nullptr;
+    }
+
+    return true;
+}
+
+
+void PCB_EDIT_FRAME::onCloseFootprintFieldsTableDialog()
+{
+    if( m_footprintFieldsTableDialog )
+    {
+        m_footprintFieldsTableDialog->Destroy();
+        m_footprintFieldsTableDialog = nullptr;
+    }
+}
+
+
 void PCB_EDIT_FRAME::onCloseModelessBookReporterDialogs( const wxString& aDialogName, int aId )
 {
     if( m_inspectDrcErrorDlg && aDialogName == INSPECT_DRC_ERROR_DIALOG_NAME )
@@ -445,8 +451,28 @@ void PCB_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
         break;
     }
 
+    case PCB_DRILL_CHART_T:
+    {
+        // Not the generic table dialog, which would offer copper layers and direct editing of
+        // cells that the next rebuild discards
+        DIALOG_GENERATED_TABLE_PROPERTIES dlg( this, static_cast<PCB_DRILL_CHART*>( aItem ),
+                                               []( wxWindow* aParent )
+                                               {
+                                                   return new PANEL_DRILL_CHART_OPTIONS( aParent );
+                                               } );
+        dlg.ShowModal();
+        break;
+    }
+
+    case PCB_STACKUP_TABLE_T:
+    {
+        DIALOG_GENERATED_TABLE_PROPERTIES dlg( this, static_cast<PCB_GENERATED_TABLE*>( aItem ), {} );
+        dlg.ShowModal();
+        break;
+    }
+
     case PCB_PAD_T:
-        ShowPadPropertiesDialog( static_cast<PAD*>( aItem ) );
+        ShowPadPropertiesDialog( static_cast<PAD&>( *aItem ) );
         break;
 
     case PCB_FOOTPRINT_T:
@@ -471,6 +497,10 @@ void PCB_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
 
     case PCB_SHAPE_T:
         ShowGraphicItemPropertiesDialog( static_cast<PCB_SHAPE*>( aItem ) );
+        break;
+
+    case PCB_GRID_ITEM_T:
+        ShowGridItemPropertiesDialog( static_cast<PCB_GRID_ITEM*>( aItem ) );
         break;
 
     case PCB_ZONE_T:
@@ -540,6 +570,12 @@ void PCB_EDIT_FRAME::destroyModelessDialogs()
     {
         m_findDialog->Destroy();
         m_findDialog = nullptr;
+    }
+
+    if( m_findByPropertiesDialog )
+    {
+        m_findByPropertiesDialog->Destroy();
+        m_findByPropertiesDialog = nullptr;
     }
 
     if( m_inspectDrcErrorDlg )

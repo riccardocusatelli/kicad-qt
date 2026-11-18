@@ -235,10 +235,10 @@ APPEARANCE_CONTROLS::APPEARANCE_CONTROLS( PCB_BASE_FRAME* aParent, QWidget* aFoc
 
     createControls();
 
-    m_btnNetInspector->SetBitmap( KiBitmapBundle( BITMAPS::list_nets_16 ) );
+    m_btnNetInspector->SetBitmap( KiBitmapBundle( BITMAPS::list_nets, 16 ) );
     m_btnNetInspector->SetPadding( 2 );
 
-    m_btnConfigureNetClasses->SetBitmap( KiBitmapBundle( BITMAPS::options_generic_16 ) );
+    m_btnConfigureNetClasses->SetBitmap( KiBitmapBundle( BITMAPS::options_generic, 16 ) );
     m_btnConfigureNetClasses->SetPadding( 2 );
 
     m_txtNetFilter->setPlaceholderText( ToQString( _( "Filter nets" ) ) );
@@ -1426,7 +1426,8 @@ void APPEARANCE_CONTROLS::syncObjectSettings()
               && m_objectSettingsMap.count( LAYER_PADS )
               && m_objectSettingsMap.count( LAYER_ZONES )
               && m_objectSettingsMap.count( LAYER_DRAW_BITMAPS )
-              && m_objectSettingsMap.count( LAYER_FILLED_SHAPES ) );
+              && m_objectSettingsMap.count( LAYER_FILLED_SHAPES )
+              && m_objectSettingsMap.count( LAYER_OUTSIDE_GROUP_OPACITY ) );
 
     auto setOpacity =
             [this]( GAL_LAYER_ID aLayer, double aOpacity )
@@ -1447,6 +1448,7 @@ void APPEARANCE_CONTROLS::syncObjectSettings()
     setOpacity( LAYER_ZONES, opts.m_ZoneOpacity );
     setOpacity( LAYER_DRAW_BITMAPS, opts.m_ImageOpacity );
     setOpacity( LAYER_FILLED_SHAPES, opts.m_FilledShapeOpacity );
+    setOpacity( LAYER_OUTSIDE_GROUP_OPACITY, opts.m_OutsideGroupOpacity );
 }
 
 
@@ -1977,8 +1979,13 @@ void APPEARANCE_CONTROLS::syncLayerPresetSelection()
     auto it = std::find_if( m_layerPresets.begin(), m_layerPresets.end(),
                             [&]( const std::pair<const wxString, LAYER_PRESET>& aPair )
                             {
+                                // see onLayerPresetChanged logic for built-in presets
+                                const GAL_SET& presetObjects = aPair.second.readOnly
+                                        ? m_lastBuiltinPreset.renderLayers
+                                        : aPair.second.renderLayers;
+
                                 return ( aPair.second.layers == visibleLayers
-                                         && aPair.second.renderLayers == visibleObjects
+                                         && presetObjects == visibleObjects
                                          && aPair.second.flipBoard == flipBoard );
                             } );
 
@@ -2146,10 +2153,15 @@ void APPEARANCE_CONTROLS::onLayerPresetChanged( QWidget* aSource )
 
             if( idx >= 0 )
             {
+                if( m_lastSelectedUserPreset && m_lastSelectedUserPreset->name == presetName )
+                    m_lastSelectedUserPreset = nullptr;
+
+                if( m_currentPreset && m_currentPreset->name == presetName )
+                    m_currentPreset = nullptr;
+
                 m_layerPresets.erase( presetName );
 
                 m_cbLayerPresets->removeItem( idx );
-                m_currentPreset = nullptr;
             }
 
             if( m_presetMRU.Index( presetName ) != wxNOT_FOUND )

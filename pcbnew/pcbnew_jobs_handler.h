@@ -34,12 +34,7 @@ class JOB_EXPORT_PCB_GERBERS;
 class JOB_EXPORT_PCB_PLOT;
 class JOB_EXPORT_PCB_FAB;
 class JOB_FP_EXPORT_SVG;
-<<<<<<< b2e17e0a
 class BOARD_COMMIT;
-||||||| 1304b76aad
-class TOOL_MANAGER;
-=======
-class TOOL_MANAGER;
 class REPORTER;
 class wxWindow;
 
@@ -50,7 +45,6 @@ namespace KICAD_DIFF
 class DIFF_CANVAS_CONTEXT;
 struct DOCUMENT_DIFF;
 } // namespace KICAD_DIFF
->>>>>>> ed8c16703e
 
 /**
  * Run the Pcbnew jobs (exports, DRC, upgrades...).
@@ -146,8 +140,7 @@ private:
     void refillFabZones( const JOB_EXPORT_PCB_FAB& aJob, BOARD* aBoard );
     LSEQ convertLayerArg( wxString& aLayerString, BOARD* aBoard ) const;
 
-    bool preparePlotLayers( JOB_EXPORT_PCB_PLOT* aJob, BOARD* aBoard, TOOL_MANAGER* aToolManager,
-                            LSEQ& aLayersToPlot );
+    bool preparePlotLayers( JOB_EXPORT_PCB_PLOT* aJob, BOARD* aBoard, LSEQ& aLayersToPlot );
     wxString resolvePlotOutputPath( JOB_EXPORT_PCB_PLOT* aJob, BOARD* aBoard,
                                    PLOT_FORMAT aFormat, bool aSingleOutput );
 
@@ -161,19 +154,7 @@ private:
 
     DS_PROXY_VIEW_ITEM* getDrawingSheetProxyView( BOARD* aBrd );
 
-<<<<<<< b2e17e0a
-    BOARD* m_cliBoard;
-||||||| 1304b76aad
-    TOOL_MANAGER* getToolManager( BOARD* aBrd );
-
-    BOARD* m_cliBoard;
-    std::unique_ptr<TOOL_MANAGER> m_toolManager;
-=======
-    TOOL_MANAGER* getToolManager( BOARD* aBrd );
-
     std::unique_ptr<BOARD> m_cliBoard;
-    std::unique_ptr<TOOL_MANAGER> m_toolManager;
->>>>>>> ed8c16703e
 };
 
 #endif

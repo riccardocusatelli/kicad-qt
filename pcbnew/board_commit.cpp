@@ -44,11 +44,6 @@
 using namespace std::placeholders;
 
 
-<<<<<<< b2e17e0a
-BOARD_COMMIT::BOARD_COMMIT( BOARD* aBoard, bool aIsBoardEditor, bool aIsFootprintEditor ) :
-||||||| 1304b76aad
-BOARD_COMMIT::BOARD_COMMIT( TOOL_BASE* aTool ) :
-=======
 // A no-geometry board item (net metadata or a geometric constraint) is never pushed into the
 // VIEW or the connectivity graph.  VIEW::Add early-returns on an empty layer set but still
 // stamps the item's view private data, which a later VIEW::Remove would mis-index.
@@ -59,8 +54,7 @@ static bool isNoGeometryItem( const BOARD_ITEM* aItem )
 }
 
 
-BOARD_COMMIT::BOARD_COMMIT( TOOL_BASE* aTool ) :
->>>>>>> ed8c16703e
+BOARD_COMMIT::BOARD_COMMIT( BOARD* aBoard, bool aIsBoardEditor, bool aIsFootprintEditor ) :
         COMMIT(),
         m_board( aBoard ),
         m_isBoardEditor( aIsBoardEditor ),
@@ -240,11 +234,6 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
 
     undoList.SetDescription( aMessage );
 
-<<<<<<< b2e17e0a
-    TEARDROP_MANAGER                   teardropMgr( board );
-||||||| 1304b76aad
-    TEARDROP_MANAGER                   teardropMgr( board, m_toolMgr );
-=======
     // Copies handed in through Modified() were not made by makeImage(), but the undo stack owns them all
     for( const COMMIT_LINE& entry : m_entries )
     {
@@ -252,21 +241,12 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
             entry.m_copy->SetFlags( UR_TRANSIENT );
     }
 
-    TEARDROP_MANAGER                   teardropMgr( board, m_toolMgr );
->>>>>>> ed8c16703e
+    TEARDROP_MANAGER                   teardropMgr( board );
     std::shared_ptr<CONNECTIVITY_DATA> connectivity = board->GetConnectivity();
 
-<<<<<<< b2e17e0a
-||||||| 1304b76aad
-    // Note: frame == nullptr happens in QA tests
-
-=======
-    // Note: frame == nullptr happens in QA tests
-
-    if( !frame )
+    if( !listener )
         aCommitFlags |= SKIP_UNDO;
 
->>>>>>> ed8c16703e
     std::vector<BOARD_ITEM*> bulkAddedItems;
     std::vector<BOARD_ITEM*> bulkRemovedItems;
     std::vector<BOARD_ITEM*> itemsChanged;
@@ -435,16 +415,8 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
             if( boardItem->Type() != PCB_MARKER_T )
                 propagateDamage( boardItem, staleZones, staleRuleAreas );
 
-<<<<<<< b2e17e0a
-            if( listener && boardItem->Type() != PCB_NETINFO_T )
+            if( listener && !isNoGeometryItem( boardItem ) )
                 listener->ItemAdded( boardItem );
-||||||| 1304b76aad
-            if( view && boardItem->Type() != PCB_NETINFO_T )
-                view->Add( boardItem );
-=======
-            if( view && !isNoGeometryItem( boardItem ) )
-                view->Add( boardItem );
->>>>>>> ed8c16703e
 
             updateComponentClasses( boardItem );
 
@@ -468,18 +440,12 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
                 if( listener )
                     listener->Deselect( boardItem );
 
-<<<<<<< b2e17e0a
-                result.itemsDeselected = true;
-||||||| 1304b76aad
-                itemsDeselected = true;
-=======
                 // In an undo we're going to re-create from the item, not the image.  That seems wrong, but
                 // it would be a big risky change to make it use the image, so let's just reset the selection
                 // flag for now (so that on undo it comes back selected).
                 boardItem->SetFlags( SELECTED );
 
-                itemsDeselected = true;
->>>>>>> ed8c16703e
+                result.itemsDeselected = true;
             }
 
             removedItems.insert( boardItem );
@@ -555,8 +521,8 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
                 break;
 
             case PCB_MARKER_T:
-                if( view )
-                    view->Remove( boardItem );
+                if( listener )
+                    listener->ItemRemoved( boardItem );
 
                 if( !( changeFlags & CHT_DONE ) )
                 {
@@ -638,16 +604,8 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
 
             updateComponentClasses( boardItem );
 
-<<<<<<< b2e17e0a
-            if( listener && boardItem->Type() != PCB_NETINFO_T )
+            if( listener && !isNoGeometryItem( boardItem ) )
                 listener->ItemChanged( boardItem );
-||||||| 1304b76aad
-            if( view && boardItem->Type() != PCB_NETINFO_T )
-                view->Update( boardItem );
-=======
-            if( view && !isNoGeometryItem( boardItem ) )
-                view->Update( boardItem );
->>>>>>> ed8c16703e
 
             itemsChanged.push_back( boardItem );
             break;
@@ -705,67 +663,17 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
         if( solderMaskDirty && listener )
             listener->SolderMaskChanged();
 
-        if( updateBoardBoundingBox && listener && board->BoardOutline() )
-        {
-            board->UpdateBoardOutline();
-            listener->BoardOutlineChanged();
-        }
-
-<<<<<<< b2e17e0a
-        if( !staleRuleAreas.empty() && listener )
-            listener->RuleAreasChanged( staleRuleAreas );
-||||||| 1304b76aad
-        if( updateBoardBoundingBox && view )
-        {
-            if( PCB_BOARD_OUTLINE* outline = board->BoardOutline() )
-            {
-                board->UpdateBoardOutline();
-
-                if( view->HasItem( outline ) )
-                    view->Update( outline );
-                else
-                    view->Add( outline );
-             }
-        }
-
-        if( PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" ) )
-        {
-            if( !staleRuleAreas.empty() && (   cfg->m_Display.m_TrackClearance == SHOW_WITH_VIA_ALWAYS
-                                            || cfg->m_Display.m_PadClearance ) )
-            {
-                if( view )
-                    view->UpdateCollidingItems( staleRuleAreas, { PCB_TRACE_T, PCB_ARC_T, PCB_VIA_T, PCB_PAD_T } );
-            }
-        }
-=======
         if( updateBoardBoundingBox )
         {
-            if( PCB_BOARD_OUTLINE* outline = board->BoardOutline() )
-            {
+            if( board->BoardOutline() )
                 board->UpdateBoardOutline();
 
-                if( view )
-                {
-                    if( view->HasItem( outline ) )
-                        view->Update( outline );
-                    else
-                        view->Add( outline );
-                }
-            }
-
-            RefreshDrillMapOutlines( *board, view );
+            if( listener )
+                listener->BoardOutlineChanged();
         }
 
-        if( PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" ) )
-        {
-            if( !staleRuleAreas.empty() && (   cfg->m_Display.m_TrackClearance == SHOW_WITH_VIA_ALWAYS
-                                            || cfg->m_Display.m_PadClearance ) )
-            {
-                if( view )
-                    view->UpdateCollidingItems( staleRuleAreas, { PCB_TRACE_T, PCB_ARC_T, PCB_VIA_T, PCB_PAD_T } );
-            }
-        }
->>>>>>> ed8c16703e
+        if( !staleRuleAreas.empty() && listener )
+            listener->RuleAreasChanged( staleRuleAreas );
 
         if( !staleTeardropPadsAndVias.empty() || !staleTeardropTracks.empty() )
         {
@@ -801,13 +709,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
                 delete entry.m_copy;
             }
 
-<<<<<<< b2e17e0a
-            if( listener && boardItem->Type() != PCB_NETINFO_T )
-||||||| 1304b76aad
-            if( view && boardItem->Type() != PCB_NETINFO_T )
-=======
-            if( view && !isNoGeometryItem( boardItem ) )
->>>>>>> ed8c16703e
+            if( listener && !isNoGeometryItem( boardItem ) )
             {
                 if( ( entry.m_type & CHT_TYPE ) == CHT_ADD )
                     listener->ItemAdded( boardItem );
@@ -822,120 +724,15 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
     if( bulkAddedItems.size() > 0 || bulkRemovedItems.size() > 0 || itemsChanged.size() > 0 )
         board->OnItemsCompositeUpdate( bulkAddedItems, bulkRemovedItems, itemsChanged );
 
-<<<<<<< b2e17e0a
-    if( listener )
-        listener->Pushed( undoList, aCommitFlags, result );
-||||||| 1304b76aad
-    if( frame )
-    {
-        if( !( aCommitFlags & SKIP_UNDO ) )
-        {
-            if( aCommitFlags & APPEND_UNDO )
-                frame->AppendCopyToUndoList( undoList, UNDO_REDO::UNSPECIFIED );
-            else
-                frame->SaveCopyInUndoList( undoList, UNDO_REDO::UNSPECIFIED );
-        }
-    }
-
-    m_toolMgr->PostEvent( { TC_MESSAGE, TA_MODEL_CHANGE, AS_GLOBAL } );
-
-    if( itemsDeselected )
-        m_toolMgr->PostEvent( EVENTS::UnselectedEvent );
-
-    if( autofillZones )
-    {
-        ZONE_FILLER_TOOL* zoneFillerTool = m_toolMgr->GetTool<ZONE_FILLER_TOOL>();
-
-        for( ZONE* zone : *staleZones )
-            zoneFillerTool->DirtyZone( zone );
-
-        m_toolMgr->PostAction( PCB_ACTIONS::zoneFillDirty );
-    }
-
-    // Rehatching only refreshes cached view geometry (consumers regenerate it lazily), and
-    // dispatching it headlessly makes the tool manager query the platform cursor position
-    if( view )
-        m_toolMgr->PostAction( PCB_ACTIONS::rehatchShapes );
-
-    if( selectedModified )
-        m_toolMgr->ProcessEvent( EVENTS::SelectedItemsModified );
-
-    if( frame )
-    {
-        if( !( aCommitFlags & SKIP_SET_DIRTY ) )
-            frame->OnModify();
-        else
-            frame->Update3DView( true, frame->GetPcbNewSettings()->m_Display.m_Live3DRefresh );
-
-        // Ensure the message panel is updated after committing changes.
-        // By default (i.e. if no event posted), display the updated board info
-        if( !itemsDeselected && !autofillZones && !selectedModified )
-        {
-            std::vector<MSG_PANEL_ITEM> msg_list;
-            board->GetMsgPanelInfo( frame, msg_list );
-            frame->SetMsgPanel( msg_list );
-        }
-    }
-=======
     // A shrinking table deletes the cells past its new end and the selection holds those
     // cells directly, so it has to be resolved again from what is still on the board
-    if( containsGeneratedTable && selTool )
-        selTool->RebuildSelection();
+    result.generatedTableChanged = containsGeneratedTable;
 
-    if( frame )
-    {
-        if( !( aCommitFlags & SKIP_UNDO ) )
-        {
-            if( aCommitFlags & APPEND_UNDO )
-                frame->AppendCopyToUndoList( undoList, UNDO_REDO::UNSPECIFIED );
-            else
-                frame->SaveCopyInUndoList( undoList, UNDO_REDO::UNSPECIFIED );
-        }
-    }
+    if( listener )
+        listener->Pushed( undoList, aCommitFlags, result );
 
-    m_toolMgr->PostEvent( { TC_MESSAGE, TA_MODEL_CHANGE, AS_GLOBAL } );
-
-    if( itemsDeselected )
-        m_toolMgr->PostEvent( EVENTS::UnselectedEvent );
-
-    if( autofillZones )
-    {
-        ZONE_FILLER_TOOL* zoneFillerTool = m_toolMgr->GetTool<ZONE_FILLER_TOOL>();
-
-        for( ZONE* zone : *staleZones )
-            zoneFillerTool->DirtyZone( zone );
-
-        m_toolMgr->PostAction( PCB_ACTIONS::zoneFillDirty );
-    }
-
-    // Rehatching only refreshes cached view geometry (consumers regenerate it lazily), and
-    // dispatching it headlessly makes the tool manager query the platform cursor position
-    if( view )
-        m_toolMgr->PostAction( PCB_ACTIONS::rehatchShapes );
-
-    if( selectedModified )
-        m_toolMgr->ProcessEvent( EVENTS::SelectedItemsModified );
-
-    if( frame )
-    {
-        if( !( aCommitFlags & SKIP_SET_DIRTY ) )
-            frame->OnModify();
-        else
-            frame->Update3DView( true, frame->GetPcbNewSettings()->m_Display.m_Live3DRefresh );
-
-        // Ensure the message panel is updated after committing changes.
-        // By default (i.e. if no event posted), display the updated board info
-        if( !itemsDeselected && !autofillZones && !selectedModified )
-        {
-            std::vector<MSG_PANEL_ITEM> msg_list;
-            board->GetMsgPanelInfo( frame, msg_list );
-            frame->SetMsgPanel( msg_list );
-        }
-    }
->>>>>>> ed8c16703e
-
-    if( containsDrillMap && frame )
-        frame->RefreshDrillSymbols( KIGFX::LAYERS | KIGFX::GEOMETRY | KIGFX::REPAINT );
+    if( containsDrillMap && listener )
+        listener->DrillSymbolsChanged();
 
     clear();
 }
@@ -977,14 +774,6 @@ EDA_ITEM* BOARD_COMMIT::MakeImage( EDA_ITEM* aItem )
 
 void BOARD_COMMIT::Revert()
 {
-<<<<<<< b2e17e0a
-    BOARD_COMMIT_LISTENER*             listener = m_listener.get();
-    BOARD*                             board = GetBoard();
-||||||| 1304b76aad
-    PICKED_ITEMS_LIST                  undoList;
-    KIGFX::VIEW*                       view = m_toolMgr->GetView();
-    BOARD*                             board = (BOARD*) m_toolMgr->GetModel();
-=======
     RevertToCheckpoint( 0 );
 
     // A save during the commit may have rebuilt tables from the edits just discarded
@@ -994,10 +783,8 @@ void BOARD_COMMIT::Revert()
 
 void BOARD_COMMIT::RevertToCheckpoint( int aCheckpoint )
 {
-    PICKED_ITEMS_LIST                  undoList;
-    KIGFX::VIEW*                       view = m_toolMgr->GetView();   // null in headless sessions
-    BOARD*                             board = (BOARD*) m_toolMgr->GetModel();
->>>>>>> ed8c16703e
+    BOARD_COMMIT_LISTENER*             listener = m_listener.get();
+    BOARD*                             board = GetBoard();
     std::shared_ptr<CONNECTIVITY_DATA> connectivity = board->GetConnectivity();
 
     board->IncrementTimeStamp();   // clear caches
@@ -1039,16 +826,8 @@ void BOARD_COMMIT::RevertToCheckpoint( int aCheckpoint )
         case CHT_ADD:
             if( changeFlags & CHT_DONE )
             {
-<<<<<<< b2e17e0a
-                if( listener && boardItem->Type() != PCB_NETINFO_T )
+                if( listener && !isNoGeometryItem( boardItem ) )
                     listener->ItemRemoved( boardItem );
-||||||| 1304b76aad
-                if( boardItem->Type() != PCB_NETINFO_T )
-                    view->Remove( boardItem );
-=======
-                if( view && !isNoGeometryItem( boardItem ) )
-                    view->Remove( boardItem );
->>>>>>> ed8c16703e
 
                 connectivity->Remove( boardItem );
 
@@ -1086,16 +865,8 @@ void BOARD_COMMIT::RevertToCheckpoint( int aCheckpoint )
             if( !( changeFlags & CHT_DONE ) )
                 break;
 
-<<<<<<< b2e17e0a
-            if( listener && boardItem->Type() != PCB_NETINFO_T )
+            if( listener && !isNoGeometryItem( boardItem ) )
                 listener->ItemAdded( boardItem );
-||||||| 1304b76aad
-            if( boardItem->Type() != PCB_NETINFO_T )
-                view->Add( boardItem );
-=======
-            if( view && !isNoGeometryItem( boardItem ) )
-                view->Add( boardItem );
->>>>>>> ed8c16703e
 
             if( m_isFootprintEditor )
             {
@@ -1124,16 +895,8 @@ void BOARD_COMMIT::RevertToCheckpoint( int aCheckpoint )
 
         case CHT_MODIFY:
         {
-<<<<<<< b2e17e0a
-            if( listener && boardItem->Type() != PCB_NETINFO_T )
+            if( listener && !isNoGeometryItem( boardItem ) )
                 listener->ItemRemoved( boardItem );
-||||||| 1304b76aad
-            if( boardItem->Type() != PCB_NETINFO_T )
-                view->Remove( boardItem );
-=======
-            if( view && !isNoGeometryItem( boardItem ) )
-                view->Remove( boardItem );
->>>>>>> ed8c16703e
 
             connectivity->Remove( boardItem );
 
@@ -1141,16 +904,8 @@ void BOARD_COMMIT::RevertToCheckpoint( int aCheckpoint )
             BOARD_ITEM* boardItemCopy = static_cast<BOARD_ITEM*>( entry.m_copy );
             boardItem->SwapItemData( boardItemCopy );
 
-<<<<<<< b2e17e0a
-            if( listener && boardItem->Type() != PCB_NETINFO_T )
+            if( listener && !isNoGeometryItem( boardItem ) )
                 listener->ItemAdded( boardItem );
-||||||| 1304b76aad
-            if( boardItem->Type() != PCB_NETINFO_T )
-                view->Add( boardItem );
-=======
-            if( view && !isNoGeometryItem( boardItem ) )
-                view->Add( boardItem );
->>>>>>> ed8c16703e
 
             connectivity->Add( boardItem );
             itemsChanged.push_back( boardItem );
@@ -1193,30 +948,11 @@ void BOARD_COMMIT::RevertToCheckpoint( int aCheckpoint )
         board->OnRatsnestChanged();
     }
 
-<<<<<<< b2e17e0a
     if( listener )
         listener->Reverted();
-||||||| 1304b76aad
-    PCB_SELECTION_TOOL* selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
-    selTool->RebuildSelection();
 
-    // Property panel needs to know about the reselect
-    m_toolMgr->PostEvent( EVENTS::SelectedItemsModified );
-=======
-    if( PCB_SELECTION_TOOL* selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>() )
-        selTool->RebuildSelection();
-
-    // Property panel needs to know about the reselect
-    m_toolMgr->PostEvent( EVENTS::SelectedItemsModified );
->>>>>>> ed8c16703e
-
-    if( containsDrillMap )
-    {
-        if( PCB_BASE_FRAME* frame = dynamic_cast<PCB_BASE_FRAME*>( m_toolMgr->GetToolHolder() ) )
-        {
-            frame->RefreshDrillSymbols( KIGFX::LAYERS | KIGFX::GEOMETRY | KIGFX::REPAINT );
-        }
-    }
+    if( containsDrillMap && listener )
+        listener->DrillSymbolsChanged();
 
     dropEntriesAfter( aCheckpoint );
 }

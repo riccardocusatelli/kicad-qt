@@ -3035,13 +3035,6 @@ void PCB_IO_EAGLE::mapEagleLayersToKicad( bool aIsLibraryCache )
 
     m_layer_map = m_layer_mapping_handler( inputDescs );
 
-<<<<<<< ours
-    if( m_progressReporter )
-        m_progressReporter->SetVisible( true );
-||||||| base
-    if( m_progressReporter && dynamic_cast<wxWindow*>( m_progressReporter ))
-        dynamic_cast<wxWindow*>( m_progressReporter )->Show();
-=======
     // A layer the handler leaves at UNSELECTED_LAYER has no placement target: the
     // headless default callback has no user to consult, and the item loaders only
     // skip UNDEFINED_LAYER. Normalize it so those items are dropped rather than
@@ -3052,9 +3045,8 @@ void PCB_IO_EAGLE::mapEagleLayersToKicad( bool aIsLibraryCache )
             layer = UNDEFINED_LAYER;
     }
 
-    if( m_progressReporter && dynamic_cast<wxWindow*>( m_progressReporter ))
-        dynamic_cast<wxWindow*>( m_progressReporter )->Show();
->>>>>>> theirs
+    if( m_progressReporter )
+        m_progressReporter->SetVisible( true );
 }
 
 

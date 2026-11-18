@@ -104,54 +104,7 @@
 #include <wx/log.h>
 #include <core/ki_assert.h>
 
-<<<<<<< ours
 FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
-    PCB_BASE_EDIT_FRAME( aKiway, aParent, FRAME_FOOTPRINT_EDITOR, wxEmptyString,
-                         wxDefaultPosition, wxDefaultSize,
-                         KICAD_DEFAULT_DRAWFRAME_STYLE, GetFootprintEditorFrameName() ),
-    m_show_layer_manager_tools( true )
-||||||| base
-BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
-    EVT_MENU( wxID_CLOSE, FOOTPRINT_EDIT_FRAME::CloseFootprintEditor )
-    EVT_MENU( wxID_EXIT, FOOTPRINT_EDIT_FRAME::OnExitKiCad )
-
-    EVT_SIZE( FOOTPRINT_EDIT_FRAME::OnSize )
-
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectGrid )
-
-    EVT_TOOL( ID_FPEDIT_SAVE_PNG, FOOTPRINT_EDIT_FRAME::OnSaveFootprintAsPng )
-
-    // Drop files event
-    EVT_DROP_FILES( FOOTPRINT_EDIT_FRAME::OnDropFiles )
-
-END_EVENT_TABLE()
-
-
-FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
-    PCB_BASE_EDIT_FRAME( aKiway, aParent, FRAME_FOOTPRINT_EDITOR, wxEmptyString,
-                         wxDefaultPosition, wxDefaultSize,
-                         KICAD_DEFAULT_DRAWFRAME_STYLE, GetFootprintEditorFrameName() ),
-    m_show_layer_manager_tools( true )
-=======
-BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
-    EVT_MENU( wxID_CLOSE, FOOTPRINT_EDIT_FRAME::CloseFootprintEditor )
-    EVT_MENU( wxID_EXIT, FOOTPRINT_EDIT_FRAME::OnExitKiCad )
-
-    EVT_SIZE( FOOTPRINT_EDIT_FRAME::OnSize )
-
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectGrid )
-
-    EVT_TOOL( ID_FPEDIT_SAVE_PNG, FOOTPRINT_EDIT_FRAME::OnSaveFootprintAsPng )
-
-    // Drop files event
-    EVT_DROP_FILES( FOOTPRINT_EDIT_FRAME::OnDropFiles )
-
-END_EVENT_TABLE()
-
-
-FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
         PCB_BASE_EDIT_FRAME( aKiway, aParent, FRAME_FOOTPRINT_EDITOR, _( "Footprint Editor" ), wxDefaultPosition,
                              wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, GetFootprintEditorFrameName() ),
         m_show_layer_manager_tools( true ),
@@ -160,7 +113,6 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
         m_suppressTabActivation( false ),
         m_protectedBorrowedBoard( nullptr ),
         m_silentFootprintTabClose( false )
->>>>>>> theirs
 {
     m_showBorderAndTitleBlock = false;   // true to show the frame references
     m_aboutTitle = _HKI( "KiCad Footprint Editor" );
@@ -219,8 +171,11 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     ReCreateMenuBar();
 
-    wxTheApp->Bind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
-                    &FOOTPRINT_EDIT_FRAME::onPluginAvailabilityChanged, this );
+    m_pluginAvailabilityListener = PgmGui().GetPluginManager().AddAvailabilityChangedListener(
+            [this]()
+            {
+                onPluginAvailabilityChanged();
+            } );
 
     m_selectionFilterPanel = new PANEL_SELECTION_FILTER( this );
     m_appearancePanel = new APPEARANCE_CONTROLS( this, GetCanvas(), true );
@@ -254,186 +209,6 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
         aui_cfg.right_panel_width = -1;
     }
 
-<<<<<<< ours
-||||||| base
-    m_auimgr.SetManagedWindow( this );
-
-    unsigned int auiFlags = wxAUI_MGR_DEFAULT;
-#if !defined( _WIN32 )
-    // Windows cannot redraw the UI fast enough during a live resize and may lead to all kinds
-    // of graphical glitches
-    auiFlags |= wxAUI_MGR_LIVE_RESIZE;
-#endif
-    m_auimgr.SetFlags( auiFlags );
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-                      .Top().Layer( 6 ) );
-
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" )
-                      .Bottom().Layer( 6 ) );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_treePane, EDA_PANE().Palette().Name( "Footprints" )
-                      .Left().Layer( 4 )
-                      .Caption( _( "Libraries" ) )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( FromDIP( 250 ), FromDIP( 80 ) )
-                      .BestSize( FromDIP( 250 ), -1 ) );
-    m_auimgr.AddPane( m_propertiesPanel, EDA_PANE().Name( PropertiesPaneName() )
-                      .Left().Layer( 3 )
-                      .Caption( _( "Properties" ) ).PaneBorder( false )
-                      .MinSize( FromDIP( wxSize( 240, 60 ) ) ).BestSize( FromDIP( wxSize( 300, 200 ) ) ) );
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" )
-                      .Left().Layer( 2 ) );
-
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
-                      .Right().Layer(2) );
-    m_auimgr.AddPane( m_appearancePanel, EDA_PANE().Name( "LayersManager" )
-                      .Right().Layer( 3 )
-                      .Caption( _( "Appearance" ) ).PaneBorder( false )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( FromDIP( 180 ), FromDIP( 80 ) )
-                      .BestSize( FromDIP( 180 ), -1 ) );
-    m_auimgr.AddPane( m_selectionFilterPanel, EDA_PANE().Palette().Name( "SelectionFilter" )
-                      .Right().Layer( 3 ).Position( 2 )
-                      .Caption( _( "Selection Filter" ) ).PaneBorder( false )
-                      // Fixed-size pane; -1 for MinSize height is required
-                      .MinSize( FromDIP( 180 ), -1 )
-                      .BestSize( FromDIP( 180 ), -1 ) );
-
-    // Center
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" )
-                      .Center() );
-
-    RestoreAuiLayout();
-
-    m_auimgr.GetPane( "LayersManager" ).Show( m_show_layer_manager_tools );
-    m_auimgr.GetPane( "SelectionFilter" ).Show( m_show_layer_manager_tools );
-    m_auimgr.GetPane( PropertiesPaneName() ).Show( GetSettings()->m_AuiPanels.show_properties );
-
-    wxAuiPaneInfo& selectionFilterPane = m_auimgr.GetPane( wxS( "SelectionFilter" ) );
-
-    // The selection filter doesn't need to grow in the vertical direction when docked
-    selectionFilterPane.dock_proportion = 0;
-
-    // wx 3.3.3 turns a -1 min height into 1, and a legacy perspective restores one
-    selectionFilterPane.min_size.y = m_selectionFilterPanel->GetBestSize().y;
-
-=======
-    m_auimgr.SetManagedWindow( this );
-
-    // Create the infobar pane only after the AUI manager owns this frame. Registering it before
-    // SetManagedWindow() leaves the Top/Layer-1 pane mispositioned once the tabbed center pane
-    // mounts and the perspective restores, so ShowMessage() never reveals it.
-    CreateInfoBar();
-
-    unsigned int auiFlags = wxAUI_MGR_DEFAULT;
-#if !defined( _WIN32 )
-    // Windows cannot redraw the UI fast enough during a live resize and may lead to all kinds
-    // of graphical glitches
-    auiFlags |= wxAUI_MGR_LIVE_RESIZE;
-#endif
-    m_auimgr.SetFlags( auiFlags );
-
-    // Rows; layers 4 - 6
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" )
-                      .Top().Layer( 6 ) );
-
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" )
-                      .Bottom().Layer( 6 ) );
-
-    // Columns; layers 1 - 3
-    m_auimgr.AddPane( m_treePane, EDA_PANE().Palette().Name( "Footprints" )
-                      .Left().Layer( 4 )
-                      .Caption( _( "Libraries" ) )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( FromDIP( 250 ), FromDIP( 80 ) )
-                      .BestSize( FromDIP( 250 ), -1 ) );
-    m_auimgr.AddPane( m_propertiesPanel, EDA_PANE().Name( PropertiesPaneName() )
-                      .Left().Layer( 3 )
-                      .Caption( _( "Properties" ) ).PaneBorder( false )
-                      .MinSize( FromDIP( wxSize( 240, 60 ) ) ).BestSize( FromDIP( wxSize( 300, 200 ) ) ) );
-    m_auimgr.AddPane( m_tbLeft, EDA_PANE().VToolbar().Name( "LeftToolbar" )
-                      .Left().Layer( 2 ) );
-
-    m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
-                      .Right().Layer(2) );
-    m_auimgr.AddPane( m_appearancePanel, EDA_PANE().Name( "LayersManager" )
-                      .Right().Layer( 3 )
-                      .Caption( _( "Appearance" ) ).PaneBorder( false )
-                      // Don't use -1 for don't-change-height on a growable panel; it has side-effects.
-                      .MinSize( FromDIP( 180 ), FromDIP( 80 ) )
-                      .BestSize( FromDIP( 180 ), -1 ) );
-    m_auimgr.AddPane( m_selectionFilterPanel, EDA_PANE().Palette().Name( "SelectionFilter" )
-                      .Right().Layer( 3 ).Position( 2 )
-                      .Caption( _( "Selection Filter" ) ).PaneBorder( false )
-                      // Fixed-size pane; -1 for MinSize height is required
-                      .MinSize( FromDIP( 180 ), -1 )
-                      .BestSize( FromDIP( 180 ), -1 ) );
-
-    // Center: the tabbed-document strip owns the tab bar above a single, never-reparented canvas.
-    // The panel borrows the canvas; the frame keeps ownership through GetCanvas().
-    m_tabsPanel = new EDITOR_TABS_PANEL( this, GetCanvas() );
-
-    m_tabsPanel->onActivateTab =
-            [this]( int aIdx )
-            {
-                // Ignore activation during a full clear, when each tab close re-selects a fallback
-                // that would re-borrow a tab-owned board into m_pcb just before it is freed.
-                if( m_suppressTabActivation )
-                    return;
-
-                if( aIdx >= 0 && aIdx < static_cast<int>( m_tabContexts.size() ) )
-                    activateFootprintTab( m_tabContexts[aIdx].get() );
-            };
-
-    m_tabsPanel->onCloseTabRequested =
-            [this]( int aIdx ) -> bool
-            {
-                return promptAndCloseFootprintTab( aIdx );
-            };
-
-    // onCloseTabRequested installs the successor board atomically, so the panel must not re-activate
-    // the fallback after a close and re-borrow a just-installed or just-freed index.
-    m_tabsPanel->SetSuppressActivateOnClose( true );
-
-    m_tabsPanel->onQueryVisualState =
-            [this]( int aIdx ) -> TAB_VISUAL_STATE
-            {
-                // The panel model owns preview, but the live dirty flag lives on the shared frame
-                // screen folded into the context, so read modified from the context.
-                const std::vector<EDITOR_TABS_MODEL::ENTRY>& entries = m_tabsPanel->Model().Entries();
-
-                if( aIdx < 0 || aIdx >= static_cast<int>( entries.size() ) )
-                    return TAB_VISUAL_STATE{};
-
-                bool modified = entries[aIdx].modified;
-
-                if( aIdx < (int) m_tabContexts.size() && m_tabContexts[aIdx].get() )
-                    modified = m_tabContexts[aIdx]->IsModified();
-
-                return ResolveTabVisualState( entries[aIdx].preview, modified );
-            };
-
-    m_auimgr.AddPane( m_tabsPanel, EDA_PANE().Canvas().Name( "DrawFrame" )
-                      .Center() );
-
-    RestoreAuiLayout();
-
-    m_auimgr.GetPane( "LayersManager" ).Show( m_show_layer_manager_tools );
-    m_auimgr.GetPane( "SelectionFilter" ).Show( m_show_layer_manager_tools );
-    m_auimgr.GetPane( PropertiesPaneName() ).Show( GetSettings()->m_AuiPanels.show_properties );
-
-    wxAuiPaneInfo& selectionFilterPane = m_auimgr.GetPane( wxS( "SelectionFilter" ) );
-
-    // The selection filter doesn't need to grow in the vertical direction when docked
-    selectionFilterPane.dock_proportion = 0;
-
-    // wx 3.3.3 turns a -1 min height into 1, and a legacy perspective restores one
-    selectionFilterPane.min_size.y = m_selectionFilterPanel->GetBestSize().y;
-
->>>>>>> theirs
     m_acceptedExts.emplace( FILEEXT::KiCadFootprintLibPathExtension, &ACTIONS::ddAddLibrary );
     m_acceptedExts.emplace( FILEEXT::KiCadFootprintFileExtension, &PCB_ACTIONS::ddImportFootprint );
     m_acceptedExts.emplace( FILEEXT::PngFileExtension, &PCB_ACTIONS::ddPlaceReferenceImage );
@@ -2016,136 +1791,28 @@ const BOX2I FOOTPRINT_EDIT_FRAME::GetDocumentExtents( bool aIncludeAllVisible ) 
 }
 
 
-<<<<<<< ours
 bool FOOTPRINT_EDIT_FRAME::CanCloseFPFromBoard( bool doClose )
 {
-    if( IsContentModified() )
-    {
-        wxString footprintName = GetBoard()->GetFirstFootprint()->GetReference();
-        wxString msg = _( "Save changes to '%s' before closing?" );
-
-        if( !HandleUnsavedChanges( this, wxString::Format( msg, footprintName ),
-                                   [&]() -> bool
-                                   {
-                                       return SaveFootprint( GetBoard()->GetFirstFootprint() );
-                                   } ) )
-        {
-            return false;
-        }
-    }
-
-    if( doClose )
-    {
-        GetInfoBar()->ShowMessageFor( wxEmptyString, 1 );
-        Clear_Pcb( false );
-        UpdateTitle();
-    }
-
-    return true;
+    // The tabs of the footprints of the board: prompt to save them, and close them
+    return HandleUnsavedChanges( true );
 }
 
 
 bool FOOTPRINT_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
-||||||| base
-bool FOOTPRINT_EDIT_FRAME::CanCloseFPFromBoard( bool doClose )
-{
-    if( IsContentModified() )
-    {
-        wxString footprintName = GetBoard()->GetFirstFootprint()->GetReference();
-        wxString msg = _( "Save changes to '%s' before closing?" );
-
-        if( !HandleUnsavedChanges( this, wxString::Format( msg, footprintName ),
-                                   [&]() -> bool
-                                   {
-                                       return SaveFootprint( GetBoard()->GetFirstFootprint() );
-                                   } ) )
-        {
-            return false;
-        }
-    }
-
-    if( doClose )
-    {
-        GetInfoBar()->ShowMessageFor( wxEmptyString, 1 );
-        Clear_Pcb( false );
-        UpdateTitle();
-    }
-
-    return true;
-}
-
-
-bool FOOTPRINT_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
-=======
-bool FOOTPRINT_EDIT_FRAME::canCloseWindow( wxCloseEvent& aEvent )
->>>>>>> theirs
 {
     // Shutdown blocks must be determined and vetoed as early as possible, before any modal prompt.
     // IsContentModified only sees the active tab, so also account for dirty inactive tabs.
-    if( isBlockableSessionEnd() && ( IsContentModified() || hasDirtyInactiveTabs() ) )
+    if( KIPLATFORM::APP::SupportsShutdownBlockReason() && aRequest.IsSessionEndQuery()
+            && ( IsContentModified() || hasDirtyInactiveTabs() ) )
     {
-<<<<<<< ours
-        // Shutdown blocks must be determined and vetoed as early as possible
-        if( KIPLATFORM::APP::SupportsShutdownBlockReason() &&
-            aRequest.IsSessionEndQuery() )
-        {
-            aRequest.Veto();
-            return false;
-        }
-||||||| base
-        // Shutdown blocks must be determined and vetoed as early as possible
-        if( KIPLATFORM::APP::SupportsShutdownBlockReason() &&
-            aEvent.GetId() == wxEVT_QUERY_END_SESSION )
-        {
-            aEvent.Veto();
-            return false;
-        }
-=======
-        aEvent.Veto();
+        aRequest.Veto();
         return false;
     }
->>>>>>> theirs
 
-<<<<<<< ours
-        wxString footprintName = GetBoard()->GetFirstFootprint()->GetFPID().GetLibItemName();
-
-        if( IsCurrentFPFromBoard() )
-            footprintName = GetBoard()->GetFirstFootprint()->GetReference();
-
-        wxString msg = _( "Save changes to '%s' before closing?" );
-
-        if( !HandleUnsavedChanges( this, wxString::Format( msg, footprintName ),
-                                   [&]() -> bool
-                                   {
-                                       return SaveFootprint( GetBoard()->GetFirstFootprint() );
-                                   } ) )
-        {
-            aRequest.Veto();
-            return false;
-        }
-||||||| base
-        wxString footprintName = GetBoard()->GetFirstFootprint()->GetFPID().GetLibItemName();
-
-        if( IsCurrentFPFromBoard() )
-            footprintName = GetBoard()->GetFirstFootprint()->GetReference();
-
-        wxString msg = _( "Save changes to '%s' before closing?" );
-
-        if( !HandleUnsavedChanges( this, wxString::Format( msg, footprintName ),
-                                   [&]() -> bool
-                                   {
-                                       return SaveFootprint( GetBoard()->GetFirstFootprint() );
-                                   } ) )
-        {
-            aEvent.Veto();
-            return false;
-        }
-=======
     if( !HandleUnsavedChanges( false ) )
     {
-        aEvent.Veto();
+        aRequest.Veto();
         return false;
->>>>>>> theirs
     }
 
     PAD_TOOL* padTool = m_toolManager->GetTool<PAD_TOOL>();
@@ -2167,8 +1834,7 @@ void FOOTPRINT_EDIT_FRAME::doCloseWindow()
     GetCanvas()->StopDrawing();
 
     PgmGui().GetApiServer().DeregisterHandler( m_apiHandler.get() );
-    wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
-                      &FOOTPRINT_EDIT_FRAME::onPluginAvailabilityChanged, this );
+    PgmGui().GetPluginManager().RemoveAvailabilityChangedListener( m_pluginAvailabilityListener );
 
     if( GetLibTree() )
         GetLibTree()->ShutdownPreviews();

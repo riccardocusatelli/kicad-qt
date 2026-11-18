@@ -69,19 +69,10 @@ public:
     void OnShowErrorsButtonClick( wxCommandEvent& event ) override;
 
 private:
-<<<<<<< b2e17e0a
-#ifdef KICAD_IPC_API
     void onPluginAvailabilityChanged();
 
     /// The id of the listener of the plugin availability
     int m_pluginAvailabilityListener = -1;
-#endif
-||||||| 1304b76aad
-#ifdef KICAD_IPC_API
-    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
-#endif
-=======
->>>>>>> ed8c16703e
 
     enum GRID_COLUMNS
     {

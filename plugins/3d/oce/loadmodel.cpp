@@ -643,13 +643,6 @@ bool readSTEPZ( Handle( TDocStd_Document ) & m_doc, const char* aFileName, const
         return false;
 
     wxFileOffset size = ifile.GetLength();
-<<<<<<< b2e17e0a
-
-||||||| 1304b76aad
-    wxBusyCursor busycursor;
-
-=======
->>>>>>> ed8c16703e
     if( size == wxInvalidOffset )
         return false;
 

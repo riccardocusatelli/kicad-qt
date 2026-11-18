@@ -41,6 +41,8 @@
 
 void FOOTPRINT_EDIT_FRAME::setupLayout()
 {
+    CreateInfoBar();
+
     // The canvas, the info bar and the message panel
     setupCentralArea();
 

@@ -35,6 +35,7 @@
 #include <footprint.h>
 #include <pcb_base_frame.h>
 #include <pcb_board_outline.h>
+#include <pcb_drill_map.h>
 #include <pcb_group.h>
 #include <pcbnew_settings.h>
 #include <tools/pcb_actions.h>
@@ -140,13 +141,24 @@ public:
         KIGFX::VIEW*       view = m_toolMgr->GetView();
         PCB_BOARD_OUTLINE* outline = Board()->BoardOutline();
 
-        if( !view || !outline )
+        if( !view )
             return;
 
-        if( view->HasItem( outline ) )
-            view->Update( outline );
-        else
-            view->Add( outline );
+        if( outline )
+        {
+            if( view->HasItem( outline ) )
+                view->Update( outline );
+            else
+                view->Add( outline );
+        }
+
+        RefreshDrillMapOutlines( *Board(), view );
+    }
+
+    void DrillSymbolsChanged() override
+    {
+        if( PCB_BASE_FRAME* frame = this->frame() )
+            frame->RefreshDrillSymbols( KIGFX::LAYERS | KIGFX::GEOMETRY | KIGFX::REPAINT );
     }
 
     void RuleAreasChanged( const std::vector<BOX2I>& aAreas ) override
@@ -170,6 +182,14 @@ public:
     {
         PCB_BASE_FRAME* frame = this->frame();
         BOARD*          board = Board();
+
+        // A shrinking table deletes the cells past its new end and the selection holds those
+        // cells directly, so it has to be resolved again from what is still on the board
+        if( aResult.generatedTableChanged )
+        {
+            if( PCB_SELECTION_TOOL* selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>() )
+                selTool->RebuildSelection();
+        }
 
         if( frame )
         {

@@ -26,6 +26,7 @@
 #include <wx/filename.h>
 
 #include <board.h>
+#include <core/ki_assert.h>
 #include <core/utf8.h>
 #include <gestfich.h>
 #include <jobs/job_export_pcb_ipc2581.h>
@@ -40,7 +41,7 @@
 bool GenerateIpc2581File( JOB_EXPORT_PCB_IPC2581& aJob, BOARD* aBoard, PROGRESS_REPORTER* aProgressReporter,
                           REPORTER* aReporter )
 {
-    wxCHECK( aBoard, false );
+    KI_CHECK( aBoard, false );
     wxString outPath = aJob.GetFullOutputPath( aBoard->GetProject() );
 
     if( !PATHS::EnsurePathExists( outPath, true ) )

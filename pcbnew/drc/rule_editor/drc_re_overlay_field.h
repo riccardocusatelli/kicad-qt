@@ -27,14 +27,6 @@
 #include "drc_re_overlay_types.h"
 
 class wxWindow;
-<<<<<<< b2e17e0a
-class wxStaticBitmap;
-||||||| 1304b76aad
-class wxControl;
-class wxStaticBitmap;
-=======
-class wxControl;
->>>>>>> ed8c16703e
 class wxStaticText;
 class FIELD_WARNING_ICON;
 class UNIT_BINDER;

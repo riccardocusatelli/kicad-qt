@@ -1,7 +1,8 @@
 # The GUI of the drawing sheet editor on Qt: the sources of the pl_editor KIFACE of the wxWidgets
 # build, built on the wxWidgets compatibility layer (qt/wxcompat).
 set( KIQT_PL_EDITOR_GUI_SRCS
-    dialogs/properties_frame.cpp
+    pl_properties.cpp
+    widgets/pl_properties_panel.cpp
     dialogs/dialogs_for_printing.cpp
     dialogs/design_inspector.cpp
     dialogs/panel_pl_editor_color_settings.cpp
@@ -28,7 +29,6 @@ list( TRANSFORM KIQT_PL_EDITOR_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pagelayout_e
 kiqt_generate_fbp_compat( KIQT_PL_EDITOR_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pagelayout_editor/dialogs/dialog_design_inspector_base.fbp
     ${CMAKE_SOURCE_DIR}/pagelayout_editor/dialogs/panel_pl_editor_color_settings_base.fbp
-    ${CMAKE_SOURCE_DIR}/pagelayout_editor/dialogs/properties_frame_base.fbp
     )
 
 add_library( pl_editor_gui_qt OBJECT

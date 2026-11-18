@@ -66,6 +66,7 @@ public:
         bool               itemsDeselected = false;   ///< Removed items were selected
         bool               selectedModified = false;  ///< Selected items were changed
         bool               autofillZones = false;     ///< staleZones must be refilled
+        bool               generatedTableChanged = false; ///< A generated table was edited
         std::vector<ZONE*> staleZones;
     };
 
@@ -100,6 +101,9 @@ public:
 
     /// The board outline has been rebuilt.
     virtual void BoardOutlineChanged() = 0;
+
+    /// A drill map has been added, removed or changed: its symbols must be redrawn.
+    virtual void DrillSymbolsChanged() {}
 
     /// Zones that can have custom DRC rules have changed in @a aAreas.
     virtual void RuleAreasChanged( const std::vector<BOX2I>& aAreas ) = 0;

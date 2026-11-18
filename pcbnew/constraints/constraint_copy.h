@@ -27,6 +27,7 @@
 #include <kiid.h>
 #include <pcb_item_containers.h>
 
+class EDA_ITEM;
 class PCB_SELECTION;
 class PCB_CONSTRAINT;
 
@@ -43,6 +44,9 @@ class PCB_CONSTRAINT;
 /// The KIIDs of every selected item and all of its descendants, defining the scope a constraint
 /// must fall entirely within to travel with a copy.
 std::set<KIID> CollectConstraintScopeIds( const PCB_SELECTION& aSelection );
+
+/// The same scope for a plain list of items (CLIPBOARD_IO::SaveItems).
+std::set<KIID> CollectConstraintScopeIds( const std::vector<EDA_ITEM*>& aItems );
 
 
 /// True when @p aConstraint has members and every one of them is present in @p aScopeIds, so the

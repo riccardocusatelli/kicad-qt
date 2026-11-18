@@ -61,45 +61,9 @@
 #include <tools/pcb_actions.h>
 #include <tools/footprint_wizard_tools.h>
 #include <toolbars_footprint_wizard.h>
-<<<<<<< ours
-#include <python/scripting/pcb_scripting_tool.h>
 #include <core/ki_assert.h>
 #include <toolkit/gui_services.h>
 #include <kiway.h>
-||||||| base
-#include <python/scripting/pcb_scripting_tool.h>
-
-
-BEGIN_EVENT_TABLE( FOOTPRINT_WIZARD_FRAME, PCB_BASE_EDIT_FRAME )
-
-    // Window events
-    EVT_SIZE( FOOTPRINT_WIZARD_FRAME::OnSize )
-    EVT_ACTIVATE( FOOTPRINT_WIZARD_FRAME::OnActivate )
-
-     // Toolbar events
-    EVT_TOOL( ID_FOOTPRINT_WIZARD_SELECT_WIZARD, FOOTPRINT_WIZARD_FRAME::SelectCurrentWizard )
-    EVT_TOOL( ID_FOOTPRINT_WIZARD_DONE, FOOTPRINT_WIZARD_FRAME::ExportSelectedFootprint )
-
-    // listbox events
-    EVT_LISTBOX( ID_FOOTPRINT_WIZARD_PAGE_LIST, FOOTPRINT_WIZARD_FRAME::ClickOnPageList )
-    EVT_GRID_CMD_CELL_CHANGED( ID_FOOTPRINT_WIZARD_PARAMETER_LIST,
-                               FOOTPRINT_WIZARD_FRAME::ParametersUpdated )
-END_EVENT_TABLE()
-=======
-
-
-BEGIN_EVENT_TABLE( FOOTPRINT_WIZARD_FRAME, PCB_BASE_EDIT_FRAME )
-
-    // Window events
-    EVT_SIZE( FOOTPRINT_WIZARD_FRAME::OnSize )
-    EVT_ACTIVATE( FOOTPRINT_WIZARD_FRAME::OnActivate )
-
-     // Toolbar events
-    EVT_TOOL( ID_FOOTPRINT_WIZARD_SELECT_WIZARD, FOOTPRINT_WIZARD_FRAME::SelectCurrentWizard )
-    EVT_TOOL( ID_FOOTPRINT_WIZARD_DONE, FOOTPRINT_WIZARD_FRAME::ExportSelectedFootprint )
-
-END_EVENT_TABLE()
->>>>>>> theirs
 
 
 // Note: our FOOTPRINT_WIZARD_FRAME is always modal.
@@ -191,35 +155,7 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* a
 
     DisplayWizardInfos();
 
-<<<<<<< ours
     setupLayout();
-||||||| base
-    m_auimgr.SetManagedWindow( this );
-
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" ).Top().Layer(6) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ).Bottom().Layer(6)
-                      .BestSize( -1, m_msgFrameHeight ) );
-
-    m_auimgr.AddPane( m_parametersPanel, EDA_PANE().Palette().Name( "Params" ).Left().Position(0)
-                      .Caption( _( "Parameters" ) ).MinSize( 360, 180 ) );
-    m_auimgr.AddPane( m_buildMessageBox, EDA_PANE().Palette().Name( "Output" ).Left().Position(1)
-                      .CaptionVisible( false ).MinSize( 360, -1 ) );
-
-    m_auimgr.AddPane( GetCanvas(), wxAuiPaneInfo().Name( "DrawFrame" ).CentrePane() );
-=======
-    m_auimgr.SetManagedWindow( this );
-
-    m_auimgr.AddPane( m_tbTopMain, EDA_PANE().HToolbar().Name( "TopMainToolbar" ).Top().Layer(6) );
-    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ).Bottom().Layer(6)
-                      .BestSize( -1, m_msgFrameHeight ) );
-
-    m_auimgr.AddPane( m_parametersPanel, EDA_PANE().Palette().Name( "Params" ).Left().Position(0)
-                      .Caption( _( "Parameters" ) ).MinSize( 200, 320 ) );
-    m_auimgr.AddPane( m_buildMessageBox, EDA_PANE().Palette().Name( "Output" ).Left().Position(1)
-                      .CaptionVisible( false ).MinSize( 120, -1 ) );
-
-    m_auimgr.AddPane( GetCanvas(), wxAuiPaneInfo().Name( "DrawFrame" ).CentrePane() );
->>>>>>> theirs
 
     auto& galOpts = GetGalDisplayOptions();
     galOpts.SetCursorMode( KIGFX::CROSS_HAIR_MODE::FULLSCREEN_CROSS );
@@ -284,46 +220,6 @@ void FOOTPRINT_WIZARD_FRAME::ExportSelectedFootprint( wxCommandEvent& aEvent )
 }
 
 
-<<<<<<< ours
-void FOOTPRINT_WIZARD_FRAME::OnGridSize( wxSizeEvent& aSizeEvent )
-{
-    // Resize the parameter columns
-    ResizeParamColumns();
-
-    aSizeEvent.Skip();
-}
-
-
-||||||| base
-void FOOTPRINT_WIZARD_FRAME::OnGridSize( wxSizeEvent& aSizeEvent )
-{
-    // Resize the parameter columns
-    ResizeParamColumns();
-
-    aSizeEvent.Skip();
-}
-
-
-void FOOTPRINT_WIZARD_FRAME::OnSize( wxSizeEvent& SizeEv )
-{
-    if( m_auimgr.GetManagedWindow() )
-        m_auimgr.Update();
-
-    SizeEv.Skip();
-}
-
-
-=======
-void FOOTPRINT_WIZARD_FRAME::OnSize( wxSizeEvent& SizeEv )
-{
-    if( m_auimgr.GetManagedWindow() )
-        m_auimgr.Update();
-
-    SizeEv.Skip();
-}
-
-
->>>>>>> theirs
 COLOR_SETTINGS* FOOTPRINT_WIZARD_FRAME::GetColorSettings( bool aForceRefresh ) const
 {
     FOOTPRINT_EDITOR_SETTINGS* cfg = GetFootprintEditorSettings();

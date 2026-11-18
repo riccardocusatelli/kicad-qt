@@ -33,6 +33,7 @@
 #include <tool/tool_dispatcher.h>
 #include <widgets/appearance_controls.h>
 #include <widgets/panel_selection_filter.h>
+#include <widgets/editor_tabs_panel.h>
 #include <widgets/pcb_properties_panel.h>
 #include <widgets/wx_aui_utils.h>
 
@@ -40,6 +41,11 @@
 void FOOTPRINT_EDIT_FRAME::setupLayout()
 {
     m_auimgr.SetManagedWindow( this );
+
+    // Create the infobar pane only after the AUI manager owns this frame. Registering it before
+    // SetManagedWindow() leaves the Top/Layer-1 pane mispositioned once the tabbed center pane
+    // mounts and the perspective restores, so ShowMessage() never reveals it.
+    CreateInfoBar();
 
     unsigned int auiFlags = wxAUI_MGR_DEFAULT;
 #if !defined( _WIN32 )
@@ -85,8 +91,51 @@ void FOOTPRINT_EDIT_FRAME::setupLayout()
                       .MinSize( FromDIP( 180 ), -1 )
                       .BestSize( FromDIP( 180 ), -1 ) );
 
-    // Center
-    m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" )
+    // Center: the tabbed-document strip owns the tab bar above a single, never-reparented canvas.
+    // The panel borrows the canvas; the frame keeps ownership through GetCanvas().
+    m_tabsPanel = new EDITOR_TABS_PANEL( this, GetCanvas() );
+
+    m_tabsPanel->onActivateTab =
+            [this]( int aIdx )
+            {
+                // Ignore activation during a full clear, when each tab close re-selects a fallback
+                // that would re-borrow a tab-owned board into m_pcb just before it is freed.
+                if( m_suppressTabActivation )
+                    return;
+
+                if( aIdx >= 0 && aIdx < static_cast<int>( m_tabContexts.size() ) )
+                    activateFootprintTab( m_tabContexts[aIdx].get() );
+            };
+
+    m_tabsPanel->onCloseTabRequested =
+            [this]( int aIdx ) -> bool
+            {
+                return promptAndCloseFootprintTab( aIdx );
+            };
+
+    // onCloseTabRequested installs the successor board atomically, so the panel must not re-activate
+    // the fallback after a close and re-borrow a just-installed or just-freed index.
+    m_tabsPanel->SetSuppressActivateOnClose( true );
+
+    m_tabsPanel->onQueryVisualState =
+            [this]( int aIdx ) -> TAB_VISUAL_STATE
+            {
+                // The panel model owns preview, but the live dirty flag lives on the shared frame
+                // screen folded into the context, so read modified from the context.
+                const std::vector<EDITOR_TABS_MODEL::ENTRY>& entries = m_tabsPanel->Model().Entries();
+
+                if( aIdx < 0 || aIdx >= static_cast<int>( entries.size() ) )
+                    return TAB_VISUAL_STATE{};
+
+                bool modified = entries[aIdx].modified;
+
+                if( aIdx < (int) m_tabContexts.size() && m_tabContexts[aIdx].get() )
+                    modified = m_tabContexts[aIdx]->IsModified();
+
+                return ResolveTabVisualState( entries[aIdx].preview, modified );
+            };
+
+    m_auimgr.AddPane( m_tabsPanel, EDA_PANE().Canvas().Name( "DrawFrame" )
                       .Center() );
 
     RestoreAuiLayout();

@@ -45,14 +45,10 @@ set( QA_PCBNEW_SRCS
     test_board_item.cpp
     test_drill_chart.cpp
     test_board_commit.cpp
-<<<<<<< b2e17e0a
     test_board_undo_redo.cpp
-||||||| 1304b76aad
-=======
     test_board_downgrade.cpp
     test_downgrade_oracle.cpp
     test_text_var_reactive.cpp
->>>>>>> ed8c16703e
     test_clipboard_group.cpp
     test_clipboard_io.cpp
     test_board_statistics.cpp

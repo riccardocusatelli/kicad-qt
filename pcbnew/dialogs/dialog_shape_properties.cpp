@@ -44,27 +44,9 @@
 
 #include <dialogs/geom_field_helpers.h>
 #include <tools/drawing_tool.h>
-<<<<<<< b2e17e0a
 #include <core/ki_assert.h>
-
-
-struct BOUND_CONTROL
-{
-    std::unique_ptr<UNIT_BINDER> m_Binder;
-    wxTextCtrl*                  m_Ctrl;
-};
-||||||| 1304b76aad
-
-
-struct BOUND_CONTROL
-{
-    std::unique_ptr<UNIT_BINDER> m_Binder;
-    wxTextCtrl*                  m_Ctrl;
-};
-=======
 #include <line_ending.h>
 #include <widgets/line_ending_bitmap.h>
->>>>>>> ed8c16703e
 
 
 /**

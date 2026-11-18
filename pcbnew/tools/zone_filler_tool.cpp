@@ -42,7 +42,8 @@
 #include "zone_filler.h"
 #include "teardrop/teardrop.h"
 #include <core/profile.h>
-<<<<<<< b2e17e0a
+#include <pcb_generator.h>
+#include <tools/generator_tool.h>
 #include <kidialog.h>
 
 
@@ -90,11 +91,6 @@ private:
 };
 
 } // namespace
-||||||| 1304b76aad
-=======
-#include <pcb_generator.h>
-#include <tools/generator_tool.h>
->>>>>>> ed8c16703e
 
 ZONE_FILLER_TOOL::ZONE_FILLER_TOOL() :
     PCB_TOOL_BASE( ZONE_FILLER_TOOL_NAME ),

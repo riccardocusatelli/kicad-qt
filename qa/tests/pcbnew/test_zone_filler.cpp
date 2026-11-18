@@ -1359,7 +1359,7 @@ BOOST_FIXTURE_TEST_CASE( RegressionTeardropArcAnchor, ZONE_FILL_TEST_FIXTURE )
     toolMgr.RegisterTool( dummyTool );
 
     BOARD_COMMIT     commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+    TEARDROP_MANAGER teardropMgr( m_board.get() );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -2211,7 +2211,7 @@ static void checkCrossingTrackTeardropsStayOnCopper( BOARD& aBoard, const PCB_TR
     toolMgr.RegisterTool( dummyTool );
 
     BOARD_COMMIT     commit( dummyTool );
-    TEARDROP_MANAGER teardropMgr( &aBoard, &toolMgr );
+    TEARDROP_MANAGER teardropMgr( &aBoard );
     teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
     if( !commit.Empty() )
@@ -2400,83 +2400,7 @@ BOOST_FIXTURE_TEST_CASE( TwoSegmentAngledTeardropNoSelfIntersection, ZONE_FILL_T
             {
                 KI_TEST::LoadBoard( m_settingsManager, "two_segment_teardrop", m_board );
 
-<<<<<<< b2e17e0a
-        TOOL_MANAGER toolMgr;
-        toolMgr.SetEnvironment( m_board.get(), nullptr, nullptr, nullptr, nullptr );
-
-        KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
-        toolMgr.RegisterTool( dummyTool );
-
-        BOARD_COMMIT commit( dummyTool );
-        TEARDROP_MANAGER teardropMgr( m_board.get() );
-        teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
-
-        if( !commit.Empty() )
-            commit.Push( _( "Add teardrops" ), SKIP_UNDO | SKIP_SET_DIRTY );
-
-        int  teardropCount = 0;
-        bool foundSelfIntersection = false;
-
-        for( ZONE* zone : m_board->Zones() )
-        {
-            if( !zone->IsTeardropArea() )
-                continue;
-
-            teardropCount++;
-
-            const SHAPE_POLY_SET* outline = zone->Outline();
-
-            if( !outline || outline->OutlineCount() == 0 )
-                continue;
-
-            const SHAPE_LINE_CHAIN& chain = outline->Outline( 0 );
-            int n = chain.PointCount();
-
-            for( int i = 0; i < n && !foundSelfIntersection; i++ )
-            {
-                SEG segA( chain.CPoint( i ), chain.CPoint( ( i + 1 ) % n ) );
-
-                for( int j = i + 2; j < n; j++ )
-||||||| 1304b76aad
-        TOOL_MANAGER toolMgr;
-        toolMgr.SetEnvironment( m_board.get(), nullptr, nullptr, nullptr, nullptr );
-
-        KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
-        toolMgr.RegisterTool( dummyTool );
-
-        BOARD_COMMIT commit( dummyTool );
-        TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
-        teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
-
-        if( !commit.Empty() )
-            commit.Push( _( "Add teardrops" ), SKIP_UNDO | SKIP_SET_DIRTY );
-
-        int  teardropCount = 0;
-        bool foundSelfIntersection = false;
-
-        for( ZONE* zone : m_board->Zones() )
-        {
-            if( !zone->IsTeardropArea() )
-                continue;
-
-            teardropCount++;
-
-            const SHAPE_POLY_SET* outline = zone->Outline();
-
-            if( !outline || outline->OutlineCount() == 0 )
-                continue;
-
-            const SHAPE_LINE_CHAIN& chain = outline->Outline( 0 );
-            int n = chain.PointCount();
-
-            for( int i = 0; i < n && !foundSelfIntersection; i++ )
-            {
-                SEG segA( chain.CPoint( i ), chain.CPoint( ( i + 1 ) % n ) );
-
-                for( int j = i + 2; j < n; j++ )
-=======
                 for( PCB_TRACK* track : m_board->Tracks() )
->>>>>>> ed8c16703e
                 {
                     if( track->Type() == PCB_VIA_T )
                     {
@@ -2492,7 +2416,7 @@ BOOST_FIXTURE_TEST_CASE( TwoSegmentAngledTeardropNoSelfIntersection, ZONE_FILL_T
                 toolMgr.RegisterTool( dummyTool );
 
                 BOARD_COMMIT commit( dummyTool );
-                TEARDROP_MANAGER teardropMgr( m_board.get(), &toolMgr );
+                TEARDROP_MANAGER teardropMgr( m_board.get() );
                 teardropMgr.UpdateTeardrops( commit, nullptr, nullptr, true );
 
                 if( !commit.Empty() )

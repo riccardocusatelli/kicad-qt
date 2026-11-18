@@ -113,7 +113,8 @@ void PCB_NET_INSPECTOR_PANEL::viewBuildColumns( PANEL_NET_INSPECTOR_SETTINGS* cf
                 if( aModelColumn != COLUMN_NAME )
                     flags |= wxDATAVIEW_COL_REORDERABLE;
 
-                wxAlignment align = aModelColumn == COLUMN_NAME || aModelColumn == COLUMN_NETCLASS
+                wxAlignment align = aModelColumn == COLUMN_NAME || aModelColumn == COLUMN_NET_CHAIN
+                                                    || aModelColumn == COLUMN_NETCLASS
                                             ? wxALIGN_LEFT
                                             : wxALIGN_CENTER;
 
@@ -298,13 +299,14 @@ void PCB_NET_INSPECTOR_PANEL::buildNetsList( const bool rebuildColumns )
 
     m_netsList->Freeze();
 
-    m_dataModel->SetIsTimeDomain( m_showTimeDomainDetails );
-
     PROJECT_LOCAL_SETTINGS& localSettings = Pgm().GetSettingsManager().Prj().GetLocalSettings();
     PANEL_NET_INSPECTOR_SETTINGS* cfg = &localSettings.m_NetInspectorPanel;
 
     // Refresh all filtering / grouping settings
     readFilterSettings( cfg );
+
+    // Must follow the settings load so the model reflects this board's mode, not the previous one
+    m_dataModel->SetIsTimeDomain( m_showTimeDomainDetails );
 
     // Attempt to keep any expanded groups open
     if( m_boardLoaded && !m_boardLoading )
@@ -580,6 +582,12 @@ void PCB_NET_INSPECTOR_PANEL::OnConfigButton( wxCommandEvent& event )
     menu.Append( groupNetclass );
     groupNetclass->Check( m_groupByNetclass );
 
+    wxMenuItem* groupSignal = new wxMenuItem( &menu, ID_GROUP_BY_NET_CHAIN,
+                                              _( "Group by Net Chain" ),
+                                              wxEmptyString, wxITEM_CHECK );
+    menu.Append( groupSignal );
+    groupSignal->Check( m_groupByNetChain );
+
     menu.AppendSeparator();
 
     wxMenuItem* addGroup = new wxMenuItem( &menu, ID_ADD_GROUP, _( "Add Custom Group..." ),
@@ -730,7 +738,8 @@ wxString PCB_NET_INSPECTOR_PANEL::searchText() const
 
 void PCB_NET_INSPECTOR_PANEL::setSearchText( const wxString& aText )
 {
-    m_searchCtrl->SetValue( aText );
+    // ChangeValue avoids the wxEVT_TEXT that SetValue fires, which doubled buildNetsList()
+    m_searchCtrl->ChangeValue( aText );
 }
 
 

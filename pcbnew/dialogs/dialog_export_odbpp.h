@@ -30,48 +30,8 @@ class DIALOG_EXPORT_ODBPP : public DIALOG_EXPORT_ODBPP_BASE
 public:
     DIALOG_EXPORT_ODBPP( PCB_EDIT_FRAME* aParent );
     DIALOG_EXPORT_ODBPP( JOB_EXPORT_PCB_ODB* aJob, PCB_EDIT_FRAME* aEditFrame, wxWindow* aParent );
-<<<<<<< ours
-
-    wxString GetOutputPath() const { return m_outputFileName->GetValue(); }
-
-    wxString GetUnitsString() const
-    {
-        if( m_choiceUnits->GetSelection() == 0 )
-            return wxT( "mm" );
-        else
-            return wxT( "inch" );
-    }
-
-    int GetPrecision() const { return m_precision->GetValue(); }
-
-    int GetCompressFormat() const { return m_choiceCompress->GetSelection(); }
-
-||||||| base
-
-    wxString GetOutputPath() const { return m_outputFileName->GetValue(); }
-
-    wxString GetUnitsString() const
-    {
-        if( m_choiceUnits->GetSelection() == 0 )
-            return wxT( "mm" );
-        else
-            return wxT( "inch" );
-    }
-
-    int GetPrecision() const { return m_precision->GetValue(); }
-
-    int GetCompressFormat() const { return m_choiceCompress->GetSelection(); }
-
-    // Runs the actual generation process; shared between GUI and CLI system
-    static void GenerateODBPPFiles( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBoard,
-                                    PCB_EDIT_FRAME* aParentFrame = nullptr,
-                                    PROGRESS_REPORTER* aProgressReporter = nullptr,
-                                    REPORTER* aErrorReporter = nullptr );
-
-=======
     ~DIALOG_EXPORT_ODBPP() override;
 
->>>>>>> theirs
 private:
     void onBrowseClicked( wxCommandEvent& event ) override;
     void onFormatChoice( wxCommandEvent& event ) override;

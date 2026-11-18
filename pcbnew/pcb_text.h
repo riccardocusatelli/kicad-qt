@@ -137,18 +137,12 @@ public:
 
     void Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
 
-<<<<<<< b2e17e0a
-    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
-||||||| 1304b76aad
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
-=======
     void OnFootprintRescaled( double aRatioX, double aRatioY, double aLinearFactor, const VECTOR2I& aAnchor,
                               const EDA_ANGLE& aParentRotate ) override;
 
     void OnFootprintTransformed() override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
->>>>>>> ed8c16703e
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     bool TextHitTest( const VECTOR2I& aPoint, int aAccuracy = 0 ) const override;
     bool TextHitTest( const BOX2I& aRect, bool aContains, int aAccuracy = 0 ) const override;

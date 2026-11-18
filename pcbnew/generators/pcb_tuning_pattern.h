@@ -18,23 +18,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-<<<<<<< b2e17e0a
+#pragma once
+
 #include <bitmaps/bitmaps_list.h>
 #include <i18n_utility.h>
 #include <eda_item.h>
 #include <pcb_generator.h>
 #include <pcb_track.h>
 #include <board.h>
-||||||| 1304b76aad
-#include <eda_item.h>
-=======
-#pragma once
-
-#include <bitmaps.h>
-#include <board.h>
-#include <pcb_generator.h>
-#include <pcb_track.h>
->>>>>>> ed8c16703e
 #include <geometry/geometry_utils.h>
 #include <math/vector2d.h>
 #include <router/pns_meander.h>

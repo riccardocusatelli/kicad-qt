@@ -165,7 +165,7 @@ BOARD* PCB_DESIGN_BLOCK_PREVIEW_WIDGET::loadBoard( const wxString& aFileName )
 {
     IO_RELEASER<PCB_IO> pi( PCB_IO_MGR::FindPlugin( PCB_IO_MGR::KICAD_SEXP ) );
 
-    return pi->LoadBoard( aFileName, nullptr );
+    return pi->LoadBoard( aFileName, nullptr ).release();
 }
 
 
